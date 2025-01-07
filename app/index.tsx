@@ -1,13 +1,15 @@
-import { View, Text } from 'react-native'
-import React from 'react'
-import '@/global.css'
+import { Text, View } from "react-native";
 
-const index = () => {
+export default function Index() {
   return (
-    <View>
-      <Text className=' text-center bg-slate-50 text-red-700'>index</Text>
+    <View
+      style={{
+        flex: 1,
+        justifyContent: "center",
+        alignItems: "center",
+      }}
+    >
+      <Text>Edit app/index.tsx to edit this screen.</Text>
     </View>
-  )
+  );
 }
-
-export default index
