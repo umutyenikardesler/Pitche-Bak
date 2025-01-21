@@ -3,8 +3,42 @@ import { Ionicons } from "@expo/vector-icons";
 import "@/global.css";
 
 export default function Index() {
+
+  const progress = 70;
+
   return (
     <View className="bg-slate-100 flex-1">
+
+      <View className="flex-row mt-3 px-3">
+        <Ionicons name="accessibility" size={16} color="black" className="pl-2" />
+        <Text className="font-bold "> KONDİSYONUN </Text>
+      </View>
+
+      <View className="bg-white rounded-lg mx-4 my-3 p-3 shadow-md">
+        {/* Progress Bar ve Yüzde */}
+        <View className="w-full mb-3 flex-row items-center">
+          {/* Progress Bar */}
+          <View className="flex-1 h-3 bg-gray-200 rounded-full overflow-hidden">
+            <View className="bg-blue-500 h-full" style={{ width: `${progress}%` }} />
+          </View>
+          {/* Yüzde */}
+          <Text className="pl-2 font-semibold text-base text-blue-500" >{progress}%</Text>
+        </View>
+
+        {/* İkon ve Metin */}
+        <View className="flex-row items-center">
+          <Ionicons name="information-circle-outline" size={16} color="black" />
+          <Text className="text-xs text-slate-600 pl-2">
+            Kondisyonun yaptığın maç sayısına göre değişiklik gösterebilir.
+          </Text>
+        </View>
+      </View>
+
+      <View className="flex-row mt-3 px-3">
+        <Ionicons name="alarm-outline" size={16} color="black" className="pl-2" />
+        <Text className="font-bold "> SENİ BEKLEYEN MAÇLAR </Text>
+      </View>
+
       <View className="bg-white rounded-lg mx-4 my-3 p-3 shadow-md">
         {/* Üç Sütun */}
         <View className="flex-row">
@@ -49,10 +83,8 @@ export default function Index() {
             </View>
           </View>
         </View>
-
         {/* Çizgi */}
         <View className="h-[1px] bg-gray-600 my-3" />
-
         {/* Tek Satırlı Yazı */}
         <View className="flex-row items-center justify-between">
 
@@ -86,8 +118,8 @@ export default function Index() {
             <Text className="ml-2 font-semibold pr-1">x 1</Text>
           </View>
         </View>
-        
       </View>
+
     </View>
   );
 }
