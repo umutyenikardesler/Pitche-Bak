@@ -1,4 +1,4 @@
-import { Text, View, Image, FlatList } from "react-native";
+import { Text, View, Image, FlatList, RefreshControl } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Dimensions } from "react-native";
 import { supabase } from '@/services/supabase';
@@ -9,23 +9,26 @@ export default function Index() {
   const screenWidth = Dimensions.get("window").width;
   const fontSize = screenWidth > 430 ? 12 : screenWidth > 320 ? 11.5 : 10;
   const [matches, setMatches] = useState([]);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const fetchMatches = async () => {
+    setRefreshing(true);
+    const { data, error } = await supabase
+      .from('match')
+      .select(`
+        id, title, time, date, prices, missing_groups, 
+        pitches (name)
+      `);
+
+    if (error) {
+      console.error('Veri çekme hatası:', error);
+    } else {
+      setMatches(data);
+    }
+    setRefreshing(false);
+  };
 
   useEffect(() => {
-    const fetchMatches = async () => {
-      const { data, error } = await supabase
-        .from('match')
-        .select(`
-          id, title, time, date, prices, missing_groups, 
-          pitches (name)
-        `);
-
-      if (error) {
-        console.error('Veri çekme hatası:', error);
-      } else {
-        setMatches(data);
-      }
-    };
-
     fetchMatches();
   }, []);
 
@@ -108,6 +111,9 @@ export default function Index() {
       keyExtractor={(item) => item.id.toString()}
       renderItem={renderMatch}
       contentContainerStyle={{ flexGrow: 1 }}
+      refreshControl={
+        <RefreshControl refreshing={refreshing} onRefresh={fetchMatches} />
+      }
       ListHeaderComponent={() => (
         <>
           {/* KONDİSYONUN Başlığı ve İçeriği */}
