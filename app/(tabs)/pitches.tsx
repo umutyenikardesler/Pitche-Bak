@@ -1,32 +1,51 @@
-import { Text, View } from "react-native";
+import { useEffect, useState } from "react";
+import { Text, View, FlatList, TouchableOpacity, ActivityIndicator } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import '@/global.css';
+import { useRouter } from "expo-router"; // Sayfa yönlendirme için
+import { supabase } from '@/services/supabase';
 
 export default function Pitches() {
-    return (
-      <View className="bg-slate-100 flex-1">
+  const [pitches, setPitches] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const router = useRouter(); // Router'ı kullan
 
-        <View className="bg-white rounded-lg mx-4 mt-3 mb-3 p-3 shadow-md">
-          <View className="flex-row items-center justify-between ">
-            <Text className="text-base font-semibold">Kardeşler Halı Saha</Text>
-            <Ionicons name="chevron-forward-outline" size={16} color="green" className="" />
-          </View>
-        </View>
+  useEffect(() => {
+    const fetchPitches = async () => {
+      const { data, error } = await supabase.from("pitches").select("id, name");
 
-        <View className="bg-white rounded-lg mx-4 mb-3 p-3 shadow-md">
-          <View className="flex-row items-center justify-between ">
-            <Text className="text-base font-semibold">Olea Halı Saha</Text>
-            <Ionicons name="chevron-forward-outline" size={16} color="green" className="" />
-          </View>
-        </View>
+      if (error) {
+        console.error("Veri çekme hatası:", error);
+      } else {
+        setPitches(data);
+      }
+      setLoading(false);
+    };
 
-        <View className="bg-white rounded-lg mx-4 mb-3 p-3 shadow-md">
-          <View className="flex-row items-center justify-between ">
-            <Text className="text-base font-semibold">Doğanlar Halı Saha</Text>
-            <Ionicons name="chevron-forward-outline" size={16} color="green" className="" />
-          </View>
-        </View>
+    fetchPitches();
+  }, []);
 
-      </View>
-    );
+  if (loading) {
+    return <ActivityIndicator size="large" color="green" className="flex-1 justify-center items-center" />;
   }
+
+  return (
+    <View className="bg-slate-100 flex-1">
+      <FlatList
+        data={pitches}
+        keyExtractor={(item) => item.id}
+        renderItem={({ item }) => (
+          <TouchableOpacity 
+            onPress={() => router.push(`/pitches/${item.id}`)} // Tıklandığında detay sayfasına git
+          >
+            <View className="bg-white rounded-lg mx-4 mt-3 p-3 shadow-md">
+              <View className="flex-row items-center justify-between">
+                <Text className="text-base font-semibold">{item.name}</Text>
+                <Ionicons name="chevron-forward-outline" size={16} color="green" />
+              </View>
+            </View>
+          </TouchableOpacity>
+        )}
+      />
+    </View>
+  );
+}
