@@ -3,6 +3,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { Dimensions } from "react-native";
 import { supabase } from '@/services/supabase';
 import { useEffect, useState } from 'react';
+import '@/global.css';
 
 export default function Index() {
   const progress = 85;
@@ -48,7 +49,7 @@ export default function Index() {
     const missingGroups = item.missing_groups ? item.missing_groups : [];
 
     return (
-      <View className="bg-white rounded-lg mx-4 my-3 p-3 shadow-md">
+      <View className="bg-white rounded-lg mx-4 mt-1.5 mb-1 p-3 shadow-md">
         <View className="flex-row">
           <View className="w-1/4 justify-center py-2 px-1">
             <Image
@@ -90,16 +91,23 @@ export default function Index() {
 
         <View className="h-[1px] bg-gray-600 my-3" />
 
-        {/* Eksik grupları göster */}
+       {/* Eksik grupları göster */}
         <View className="flex-row flex-wrap max-w-full items-center justify-start">
-          {missingGroups.length > 0 && missingGroups.map((group, index) => (
-            <View key={index} className="flex-row items-center ml-2 border-solid border-2 border-gray-500 rounded-full p-1">
-              <View className={`rounded-full p-1 ${group === 'K' ? 'bg-red-500' : group === 'D' ? 'bg-blue-500' : group === 'O' ? 'bg-green-500' : 'bg-yellow-500'}`}>
-                <Text className="text-white font-bold text-md px-1">{group}</Text>
+          {missingGroups.length > 0 && missingGroups.map((group, index) => {
+            const [position, count] = group.split(':'); // 'K:1' -> ['K', '1']
+            return (
+              <View key={index} className="flex-row items-center ml-2 border-solid border-2 border-gray-500 rounded-full p-1">
+                <View className={`rounded-full p-1 ${
+                  position === 'K' ? 'bg-red-500' 
+                  : position === 'D' ? 'bg-blue-500' 
+                  : position === 'O' ? 'bg-green-500' 
+                  : 'bg-yellow-500'}`}>
+                  <Text className="text-white font-bold text-md px-1">{position}</Text>
+                </View>
+                <Text className="ml-2 font-semibold pr-1">x {count}</Text>
               </View>
-              <Text className="ml-2 font-semibold pr-1">x 1</Text>
-            </View>
-          ))}
+            );
+          })}
         </View>
       </View>
     );
@@ -143,7 +151,7 @@ export default function Index() {
           </View>
 
           {/* SENİ BEKLEYEN MAÇLAR Başlığı */}
-          <View className="flex-row mt-3 px-3">
+          <View className="flex-row mt-1 mb-2 px-3">
             <Ionicons name="alarm-outline" size={16} color="black" className="pl-2" />
             <Text className="font-bold "> SENİ BEKLEYEN MAÇLAR </Text>
           </View>
