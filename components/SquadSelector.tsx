@@ -39,7 +39,7 @@ export const SquadSelector: React.FC<SquadSelectorProps> = ({
 
       {isSquadIncomplete && (
         <View>
-          <Text className="text-green-700 font-semibold mb-2">Eksik Mevkileri Seçin</Text>
+          <Text className="text-green-700 font-semibold mb-2 mt-2">Eksik Mevkileri Seçin</Text>
           <View className="flex flex-row flex-wrap">
             {Object.keys(missingPositions).map((position) => (
               <View key={position} className="w-1/2 flex-row items-center mb-2">
@@ -65,7 +65,7 @@ export const SquadSelector: React.FC<SquadSelectorProps> = ({
                     keyExtractor={(item) => item.toString()}
                     renderItem={({ item }) => (
                       <TouchableOpacity
-                        className={`px-4 py-2 mx-1 rounded ${
+                        className={`p-4 px-4 py-2 mx-1 rounded ${
                           missingPositions[position].count === item ? 'bg-green-600 text-white' : 'bg-gray-300'
                         }`}
                         onPress={() => handleCountChange(position, item)}

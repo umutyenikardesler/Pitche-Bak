@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, Platform, Modal, FlatList, Dimensions } from 'react-native';
+import { View, Text, TouchableOpacity, Platform, FlatList, Dimensions } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import Modal from 'react-native-modal';
 import '@/global.css';
 
 interface MatchDetailsFormProps {
@@ -11,7 +12,7 @@ interface MatchDetailsFormProps {
 }
 
 export const MatchDetailsForm: React.FC<MatchDetailsFormProps> = ({ date, setDate, time, setTime }) => {
-  const [showDatePicker, setShowDatePicker] = useState(false); // Başlangıçta kapalı
+  const [showDatePicker, setShowDatePicker] = useState(false);
   const [showTimeModal, setShowTimeModal] = useState(false);
 
   const formatDate = (date: Date) => {
@@ -25,15 +26,22 @@ export const MatchDetailsForm: React.FC<MatchDetailsFormProps> = ({ date, setDat
     if (selectedDate) {
       setDate(selectedDate);
     }
-    setShowDatePicker(false); // Tarih seçildikten sonra kapat
+    setShowDatePicker(false);
   };
 
   const screenHeight = Dimensions.get('window').height;
 
   const renderTimeModal = () => (
     // ... (Zaman seçici modalı aynı kalıyor)
-    <Modal visible={showTimeModal} transparent={true} animationType="slide">
-      <View className="flex-1 justify-center items-center bg-black/50">
+   
+    <Modal 
+        isVisible={showTimeModal} // isVisible prop'u kullanılıyor
+        backdropOpacity={0.5} // Opaklık buradan ayarlanıyor
+        onBackdropPress={() => setShowTimeModal(false)} // Arka plana tıklayınca kapanma
+        animationIn="slideInUp" // Animasyonlar eklenebilir
+        animationOut="slideOutDown"
+      >
+      <View className="flex-1 justify-center items-center ">
         <View className="w-80 bg-white rounded-lg p-4" style={{ maxHeight: screenHeight * 0.75 }}>
           <FlatList
             data={Array.from({ length: 24 }, (_, i) => ({ label: `${i + 1}:00`, value: (i + 1).toString() }))}
@@ -62,13 +70,13 @@ export const MatchDetailsForm: React.FC<MatchDetailsFormProps> = ({ date, setDat
   );
 
   return (
-    <View className="mb-4 items-center">
+    <View className="mb-4">
       <Text className="text-green-700 font-semibold mb-2">Tarih ve Saat</Text>
-      <View className="flex flex-row justify-between">
+      <View className="flex flex-row">
         {/* Tarih Seçimi */}
         <TouchableOpacity
-          className="bg-green-600 rounded p-3 flex-1 mr-2"
-          onPress={() => setShowDatePicker(!showDatePicker)} // Butona tıklandığında takvimi aç/kapat
+          className="bg-green-600 rounded p-3 flex-1"
+          onPress={() => setShowDatePicker(!showDatePicker)}
         >
           <Text className="text-white text-center">{formatDate(date)}</Text>
         </TouchableOpacity>
@@ -83,16 +91,18 @@ export const MatchDetailsForm: React.FC<MatchDetailsFormProps> = ({ date, setDat
       </View>
 
       {/* Takvim */}
-      {showDatePicker && ( // showDatePicker true ise takvimi göster
-        <DateTimePicker
-          value={date}
-          mode="date"
-          display={Platform.OS === 'ios' ? "inline" : "default"} // iOS için "inline" denebilir
-          onChange={handleDateChange}
-          locale="tr-TR"
-          minimumDate={new Date()}
-          style={{ width: '100%' }} // Gerekirse genişlik ayarlanabilir
-        />
+      {showDatePicker && (
+        <View className="items-center">
+          <DateTimePicker
+            value={date}
+            mode="date"
+            display={Platform.OS === 'ios' ? "inline" : "default"}
+            onChange={handleDateChange}
+            locale="tr-TR"
+            minimumDate={new Date()}
+            style={{ width: '100%' }}
+          />
+        </View>
       )}
 
       {/* Saat Seçici Modal */}
