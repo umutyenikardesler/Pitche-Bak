@@ -1,0 +1,102 @@
+import React, { useState } from 'react';
+import { View, Text, TouchableOpacity, Platform, Modal, FlatList, Dimensions } from 'react-native';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import '@/global.css';
+
+interface MatchDetailsFormProps {
+  date: Date;
+  setDate: (date: Date) => void;
+  time: string;
+  setTime: (time: string) => void;
+}
+
+export const MatchDetailsForm: React.FC<MatchDetailsFormProps> = ({ date, setDate, time, setTime }) => {
+  const [showDatePicker, setShowDatePicker] = useState(false); // Başlangıçta kapalı
+  const [showTimeModal, setShowTimeModal] = useState(false);
+
+  const formatDate = (date: Date) => {
+    const day = date.getDate();
+    const month = date.getMonth() + 1;
+    const year = date.getFullYear();
+    return `${day}/${month}/${year}`;
+  };
+
+  const handleDateChange = (event: any, selectedDate: Date | undefined) => {
+    if (selectedDate) {
+      setDate(selectedDate);
+    }
+    setShowDatePicker(false); // Tarih seçildikten sonra kapat
+  };
+
+  const screenHeight = Dimensions.get('window').height;
+
+  const renderTimeModal = () => (
+    // ... (Zaman seçici modalı aynı kalıyor)
+    <Modal visible={showTimeModal} transparent={true} animationType="slide">
+      <View className="flex-1 justify-center items-center bg-black/50">
+        <View className="w-80 bg-white rounded-lg p-4" style={{ maxHeight: screenHeight * 0.75 }}>
+          <FlatList
+            data={Array.from({ length: 24 }, (_, i) => ({ label: `${i + 1}:00`, value: (i + 1).toString() }))}
+            keyExtractor={(item) => item.value}
+            renderItem={({ item }) => (
+              <TouchableOpacity
+                className="p-3 border-b border-gray-200"
+                onPress={() => {
+                  setTime(item.value);
+                  setShowTimeModal(false);
+                }}
+              >
+                <Text>{item.label}</Text>
+              </TouchableOpacity>
+            )}
+          />
+          <TouchableOpacity
+            className="mt-4 bg-green-600 rounded p-3"
+            onPress={() => setShowTimeModal(false)}
+          >
+            <Text className="text-white text-center">Kapat</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </Modal>
+  );
+
+  return (
+    <View className="mb-4 items-center">
+      <Text className="text-green-700 font-semibold mb-2">Tarih ve Saat</Text>
+      <View className="flex flex-row justify-between">
+        {/* Tarih Seçimi */}
+        <TouchableOpacity
+          className="bg-green-600 rounded p-3 flex-1 mr-2"
+          onPress={() => setShowDatePicker(!showDatePicker)} // Butona tıklandığında takvimi aç/kapat
+        >
+          <Text className="text-white text-center">{formatDate(date)}</Text>
+        </TouchableOpacity>
+
+        {/* Saat Seçimi */}
+        <TouchableOpacity
+          className="bg-green-600 rounded p-3 flex-1 ml-2"
+          onPress={() => setShowTimeModal(true)}
+        >
+          <Text className="text-white text-center">{time}:00</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Takvim */}
+      {showDatePicker && ( // showDatePicker true ise takvimi göster
+        <DateTimePicker
+          value={date}
+          mode="date"
+          display={Platform.OS === 'ios' ? "inline" : "default"} // iOS için "inline" denebilir
+          onChange={handleDateChange}
+          locale="tr-TR"
+          minimumDate={new Date()}
+          style={{ width: '100%' }} // Gerekirse genişlik ayarlanabilir
+        />
+      )}
+
+      {/* Saat Seçici Modal */}
+      {renderTimeModal()}
+    </View>
+  );
+};
