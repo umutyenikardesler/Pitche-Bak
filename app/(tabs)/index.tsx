@@ -19,8 +19,10 @@ export default function Index() {
       .select(`
         id, title, time, date, prices, missing_groups, 
         pitches (name)
-      `);
-
+      `)
+      .order('date', { ascending: true }) // Önce tarih sıralanır
+      .order('time', { ascending: true }); // Aynı tarihlerde saat sıralanır
+  
     if (error) {
       console.error('Veri çekme hatası:', error);
     } else {
@@ -28,6 +30,7 @@ export default function Index() {
     }
     setRefreshing(false);
   };
+  
 
   // useFocusEffect eklendi
   useFocusEffect(

@@ -166,7 +166,10 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
         className="border border-gray-500 rounded mb-2 p-3"
         onPress={() => selectedDistrict ? setShowPitchModal(true) : null}
         disabled={!selectedDistrict}
-        style={{ backgroundColor: !selectedDistrict ? '#eee' : 'transparent'}}
+        style={{ 
+          backgroundColor: !selectedDistrict ? '#eee' : 'transparent', // Arka plan rengini değiştir
+          opacity: !selectedDistrict ? 0.7 : 1, // Opaklığı azalt (isteğe bağlı)
+      }}
       >
         <Text> {/* Text componenti eklendi */}
           {selectedPitch ? pitches.find(p => p.id === selectedPitch)?.name : 'Halı Saha Seçiniz'}
@@ -179,11 +182,15 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
 
       <Text className="text-green-700 font-semibold mb-2">Fiyat</Text> {/* Text componenti eklendi */}
       <TextInput
-        className="w-full border border-gray-500 p-2 rounded"
+        className="w-full border border-gray-500 p-3 rounded"
         placeholder="Halı Sahanın Fiyatı"
         value={price ? `${price} ₺` : ""} // State'deki fiyatı göster
         editable={false} // TextInput'u pasif yap
-        style={{ color: 'green', fontWeight: '600' }} // Fiyatı yeşil yap
+        style={{ 
+          color: 'green', fontWeight: '600',
+          backgroundColor: selectedDistrict ? '#eee' : 'transparent', // Arka plan rengini değiştir
+          opacity: !selectedDistrict ? 0.7 : 1, // Opaklığı azalt (isteğe bağlı)
+         }} // Fiyatı yeşil yap
       />
     </View>
   );

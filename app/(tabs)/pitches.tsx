@@ -1,32 +1,106 @@
 import { useEffect, useState } from "react";
-import { Text, View, FlatList, ActivityIndicator, TouchableOpacity } from "react-native";
+import { Text, View, FlatList, ActivityIndicator, TouchableOpacity, TextInput, Pressable } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
+import * as Location from "expo-location";
 import { supabase } from "@/services/supabase";
+import haversine from "haversine";
 import { GestureHandlerRootView, GestureDetector, Gesture } from "react-native-gesture-handler";
 import { runOnJS } from "react-native-reanimated";
-import '@/global.css';
 
 export default function Pitches() {
   const [pitches, setPitches] = useState([]);
   const [selectedPitch, setSelectedPitch] = useState(null);
   const [loading, setLoading] = useState(true);
-  const router = useRouter();
+  const [location, setLocation] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [locationText, setLocationText] = useState("Konum alınıyor...");
 
   useEffect(() => {
-    const fetchPitches = async () => {
-      const { data, error } = await supabase.from("pitches").select("id, name, address, features, score");
-
-      if (error) {
-        console.error("Veri çekme hatası:", error);
-      } else {
-        setPitches(data);
-      }
-      setLoading(false);
-    };
-
     fetchPitches();
   }, []);
+
+  const fetchPitches = async (userLat?: number, userLon?: number) => {
+    setLoading(true);
+
+    const { data, error } = await supabase.from("pitches").select("id, name, address, features, score, latitude, longitude");
+
+    if (error) {
+      console.error("Veri çekme hatası:", error);
+      setLoading(false);
+      return;
+    }
+
+    if (userLat && userLon) {
+      const sortedPitches = data
+        .map((pitch) => ({
+          ...pitch,
+          distance: haversine(
+            { latitude: userLat, longitude: userLon },
+            { latitude: pitch.latitude, longitude: pitch.longitude },
+            { unit: "km" }
+          ),
+        }))
+        .sort((a, b) => a.distance - b.distance);
+
+      setPitches(sortedPitches);
+    } else {
+      setPitches(data);
+    }
+
+    setLoading(false);
+  };
+
+  const getLocation = async () => {
+    const { status } = await Location.requestForegroundPermissionsAsync();
+    if (status !== "granted") {
+      alert("Konum izni reddedildi!");
+      return;
+    }
+
+    const userLocation = await Location.getCurrentPositionAsync({});
+    const { latitude, longitude } = userLocation.coords;
+
+    setLocation({ latitude, longitude });
+
+    try {
+      const address = await Location.reverseGeocodeAsync({ latitude, longitude });
+
+      if (address.length > 0) {
+        const { name, street, district, subregion, region, } = address[0]; // Tüm gerekli bilgiler alındı
+
+        let formattedAddress = "";
+
+        // if (street) { // Sokak
+        //   formattedAddress += `, ${street}`;
+        // }
+
+        if (name && name !== street) { // Bina adı (sokakla aynı değilse)
+          formattedAddress += ` ${name}`;
+        }
+
+        // if (district) { // İlçe
+        //   formattedAddress += `, ${district}`;
+        // }
+
+        if (subregion) { // Mahalle (neighborhood)
+          formattedAddress += `, ${subregion}`;
+        }
+
+        if (region) { // İl (city yerine region)
+          formattedAddress += `, ${region}`;
+        }
+
+        setLocationText(formattedAddress.trim()); // trim() ile sondaki virgül veya boşlukları temizle
+      } else {
+        setLocationText("Adres bulunamadı.");
+      }
+    } catch (error) {
+      console.error("Adres çözümlenemedi:", error);
+      setLocationText("Adres alınamadı.");
+    }
+
+    fetchPitches(latitude, longitude);
+  
+  };
 
   const handleSelectPitch = (pitch) => {
     setSelectedPitch(pitch);
@@ -36,45 +110,45 @@ export default function Pitches() {
     setSelectedPitch(null);
   };
 
-  // ✅ Güncellenmiş Swipe Gesture (Pan Gesture Kullanıldı)
-  const swipeGesture = Gesture.Pan()
-    .onUpdate((event) => {
-      if (event.translationX > 100) {
-        runOnJS(handleCloseDetail)(); // Kullanıcı sağa kaydırdığında detay kapanır
-      }
-    });
+  const swipeGesture = Gesture.Pan().onUpdate((event) => {
+    if (event.translationX > 100) {
+      runOnJS(handleCloseDetail)();
+    }
+  });
 
   if (loading) {
-    return (
-      <ActivityIndicator size="large" color="green" className="flex-1 justify-center items-center" />
-    );
+    return <ActivityIndicator size="large" color="green" className="flex-1 justify-center items-center" />;
   }
 
   return (
     <GestureHandlerRootView className="flex-1">
       <View className="bg-slate-100 flex-1">
+        <View className="p-4 bg-white shadow-md">
+          <Text className="text-lg font-bold mb-2">Konumuna Göre Halı Sahaları Listele</Text>
+          <View className="flex-row items-center space-x-2">
+            <TextInput
+              className="border flex-1 p-2 rounded-md border-gray-300 mr-2"
+              placeholder="Adresin"
+              value={locationText}
+              onChangeText={setLocationText}
+            />
+            <Pressable className="bg-green-600 px-4 py-2 rounded-md" onPress={getLocation}>
+              <Text className="text-white font-bold">Konumunu Bul</Text>
+            </Pressable>
+          </View>
+        </View>
+
         {selectedPitch ? (
           <GestureDetector gesture={swipeGesture}>
             <View className="flex-1 bg-white p-4">
               <Text className="text-xl font-bold mb-2">{selectedPitch.name}</Text>
-
-              <View className="text-black text-xl flex-row items-center mb-1">
-                <Ionicons name="location-outline" size={16} color="black" />
-                <Text className=" text-gray-600"> {selectedPitch.address} </Text>
-              </View>
-              <View className="text-black text-base flex-row items-center mb-1">
-                <Ionicons name="shield-checkmark-outline" size={16} color="black" />
-                <Text className="text-base text-gray-600"> {selectedPitch.features} </Text>
-              </View>
-              <View className="text-black text-base flex-row items-center mb-1">
-                <Ionicons name="ribbon-outline" size={16} color="black" />
-                <Text className="text-base text-gray-600"> {selectedPitch.score} </Text>
-              </View>
-
-              {/* Kullanıcıya bilgi veren Text */}
-              <Text className="text-sm text-gray-500 mt-2">
-                {"← Sağa kaydırarak geri dönebilirsiniz."}
-              </Text>
+              <Text className="text-gray-600">{selectedPitch.address}</Text>
+              <Text className="text-gray-600">{selectedPitch.features}</Text>
+              <Text className="text-gray-600">{selectedPitch.score}</Text>
+              <TouchableOpacity className="mt-4 bg-blue-500 px-4 py-2 rounded" onPress={handleCloseDetail}>
+                <Text className="bg-green text-white font-bold">Geri dön</Text>
+              </TouchableOpacity>
+              {/* <Text className="text-sm text-gray-500 mt-2">{"← Sağa kaydırarak geri dönebilirsiniz."}</Text> */}
             </View>
           </GestureDetector>
         ) : (
@@ -84,9 +158,10 @@ export default function Pitches() {
             renderItem={({ item }) => (
               <TouchableOpacity onPress={() => handleSelectPitch(item)}>
                 <View className="bg-white rounded-lg mx-4 mt-3 p-3 shadow-md">
-                  <View className="flex-row items-center justify-between">
-                    <Text className="text-base font-semibold">{item.name}</Text>
-                    <Ionicons name="chevron-forward-outline" size={16} color="green" />
+                  <View className="flex-row justify-between ">
+                    <Text className="w-4/5 text-base font-semibold">{item.name}</Text>
+                    <Text className="w-xs text-sm text-gray-500">{item.distance?.toFixed(2)} km</Text>
+                    <Ionicons className="w-xs" name="chevron-forward-outline" size={16} color="green" />
                   </View>
                 </View>
               </TouchableOpacity>

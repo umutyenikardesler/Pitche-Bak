@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, FlatList, Switch } from 'react-native';
+import { View, Text, TouchableOpacity, FlatList, Switch, StyleSheet } from 'react-native';
 import { supabase } from '@/services/supabase';
 import '@/global.css';
 
@@ -29,6 +29,10 @@ export const SquadSelector: React.FC<SquadSelectorProps> = ({
       [position]: { ...prev[position], count: value },
     }));
   };
+
+  const ItemSeparator = () => (
+    <View style={styles.separator} />
+  );
 
   return (
     <View className="mb-4">
@@ -61,7 +65,7 @@ export const SquadSelector: React.FC<SquadSelectorProps> = ({
                       renderItem={({ item }) => (
                         <View className=""> {/* View ile boşluk oluşturuldu */}
                           <TouchableOpacity
-                            className={`p-2 px-3 rounded-lg border border-gray-300 r-4 ${
+                            className={`p-3 py-2 rounded-lg border border-[#006400] border-opacity-100 ${
                               missingPositions[position].count === item ? 'bg-green-600 text-white border-green-600' : 'bg-gray-300'
                             }`}
                             onPress={() => handleCountChange(position, item)}
@@ -72,6 +76,7 @@ export const SquadSelector: React.FC<SquadSelectorProps> = ({
                           </TouchableOpacity>
                         </View>
                       )}
+                      ItemSeparatorComponent={ItemSeparator} // Ayırıcı bileşeni eklendi
                     />
                   </View>
                 )}
@@ -83,3 +88,14 @@ export const SquadSelector: React.FC<SquadSelectorProps> = ({
     </View>
   );
 };
+
+const styles = StyleSheet.create({
+  separator: {
+    width: 5, // Ayırıcı genişliği (isteğinize göre ayarlayın)
+    height: '100%', // Ayırıcının yüksekliği (isteğe göre ayarlayın)
+    backgroundColor: 'transparent', // veya ayırıcı rengi (örn. '#000000')
+  },
+  flatList: {
+    marginHorizontal: 10, // FlatList'in yatay boşluğu (isteğe bağlı)
+  },
+});

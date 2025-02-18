@@ -7,16 +7,28 @@ import { supabase } from '@/services/supabase';
 import '@/global.css';
 import { useNavigation } from '@react-navigation/native'; // Navigation kütüphanesi eklendi
 
+interface MissingPosition {
+  selected: boolean;
+  count: number;
+}
+
+interface MissingPositions {
+  kaleci: MissingPosition;
+  defans: MissingPosition;
+  ortaSaha: MissingPosition;
+  forvet: MissingPosition;
+}
+
 export default function CreateMatch() {
   const [matchTitle, setMatchTitle] = useState('');
   const [selectedDistrict, setSelectedDistrict] = useState('');
-  const [selectedNeighborhood, setSelectedNeighborhood] = useState('');
+  // const [selectedNeighborhood, setSelectedNeighborhood] = useState('');
   const [selectedPitch, setSelectedPitch] = useState('');
   const [date, setDate] = useState(new Date());
   const [time, setTime] = useState('1');
   const [price, setPrice] = useState('');
   const [isSquadIncomplete, setIsSquadIncomplete] = useState(false);
-  const [missingPositions, setMissingPositions] = useState({
+  const [missingPositions, setMissingPositions] = useState<MissingPositions>({
     kaleci: { selected: false, count: 1 },
     defans: { selected: false, count: 1 },
     ortaSaha: { selected: false, count: 1 },
@@ -69,7 +81,7 @@ export default function CreateMatch() {
               // Formu sıfırla
               setMatchTitle('');
               setSelectedDistrict('');
-              setSelectedNeighborhood('');
+              // setSelectedNeighborhood('');
               setSelectedPitch('');
               setDate(new Date());
               setTime('1');
@@ -95,7 +107,7 @@ export default function CreateMatch() {
   };
 
   return (
-    <ScrollView className="p-4">
+    <ScrollView className="bg-white rounded-lg my-3 mx-4 p-4 shadow-md">
       <View className="mb-4">
         <Text className="text-green-700 font-semibold mb-2">Maç Başlığı</Text>
         <TextInput
@@ -131,7 +143,7 @@ export default function CreateMatch() {
         setMissingPositions={setMissingPositions}
       />
 
-      <View className="mb-8">
+      <View className="mb-4">
         <TouchableOpacity
           className="bg-green-600 rounded p-3"
           onPress={handleCreateMatch}
