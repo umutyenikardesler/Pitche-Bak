@@ -1,9 +1,9 @@
-import { Text, View, Image, FlatList, RefreshControl } from "react-native";
+import { Text, View, Image, FlatList, RefreshControl, Dimensions } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { Dimensions } from "react-native";
 import { supabase } from '@/services/supabase';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react'; // useCallback import edildi
 import '@/global.css';
+import { useFocusEffect } from '@react-navigation/native'; // useFocusEffect import edildi
 
 export default function Index() {
   const progress = 85;
@@ -29,9 +29,19 @@ export default function Index() {
     setRefreshing(false);
   };
 
-  useEffect(() => {
-    fetchMatches();
-  }, []);
+  // useFocusEffect eklendi
+  useFocusEffect(
+    useCallback(() => {
+      fetchMatches(); // Sayfa odaklandığında verileri çek
+      return () => {
+        // Sayfa odaktan çıktığında yapılacak işlemler (isteğe bağlı)
+      };
+    }, [])
+  );
+
+  // useEffect(() => {
+  //   fetchMatches();
+  // }, []);
 
   const renderMatch = ({ item }) => {
     const formattedDate = new Date(item.date).toLocaleDateString('tr-TR');

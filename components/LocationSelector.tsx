@@ -1,13 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, TouchableOpacity, FlatList, Modal, Dimensions } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, FlatList, Dimensions } from 'react-native';
 import { supabase } from '@/services/supabase';
 import '@/global.css';
+import Modal from 'react-native-modal';
 
 interface LocationSelectorProps {
   selectedDistrict: string;
   setSelectedDistrict: (district: string) => void;
-  selectedNeighborhood: string;
-  setSelectedNeighborhood: (neighborhood: string) => void;
   selectedPitch: string;
   setSelectedPitch: (pitch: string) => void;
   price: string;
@@ -17,18 +16,14 @@ interface LocationSelectorProps {
 export const LocationSelector: React.FC<LocationSelectorProps> = ({
   selectedDistrict,
   setSelectedDistrict,
-  selectedNeighborhood,
-  setSelectedNeighborhood,
   selectedPitch,
   setSelectedPitch,
   price,
   setPrice,
 }) => {
   const [districts, setDistricts] = useState([]);
-  const [neighborhoods, setNeighborhoods] = useState([]);
   const [pitches, setPitches] = useState([]);
   const [showDistrictModal, setShowDistrictModal] = useState(false);
-  const [showNeighborhoodModal, setShowNeighborhoodModal] = useState(false);
   const [showPitchModal, setShowPitchModal] = useState(false);
 
   useEffect(() => {
@@ -37,15 +32,12 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
 
   useEffect(() => {
     if (selectedDistrict) {
-      fetchNeighborhoods(selectedDistrict);
+      fetchPitches(selectedDistrict); // fetchPitches çağrısı burada kalıyor
+    } else {
+      setPitches([]);
     }
   }, [selectedDistrict]);
 
-  useEffect(() => {
-    if (selectedNeighborhood) {
-      fetchPitches(selectedNeighborhood);
-    }
-  }, [selectedNeighborhood]);
 
   const fetchDistricts = async () => {
     const { data, error } = await supabase.from('districts').select('*');
@@ -54,27 +46,32 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
     }
   };
 
-  const fetchNeighborhoods = async (districtId: string) => {
-    const { data, error } = await supabase.from('neighborhoods').select('*').eq('district_id', districtId);
-    if (data) {
-      setNeighborhoods(data);
-    }
-  };
+  const fetchPitches = async (districtId: string) => {
+    const { data, error } = await supabase
+      .from('pitches')
+      .select('*')
+      .eq('district_id', districtId);
 
-  const fetchPitches = async (neighborhoodId: string) => {
-    const { data, error } = await supabase.from('pitches').select('*').eq('neighborhood_id', neighborhoodId);
-    if (data) {
+    if (error) {
+      console.error('Veri çekme hatası:', error);
+    } else {
       setPitches(data);
     }
   };
 
   const screenHeight = Dimensions.get('window').height;
 
-  // İlçe seçimi için modal
   const renderDistrictModal = () => (
-    <Modal visible={showDistrictModal} transparent={true} animationType="slide">
+    // ... (İlçe modalı aynı kalıyor)
+    <Modal 
+            isVisible={showDistrictModal} // isVisible prop'u kullanılıyor
+            backdropOpacity={0.5} // Opaklık buradan ayarlanıyor
+            onBackdropPress={() => setShowDistrictModal(false)} // Arka plana tıklayınca kapanma
+            animationIn="slideInUp" // Animasyonlar eklenebilir
+            animationOut="slideOutDown"
+          >
       <View className="flex-1 justify-center items-center bg-black/50">
-        <View className="w-80 bg-white rounded-lg p-4" style={{ maxHeight: screenHeight * 0.75 }}>
+        <View className="w-lg bg-white rounded-lg p-4" style={{ maxHeight: screenHeight * 0.75 }}>
           <FlatList
             data={districts}
             keyExtractor={(item) => item.id.toString()}
@@ -84,6 +81,7 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
                 onPress={() => {
                   setSelectedDistrict(item.id);
                   setShowDistrictModal(false);
+                  setSelectedPitch(''); // İlçe değişince seçilen sahayı sıfırla
                 }}
               >
                 <Text>{item.name}</Text>
@@ -101,40 +99,26 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
     </Modal>
   );
 
-  const renderNeighborhoodModal = () => (
-    <Modal visible={showNeighborhoodModal} transparent={true} animationType="slide">
-      <View className="flex-1 justify-center items-center bg-black/50">
-        <View className="w-80 bg-white rounded-lg p-4" style={{ maxHeight: screenHeight * 0.75 }}>
-          <FlatList
-            data={neighborhoods}
-            keyExtractor={(item) => item.id.toString()}
-            renderItem={({ item }) => (
-              <TouchableOpacity
-                className="p-3 border-b border-gray-200"
-                onPress={() => {
-                  setSelectedNeighborhood(item.id);
-                  setShowNeighborhoodModal(false);
-                }}
-              >
-                <Text>{item.name}</Text>
-              </TouchableOpacity>
-            )}
-          />
-          <TouchableOpacity
-            className="mt-4 bg-green-600 rounded p-3"
-            onPress={() => setShowNeighborhoodModal(false)}
-          >
-            <Text className="text-white text-center">Kapat</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-    </Modal>
-  );
+  // const [flatListHeight, setFlatListHeight] = useState(0);
 
   const renderPitchModal = () => (
-    <Modal visible={showPitchModal} transparent={true} animationType="slide">
-      <View className="flex-1 justify-center items-center bg-black/50">
-        <View className="w-80 bg-white rounded-lg p-4" style={{ maxHeight: screenHeight * 0.75 }}>
+    // ... (Saha modalı aynı kalıyor)
+    <Modal 
+            isVisible={showPitchModal} // isVisible prop'u kullanılıyor
+            backdropOpacity={0.5} // Opaklık buradan ayarlanıyor
+            onBackdropPress={() => setShowPitchModal(false)} // Arka plana tıklayınca kapanma
+            animationIn="slideInUp" // Animasyonlar eklenebilir
+            animationOut="slideOutDown"
+            style={{ flex: 1 }}
+          >
+       <View className="flex-1 justify-center items-center bg-black/50">
+        <View 
+          className="w-3/5 bg-white rounded-lg p-4" 
+          style={{ 
+            maxHeight: screenHeight * 0.75, 
+            // overflow: 'hidden' // İçeriğin taşmasını engeller (isteğe bağlı)
+          }}
+        >
           <FlatList
             data={pitches}
             keyExtractor={(item) => item.id.toString()}
@@ -143,12 +127,17 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
                 className="p-3 border-b border-gray-200"
                 onPress={() => {
                   setSelectedPitch(item.id);
+                  setPrice(item.price.toString()); // Fiyatı state'e kaydet
                   setShowPitchModal(false);
                 }}
               >
-                <Text>{item.name}</Text>
+                <Text> {item.name} </Text>
               </TouchableOpacity>
             )}
+            style={{ 
+              flexGrow: 1, // FlatList'in modal içinde mümkün olduğunca fazla yer kaplamasını sağlar
+              // height: 'auto' // İçeriğe göre yükseklik (bazı durumlarda sorunlara yol açabilir)
+            }}
           />
           <TouchableOpacity
             className="mt-4 bg-green-600 rounded p-3"
@@ -163,40 +152,38 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
 
   return (
     <View className="mb-4">
-      <Text className="text-green-700 font-semibold mb-2">Saha Seç</Text>
+      <Text className="text-green-700 font-semibold mb-2">Saha Seç</Text> {/* Text componenti eklendi */}
       <TouchableOpacity
         className="border border-gray-500 rounded mb-2 p-3"
         onPress={() => setShowDistrictModal(true)}
       >
-        <Text>{selectedDistrict ? districts.find(d => d.id === selectedDistrict)?.name : 'İlçe Seçiniz'}</Text>
+        <Text> {/* Text componenti eklendi */}
+          {selectedDistrict ? districts.find(d => d.id === selectedDistrict)?.name : 'İlçe Seçiniz'}
+        </Text>
       </TouchableOpacity>
 
       <TouchableOpacity
         className="border border-gray-500 rounded mb-2 p-3"
-        onPress={() => setShowNeighborhoodModal(true)}
+        onPress={() => selectedDistrict ? setShowPitchModal(true) : null}
+        disabled={!selectedDistrict}
+        style={{ backgroundColor: !selectedDistrict ? '#eee' : 'transparent'}}
       >
-        <Text>{selectedNeighborhood ? neighborhoods.find(n => n.id === selectedNeighborhood)?.name : 'Mahalle Seçiniz'}</Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity
-        className="border border-gray-500 rounded mb-2 p-3"
-        onPress={() => setShowPitchModal(true)}
-      >
-        <Text>{selectedPitch ? pitches.find(p => p.id === selectedPitch)?.name : 'Halı Saha Seçiniz'}</Text>
+        <Text> {/* Text componenti eklendi */}
+          {selectedPitch ? pitches.find(p => p.id === selectedPitch)?.name : 'Halı Saha Seçiniz'}
+        </Text>
       </TouchableOpacity>
 
       {/* Modallar */}
       {renderDistrictModal()}
-      {renderNeighborhoodModal()}
       {renderPitchModal()}
 
-      <Text className="text-green-700 font-semibold mb-2">Fiyat</Text>
+      <Text className="text-green-700 font-semibold mb-2">Fiyat</Text> {/* Text componenti eklendi */}
       <TextInput
         className="w-full border border-gray-500 p-2 rounded"
-        placeholder="Fiyat"
-        value={price}
-        onChangeText={setPrice}
-        keyboardType="numeric"
+        placeholder="Halı Sahanın Fiyatı"
+        value={price ? `${price} ₺` : ""} // State'deki fiyatı göster
+        editable={false} // TextInput'u pasif yap
+        style={{ color: 'green', fontWeight: '600' }} // Fiyatı yeşil yap
       />
     </View>
   );
