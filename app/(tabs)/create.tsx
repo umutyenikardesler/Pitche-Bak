@@ -145,7 +145,7 @@ export default function CreateMatch() {
 
       <View className="mb-4">
         <TouchableOpacity
-          className="bg-green-600 rounded p-3"
+          className="bg-green-600 rounded p-3 mb-4"
           onPress={handleCreateMatch}
         >
           <Text className="text-white text-center">Maç Oluştur</Text>

@@ -50,35 +50,36 @@ export const SquadSelector: React.FC<SquadSelectorProps> = ({
         <View>
           <Text className="text-green-700 font-semibold mb-2 mt-2">Eksik Mevkileri Seçin</Text>
         
-          <View className="flex flex-col">
-            {/* İlk Satır: Kaleci & Defans */}
-            <View className="flex flex-row justify-between">
+          <View style={styles.container}>
+            {/* İlk satır: Kaleci ve Defans */}
+            <View style={styles.row}>
               {['kaleci', 'defans'].map((position) => (
                 <View key={position} style={styles.buttonWrapper}>
                   <TouchableOpacity
-                    className="flex p-3 rounded bg-green-600"
+                    style={styles.button}
                     onPress={() => handlePositionSelection(position)}
                   >
-                    <Text className="text-white">{position.charAt(0).toUpperCase() + position.slice(1)}</Text>
+                    <Text style={styles.buttonText}>
+                      {position.charAt(0).toUpperCase() + position.slice(1)}
+                    </Text>
                   </TouchableOpacity>
 
                   {missingPositions[position] && missingPositions[position].selected && (
-                    <View className="mt-2">
-                      <Text className="text-gray-600 mb-2">Kaç {position} eksik?</Text>
+                    <View style={styles.countSelector}>
+                      <Text style={styles.countText}>Kaç {position} eksik?</Text>
                       <FlatList
                         horizontal
                         data={Array.from({ length: position === 'kaleci' ? 2 : 3 }, (_, i) => i + 1)}
                         keyExtractor={(item) => item.toString()}
                         renderItem={({ item }) => (
                           <TouchableOpacity
-                            className={`p-2 px-3 rounded-lg border ${
-                              missingPositions[position].count === item
-                                ? 'bg-green-600 border-green-600 text-white'
-                                : 'bg-gray-300 border-gray-400'
-                            }`}
+                            style={[
+                              styles.countButton,
+                              missingPositions[position].count === item && styles.countButtonSelected
+                            ]}
                             onPress={() => handleCountChange(position, item)}
                           >
-                            <Text className={missingPositions[position].count === item ? 'text-white' : 'text-black'}>
+                            <Text style={missingPositions[position].count === item ? styles.countButtonTextSelected : styles.countButtonText}>
                               {item}
                             </Text>
                           </TouchableOpacity>
@@ -91,34 +92,35 @@ export const SquadSelector: React.FC<SquadSelectorProps> = ({
               ))}
             </View>
 
-            {/* İkinci Satır: Orta Saha & Forvet */}
-            <View className="flex flex-row justify-between">
+            {/* İkinci satır: Orta Saha ve Forvet */}
+            <View style={styles.row}>
               {['ortaSaha', 'forvet'].map((position) => (
                 <View key={position} style={styles.buttonWrapper}>
                   <TouchableOpacity
-                    className="flex p-3 rounded bg-green-600"
+                    style={styles.button}
                     onPress={() => handlePositionSelection(position)}
                   >
-                    <Text className="text-white">{position.charAt(0).toUpperCase() + position.slice(1)}</Text>
+                    <Text style={styles.buttonText}>
+                      {position.charAt(0).toUpperCase() + position.slice(1)}
+                    </Text>
                   </TouchableOpacity>
 
                   {missingPositions[position] && missingPositions[position].selected && (
-                    <View className="mt-2">
-                      <Text className="text-gray-600 mb-2">Kaç {position} eksik?</Text>
+                    <View style={styles.countSelector}>
+                      <Text style={styles.countText}>Kaç {position} eksik?</Text>
                       <FlatList
                         horizontal
                         data={Array.from({ length: 3 }, (_, i) => i + 1)}
                         keyExtractor={(item) => item.toString()}
                         renderItem={({ item }) => (
                           <TouchableOpacity
-                            className={`p-2 px-3 rounded-lg border ${
-                              missingPositions[position].count === item
-                                ? 'bg-green-600 border-green-600 text-white'
-                                : 'bg-gray-300 border-gray-400'
-                            }`}
+                            style={[
+                              styles.countButton,
+                              missingPositions[position].count === item && styles.countButtonSelected
+                            ]}
                             onPress={() => handleCountChange(position, item)}
                           >
-                            <Text className={missingPositions[position].count === item ? 'text-white' : 'text-black'}>
+                            <Text style={missingPositions[position].count === item ? styles.countButtonTextSelected : styles.countButtonText}>
                               {item}
                             </Text>
                           </TouchableOpacity>
@@ -147,8 +149,58 @@ const styles = StyleSheet.create({
   flatList: {
     marginHorizontal: 10, // FlatList'in yatay boşluğu (isteğe bağlı)
   },
+  container: {
+    flexDirection: 'column',
+  },
+  row: {
+    flexDirection: 'row',
+    justifyContent: 'space-between', // Butonlar yan yana dizilir
+    marginBottom: 10,
+  },
   buttonWrapper: {
-    width: '48%', // %50 yerine %48 verdik, kenarlarda kayma olmaması için
-    marginBottom:10,
+    width: '49%', // %50 yerine %48 verdik, margin hatası yaşamamak için
+  },
+  button: {
+    backgroundColor: '#16a34a', // Tailwind'deki bg-green-600 rengi
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    // alignItems: 'center',
+    // justifyContent: 'center',
+  },
+  buttonText: {
+    color: 'white',
+    fontSize: 16,
+    // fontWeight: 'bold',
+  },
+  countSelector: {
+    marginTop: 10,
+    
+  },
+  countText: {
+    color: '#4b5563', // Tailwind'deki text-gray-600
+    // textAlign: 'center',
+    marginBottom: 5,
+  },
+  countButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#006400',
+    backgroundColor: '#d1d5db', // Tailwind'deki bg-gray-300
+    marginBottom: 10,
+  },
+  countButtonSelected: {
+    backgroundColor: '#16a34a', // Tailwind'deki bg-green-600
+    borderColor: '#16a34a',
+  },
+  countButtonText: {
+    color: 'black',
+    fontSize: 16,
+  },
+  countButtonTextSelected: {
+    color: 'white',
+    fontSize: 16,
   },
 });

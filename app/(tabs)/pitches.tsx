@@ -159,9 +159,9 @@ export default function Pitches() {
               <TouchableOpacity onPress={() => handleSelectPitch(item)}>
                 <View className="bg-white rounded-lg mx-4 mt-3 p-3 shadow-md">
                   <View className="flex-row justify-between ">
-                    <Text className="w-4/5 text-base font-semibold">{item.name}</Text>
-                    <Text className="w-xs text-sm text-gray-500">{item.distance?.toFixed(2)} km</Text>
-                    <Ionicons className="w-xs" name="chevron-forward-outline" size={16} color="green" />
+                    <Text className="w-4/6 text-base font-semibold">{item.name}</Text>
+                    <Text className="w-1/6 text-right text-sm text-gray-500">{item.distance?.toFixed(2)} km</Text>
+                    <Ionicons className="w-3 text-right" name="chevron-forward-outline" size={16} color="green" />
                   </View>
                 </View>
               </TouchableOpacity>

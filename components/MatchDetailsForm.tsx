@@ -24,7 +24,11 @@ export const MatchDetailsForm: React.FC<MatchDetailsFormProps> = ({ date, setDat
 
   const handleDateChange = (event: any, selectedDate: Date | undefined) => {
     if (selectedDate) {
-      setDate(selectedDate);
+      // 📌 UTC farkını düzelterek yerel saate çeviriyoruz
+      const adjustedDate = new Date(selectedDate);
+      adjustedDate.setMinutes(adjustedDate.getMinutes() + adjustedDate.getTimezoneOffset());
+  
+      setDate(adjustedDate);
     }
     setShowDatePicker(false);
   };
