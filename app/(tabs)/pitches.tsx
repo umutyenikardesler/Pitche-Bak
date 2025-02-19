@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Text, View, FlatList, ActivityIndicator, TouchableOpacity, TextInput, Pressable } from "react-native";
+import { Text, View, FlatList, ActivityIndicator, TouchableOpacity, TextInput, Pressable, RefreshControl } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as Location from "expo-location";
 import { supabase } from "@/services/supabase";
@@ -13,6 +13,7 @@ export default function Pitches() {
   const [loading, setLoading] = useState(true);
   const [location, setLocation] = useState<{ latitude: number; longitude: number } | null>(null);
   const [locationText, setLocationText] = useState("Konum alınıyor...");
+  const [refreshing, setRefreshing] = useState(false); // Refresh durumu
 
   useEffect(() => {
     fetchPitches();
@@ -49,18 +50,23 @@ export default function Pitches() {
     setLoading(false);
   };
 
+  const [locationPermission, setLocationPermission] = useState<"granted" | "denied" | "undetermined">("undetermined");
+
   const getLocation = async () => {
     const { status } = await Location.requestForegroundPermissionsAsync();
+  
     if (status !== "granted") {
-      alert("Konum izni reddedildi!");
+      alert(
+        "Konum izni reddedildi! Lütfen tarayıcı ayarlarından izin verin ve sayfayı yeniden yükleyin."
+      );
       return;
     }
-
+  
     const userLocation = await Location.getCurrentPositionAsync({});
     const { latitude, longitude } = userLocation.coords;
-
+  
     setLocation({ latitude, longitude });
-
+  
     try {
       const address = await Location.reverseGeocodeAsync({ latitude, longitude });
 
@@ -69,17 +75,9 @@ export default function Pitches() {
 
         let formattedAddress = "";
 
-        // if (street) { // Sokak
-        //   formattedAddress += `, ${street}`;
-        // }
-
         if (name && name !== street) { // Bina adı (sokakla aynı değilse)
           formattedAddress += ` ${name}`;
         }
-
-        // if (district) { // İlçe
-        //   formattedAddress += `, ${district}`;
-        // }
 
         if (subregion) { // Mahalle (neighborhood)
           formattedAddress += `, ${subregion}`;
@@ -102,6 +100,13 @@ export default function Pitches() {
   
   };
 
+    // Sayfa ilk açıldığında izin reddedildiyse tekrar sormasını sağla
+    useEffect(() => {
+      if (locationPermission === "undetermined") {
+        getLocation();
+      }
+    }, []);
+
   const handleSelectPitch = (pitch) => {
     setSelectedPitch(pitch);
   };
@@ -119,6 +124,14 @@ export default function Pitches() {
   if (loading) {
     return <ActivityIndicator size="large" color="green" className="flex-1 justify-center items-center" />;
   }
+
+  
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await getLocation(); // Konumu tekrar al
+    setRefreshing(false);
+  };
 
   return (
     <GestureHandlerRootView className="flex-1">
@@ -155,6 +168,9 @@ export default function Pitches() {
           <FlatList
             data={pitches}
             keyExtractor={(item) => item.id.toString()}
+            refreshControl={
+              <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+            }
             renderItem={({ item }) => (
               <TouchableOpacity onPress={() => handleSelectPitch(item)}>
                 <View className="bg-white rounded-lg mx-4 mt-3 p-3 shadow-md">
