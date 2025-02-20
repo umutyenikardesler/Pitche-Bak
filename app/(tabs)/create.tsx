@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, TextInput, ScrollView, TouchableOpacity, Alert, Platform } from 'react-native';
 import { MatchDetailsForm } from '@/components/MatchDetailsForm';
 import { LocationSelector } from '@/components/LocationSelector';
 import { SquadSelector } from '@/components/SquadSelector';
@@ -50,7 +50,7 @@ export default function CreateMatch() {
             return `${shortCode}:${missingPositions[position].count}`;
           })
       : [];
-
+  
     const { data, error } = await supabase
       .from('match')
       .insert([
@@ -63,48 +63,51 @@ export default function CreateMatch() {
           missing_groups: missingGroups,
         },
       ]);
-
-      if (error) {
-        console.error('Maç oluşturulurken hata oluştu:', error);
-        Alert.alert("Hata", "Maç oluşturulurken bir hata oluştu. Lütfen tekrar deneyin."); // Hata mesajı göster
+  
+    if (error) {
+      console.error('Maç oluşturulurken hata oluştu:', error);
+      if (Platform.OS === 'web') {
+        alert("Hata: Maç oluşturulurken bir hata oluştu. Lütfen tekrar deneyin.");
       } else {
-        console.log('Maç başarıyla oluşturuldu:', data);
-
-      // Başarı mesajı göster
-      Alert.alert(
-        "Tebrikler 🎉",
-        "Maçınız başarılı bir şekilde oluşturulmuştur.",
-        [
-          { 
-            text: "Tamam", 
-            onPress: () => {
-              // Formu sıfırla
-              setMatchTitle('');
-              setSelectedDistrict('');
-              // setSelectedNeighborhood('');
-              setSelectedPitch('');
-              setDate(new Date());
-              setTime('1');
-              setPrice('');
-              setIsSquadIncomplete(false);
-              setMissingPositions({
-                kaleci: { selected: false, count: 1 },
-                defans: { selected: false, count: 1 },
-                ortaSaha: { selected: false, count: 1 },
-                forvet: { selected: false, count: 1 },
-              });
-
-              navigation.navigate('index'); // Doğrudan yönlendirme
-
-              // setTimeout(() => { // 2 saniye sonra yönlendirme
-              //   navigation.navigate('index'); 
-              // }, 2000); // 2000 milisaniye = 2 saniye
-            } 
-          }
-        ]
-      );
+        Alert.alert("Hata", "Maç oluşturulurken bir hata oluştu. Lütfen tekrar deneyin.");
+      }
+    } else {
+      console.log('Maç başarıyla oluşturuldu:', data);
+  
+      if (Platform.OS === 'web') {
+        alert("Tebrikler 🎉\nMaçınız başarılı bir şekilde oluşturulmuştur.");
+        window.location.href = '/'; // Web için yönlendirme
+      } else {
+        Alert.alert(
+          "Tebrikler 🎉",
+          "Maçınız başarılı bir şekilde oluşturulmuştur.",
+          [
+            { 
+              text: "Tamam", 
+              onPress: () => {
+                setMatchTitle('');
+                setSelectedDistrict('');
+                setSelectedPitch('');
+                setDate(new Date());
+                setTime('1');
+                setPrice('');
+                setIsSquadIncomplete(false);
+                setMissingPositions({
+                  kaleci: { selected: false, count: 1 },
+                  defans: { selected: false, count: 1 },
+                  ortaSaha: { selected: false, count: 1 },
+                  forvet: { selected: false, count: 1 },
+                });
+  
+                navigation.navigate('index'); // Mobil yönlendirme
+              } 
+            }
+          ]
+        );
+      }
     }
   };
+  
 
   return (
     <ScrollView className="bg-white rounded-lg my-3 mx-4 p-4 shadow-md">

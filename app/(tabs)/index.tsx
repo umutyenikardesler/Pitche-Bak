@@ -87,7 +87,7 @@ export default function Index() {
               <Text className="pl-2 font-semibold">{formattedDate}</Text>
             </View>
 
-            <View className="text-gray-700 text-md flex-row items-center">
+            <View className="text-gray-700 text-md flex-row items-center pt-1">
               <Ionicons name="location" size={18} color="black" />
               <Text className="pl-2 font-semibold">{item.pitches?.name ?? 'Bilinmiyor'}</Text>
             </View>
