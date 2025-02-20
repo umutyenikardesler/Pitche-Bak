@@ -107,7 +107,7 @@ export const MatchDetailsForm: React.FC<MatchDetailsFormProps> = ({ date, setDat
                       locale={tr} // TAKVİMİ TÜRKÇE YAPAR
                     />
                     <TouchableOpacity
-                      className="mt-4 bg-red-500 rounded p-2"
+                      className="mt-4 bg-green-600 rounded p-2"
                       onPress={() => setShowDatePicker(false)}
                     >
                       <Text className="text-white text-center">Kapat</Text>
