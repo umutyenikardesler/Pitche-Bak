@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Text, View, FlatList, ActivityIndicator, TouchableOpacity, TextInput, Pressable } from "react-native";
+import { Text, View, FlatList, ActivityIndicator, TouchableOpacity, TextInput, Pressable, Platform } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as Location from "expo-location";
 import { supabase } from "@/services/supabase";
@@ -61,27 +61,15 @@ export default function Pitches() {
 
     setLocation({ latitude, longitude });
 
+    // Mobil için expo-location kullan
+  if (Platform.OS !== "web") {
     try {
       const address = await Location.reverseGeocodeAsync({ latitude, longitude });
 
       if (address.length > 0) {
-        const { name, street, district, subregion, region, } = address[0]; // Tüm gerekli bilgiler alındı
-
-        let formattedAddress = "";
-
-        if (name && name !== street) { // Bina adı (sokakla aynı değilse)
-          formattedAddress += ` ${name}`;
-        }
-
-        if (subregion) { // Mahalle (neighborhood)
-          formattedAddress += `, ${subregion}`;
-        }
-
-        if (region) { // İl (city yerine region)
-          formattedAddress += `, ${region}`;
-        }
-
-        setLocationText(formattedAddress.trim()); // trim() ile sondaki virgül veya boşlukları temizle
+        const { name, subregion, region } = address[0];
+        let formattedAddress = `${name ? name + ", " : ""}${subregion ? subregion + ", " : ""}${region || ""}`.trim();
+        setLocationText(formattedAddress || "Adres bulunamadı.");
       } else {
         setLocationText("Adres bulunamadı.");
       }
@@ -89,10 +77,26 @@ export default function Pitches() {
       console.error("Adres çözümlenemedi:", error);
       setLocationText("Adres alınamadı.");
     }
+  } 
+  // Web için OpenStreetMap Nominatim API kullan
+  else {
+    try {
+      const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`);
+      const data = await response.json();
+      
+      if (data.display_name) {
+        setLocationText(data.display_name);
+      } else {
+        setLocationText("Adres bulunamadı.");
+      }
+    } catch (error) {
+      console.error("Web'de adres alınamadı:", error);
+      setLocationText("Adres alınamadı.");
+    }
+  }
 
-    fetchPitches(latitude, longitude);
-  
-  };
+  fetchPitches(latitude, longitude);
+};
 
   const handleSelectPitch = (pitch) => {
     setSelectedPitch(pitch);
