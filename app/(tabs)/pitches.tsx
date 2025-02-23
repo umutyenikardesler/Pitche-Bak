@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
-import { Text, View, FlatList, ActivityIndicator, TouchableOpacity, TextInput, Pressable, Platform } from "react-native";
+import { Text, View, FlatList, ActivityIndicator, TouchableOpacity, TextInput, Pressable, Platform, Alert } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as Location from "expo-location";
 import { supabase } from "@/services/supabase";
 import haversine from "haversine";
 import { GestureHandlerRootView, GestureDetector, Gesture } from "react-native-gesture-handler";
 import { runOnJS } from "react-native-reanimated";
+import AsyncStorage from '@react-native-async-storage/async-storage'; // AsyncStorage import edildi
 
 export default function Pitches() {
   const [pitches, setPitches] = useState([]);
@@ -13,10 +14,36 @@ export default function Pitches() {
   const [loading, setLoading] = useState(true);
   const [location, setLocation] = useState<{ latitude: number; longitude: number } | null>(null);
   const [locationText, setLocationText] = useState("Konum alınıyor...");
+  const [locationPermissionStatus, setLocationPermissionStatus] = useState(null);
 
   useEffect(() => {
     fetchPitches();
+    checkLocationPermission(); // Konum iznini kontrol et
   }, []);
+
+  const checkLocationPermission = async () => {
+    try {
+      const storedPermissionStatus = await AsyncStorage.getItem('locationPermissionStatus');
+
+      if (storedPermissionStatus === 'granted') {
+        setLocationPermissionStatus('granted');
+        getLocation(); // İzin zaten verilmiş, konumu al
+      } else {
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        setLocationPermissionStatus(status);
+        await AsyncStorage.setItem('locationPermissionStatus', status); // İzin durumunu kaydet
+
+        if (status !== 'granted') {
+          Alert.alert("Konum izni gerekli", "Uygulamayı kullanmak için konum izni vermeniz gerekiyor.", [
+            { text: "Tamam" }
+          ]);
+        }
+      }
+    } catch (error) {
+      console.error("İzin kontrolünde hata:", error);
+    }
+  };
+
 
   const fetchPitches = async (userLat?: number, userLon?: number) => {
     setLoading(true);
@@ -50,53 +77,56 @@ export default function Pitches() {
   };
 
   const getLocation = async () => {
-    const { status } = await Location.requestForegroundPermissionsAsync();
-    if (status !== "granted") {
-      alert("Konum izni reddedildi!");
+    if (locationPermissionStatus !== 'granted') { // İzin verilmemişse çık
       return;
     }
 
-    const userLocation = await Location.getCurrentPositionAsync({});
-    const { latitude, longitude } = userLocation.coords;
-
-    setLocation({ latitude, longitude });
-
-    // Mobil için expo-location kullan
-  if (Platform.OS !== "web") {
     try {
-      const address = await Location.reverseGeocodeAsync({ latitude, longitude });
+      const userLocation = await Location.getCurrentPositionAsync({});
+      const { latitude, longitude } = userLocation.coords;
 
-      if (address.length > 0) {
-        const { name, subregion, region } = address[0];
-        let formattedAddress = `${name ? name + ", " : ""}${subregion ? subregion + ", " : ""}${region || ""}`.trim();
-        setLocationText(formattedAddress || "Adres bulunamadı.");
-      } else {
-        setLocationText("Adres bulunamadı.");
-      }
-    } catch (error) {
-      console.error("Adres çözümlenemedi:", error);
-      setLocationText("Adres alınamadı.");
-    }
-  } 
-  // Web için OpenStreetMap Nominatim API kullan
-  else {
-    try {
-      const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`);
-      const data = await response.json();
-      
-      if (data.display_name) {
-        setLocationText(data.display_name);
-      } else {
-        setLocationText("Adres bulunamadı.");
-      }
-    } catch (error) {
-      console.error("Web'de adres alınamadı:", error);
-      setLocationText("Adres alınamadı.");
-    }
-  }
+      setLocation({ latitude, longitude });
 
-  fetchPitches(latitude, longitude);
-};
+      if (Platform.OS !== "web") {
+        try {
+          const address = await Location.reverseGeocodeAsync({ latitude, longitude });
+          if (address.length > 0) {
+            const { name, subregion, region } = address[0];
+            let formattedAddress = `${name ? name + ", " : ""}${subregion ? subregion + ", " : ""}${region || ""}`.trim();
+            setLocationText(formattedAddress || "Adres bulunamadı.");
+          } else {
+            setLocationText("Adres bulunamadı.");
+          }
+        } catch (error) {
+          console.error("Adres çözümlenemedi:", error);
+          setLocationText("Adres alınamadı.");
+        }
+      } else {
+        // Web için OpenStreetMap Nominatim API kullan
+        try {
+          const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`);
+          const data = await response.json();
+
+          if (data.display_name) {
+            setLocationText(data.display_name);
+          } else {
+            setLocationText("Adres bulunamadı.");
+          }
+        } catch (error) {
+          console.error("Web'de adres alınamadı:", error);
+          setLocationText("Adres alınamadı.");
+        }
+      }
+
+      fetchPitches(latitude, longitude);
+    } catch (error) {
+      console.error("Konum alınırken hata:", error);
+      setLocationText("Konum alınamadı.");
+      Alert.alert("Konum Hatası", "Konum bilgisi alınamadı. Lütfen tekrar deneyin.", [
+        { text: "Tamam" }
+      ]);
+    }
+  };
 
   const handleSelectPitch = (pitch) => {
     setSelectedPitch(pitch);
