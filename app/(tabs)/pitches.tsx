@@ -1,49 +1,47 @@
 import { useEffect, useState } from "react";
-import { Text, View, FlatList, ActivityIndicator, TouchableOpacity, TextInput, Pressable, Platform, Alert } from "react-native";
+import { Text, View, FlatList, ActivityIndicator, TouchableOpacity, TextInput, Pressable, Platform, Alert, RefreshControl } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as Location from "expo-location";
 import { supabase } from "@/services/supabase";
 import haversine from "haversine";
 import { GestureHandlerRootView, GestureDetector, Gesture } from "react-native-gesture-handler";
 import { runOnJS } from "react-native-reanimated";
-import AsyncStorage from '@react-native-async-storage/async-storage'; // AsyncStorage import edildi
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export default function Pitches() {
   const [pitches, setPitches] = useState([]);
   const [selectedPitch, setSelectedPitch] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false); // ⬅️ Pull-to-refresh state
   const [location, setLocation] = useState<{ latitude: number; longitude: number } | null>(null);
   const [locationText, setLocationText] = useState("Konum alınıyor...");
   const [locationPermissionStatus, setLocationPermissionStatus] = useState(null);
 
   useEffect(() => {
     fetchPitches();
-    checkLocationPermission(); // Konum iznini kontrol et
+    checkLocationPermission();
   }, []);
 
   const checkLocationPermission = async () => {
     try {
-      const storedPermissionStatus = await AsyncStorage.getItem('locationPermissionStatus');
+      const storedPermissionStatus = await AsyncStorage.getItem("locationPermissionStatus");
 
-      if (storedPermissionStatus === 'granted') {
-        setLocationPermissionStatus('granted');
-        getLocation(); // İzin zaten verilmiş, konumu al
+      if (storedPermissionStatus === "granted") {
+        setLocationPermissionStatus("granted");
+        getLocation();
       } else {
         const { status } = await Location.requestForegroundPermissionsAsync();
         setLocationPermissionStatus(status);
-        await AsyncStorage.setItem('locationPermissionStatus', status); // İzin durumunu kaydet
+        await AsyncStorage.setItem("locationPermissionStatus", status);
 
-        if (status !== 'granted') {
-          Alert.alert("Konum izni gerekli", "Uygulamayı kullanmak için konum izni vermeniz gerekiyor.", [
-            { text: "Tamam" }
-          ]);
+        if (status !== "granted") {
+          Alert.alert("Konum izni gerekli", "Uygulamayı kullanmak için konum izni vermeniz gerekiyor.", [{ text: "Tamam" }]);
         }
       }
     } catch (error) {
       console.error("İzin kontrolünde hata:", error);
     }
   };
-
 
   const fetchPitches = async (userLat?: number, userLon?: number) => {
     setLoading(true);
@@ -53,6 +51,7 @@ export default function Pitches() {
     if (error) {
       console.error("Veri çekme hatası:", error);
       setLoading(false);
+      setRefreshing(false); // ⬅️ Refresh tamamlandı
       return;
     }
 
@@ -74,12 +73,11 @@ export default function Pitches() {
     }
 
     setLoading(false);
+    setRefreshing(false); // ⬅️ Refresh tamamlandı
   };
 
   const getLocation = async () => {
-    if (locationPermissionStatus !== 'granted') { // İzin verilmemişse çık
-      return;
-    }
+    if (locationPermissionStatus !== "granted") return;
 
     try {
       const userLocation = await Location.getCurrentPositionAsync({});
@@ -87,7 +85,7 @@ export default function Pitches() {
 
       setLocation({ latitude, longitude });
 
-      if (Platform.OS !== "web") {
+      if (Platform.OS === "ios") {
         try {
           const address = await Location.reverseGeocodeAsync({ latitude, longitude });
           if (address.length > 0) {
@@ -101,8 +99,22 @@ export default function Pitches() {
           console.error("Adres çözümlenemedi:", error);
           setLocationText("Adres alınamadı.");
         }
+      } else if (Platform.OS === "android") {
+        try {
+          const address = await Location.reverseGeocodeAsync({ latitude, longitude });
+          if (address.length > 0) {
+            const { street, name, subregion, region } = address[0];
+            let formattedAddress = `${street ? street + ", " : ""}${name ? name + ", " : ""}${subregion ? subregion + ", " : ""}${region || ""}`.trim();
+      
+            setLocationText(formattedAddress || "Adres bulunamadı.");
+          } else {
+            setLocationText("Adres bulunamadı.");
+          }
+        } catch (error) {
+          console.error("Adres çözümlenemedi:", error);
+          setLocationText("Adres alınamadı.");
+        }
       } else {
-        // Web için OpenStreetMap Nominatim API kullan
         try {
           const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`);
           const data = await response.json();
@@ -122,9 +134,7 @@ export default function Pitches() {
     } catch (error) {
       console.error("Konum alınırken hata:", error);
       setLocationText("Konum alınamadı.");
-      Alert.alert("Konum Hatası", "Konum bilgisi alınamadı. Lütfen tekrar deneyin.", [
-        { text: "Tamam" }
-      ]);
+      Alert.alert("Konum Hatası", "Konum bilgisi alınamadı. Lütfen tekrar deneyin.", [{ text: "Tamam" }]);
     }
   };
 
@@ -134,6 +144,11 @@ export default function Pitches() {
 
   const handleCloseDetail = () => {
     setSelectedPitch(null);
+  };
+
+  const onRefresh = async () => {
+    setRefreshing(true); // ⬅️ Refresh başladı
+    await fetchPitches(location?.latitude, location?.longitude);
   };
 
   const swipeGesture = Gesture.Pan().onUpdate((event) => {
@@ -172,9 +187,8 @@ export default function Pitches() {
               <Text className="text-gray-600">{selectedPitch.features}</Text>
               <Text className="text-gray-600">{selectedPitch.score}</Text>
               <TouchableOpacity className="mt-4 bg-blue-500 px-4 py-2 rounded" onPress={handleCloseDetail}>
-                <Text className="bg-green text-white font-bold">Geri dön</Text>
+                <Text className="text-white font-bold">Geri dön</Text>
               </TouchableOpacity>
-              {/* <Text className="text-sm text-gray-500 mt-2">{"← Sağa kaydırarak geri dönebilirsiniz."}</Text> */}
             </View>
           </GestureDetector>
         ) : (
@@ -184,7 +198,7 @@ export default function Pitches() {
             renderItem={({ item }) => (
               <TouchableOpacity onPress={() => handleSelectPitch(item)}>
                 <View className="bg-white rounded-lg mx-4 mt-3 p-3 shadow-md">
-                  <View className="flex-row justify-between ">
+                  <View className="flex-row justify-between">
                     <Text className="w-4/6 text-base font-semibold">{item.name}</Text>
                     <Text className="w-1/6 text-right text-sm text-gray-500">{item.distance?.toFixed(2)} km</Text>
                     <Ionicons className="w-3 text-right" name="chevron-forward-outline" size={16} color="green" />
@@ -192,6 +206,7 @@ export default function Pitches() {
                 </View>
               </TouchableOpacity>
             )}
+            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
           />
         )}
       </View>
