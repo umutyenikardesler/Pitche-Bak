@@ -88,15 +88,15 @@ export const MatchDetailsForm: React.FC<MatchDetailsFormProps> = ({ date, setDat
 
             {/* Web için tarih seçici modalı */}
             {showDatePicker && (
-              <Modal 
-                isVisible={true} 
+              <Modal
+                isVisible={true}
                 backdropOpacity={0.5}
                 animationIn="slideInUp"
                 animationOut="slideOutDown"
                 //animationType="fade"
                 // onRequestClose={() => setShowTimeModal(false)}
                 onBackdropPress={() => setShowTimeModal(false)}
-                >
+              >
                 <View className="flex-1 justify-center items-center bg-black/50">
                   <View className="bg-white p-4 rounded-lg">
                     <ReactDatePicker

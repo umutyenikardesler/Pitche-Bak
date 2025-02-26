@@ -31,16 +31,16 @@ export default function Index() {
       .order('date', { ascending: true })
       .order('time', { ascending: true });
 
-      if (error) {
-        console.error('Veri çekme hatası:', error);
-        setMatches([]); // Hata alındığında matches state'ini boş array yap
-      } else {
-        const formattedData = data?.map((item) => ({
-          ...item,
-          formattedDate: new Date(item.date).toLocaleDateString('tr-TR'),
-          startFormatted: `${item.time.split(':')[0]}:${item.time.split(':')[1]}`,
-          endFormatted: `${parseInt(item.time.split(':')[0], 10) + 1}:${item.time.split(':')[1]}`
-        })) || [];
+    if (error) {
+      console.error('Veri çekme hatası:', error);
+      setMatches([]); // Hata alındığında matches state'ini boş array yap
+    } else {
+      const formattedData = data?.map((item) => ({
+        ...item,
+        formattedDate: new Date(item.date).toLocaleDateString('tr-TR'),
+        startFormatted: `${item.time.split(':')[0]}:${item.time.split(':')[1]}`,
+        endFormatted: `${parseInt(item.time.split(':')[0], 10) + 1}:${item.time.split(':')[1]}`
+      })) || [];
 
       setMatches(formattedData);
     }
@@ -50,7 +50,7 @@ export default function Index() {
   useFocusEffect(
     useCallback(() => {
       fetchMatches();
-      return () => {};
+      return () => { };
     }, [])
   );
 
@@ -74,14 +74,14 @@ export default function Index() {
     return formattedText.length > 23 ? formattedText.slice(0, 23) + "..." : formattedText;
   };
 
-  const featuresArray = selectedMatch?.pitches?.features 
-  ? Array.isArray(selectedMatch.pitches.features) 
-    ? selectedMatch.pitches.features 
-    : [] 
-  : [];
+  const featuresArray = selectedMatch?.pitches?.features
+    ? Array.isArray(selectedMatch.pitches.features)
+      ? selectedMatch.pitches.features
+      : []
+    : [];
 
   const renderMatch = ({ item }) => {
-    
+
     return (
       <TouchableOpacity onPress={() => handleSelectMatch(item)}>
         <View className="bg-white rounded-lg mx-4 mt-1.5 mb-1 p-2 shadow-lg">
@@ -101,7 +101,7 @@ export default function Index() {
 
               <View className="text-gray-700 text-md flex-row items-center">
                 <Ionicons name="calendar-outline" size={18} color="black" />
-                <Text className="pl-2 font-semibold">{item.formattedDate}    →</Text> 
+                <Text className="pl-2 font-semibold">{item.formattedDate}    →</Text>
                 <Text className="pl-2 font-bold text-green-600"> {item.startFormatted}-{item.endFormatted} </Text>
               </View>
 
@@ -121,7 +121,7 @@ export default function Index() {
   };
 
   return (
-    
+
     <GestureHandlerRootView className="flex-1">
       {selectedMatch ? (
         <GestureDetector gesture={swipeGesture}>
@@ -138,14 +138,14 @@ export default function Index() {
               <View className="flex-row ">
                 <View className="w-1/2 text-gray-700 text-md flex-row justify-center items-center">
                   <Ionicons name="calendar-outline" size={18} color="black" />
-                  <Text className="pl-2 font-semibold">{selectedMatch.formattedDate}</Text> 
+                  <Text className="pl-2 font-semibold">{selectedMatch.formattedDate}</Text>
                 </View>
                 <View className=" w-1/2 text-gray-700 text-md flex-row justify-center items-center pt-1">
                   <Ionicons name="time-outline" size={18} color="black" />
                   <Text className="pl-2 font-semibold">{selectedMatch.startFormatted} - {selectedMatch.endFormatted}</Text>
                 </View>
               </View>
-              
+
               <View className="flex-row ">
                 <View className="w-3/5 text-gray-700 text-md flex-row justify-center items-center pt-1">
                   <Ionicons name="location" size={18} color="black" />
@@ -156,7 +156,7 @@ export default function Index() {
                   <Text className="pl-2 font-semibold text-green-600">{selectedMatch.prices} ₺</Text>
                 </View>
               </View>
-  
+
               <View>
                 <Text className="text-lg font-semibold text-green-700 text-center my-2">Eksik Kadrolar</Text>
               </View>
@@ -166,11 +166,10 @@ export default function Index() {
                   const [position, count] = group.split(':');
                   return (
                     <View key={index} className="flex-row items-center ml-2 border-solid border-2 border-gray-500 rounded-full p-1">
-                      <View className={`rounded-full p-1 ${
-                        position === 'K' ? 'bg-red-500' 
-                        : position === 'D' ? 'bg-blue-500' 
-                        : position === 'O' ? 'bg-green-500' 
-                        : 'bg-yellow-500'}`}>
+                      <View className={`rounded-full p-1 ${position === 'K' ? 'bg-red-500'
+                        : position === 'D' ? 'bg-blue-500'
+                          : position === 'O' ? 'bg-green-500'
+                            : 'bg-yellow-500'}`}>
                         <Text className="text-white font-bold text-md px-1">{position}</Text>
                       </View>
                       <Text className="ml-2 font-semibold pr-1">x {count}</Text>
@@ -180,7 +179,7 @@ export default function Index() {
               </View>
 
               <View className="h-[1px] bg-gray-600 my-3" />
-              
+
               {/* HALI SAHA ÖZETİ */}
 
               <View className="flex-row mb-2 justify-center">
@@ -259,7 +258,7 @@ export default function Index() {
                 <Ionicons name="accessibility" size={16} color="green" className="pl-2" />
                 <Text className="font-bold text-green-700"> KONDİSYONUN </Text>
               </View>
-    
+
               <View className="bg-white rounded-lg mx-4 my-3 p-3 shadow-md">
                 {/* Progress Bar ve Yüzde */}
                 <View className="w-full mb-3 flex-row items-center">
@@ -270,7 +269,7 @@ export default function Index() {
                   {/* Yüzde */}
                   <Text className="pl-2 font-semibold text-base text-green-500">{progress}%</Text>
                 </View>
-    
+
                 {/* İkon ve Metin */}
                 <View className="flex-row items-center">
                   <Ionicons name="information-circle-outline" size={16} color="black" />
@@ -279,7 +278,7 @@ export default function Index() {
                   </Text>
                 </View>
               </View>
-    
+
               {/* SENİ BEKLEYEN MAÇLAR Başlığı */}
               <View className="flex-row mt-1 mb-2 px-3">
                 <Ionicons name="alarm-outline" size={16} color="green" className="pl-2" />

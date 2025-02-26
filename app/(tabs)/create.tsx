@@ -41,16 +41,16 @@ export default function CreateMatch() {
     const formattedTime = `${time.padStart(2, '0')}:00:00`;
     const missingGroups = isSquadIncomplete
       ? Object.keys(missingPositions)
-          .filter(position => missingPositions[position].selected)
-          .map(position => {
-            const shortCode = position === 'kaleci' ? 'K' 
-                          : position === 'defans' ? 'D' 
-                          : position === 'ortaSaha' ? 'O' 
-                          : 'F';
-            return `${shortCode}:${missingPositions[position].count}`;
-          })
+        .filter(position => missingPositions[position].selected)
+        .map(position => {
+          const shortCode = position === 'kaleci' ? 'K'
+            : position === 'defans' ? 'D'
+              : position === 'ortaSaha' ? 'O'
+                : 'F';
+          return `${shortCode}:${missingPositions[position].count}`;
+        })
       : [];
-  
+
     const { data, error } = await supabase
       .from('match')
       .insert([
@@ -63,7 +63,7 @@ export default function CreateMatch() {
           missing_groups: missingGroups,
         },
       ]);
-  
+
     if (error) {
       console.error('Maç oluşturulurken hata oluştu:', error);
       if (Platform.OS === 'web') {
@@ -73,7 +73,7 @@ export default function CreateMatch() {
       }
     } else {
       console.log('Maç başarıyla oluşturuldu:', data);
-  
+
       if (Platform.OS === 'web') {
         alert("Tebrikler 🎉\nMaçınız başarılı bir şekilde oluşturulmuştur.");
         window.location.href = '/'; // Web için yönlendirme
@@ -82,8 +82,8 @@ export default function CreateMatch() {
           "Tebrikler 🎉",
           "Maçınız başarılı bir şekilde oluşturulmuştur.",
           [
-            { 
-              text: "Tamam", 
+            {
+              text: "Tamam",
               onPress: () => {
                 setMatchTitle('');
                 setSelectedDistrict('');
@@ -98,16 +98,15 @@ export default function CreateMatch() {
                   ortaSaha: { selected: false, count: 1 },
                   forvet: { selected: false, count: 1 },
                 });
-  
+
                 navigation.navigate('index'); // Mobil yönlendirme
-              } 
+              }
             }
           ]
         );
       }
     }
   };
-  
 
   return (
     <ScrollView className="bg-white rounded-lg my-3 mx-4 p-4 shadow-md">
