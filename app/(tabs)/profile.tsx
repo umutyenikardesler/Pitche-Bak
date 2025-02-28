@@ -22,11 +22,11 @@ export default function Profile() {
   };
 
   return (
-    <View className="bg-white rounded-lg mx-4 mt-1.5 mb-1 p-1 shadow-lg">
+    <View className="flex-1 bg-white rounded-lg m-3 p-1 shadow-lg">
       <View className="flex-row">
-        <View className='w-1/4 p-1'>
+        <View className='w-1/4'>
           <TouchableOpacity onPress={() => setModalVisible(true)}>
-            <View className="justify-center p-1">
+            <View className="justify-center px-4 py-3">
               <Image
                 source={profileImage}
                 className="rounded-full mx-auto"
@@ -36,51 +36,57 @@ export default function Profile() {
           </TouchableOpacity>
 
           <TouchableOpacity onPress={pickImage} className="static">
-            <View className='absolute -bottom-2 right-[9%] m-1'>
+            <View className='absolute -bottom-1 -right-3 m-1'>
               <Ionicons name="add-circle" size={28} color="green" className='bg-white rounded-full p-1' />
             </View>
           </TouchableOpacity>
 
         </View>
-        <View className='w-3/4 flex-col'>
-          
-          <View className='flex-row'>
-            <View className='w-1/3 flex-row p-2 justify-center'>
-              <View className='flex justify-around items-center'>
-                <Text className='font-bold text-xl'> 5 </Text>
-                <Text className='font-bold text-green-700'>Maç</Text>
-              </View>
-            </View>
-            <View className='w-1/3 flex-row p-2 justify-center'>
-              <View className='flex justify-around items-center'>
-                <Text className='font-bold text-xl'> 250 </Text>
-                <Text className='font-bold text-green-700'>Takipçi</Text>
-              </View>
-            </View>
-            <View className='w-1/3 flex-row p-2 justify-center'>
-              <View className='flex justify-around items-center'>
-                <Text className='font-bold text-xl'> 120 </Text>
-                <Text className='font-bold text-green-700'>Takip</Text>
-              </View>
-            </View>
+        <View className='w-3/4 flex-col mb-2'>
+
+          <View className='w-full '>
+            <Text className='pl-6 py-2 font-semibold text-xl text-green-700'>Umut Yenikardeşler</Text>
           </View>
 
           <View className='w-full '>
-            <Text className='px-1 pb-1 font-semibold text-center'>✌️ Futbol benim için bir zevk. Sağ ✌️</Text>
+            <Text className='px-5 mb-2 text-wrap font-semibold'>✌️ Futbol benim için bir zevk. Sağ ✌️</Text>
           </View>
-          
-          <View className='flex-row min-w-full justify-around '>
-            <View className='w-1/3 px-1'>
-              <Text className='text-center bg-green-600 text-white font-semibold p-1 rounded-md mt-1 h-8'> Düzenle </Text>
+
+          <View className='flex-row justify-between items-center mx-4 mt-2'>
+            <View className='mx-2'>
+              <Text className='text-center bg-green-600 text-white font-semibold p-1 rounded-md px-2 items-center'>Düzenle</Text>
             </View>
-            <View className='w-1/3 px-1'>
-              <Text className='text-center bg-green-600 text-white font-semibold p-1 rounded-md mt-1 h-8'> Takip Et </Text>
+            <View className='mx-2'>
+              <Text className='text-center bg-green-600 text-white font-semibold p-1 rounded-md px-3 items-center'>Takip Et</Text>
             </View>
-            <View className='w-1/3 px-1'>
-              <Text className='text-center bg-green-600 text-white font-semibold p-1 rounded-md mt-1 h-8'> Mesaj </Text>
+            <View className='mx-2'>
+              <Text className='text-center bg-green-600 text-white font-semibold p-1 rounded-md px-2 items-center'>Mesaj At</Text>
             </View>
           </View>
 
+        </View>
+      </View>
+
+      <View className='my-1'>
+        <View className='flex-row justify-between mx-4'>
+          <View className='flex-row p-2 '>
+            <View className='flex justify-around items-center border-2 border-solid border-green-600 rounded-lg py-2 px-6'>
+              <Text className='font-bold text-xl'> 5 </Text>
+              <Text className='font-bold text-green-700'>Maç</Text>
+            </View>
+          </View>
+          <View className='flex-row p-2'>
+            <View className='flex justify-around items-center border-2 border-solid border-green-600 rounded-lg py-2 px-6'>
+              <Text className='font-bold text-xl'> 250 </Text>
+              <Text className='font-bold text-green-700'>Takipçi</Text>
+            </View>
+          </View>
+          <View className='flex-row p-2'>
+            <View className='flex justify-around items-center border-2 border-solid border-green-600 rounded-lg py-2 px-6'>
+              <Text className='font-bold text-xl'> 120 </Text>
+              <Text className='font-bold text-green-700'>Takip</Text>
+            </View>
+          </View>
         </View>
       </View>
 
