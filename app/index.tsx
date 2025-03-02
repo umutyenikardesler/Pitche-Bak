@@ -12,7 +12,7 @@ export default function Index() {
     const checkAuth = async () => {
       const user = await AsyncStorage.getItem("user"); // Kullanıcı oturumu kontrol et
       if (user) {
-        router.replace("/(tabs)/home"); // Kullanıcı varsa ana sayfaya yönlendir
+        router.replace("/(tabs)/index"); // Kullanıcı varsa ana sayfaya yönlendir
       } else {
         router.replace("/auth"); // Kullanıcı yoksa kayıt ekranına yönlendir
       }
