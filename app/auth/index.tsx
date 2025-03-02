@@ -1,9 +1,8 @@
 import { useState } from "react";
 import { View, Text, TextInput, TouchableOpacity, Alert } from "react-native";
 import { useRouter } from "expo-router";
-import { supabase } from '@/services/supabase';
-import { Ionicons } from '@expo/vector-icons';
-import '@/global.css';
+import { supabase } from "@/services/supabase";
+import * as Linking from "expo-linking";
 
 export default function AuthScreen() {
   const router = useRouter();
@@ -11,30 +10,71 @@ export default function AuthScreen() {
   const [password, setPassword] = useState("");
   const [isLogin, setIsLogin] = useState(true); // Giriş / Kayıt değişimi
 
-  // Kullanıcı giriş ve kayıt işlemi
+  // İngilizce hata mesajlarını Türkçeye çeviren fonksiyon
+  const translateError = (errorMessage) => {
+    const translations = {
+      "Password should be at least 6 characters": "Şifre en az 6 karakter olmalıdır.",
+      "Email format is invalid": "Geçersiz e-posta formatı.",
+      "User already registered": "Bu e-posta ile kayıtlı bir kullanıcı zaten var.",
+      "Invalid login credentials": "E-posta veya şifre hatalı.",
+      "Email not confirmed": "E-posta adresinizi doğrulamanız gerekiyor.",
+      "User not found": "Kullanıcı bulunamadı.",
+    };
+
+    return translations[errorMessage] || "Bilinmeyen bir hata oluştu.";
+  };
+
   const handleAuth = async () => {
-    if (!email || !password) return Alert.alert("Hata", "Lütfen tüm alanları doldurun.");
-    
+    if (!email || !password) {
+      return Alert.alert("Hata", "Lütfen tüm alanları doldurun.");
+    }
+
     try {
       let response;
+
       if (isLogin) {
         response = await supabase.auth.signInWithPassword({ email, password });
       } else {
-        response = await supabase.auth.signUp({ email, password });
+        const redirectUrl = Linking.createURL("/");
+        response = await supabase.auth.signUp({
+          email,
+          password,
+          options: { redirectTo: redirectUrl },
+        });
+
+        if (!response.error) {
+          const { data: user } = response;
+          if (user?.user) {
+            const { error: insertError } = await supabase.from("users").insert([
+              {
+                id: user.user.id,
+                email: user.user.email,
+                name: "Yeni Kullanıcı",
+                surname: "",
+                created_at: new Date(),
+              },
+            ]);
+
+            if (insertError) {
+              console.error("Kullanıcı bilgileri eklenirken hata oluştu:", insertError.message);
+            }
+          }
+        }
       }
 
       if (response.error) throw response.error;
+
       Alert.alert("Başarılı", isLogin ? "Giriş başarılı!" : "Kayıt başarılı, e-posta doğrulama gerekli.");
-      if (isLogin) router.push("/"); // Ana sayfaya yönlendirme
+      
+      if (isLogin) router.replace("/(tabs)/profile?firstLogin=true");
     } catch (error) {
-      Alert.alert("Hata", error.message);
+      Alert.alert("Hata", translateError(error.message));
     }
   };
 
   return (
     <View className="flex-1 justify-center items-center bg-gray-100 px-6">
       <View className="w-full bg-white p-6 rounded-lg shadow-lg">
-        
         <Text className="text-2xl font-bold text-center text-green-700 mb-4">
           {isLogin ? "Giriş Yap" : "Kayıt Ol"}
         </Text>
