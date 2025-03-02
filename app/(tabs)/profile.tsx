@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Text, View, Image, TouchableOpacity, Modal } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
+import { supabase } from '@/services/supabase';
 import '@/global.css';
 
 export default function Profile() {

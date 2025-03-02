@@ -6,13 +6,9 @@ LogBox.ignoreAllLogs(true);
 export default function RootLayout() {
   return (
       <Stack>
-        <Stack.Screen name="(tabs)" 
-          options={{
-            headerShown: false,
-            }} 
-          />
+        <Stack.Screen name="auth/index" options={{ headerShown: false }} />
+        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="+not-found" options={{}} />
       </Stack>
   );
 }
-
