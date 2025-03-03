@@ -10,8 +10,8 @@ export default function AuthScreen() {
   const [password, setPassword] = useState("");
   const [isLogin, setIsLogin] = useState(true); // Giriş / Kayıt değişimi
 
-  // İngilizce hata mesajlarını Türkçeye çeviren fonksiyon
-  const translateError = (errorMessage) => {
+   // İngilizce hata mesajlarını Türkçeye çeviren fonksiyon
+   const translateError = (errorMessage) => {
     const translations = {
       "Password should be at least 6 characters": "Şifre en az 6 karakter olmalıdır.",
       "Email format is invalid": "Geçersiz e-posta formatı.",
@@ -19,54 +19,88 @@ export default function AuthScreen() {
       "Invalid login credentials": "E-posta veya şifre hatalı.",
       "Email not confirmed": "E-posta adresinizi doğrulamanız gerekiyor.",
       "User not found": "Kullanıcı bulunamadı.",
+      "AuthApiError: User already exists": "Bu e-posta adresiyle bir hesap zaten var.",
+      "AuthApiError: Password should be at least 6 characters": "Şifreniz en az 6 karakter olmalıdır.",
     };
 
-    return translations[errorMessage] || "Bilinmeyen bir hata oluştu.";
+    return translations[errorMessage] || `Hata: ${errorMessage}`;
   };
 
   const handleAuth = async () => {
-    if (!email || !password) {
+    if (!email.trim() || !password.trim()) {
       return Alert.alert("Hata", "Lütfen tüm alanları doldurun.");
+    }
+  
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return Alert.alert("Hata", "Geçersiz e-posta formatı.");
+    }
+  
+    if (password.length < 6) {
+      return Alert.alert("Hata", "Şifre en az 6 karakter olmalıdır.");
     }
 
     try {
-      let response;
-
+      let data, error;
+  
       if (isLogin) {
-        response = await supabase.auth.signInWithPassword({ email, password });
+        ({ data, error } = await supabase.auth.signInWithPassword({ email, password }));
       } else {
-        const redirectUrl = Linking.createURL("/");
-        response = await supabase.auth.signUp({
+        const redirectUrl = Linking.createURL("/email-confirmed");
+        ({ data, error } = await supabase.auth.signUp({
           email,
           password,
           options: { redirectTo: redirectUrl },
-        });
-
-        if (!response.error) {
-          const { data: user } = response;
-          if (user?.user) {
-            const { error: insertError } = await supabase.from("users").insert([
-              {
-                id: user.user.id,
-                email: user.user.email,
-                name: "Yeni Kullanıcı",
-                surname: "",
-                created_at: new Date(),
-              },
-            ]);
-
-            if (insertError) {
-              console.error("Kullanıcı bilgileri eklenirken hata oluştu:", insertError.message);
-            }
+        }));
+  
+        if (!error && data?.user) {
+          const { error: insertError } = await supabase.from("users").insert([
+            {
+              id: data.user.id,
+              email: data.user.email,
+              name: "Yeni Kullanıcı",
+              surname: "",
+              age: null,
+              height: null,
+              weight: null,
+              description: "",
+              created_at: new Date(),
+            },
+          ]);
+  
+          if (insertError) {
+            console.error("Kullanıcı bilgileri eklenirken hata oluştu:", insertError.message);
           }
         }
       }
-
-      if (response.error) throw response.error;
-
-      Alert.alert("Başarılı", isLogin ? "Giriş başarılı!" : "Kayıt başarılı, e-posta doğrulama gerekli.");
-      
-      if (isLogin) router.replace("/(tabs)/profile?firstLogin=true");
+  
+      if (error) throw error;
+  
+      Alert.alert("Başarılı", isLogin ? "Giriş başarılı 🎉" : "Kayıt başarılı, e-postanızı doğrulamanız gerekmektedir. E-postanızı kontrol ederek mail adresinizi doğrulayınız!");
+  
+      if (isLogin && data?.user) {
+        // Kullanıcının bilgilerini çek ve eksik olup olmadığını kontrol et
+        const { data: userInfo, error: userError } = await supabase
+          .from("users")
+          .select("name, surname, age, height, weight, description")
+          .eq("id", data.user.id)
+          .single();
+  
+        if (userError) {
+          console.error("Kullanıcı bilgileri alınırken hata oluştu:", userError.message);
+          router.replace("/(tabs)/profile"); // Hata olursa sadece profile yönlendir
+          return;
+        }
+  
+        const hasMissingFields = !userInfo?.name || !userInfo?.surname || !userInfo?.age || 
+                                 !userInfo?.height || !userInfo?.weight || !userInfo?.description;
+  
+        if (hasMissingFields) {
+          router.replace("/(tabs)/profile?firstLogin=true");
+        } else {
+          router.replace("/(tabs)/profile");
+        }
+      }
     } catch (error) {
       Alert.alert("Hata", translateError(error.message));
     }

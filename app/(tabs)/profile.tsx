@@ -52,19 +52,14 @@ export default function Profile() {
         weight: userInfo.weight || "",
         description: userInfo.description || "",
       });
+      // Eğer firstLogin parametresi geldiyse ve eksik alan varsa modalı aç
+      const hasMissingFields = !userInfo.name || !userInfo.surname || !userInfo.age ||
+        !userInfo.height || !userInfo.weight || !userInfo.description;
 
-      // İlk girişse veya eksik bilgi varsa modal'ı aç
-      if (searchParams.firstLogin === "true" || !userInfo.name || !userInfo.surname || !userInfo.age) {
+      if (searchParams.firstLogin === "true" && hasMissingFields) {
         setEditModalVisible(true);
       }
     }
-
-    // if (userInfo) {
-    //   setUserData(userInfo); // Verileri doğrudan userData'ya aktar
-    //   if (searchParams.firstLogin === "true" || !userInfo.name || !userInfo.surname || !userInfo.age) {
-    //     setEditModalVisible(true);
-    //   }
-    // }
 
     if (userError) console.error("Kullanıcı bilgileri çekilirken hata oluştu:", userError.message);
   };
@@ -96,10 +91,10 @@ export default function Profile() {
       .eq("id", userData.id);
 
     if (error) {
-      Alert.alert("Hata", "Bilgileri güncellerken hata oluştu.");
+      Alert.alert("Uyarı", "❗ Lütfen eksik alanları doldurun ❗");
     } else {
       setEditModalVisible(false);
-      Alert.alert("Başarılı", "Bilgileriniz başarıyla güncellendi.");
+      Alert.alert("Tebrikler", "Bilgileriniz başarıyla güncellendi.");
     }
   };
 
@@ -109,7 +104,7 @@ export default function Profile() {
   };
 
   return (
-    <View className="flex-1 bg-white rounded-lg m-3 p-1 shadow-lg">
+    <View className="flex-1 bg-white rounded-lg m-3 p-1 shadow-lg justify-stretch">
       <View className="flex-row">
         <View className='w-1/4'>
           <TouchableOpacity onPress={() => setModalVisible(true)}>
@@ -136,20 +131,20 @@ export default function Profile() {
           </View>
 
           <View className='w-full '>
-            <Text className='px-5 mb-2 text-wrap font-semibold'>{userData.age} yaş - {userData.height} cm - {userData.weight} kg</Text>
+            <Text className='px-5 mb-2 text-wrap font-semibold'>Yaş: {userData.age}, Boy: {userData.height} cm, Ağırlık: {userData.weight} kg</Text>
             <Text className='px-5 mb-2 text-wrap font-semibold'>{userData.description}</Text>
           </View>
 
           <View className='flex-row justify-between items-center mx-4 mt-2'>
-            <View className='mx-2'>
+            <View className='mx-1'>
               <Text className="text-center bg-green-600 text-white font-semibold p-1 rounded-md px-3 items-center"
                 onPress={handleEditModalOpen}> Düzenle </Text>
             </View>
-            <View className='mx-2'>
+            <View className='mx-1'>
               <Text className='text-center bg-green-600 text-white font-semibold p-1 rounded-md px-3 items-center'>Takip Et</Text>
             </View>
-            <View className='mx-2'>
-              <Text className='text-center bg-green-600 text-white font-semibold p-1 rounded-md px-2 items-center'>Mesaj At</Text>
+            <View className='mx-1'>
+              <Text className='text-center bg-green-600 text-white font-semibold p-1 rounded-md px-3 items-center'>Mesaj At</Text>
             </View>
           </View>
 
@@ -177,6 +172,11 @@ export default function Profile() {
             </View>
           </View>
         </View>
+      </View>
+
+
+      <View className='flex-col bottom'>
+        <Text className='text-center bg-green-600 text-white font-semibold p-1 rounded-md px-3 items-center'>Çıkış Yap</Text>
       </View>
 
       {/* Profil Fotoğrafı Modalı */}
@@ -221,8 +221,8 @@ export default function Profile() {
             <TextInput placeholder="Açıklama" value={userData.description} onChangeText={(text) => setUserData({ ...userData, description: text })} className="border border-gray-300 rounded p-2 mb-2" multiline />
 
             <View className="flex-row justify-between mt-3">
-              <Button title="İptal Et" onPress={() => setEditModalVisible(false)} color="red" />
-              <Button title="Kaydet" onPress={handleSave} color="green" />
+              <Text className='text-white bg-red-500 p-2 rounded-lg' onPress={() => setEditModalVisible(false)}> İptal Et </Text>
+              <Text className='text-white bg-green-600 p-2 rounded-lg' onPress={handleSave}> Kaydet </Text>
             </View>
           </View>
         </View>
