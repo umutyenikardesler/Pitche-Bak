@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Text, View, Image, Button, TextInput, TouchableOpacity, Modal, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
-import { useLocalSearchParams } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { supabase } from '@/services/supabase';
 import '@/global.css';
 
@@ -25,12 +25,6 @@ export default function Profile() {
   useEffect(() => {
     fetchUserData();
   }, []);
-
-  // useEffect(() => {
-  //   if (searchParams.edit === "true") {
-  //     setEditModalVisible(true);
-  //   }
-  // }, [searchParams]);
 
   const fetchUserData = async () => {
     const { data, error } = await supabase.auth.getUser();
@@ -103,56 +97,72 @@ export default function Profile() {
     setEditModalVisible(true);
   };
 
+  const router = useRouter(); // Router'ı tanımlayalım.
+
+  const handleLogout = async () => {
+    const { error } = await supabase.auth.signOut();
+    
+    if (error) {
+      Alert.alert("Çıkış Yapılamadı", "Bir hata oluştu, lütfen tekrar deneyin.");
+      console.error("Çıkış Hatası:", error.message);
+    } else {
+      router.replace("auth/"); // Çıkış yapınca giriş ekranına yönlendir.
+    }
+  };
+
   return (
-    <View className="flex-1 bg-white rounded-lg m-3 p-1 shadow-lg justify-stretch">
-      <View className="flex-row">
-        <View className='w-1/4'>
-          <TouchableOpacity onPress={() => setModalVisible(true)}>
-            <View className="justify-center px-4 py-3">
-              <Image
-                source={profileImage}
-                className="rounded-full mx-auto"
-                style={{ width: 90, height: 90, resizeMode: 'contain' }}
-              />
-            </View>
-          </TouchableOpacity>
+    <View className="flex-1 bg-white rounded-lg m-3 p-1 shadow-lg justify-between">
+      {/* Profil Bilgileri ve İstatistikler */}
+      <View>
+        {/* Profil Bilgileri */}
+        <View className="flex-row">
+          <View className='w-1/4'>
+            <TouchableOpacity onPress={() => setModalVisible(true)}>
+              <View className="justify-center px-4 py-3">
+                <Image
+                  source={profileImage}
+                  className="rounded-full mx-auto"
+                  style={{ width: 90, height: 90, resizeMode: 'contain' }}
+                />
+              </View>
+            </TouchableOpacity>
 
-          <TouchableOpacity onPress={pickImage} className="static">
-            <View className='absolute -bottom-1 -right-3 m-1'>
-              <Ionicons name="add-circle" size={28} color="green" className='bg-white rounded-full p-1' />
-            </View>
-          </TouchableOpacity>
+            <TouchableOpacity onPress={pickImage} className="static">
+              <View className='absolute -bottom-1 -right-3 m-1'>
+                <Ionicons name="add-circle" size={28} color="green" className='bg-white rounded-full p-1' />
+              </View>
+            </TouchableOpacity>
 
+          </View>
+          <View className='w-3/4 flex-col mb-2 pl-2'>
+
+            <View className='w-full '>
+              <Text className='pl-4 py-2 font-semibold text-xl text-green-700'> {userData.name} {userData.surname} </Text>
+            </View>
+
+            <View className='w-full '>
+              <Text className='px-5 mb-2 text-wrap font-semibold'>Yaş: {userData.age}, Boy: {userData.height} cm, Ağırlık: {userData.weight} kg</Text>
+              <Text className='px-5 mb-2 text-wrap font-semibold'>{userData.description}</Text>
+            </View>
+
+            <View className='flex-row justify-between items-center mx-4 mt-2'>
+              <View className='mx-1'>
+                <Text className="text-center bg-green-600 text-white font-semibold p-1 rounded-md px-3 items-center"
+                  onPress={handleEditModalOpen}> Düzenle </Text>
+              </View>
+              <View className='mx-1'>
+                <Text className='text-center bg-green-600 text-white font-semibold p-1 rounded-md px-3 items-center'>Takip Et</Text>
+              </View>
+              <View className='mx-1'>
+                <Text className='text-center bg-green-600 text-white font-semibold p-1 rounded-md px-3 items-center'>Mesaj At</Text>
+              </View>
+            </View>
+
+          </View>
         </View>
-        <View className='w-3/4 flex-col mb-2 pl-2'>
 
-          <View className='w-full '>
-            <Text className='pl-4 py-2 font-semibold text-xl text-green-700'> {userData.name} {userData.surname} </Text>
-          </View>
-
-          <View className='w-full '>
-            <Text className='px-5 mb-2 text-wrap font-semibold'>Yaş: {userData.age}, Boy: {userData.height} cm, Ağırlık: {userData.weight} kg</Text>
-            <Text className='px-5 mb-2 text-wrap font-semibold'>{userData.description}</Text>
-          </View>
-
-          <View className='flex-row justify-between items-center mx-4 mt-2'>
-            <View className='mx-1'>
-              <Text className="text-center bg-green-600 text-white font-semibold p-1 rounded-md px-3 items-center"
-                onPress={handleEditModalOpen}> Düzenle </Text>
-            </View>
-            <View className='mx-1'>
-              <Text className='text-center bg-green-600 text-white font-semibold p-1 rounded-md px-3 items-center'>Takip Et</Text>
-            </View>
-            <View className='mx-1'>
-              <Text className='text-center bg-green-600 text-white font-semibold p-1 rounded-md px-3 items-center'>Mesaj At</Text>
-            </View>
-          </View>
-
-        </View>
-      </View>
-
-      <View className='my-1'>
-        <View className='flex-row justify-between mx-4'>
+        {/* Maç - Takipçi - Takip İstatistikleri */}
+        <View className='flex-row justify-between mx-4 mt-4'>
           <View className='flex-row p-2 '>
             <View className='flex justify-around items-center border-2 border-solid border-green-600 rounded-lg py-2 px-6'>
               <Text className='font-bold text-xl'> 5 </Text>
@@ -174,9 +184,11 @@ export default function Profile() {
         </View>
       </View>
 
-
-      <View className='flex-col bottom'>
-        <Text className='text-center bg-green-600 text-white font-semibold p-1 rounded-md px-3 items-center'>Çıkış Yap</Text>
+      {/* Çıkış Butonu En Altta */}
+      <View className="pb-4">
+        <TouchableOpacity onPress={handleLogout} className="bg-green-600 py-2 mx-4 rounded-lg">
+          <Text className="text-white font-semibold text-center">Çıkış Yap</Text>
+        </TouchableOpacity>
       </View>
 
       {/* Profil Fotoğrafı Modalı */}
