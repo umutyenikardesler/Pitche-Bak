@@ -25,7 +25,8 @@ export default function Index() {
       .from('match')
       .select(`
         id, title, time, date, prices, missing_groups, 
-        pitches (name, address, features, latitude, longitude)
+        pitches (name, address, features, district_id, latitude, longitude, 
+        districts (name))
       `)
       .gte('date', today) // Sadece bugünün tarihi ve sonrası olan maçları getir
       .order('date', { ascending: true })
@@ -107,7 +108,9 @@ export default function Index() {
 
               <View className="text-gray-700 text-md flex-row items-center pt-1">
                 <Ionicons name="location" size={18} color="black" />
-                <Text className="pl-2 font-semibold">{item.pitches?.name ?? 'Bilinmiyor'} </Text>
+                <Text className="pl-2 font-semibold">
+                  {item.pitches?.districts?.name ?? 'Bilinmiyor'} → {item.pitches?.name ?? 'Bilinmiyor'}
+                </Text>
               </View>
             </View>
 
