@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Text, View, Image, Button, TextInput, TouchableOpacity, Modal, Alert } from 'react-native';
+import { Text, View, Image, Button, TextInput, TouchableOpacity, Modal, Alert, KeyboardAvoidingView, ScrollView, TouchableWithoutFeedback, Keyboard, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -101,7 +101,7 @@ export default function Profile() {
 
   const handleLogout = async () => {
     const { error } = await supabase.auth.signOut();
-    
+
     if (error) {
       Alert.alert("Çıkış Yapılamadı", "Bir hata oluştu, lütfen tekrar deneyin.");
       console.error("Çıkış Hatası:", error.message);
@@ -134,7 +134,7 @@ export default function Profile() {
             </TouchableOpacity>
 
           </View>
-          <View className='w-3/4 flex-col mb-2 pl-2'>
+          <View className='w-3/4 flex-col mb-2 px-2'>
 
             <View className='w-full '>
               <Text className='pl-4 py-2 font-semibold text-xl text-green-700'> {userData.name} {userData.surname} </Text>
@@ -146,16 +146,16 @@ export default function Profile() {
             </View>
 
             <View className='flex-row justify-between items-center mx-4 mt-2'>
-              <View className='mx-1'>
-                <Text className="text-center bg-green-600 text-white font-semibold p-1 rounded-md px-3 items-center"
+              <View className='mx-1 w-1/2'>
+                <Text className="text-center bg-green-600 text-white font-semibold p-1 rounded-md px-1 items-center"
                   onPress={handleEditModalOpen}> Düzenle </Text>
               </View>
-              <View className='mx-1'>
-                <Text className='text-center bg-green-600 text-white font-semibold p-1 rounded-md px-3 items-center'>Takip Et</Text>
+              <View className='mx-1 w-1/2'>
+                <Text className='text-center bg-green-600 text-white font-semibold p-1 rounded-md px-1 items-center'>Takip Et</Text>
               </View>
-              <View className='mx-1'>
+              {/* <View className='mx-1'>
                 <Text className='text-center bg-green-600 text-white font-semibold p-1 rounded-md px-3 items-center'>Mesaj At</Text>
-              </View>
+              </View> */}
             </View>
 
           </View>
@@ -221,25 +221,36 @@ export default function Profile() {
 
       {/* Bilgi Düzenleme Modalı */}
       <Modal visible={editModalVisible} transparent={true} animationType="slide">
-        <View className="flex-1 justify-center items-center bg-black/50">
-          <View className="bg-white p-6 rounded-lg w-3/4">
-            <Text className="text-xl font-bold text-center text-green-700 mb-4">Kişisel Bilgilerini Tamamla</Text>
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+          <View className="flex-1 justify-center items-center bg-black/50">
+            <KeyboardAvoidingView
+              behavior={Platform.OS === "ios" ? "padding" : "height"}
+              className="w-full"
+            >
+              <ScrollView
+                contentContainerStyle={{ justifyContent: "center", alignItems: "center", padding: 10 }}
+                keyboardShouldPersistTaps="handled"
+              >
+                <View className="bg-white p-6 rounded-lg w-3/4">
+                  <Text className="text-xl font-bold text-center text-green-700 mb-4">Kişisel Bilgilerini Tamamla</Text>
 
-            <TextInput placeholder="Adınız" value={userData.name} onChangeText={(text) => setUserData({ ...userData, name: text })} className="border border-gray-300 rounded p-2 mb-2" />
-            <TextInput placeholder="Soyadınız" value={userData.surname} onChangeText={(text) => setUserData({ ...userData, surname: text })} className="border border-gray-300 rounded p-2 mb-2" />
-            <TextInput placeholder="Yaş" value={userData.age?.toString()} onChangeText={(text) => setUserData({ ...userData, age: text })} className="border border-gray-300 rounded p-2 mb-2" keyboardType="numeric" />
-            <TextInput placeholder="Boy (cm)" value={userData.height?.toString()} onChangeText={(text) => setUserData({ ...userData, height: text })} className="border border-gray-300 rounded p-2 mb-2" keyboardType="numeric" />
-            <TextInput placeholder="Kilo (kg)" value={userData.weight?.toString()} onChangeText={(text) => setUserData({ ...userData, weight: text })} className="border border-gray-300 rounded p-2 mb-2" keyboardType="numeric" />
-            <TextInput placeholder="Açıklama" value={userData.description} onChangeText={(text) => setUserData({ ...userData, description: text })} className="border border-gray-300 rounded p-2 mb-2" multiline />
+                  <TextInput placeholder="Adınız" value={userData.name} onChangeText={(text) => setUserData({ ...userData, name: text })} className="border border-gray-300 rounded p-2 mb-2" />
+                  <TextInput placeholder="Soyadınız" value={userData.surname} onChangeText={(text) => setUserData({ ...userData, surname: text })} className="border border-gray-300 rounded p-2 mb-2" />
+                  <TextInput placeholder="Yaş" value={userData.age?.toString()} onChangeText={(text) => setUserData({ ...userData, age: text })} className="border border-gray-300 rounded p-2 mb-2" keyboardType="numeric" />
+                  <TextInput placeholder="Boy (cm)" value={userData.height?.toString()} onChangeText={(text) => setUserData({ ...userData, height: text })} className="border border-gray-300 rounded p-2 mb-2" keyboardType="numeric" />
+                  <TextInput placeholder="Kilo (kg)" value={userData.weight?.toString()} onChangeText={(text) => setUserData({ ...userData, weight: text })} className="border border-gray-300 rounded p-2 mb-2" keyboardType="numeric" />
+                  <TextInput placeholder="Açıklama" value={userData.description} onChangeText={(text) => setUserData({ ...userData, description: text })} className="border border-gray-300 rounded p-2 mb-2" multiline />
 
-            <View className="flex-row justify-between mt-3">
-              <Text className='text-white bg-red-500 p-2 rounded-lg' onPress={() => setEditModalVisible(false)}> İptal Et </Text>
-              <Text className='text-white bg-green-600 p-2 rounded-lg' onPress={handleSave}> Kaydet </Text>
-            </View>
+                  <View className="flex-row justify-between mt-3">
+                    <Text className='text-white bg-red-500 p-2 rounded-lg' onPress={() => setEditModalVisible(false)}> İptal Et </Text>
+                    <Text className='text-white bg-green-600 p-2 rounded-lg' onPress={handleSave}> Kaydet </Text>
+                  </View>
+                </View>
+              </ScrollView>
+            </KeyboardAvoidingView>
           </View>
-        </View>
+        </TouchableWithoutFeedback>
       </Modal>
-
     </View>
   );
 }

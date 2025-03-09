@@ -1,11 +1,12 @@
-import React, { useState } from 'react';
-import { View, Text, TextInput, ScrollView, TouchableOpacity, Alert, Platform } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, Text, TextInput, ScrollView, TouchableOpacity, Alert, KeyboardAvoidingView, Platform, TouchableWithoutFeedback, Keyboard } from 'react-native';
 import { MatchDetailsForm } from '@/components/MatchDetailsForm';
 import { LocationSelector } from '@/components/LocationSelector';
 import { SquadSelector } from '@/components/SquadSelector';
 import { supabase } from '@/services/supabase';
 import '@/global.css';
-import { useNavigation } from '@react-navigation/native'; // Navigation kütüphanesi eklendi
+import { useNavigation } from '@react-navigation/native';
+import AsyncStorage from "@react-native-async-storage/async-storage"; // Kullanıcı ID'sini almak için eklendi
 
 interface MissingPosition {
   selected: boolean;
@@ -35,9 +36,26 @@ export default function CreateMatch() {
     forvet: { selected: false, count: 1 }
   });
 
+  const [userId, setUserId] = useState(null);
   const navigation = useNavigation(); // Navigation hook'u tanımlandı
 
+  useEffect(() => {
+    const fetchUserId = async () => {
+      const storedUserId = await AsyncStorage.getItem("userId");
+      if (storedUserId) {
+        setUserId(storedUserId);
+      }
+    };
+    fetchUserId();
+  }, []);
+
   const handleCreateMatch = async () => {
+
+    if (!userId) {
+      Alert.alert("Hata", "Kullanıcı bilgisi bulunamadı, lütfen tekrar giriş yapın.");
+      return;
+    }
+
     const formattedTime = `${time.padStart(2, '0')}:00:00`;
     const missingGroups = isSquadIncomplete
       ? Object.keys(missingPositions)
@@ -61,6 +79,7 @@ export default function CreateMatch() {
           date: date.toISOString().split('T')[0],
           prices: price,
           missing_groups: missingGroups,
+          create_user: userId, // Kullanıcının ID'si burada ekleniyor
         },
       ]);
 

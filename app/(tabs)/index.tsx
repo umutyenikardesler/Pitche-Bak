@@ -87,7 +87,7 @@ export default function Index() {
       <TouchableOpacity onPress={() => handleSelectMatch(item)}>
         <View className="bg-white rounded-lg mx-4 mt-1.5 mb-1 p-2 shadow-lg">
           <View className="flex-row">
-            <View className="w-1/5 justify-center py-1 px-1">
+            <View className="w-1/5 justify-center py-1 p-1">
               <Image
                 source={require('@/assets/images/ball.png')}
                 className="rounded-full mx-auto"
@@ -95,26 +95,25 @@ export default function Index() {
               />
             </View>
 
-            <View className="w-3/5 px-2 ml-2">
+            <View className="w-4/6 px-2">
               <Text className="text-lg text-green-600 font-semibold">
                 {formatTitle(item.title)}
               </Text>
 
               <View className="text-gray-700 text-md flex-row items-center">
                 <Ionicons name="calendar-outline" size={18} color="black" />
-                <Text className="pl-2 font-semibold">{item.formattedDate}    →</Text>
+                <Text className="pl-2 font-semibold"> {item.formattedDate}  →</Text>
                 <Text className="pl-2 font-bold text-green-600"> {item.startFormatted}-{item.endFormatted} </Text>
               </View>
 
               <View className="text-gray-700 text-md flex-row items-center pt-1">
                 <Ionicons name="location" size={18} color="black" />
-                <Text className="pl-2 font-semibold">
-                  {item.pitches?.districts?.name ?? 'Bilinmiyor'} → {item.pitches?.name ?? 'Bilinmiyor'}
-                </Text>
+                <Text className="pl-2 font-semibold"> {item.pitches?.districts?.name ?? 'Bilinmiyor'}  →</Text>
+                <Text className="pl-2 font-bold text-green-700"> {item.pitches?.name ?? 'Bilinmiyor'} </Text>
               </View>
             </View>
 
-            <View className="w-1/5 py-2 px-1 items-center justify-center">
+            <View className="flex-1 items-end justify-center px-1">
               <Ionicons name="chevron-forward-outline" size={20} color="green" />
             </View>
           </View>
