@@ -1,12 +1,21 @@
-import React, { useEffect, useState } from 'react';
-import { Text, View, Image, Button, TextInput, TouchableOpacity, Modal, Alert, KeyboardAvoidingView, ScrollView, TouchableWithoutFeedback, Keyboard, Platform } from 'react-native';
+import React, { useEffect, useState, useCallback } from 'react';
+import { Text, View, Image, Button, Dimensions, FlatList, TextInput, TouchableOpacity, Modal, Alert, KeyboardAvoidingView, ScrollView, TouchableWithoutFeedback, Keyboard, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
+import { useFocusEffect } from "@react-navigation/native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { supabase } from '@/services/supabase';
 import '@/global.css';
 
 export default function Profile() {
+  const progress = 85;
+  const screenWidth = Dimensions.get("window").width;
+  const fontSize = screenWidth > 430 ? 12 : screenWidth > 320 ? 10.5 : 9;
+
+  // const [userData, setUserData] = useState(null);
+  const [matches, setMatches] = useState([]); // Kullanıcının maçları
+  const [loading, setLoading] = useState(true);
+
   const [modalVisible, setModalVisible] = useState(false);
   const [profileImage, setProfileImage] = useState(require('@/assets/images/ball.png'));
   const [editModalVisible, setEditModalVisible] = useState(false);
@@ -25,6 +34,12 @@ export default function Profile() {
   useEffect(() => {
     fetchUserData();
   }, []);
+
+  useEffect(() => {
+    if (userData) {
+      fetchUserMatches();
+    }
+  }, [userData]);
 
   const fetchUserData = async () => {
     const { data, error } = await supabase.auth.getUser();
@@ -56,6 +71,36 @@ export default function Profile() {
     }
 
     if (userError) console.error("Kullanıcı bilgileri çekilirken hata oluştu:", userError.message);
+  };
+
+  const fetchUserMatches = async () => {
+    if (!userData || !userData.id) {
+      console.error("Geçersiz kullanıcı ID’si:", userData);
+      return;
+    }
+
+    setLoading(true);
+
+    const { data, error } = await supabase
+      .from("match")
+      .select("*, pitches (name, districts (name))")
+      .eq("create_user", userData.id) // Kullanıcının oluşturduğu maçları al
+      .order("date", { ascending: false }); // En yeni maçlar üste gelsin
+
+    if (error) {
+      console.error('Maçları çekerken hata oluştu:', error);
+      setMatches([]); // Hata alındığında matches state'ini boş array yap
+    } else {
+      const formattedData = data?.map((item) => ({
+        ...item,
+        formattedDate: new Date(item.date).toLocaleDateString('tr-TR'),
+        startFormatted: `${item.time.split(':')[0]}:${item.time.split(':')[1]}`,
+        endFormatted: `${parseInt(item.time.split(':')[0], 10) + 1}:${item.time.split(':')[1]}`
+      })) || [];
+
+      setMatches(formattedData);
+    }
+    setLoading(false);
   };
 
   const pickImage = async () => {
@@ -99,6 +144,12 @@ export default function Profile() {
 
   const router = useRouter(); // Router'ı tanımlayalım.
 
+  useFocusEffect(
+    useCallback(() => {
+      fetchUserMatches(); // Sayfa her odaklandığında maçları güncelle
+    }, [])
+  );
+
   const handleLogout = async () => {
     const { error } = await supabase.auth.signOut();
 
@@ -111,7 +162,7 @@ export default function Profile() {
   };
 
   return (
-    <View className="flex-1 bg-white rounded-lg m-3 p-1 shadow-lg justify-between">
+    <View className="flex-1 bg-white rounded-lg m-3 p-1 shadow-lg ">
       {/* Profil Bilgileri ve İstatistikler */}
       <View>
         {/* Profil Bilgileri */}
@@ -140,8 +191,15 @@ export default function Profile() {
               <Text className='pl-4 py-2 font-semibold text-xl text-green-700'> {userData.name} {userData.surname} </Text>
             </View>
 
-            <View className='w-full '>
-              <Text className='px-5 mb-2 text-wrap font-semibold'>Yaş: {userData.age}, Boy: {userData.height} cm, Ağırlık: {userData.weight} kg</Text>
+            <View className='px-5 mb-2 flex-row justify-between'>
+              <Text className='text-wrap font-semibold'>Yaş:</Text>
+              <Text className='text-green-600 font-semibold'> {userData.age}, </Text>
+              <Text className='font-semibold'>Boy:</Text>
+              <Text className='text-green-600 font-semibold'> {userData.height} cm, </Text>
+              <Text className=' font-semibold'>Ağırlık:</Text>
+              <Text className='text-green-600 font-semibold'> {userData.weight} kg</Text>
+            </View>
+            <View>
               <Text className='px-5 mb-2 text-wrap font-semibold'>{userData.description}</Text>
             </View>
 
@@ -162,10 +220,10 @@ export default function Profile() {
         </View>
 
         {/* Maç - Takipçi - Takip İstatistikleri */}
-        <View className='flex-row justify-between mx-4 mt-4'>
+        <View className='flex-row justify-between mx-4 mt-1'>
           <View className='flex-row p-2 '>
             <View className='flex justify-around items-center border-2 border-solid border-green-600 rounded-lg py-2 px-6'>
-              <Text className='font-bold text-xl'> 5 </Text>
+               <Text className='font-bold text-xl'> {matches.length} </Text> 
               <Text className='font-bold text-green-700'>Maç</Text>
             </View>
           </View>
@@ -182,10 +240,74 @@ export default function Profile() {
             </View>
           </View>
         </View>
+
+        {/* KONDİSYONUN Başlığı ve İçeriği */}
+        <View className="flex-row mt-2 px-3 justify-center">
+          <Ionicons name="accessibility" size={16} color="green" className="pl-2" />
+          <Text className="font-bold text-green-700"> KONDİSYONUN </Text>
+        </View>
+
+        <View className="bg-white rounded-lg mx-4 my-3 p-3 shadow-md">
+          {/* Progress Bar ve Yüzde */}
+          <View className="w-full mb-3 flex-row items-center">
+            {/* Progress Bar */}
+            <View className="flex-1 h-3 bg-gray-200 rounded-full overflow-hidden">
+              <View className="bg-green-600 h-full" style={{ width: `${progress}%` }} />
+            </View>
+            {/* Yüzde */}
+            <Text className="pl-2 font-semibold text-base text-green-500">{progress}%</Text>
+          </View>
+
+          {/* İkon ve Metin */}
+          <View className="flex-row items-center -mt-2">
+            <Ionicons name="information-circle-outline" size={16} color="black" />
+            <Text className="text-xs text-slate-600 pl-2 " style={{ fontSize }}>
+              Kondisyonun yaptığın maç sayısına göre değişiklik gösterebilir.
+            </Text>
+          </View>
+        </View>
+
+        {/* Maç Listesi ve İçeriği */}
+        <View className="flex-row mt-2 px-3 justify-center mb-2">
+          <Ionicons name="accessibility" size={16} color="green" className="pl-2" />
+          <Text className="font-bold text-green-700"> MAÇLARIM </Text>
+        </View>
+
+        {/* Maç Listesi */}
+        <View className='flex mb-2'>
+          {loading ? (
+            <Text className="text-center mb-4 text-gray-500">Yükleniyor...</Text>
+          ) : matches.length > 0 ? (
+            <FlatList
+              className='mb-2'
+              data={matches}
+              keyExtractor={(item) => item.id.toString()}
+              renderItem={({ item }) => (
+                <View className="bg-gray-100 rounded-lg p-3 mx-4 mt-2 mb-1 shadow-sm">
+                  <Text className="text-green-700 font-bold mb-2">{item.title}</Text>
+                  <View className="text-gray-700 text-md flex-row items-center">
+                    <Ionicons name="calendar-outline" size={18} color="black" />
+                    <Text className="pl-2 font-semibold"> {item.formattedDate}  →</Text>
+                    <Text className="pl-2 font-bold text-green-600"> {item.startFormatted}-{item.endFormatted} </Text>
+                  </View>
+                  <View className="text-gray-700 text-md flex-row items-center pt-1">
+                    <Ionicons name="location" size={18} color="black" />
+                    <Text className="pl-2 font-semibold"> {item.pitches?.districts?.name ?? 'Bilinmiyor'}  →</Text>
+                    <Text className="pl-2 font-bold text-green-700"> {item.pitches?.name ?? 'Bilinmiyor'} </Text>
+                  </View>
+                </View>
+              )}
+              style={{ maxHeight: 300, marginBottom:10 }} // 3 maçlık yüksekliği sınırla, scroll aktif olur
+              nestedScrollEnabled={true} // FlatList'in içinde kaydırma yapabilmesini sağla
+            />
+          ) : (
+            <Text className="text-center mb-4 text-gray-500">Henüz maç oluşturmadınız.</Text>
+          )}
+        </View>
       </View>
 
       {/* Çıkış Butonu En Altta */}
-      <View className="pb-4">
+      <View className="flex-1 justify-end bottom-0 pb-4">
         <TouchableOpacity onPress={handleLogout} className="bg-green-600 py-2 mx-4 rounded-lg">
           <Text className="text-white font-semibold text-center">Çıkış Yap</Text>
         </TouchableOpacity>
@@ -239,7 +361,7 @@ export default function Profile() {
                   <TextInput placeholder="Yaş" value={userData.age?.toString()} onChangeText={(text) => setUserData({ ...userData, age: text })} className="border border-gray-300 rounded p-2 mb-2" keyboardType="numeric" />
                   <TextInput placeholder="Boy (cm)" value={userData.height?.toString()} onChangeText={(text) => setUserData({ ...userData, height: text })} className="border border-gray-300 rounded p-2 mb-2" keyboardType="numeric" />
                   <TextInput placeholder="Kilo (kg)" value={userData.weight?.toString()} onChangeText={(text) => setUserData({ ...userData, weight: text })} className="border border-gray-300 rounded p-2 mb-2" keyboardType="numeric" />
-                  <TextInput placeholder="Açıklama" value={userData.description} onChangeText={(text) => setUserData({ ...userData, description: text })} className="border border-gray-300 rounded p-2 mb-2" multiline />
+                  <TextInput placeholder="Biyografi" value={userData.description} onChangeText={(text) => setUserData({ ...userData, description: text })} className="border border-gray-300 rounded p-2 mb-2" multiline />
 
                   <View className="flex-row justify-between mt-3">
                     <Text className='text-white bg-red-500 p-2 rounded-lg' onPress={() => setEditModalVisible(false)}> İptal Et </Text>
@@ -251,6 +373,6 @@ export default function Profile() {
           </View>
         </TouchableWithoutFeedback>
       </Modal>
-    </View>
+    </View >
   );
 }

@@ -70,7 +70,7 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
             animationIn="slideInUp" // Animasyonlar eklenebilir
             animationOut="slideOutDown"
           >
-      <View className="flex-1 justify-center items-center bg-black/50">
+      <View className="flex-1 justify-center items-center">
         <View className="w-lg bg-white rounded-lg p-4" style={{ maxHeight: screenHeight * 0.75 }}>
           <FlatList
             data={districts}
@@ -111,7 +111,7 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
             animationOut="slideOutDown"
             style={{ flex: 1 }}
           >
-       <View className="flex-1 justify-center items-center bg-black/50">
+       <View className="flex-1 justify-center items-center">
         <View 
           className="w-3/5 bg-white rounded-lg p-4" 
           style={{ 

@@ -44,7 +44,7 @@ export const MatchDetailsForm: React.FC<MatchDetailsFormProps> = ({ date, setDat
       // onRequestClose={() => setShowTimeModal(false)}
       onBackdropPress={() => setShowTimeModal(false)}
     >
-      <View className="flex-1 justify-center items-center bg-black/50">
+      <View className="flex-1 justify-center items-center">
         <View className="w-80 bg-white rounded-lg p-4" style={{ maxHeight: screenHeight * 0.75 }}>
           <FlatList
             data={Array.from({ length: 24 }, (_, i) => ({ label: `${i + 1}:00`, value: (i + 1).toString() }))}
@@ -97,7 +97,7 @@ export const MatchDetailsForm: React.FC<MatchDetailsFormProps> = ({ date, setDat
                 // onRequestClose={() => setShowTimeModal(false)}
                 onBackdropPress={() => setShowTimeModal(false)}
               >
-                <View className="flex-1 justify-center items-center bg-black/50">
+                <View className="flex-1 justify-center items-center">
                   <View className="bg-white p-4 rounded-lg">
                     <ReactDatePicker
                       selected={date}
