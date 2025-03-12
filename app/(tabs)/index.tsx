@@ -7,6 +7,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { GestureHandlerRootView, GestureDetector, Gesture } from "react-native-gesture-handler";
 import { runOnJS } from "react-native-reanimated";
 import MapView, { Marker } from "react-native-maps";
+import { useRouter, useLocalSearchParams } from "expo-router";
 
 export default function Index() {
   const progress = 85;
@@ -91,12 +92,18 @@ export default function Index() {
     setRefreshing(false);
   };
 
+const router = useRouter(); // Router'ı tanımlayalım.
 
   useFocusEffect(
     useCallback(() => {
       fetchMatches();
+  
+      if (router.params?.refreshProfile) {
+        navigation.navigate("profile", { refreshMatches: true });
+      }
+  
       return () => { };
-    }, [])
+    }, [router.params])
   );
 
   const handleSelectMatch = (match) => {
@@ -129,7 +136,7 @@ export default function Index() {
 
     return (
       <TouchableOpacity onPress={() => handleSelectMatch(item)}>
-        <View className="bg-white rounded-lg mx-4 mt-1.5 mb-1 p-2 shadow-lg">
+        <View className="bg-white rounded-lg mx-4 mt-1 mb-1 p-2 shadow-lg">
           <View className="flex-row">
             <View className="w-1/5 justify-center py-1 p-1">
               <Image
@@ -298,9 +305,9 @@ export default function Index() {
             <Text className="font-bold text-green-700"> KONDİSYONUN </Text>
           </View>
 
-          <View className="bg-white rounded-lg mx-4 my-3 p-3 shadow-md">
+          <View className="bg-white rounded-lg mx-4 my-2 p-3 shadow-md">
             {/* Progress Bar ve Yüzde */}
-            <View className="w-full mb-3 flex-row items-center">
+            <View className="w-full mb-1 flex-row items-center">
               {/* Progress Bar */}
               <View className="flex-1 h-3 bg-gray-200 rounded-full overflow-hidden">
                 <View className="bg-green-600 h-full" style={{ width: `${progress}%` }} />
@@ -319,9 +326,9 @@ export default function Index() {
           </View>
 
           {/* SENİ BEKLEYEN MAÇLAR Başlığı */}
-          <View className="flex-row mt-1 mb-2 px-3">
-            <Ionicons name="alarm-outline" size={16} color="green" className="pl-2" />
-            <Text className="font-bold text-green-700 "> SENİ BEKLEYEN MAÇLAR </Text>
+          <View className="flex-row py-3 bg-green-700 px-3">
+            <Ionicons name="alarm-outline" size={16} color="white" className="pl-2" />
+            <Text className="font-bold text-white "> SENİ BEKLEYEN MAÇLAR </Text>
           </View>
 
           {/* Kullanıcının oluşturduğu maçlar */}
@@ -330,13 +337,13 @@ export default function Index() {
             keyExtractor={(item) => item.id.toString()}
             renderItem={renderMatch}
             refreshControl={<RefreshControl refreshing={refreshing} onRefresh={fetchMatches} />}
-            style={{ maxHeight: 182 }}
+            style={{ maxHeight: 230, paddingTop:2, paddingBottom:3 }}
           />
 
           {/* KADROSU EKSİK MAÇLAR Başlığı */}
-          <View className="flex-row mt-1 mb-2 px-3">
-            <Ionicons name="alarm-outline" size={16} color="green" className="pl-2" />
-            <Text className="font-bold text-green-700 "> KADROSU EKSİK MAÇLAR </Text>
+          <View className="flex-row px-3 py-3 bg-green-700 ">
+            <Ionicons name="alarm-outline" size={16} color="white" className="pl-2" />
+            <Text className="font-bold text-white "> KADROSU EKSİK MAÇLAR </Text>
           </View>
 
           {/* Kullanıcının oluşturmadığı maçlar */}
@@ -345,6 +352,7 @@ export default function Index() {
             keyExtractor={(item) => item.id.toString()}
             renderItem={renderMatch}
             refreshControl={<RefreshControl refreshing={refreshing} onRefresh={fetchMatches} />}
+            style={{ paddingTop:2, paddingBottom:3 }}
           />
         </View>
       )}

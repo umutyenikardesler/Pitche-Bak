@@ -124,7 +124,7 @@ export default function CreateMatch() {
                   forvet: { selected: false, count: 1 },
                 });
 
-                navigation.navigate('index'); // Mobil yönlendirme
+                navigation.navigate("index", { refreshProfile: true }); // Profil sayfasını güncellemek için parametre gönder
               }
             }
           ]

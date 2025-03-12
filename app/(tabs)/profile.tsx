@@ -1,5 +1,5 @@
-import React, { useEffect, useState, useCallback } from 'react';
-import { Text, View, Image, Button, Dimensions, FlatList, TextInput, TouchableOpacity, Modal, Alert, KeyboardAvoidingView, ScrollView, TouchableWithoutFeedback, Keyboard, Platform } from 'react-native';
+import { useEffect, useState, useCallback } from 'react';
+import { Text, View, Image, Dimensions, FlatList, TextInput, TouchableOpacity, Modal, Alert, KeyboardAvoidingView, ScrollView, TouchableWithoutFeedback, Keyboard, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { useFocusEffect } from "@react-navigation/native";
@@ -12,14 +12,13 @@ export default function Profile() {
   const screenWidth = Dimensions.get("window").width;
   const fontSize = screenWidth > 430 ? 12 : screenWidth > 320 ? 10.5 : 9;
 
-  // const [userData, setUserData] = useState(null);
   const [matches, setMatches] = useState([]); // Kullanıcının maçları
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false); // Refresh işlemi için state
 
   const [modalVisible, setModalVisible] = useState(false);
   const [profileImage, setProfileImage] = useState(require('@/assets/images/ball.png'));
   const [editModalVisible, setEditModalVisible] = useState(false);
-  const searchParams = useLocalSearchParams();
 
   const [userData, setUserData] = useState({
     id: "",
@@ -31,6 +30,8 @@ export default function Profile() {
     description: "",
   });
 
+  const searchParams = useLocalSearchParams();
+
   useEffect(() => {
     fetchUserData();
   }, []);
@@ -40,6 +41,17 @@ export default function Profile() {
       fetchUserMatches();
     }
   }, [userData]);
+
+  useEffect(() => {
+    if (searchParams.firstLogin === "true" && userData) {
+      const hasMissingFields = !userData.name || !userData.surname || !userData.age ||
+        !userData.height || !userData.weight || !userData.description;
+
+      if (hasMissingFields) {
+        setEditModalVisible(true);
+      }
+    }
+  }, [searchParams, userData]);
 
   const fetchUserData = async () => {
     const { data, error } = await supabase.auth.getUser();
@@ -61,16 +73,12 @@ export default function Profile() {
         weight: userInfo.weight || "",
         description: userInfo.description || "",
       });
-      // Eğer firstLogin parametresi geldiyse ve eksik alan varsa modalı aç
-      const hasMissingFields = !userInfo.name || !userInfo.surname || !userInfo.age ||
-        !userInfo.height || !userInfo.weight || !userInfo.description;
 
-      if (searchParams.firstLogin === "true" && hasMissingFields) {
-        setEditModalVisible(true);
+      // userError kontrolü userInfo kontrolünün içine alındı
+      if (userError) {
+        console.error("Kullanıcı bilgileri çekilirken hata oluştu:", userError.message);
       }
-    }
-
-    if (userError) console.error("Kullanıcı bilgileri çekilirken hata oluştu:", userError.message);
+    };
   };
 
   const fetchUserMatches = async () => {
@@ -142,26 +150,45 @@ export default function Profile() {
     setEditModalVisible(true);
   };
 
-  const router = useRouter(); // Router'ı tanımlayalım.
+  const [prevMatchCount, setPrevMatchCount] = useState(0);
+  const router = useRouter(); // route değişkeni eklendi
 
-  // useFocusEffect(
-  //   useCallback(() => {
-  //     fetchUserMatches(); // Sayfa her odaklandığında maçları güncelle
-  //   }, [])
-  // );
+  useFocusEffect(
+    useCallback(() => {
+      const fetchData = async () => {
+        await fetchUserData(); // Kullanıcı verisini al
 
-  const handleRefreshMatches = async () => {
-    await fetchUserMatches();
-  };
+        //     // Yeni maç sayısını al (ID'leri çekerek hızlı sorgu)
+        //     const { data: matchData, error } = await supabase
+        //       .from("match")
+        //       .select("id") // Sadece ID çekiyoruz, performans için
+        //       .eq("create_user", userData.id);
 
-  const handleCreateMatch = () => {
-    router.push({
-      pathname: "/(tabs)/create",
-      params: {
-        onMatchCreated: handleRefreshMatches,
-      },
-    });
-  };
+        //     if (error) {
+        //       console.error("Maçları kontrol ederken hata oluştu:", error.message);
+        //       return;
+        //     }
+
+        //     if (matchData) {
+        //       const newMatchCount = matchData.length;
+
+        //       if (newMatchCount !== prevMatchCount) { // Eğer değişiklik varsa
+        //         setPrevMatchCount(newMatchCount); // Yeni maç sayısını sakla
+        //         await fetchUserMatches(); // Maçları güncelle
+        //       }
+        //     }
+        //   };
+
+        //   fetchData();
+        // }, [prevMatchCount, userData.id]) // Sadece değişiklik olduğunda çalışsın
+
+        await fetchUserMatches(); // Maçları güncelle
+      };
+
+      fetchData();
+    }, []) // Sadece sayfa odaklandığında çalışsın
+
+  );
 
   const handleLogout = async () => {
     const { error } = await supabase.auth.signOut();
@@ -172,6 +199,13 @@ export default function Profile() {
     } else {
       router.replace("auth/"); // Çıkış yapınca giriş ekranına yönlendir.
     }
+  };
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await fetchUserData(); // Kullanıcı verilerini güncelle
+    await fetchUserMatches(); // Maçları güncelle
+    setRefreshing(false);
   };
 
   return (
@@ -236,7 +270,7 @@ export default function Profile() {
         <View className='flex-row justify-between mx-4 mt-1'>
           <View className='flex-row p-2 '>
             <View className='flex justify-around items-center border-2 border-solid border-green-600 rounded-lg py-2 px-6'>
-               <Text className='font-bold text-xl'> {matches.length} </Text> 
+              <Text className='font-bold text-xl'> {matches.length} </Text>
               <Text className='font-bold text-green-700'>Maç</Text>
             </View>
           </View>
@@ -310,8 +344,10 @@ export default function Profile() {
                   </View>
                 </View>
               )}
-              style={{ maxHeight: 300, marginBottom:10 }} // 3 maçlık yüksekliği sınırla, scroll aktif olur
+              style={{ maxHeight: 290, marginBottom: 0 }} // 3 maçlık yüksekliği sınırla, scroll aktif olur
               nestedScrollEnabled={true} // FlatList'in içinde kaydırma yapabilmesini sağla
+              refreshing={refreshing} // FlatList'e refresh state'ini ekle
+              onRefresh={handleRefresh} // Kullanıcı aşağı çektiğinde çalışacak fonksiyon
             />
           ) : (
             <Text className="text-center mb-4 text-gray-500">Henüz maç oluşturmadınız.</Text>
@@ -321,8 +357,8 @@ export default function Profile() {
 
       {/* Çıkış Butonu En Altta */}
       <View className="flex-1 justify-end bottom-0 pb-4">
-        <TouchableOpacity onPress={handleLogout} className="bg-green-600 py-2 mx-4 rounded-lg">
-          <Text className="text-white font-semibold text-center">Çıkış Yap</Text>
+        <TouchableOpacity onPress={handleLogout} className="bg-green-600 mx-4 rounded-lg">
+          <Text className="text-white font-semibold text-center p-2">Çıkış Yap</Text>
         </TouchableOpacity>
       </View>
 
