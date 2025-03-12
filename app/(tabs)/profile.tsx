@@ -144,11 +144,24 @@ export default function Profile() {
 
   const router = useRouter(); // Router'ı tanımlayalım.
 
-  useFocusEffect(
-    useCallback(() => {
-      fetchUserMatches(); // Sayfa her odaklandığında maçları güncelle
-    }, [])
-  );
+  // useFocusEffect(
+  //   useCallback(() => {
+  //     fetchUserMatches(); // Sayfa her odaklandığında maçları güncelle
+  //   }, [])
+  // );
+
+  const handleRefreshMatches = async () => {
+    await fetchUserMatches();
+  };
+
+  const handleCreateMatch = () => {
+    router.push({
+      pathname: "/(tabs)/create",
+      params: {
+        onMatchCreated: handleRefreshMatches,
+      },
+    });
+  };
 
   const handleLogout = async () => {
     const { error } = await supabase.auth.signOut();

@@ -12,41 +12,85 @@ export default function Index() {
   const progress = 85;
   const screenWidth = Dimensions.get("window").width;
   const fontSize = screenWidth > 430 ? 12 : screenWidth > 320 ? 11.5 : 10;
-  const [matches, setMatches] = useState([]);
+
+  const [userMatches, setUserMatches] = useState([]);
+  const [otherMatches, setOtherMatches] = useState([]);
   const [selectedMatch, setSelectedMatch] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [userId, setUserId] = useState(null); // Kullanıcı ID'si
 
   const fetchMatches = async () => {
     setRefreshing(true);
 
     const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD formatında bugünün tarihi
 
-    const { data, error } = await supabase
+    const { data: authData, error: authError } = await supabase.auth.getUser();
+    if (authError || !authData.user) {
+      console.error('Kullanıcı kimlik doğrulama hatası:', authError);
+      setRefreshing(false);
+      return;
+    }
+    setUserId(authData.user.id);
+
+    // Kullanıcının oluşturduğu maçları al
+    const { data: userMatchData, error: userMatchError } = await supabase
       .from('match')
       .select(`
         id, title, time, date, prices, missing_groups, 
         pitches (name, address, features, district_id, latitude, longitude, 
         districts (name))
       `)
-      .gte('date', today) // Sadece bugünün tarihi ve sonrası olan maçları getir
+      .eq("create_user", authData.user.id)
+      .gte('date', today)
       .order('date', { ascending: true })
       .order('time', { ascending: true });
 
-    if (error) {
-      console.error('Veri çekme hatası:', error);
-      setMatches([]); // Hata alındığında matches state'ini boş array yap
-    } else {
-      const formattedData = data?.map((item) => ({
-        ...item,
-        formattedDate: new Date(item.date).toLocaleDateString('tr-TR'),
-        startFormatted: `${item.time.split(':')[0]}:${item.time.split(':')[1]}`,
-        endFormatted: `${parseInt(item.time.split(':')[0], 10) + 1}:${item.time.split(':')[1]}`
-      })) || [];
-
-      setMatches(formattedData);
+    if (userMatchError) {
+      console.error('Kullanıcının maçları çekme hatası:', userMatchError);
+      setRefreshing(false);
+      return;
     }
+
+    const userFormattedData = userMatchData?.map((item) => ({
+      ...item,
+      formattedDate: new Date(item.date).toLocaleDateString('tr-TR'),
+      startFormatted: `${item.time.split(':')[0]}:${item.time.split(':')[1]}`,
+      endFormatted: `${parseInt(item.time.split(':')[0], 10) + 1}:${item.time.split(':')[1]}`,
+    })) || [];
+
+    setUserMatches(userFormattedData);
+
+
+    // Kullanıcının oluşturmadığı maçları al
+    const { data: otherMatchData, error: otherMatchError } = await supabase
+      .from('match')
+      .select(`
+        id, title, time, date, prices, missing_groups, 
+        pitches (name, address, features, district_id, latitude, longitude, 
+        districts (name))
+      `)
+      .neq("create_user", authData.user.id)
+      .gte('date', today)
+      .order('date', { ascending: true })
+      .order('time', { ascending: true });
+
+    if (otherMatchError) {
+      console.error('Diğer maçları çekme hatası:', otherMatchError);
+      setRefreshing(false);
+      return;
+    }
+
+    const otherFormattedData = otherMatchData?.map((item) => ({
+      ...item,
+      formattedDate: new Date(item.date).toLocaleDateString('tr-TR'),
+      startFormatted: `${item.time.split(':')[0]}:${item.time.split(':')[1]}`,
+      endFormatted: `${parseInt(item.time.split(':')[0], 10) + 1}:${item.time.split(':')[1]}`,
+    })) || [];
+
+    setOtherMatches(otherFormattedData);
     setRefreshing(false);
   };
+
 
   useFocusEffect(
     useCallback(() => {
@@ -247,48 +291,62 @@ export default function Index() {
           </ScrollView>
         </GestureDetector>
       ) : (
-        <FlatList
-          data={matches}
-          keyExtractor={(item) => item.id.toString()}
-          renderItem={renderMatch}
-          contentContainerStyle={{ flexGrow: 1 }}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={fetchMatches} />}
-          ListHeaderComponent={() => (
-            <>
-              {/* KONDİSYONUN Başlığı ve İçeriği */}
-              <View className="flex-row mt-3 px-3">
-                <Ionicons name="accessibility" size={16} color="green" className="pl-2" />
-                <Text className="font-bold text-green-700"> KONDİSYONUN </Text>
-              </View>
+        <View className="flex-1">
+          {/* KONDİSYONUN Başlığı ve İçeriği */}
+          <View className="flex-row mt-3 px-3">
+            <Ionicons name="accessibility" size={16} color="green" className="pl-2" />
+            <Text className="font-bold text-green-700"> KONDİSYONUN </Text>
+          </View>
 
-              <View className="bg-white rounded-lg mx-4 my-3 p-3 shadow-md">
-                {/* Progress Bar ve Yüzde */}
-                <View className="w-full mb-3 flex-row items-center">
-                  {/* Progress Bar */}
-                  <View className="flex-1 h-3 bg-gray-200 rounded-full overflow-hidden">
-                    <View className="bg-green-600 h-full" style={{ width: `${progress}%` }} />
-                  </View>
-                  {/* Yüzde */}
-                  <Text className="pl-2 font-semibold text-base text-green-500">{progress}%</Text>
-                </View>
-
-                {/* İkon ve Metin */}
-                <View className="flex-row items-center">
-                  <Ionicons name="information-circle-outline" size={16} color="black" />
-                  <Text className="text-xs text-slate-600 pl-2" style={{ fontSize }}>
-                    Kondisyonun yaptığın maç sayısına göre değişiklik gösterebilir.
-                  </Text>
-                </View>
+          <View className="bg-white rounded-lg mx-4 my-3 p-3 shadow-md">
+            {/* Progress Bar ve Yüzde */}
+            <View className="w-full mb-3 flex-row items-center">
+              {/* Progress Bar */}
+              <View className="flex-1 h-3 bg-gray-200 rounded-full overflow-hidden">
+                <View className="bg-green-600 h-full" style={{ width: `${progress}%` }} />
               </View>
+              {/* Yüzde */}
+              <Text className="pl-2 font-semibold text-base text-green-500">{progress}%</Text>
+            </View>
 
-              {/* SENİ BEKLEYEN MAÇLAR Başlığı */}
-              <View className="flex-row mt-1 mb-2 px-3">
-                <Ionicons name="alarm-outline" size={16} color="green" className="pl-2" />
-                <Text className="font-bold text-green-700 "> SENİ BEKLEYEN MAÇLAR </Text>
-              </View>
-            </>
-          )}
-        />
+            {/* İkon ve Metin */}
+            <View className="flex-row items-center">
+              <Ionicons name="information-circle-outline" size={16} color="black" />
+              <Text className="text-xs text-slate-600 pl-2" style={{ fontSize }}>
+                Kondisyonun yaptığın maç sayısına göre değişiklik gösterebilir.
+              </Text>
+            </View>
+          </View>
+
+          {/* SENİ BEKLEYEN MAÇLAR Başlığı */}
+          <View className="flex-row mt-1 mb-2 px-3">
+            <Ionicons name="alarm-outline" size={16} color="green" className="pl-2" />
+            <Text className="font-bold text-green-700 "> SENİ BEKLEYEN MAÇLAR </Text>
+          </View>
+
+          {/* Kullanıcının oluşturduğu maçlar */}
+          <FlatList
+            data={userMatches}
+            keyExtractor={(item) => item.id.toString()}
+            renderItem={renderMatch}
+            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={fetchMatches} />}
+            style={{ maxHeight: 182 }}
+          />
+
+          {/* KADROSU EKSİK MAÇLAR Başlığı */}
+          <View className="flex-row mt-1 mb-2 px-3">
+            <Ionicons name="alarm-outline" size={16} color="green" className="pl-2" />
+            <Text className="font-bold text-green-700 "> KADROSU EKSİK MAÇLAR </Text>
+          </View>
+
+          {/* Kullanıcının oluşturmadığı maçlar */}
+          <FlatList
+            data={otherMatches}
+            keyExtractor={(item) => item.id.toString()}
+            renderItem={renderMatch}
+            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={fetchMatches} />}
+          />
+        </View>
       )}
     </GestureHandlerRootView>
   );

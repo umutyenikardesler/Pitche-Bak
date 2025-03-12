@@ -5,7 +5,7 @@ import { LocationSelector } from '@/components/LocationSelector';
 import { SquadSelector } from '@/components/SquadSelector';
 import { supabase } from '@/services/supabase';
 import '@/global.css';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import AsyncStorage from "@react-native-async-storage/async-storage"; // Kullanıcı ID'sini almak için eklendi
 
 interface MissingPosition {
@@ -37,8 +37,7 @@ export default function CreateMatch() {
   });
 
   const [userId, setUserId] = useState(null);
-  const navigation = useNavigation(); // Navigation hook'u tanımlandı
-
+  
   useEffect(() => {
     const fetchUserId = async () => {
       const storedUserId = await AsyncStorage.getItem("userId");
@@ -48,6 +47,9 @@ export default function CreateMatch() {
     };
     fetchUserId();
   }, []);
+
+  const navigation = useNavigation(); // Navigation hook'u tanımlandı
+  const route = useRoute(); // route değişkeni eklendi
 
   const handleCreateMatch = async () => {
 
@@ -92,6 +94,10 @@ export default function CreateMatch() {
       }
     } else {
       console.log('Maç başarıyla oluşturuldu:', data);
+
+      if (route.params && route.params.onMatchCreated) {
+        route.params.onMatchCreated(); // Profil sayfasındaki güncelleme fonksiyonunu çağır
+      }
 
       if (Platform.OS === 'web') {
         alert("Tebrikler 🎉\nMaçınız başarılı bir şekilde oluşturulmuştur.");
