@@ -337,7 +337,9 @@ const router = useRouter(); // Router'ı tanımlayalım.
             keyExtractor={(item) => item.id.toString()}
             renderItem={renderMatch}
             refreshControl={<RefreshControl refreshing={refreshing} onRefresh={fetchMatches} />}
-            style={{ maxHeight: 230, paddingTop:2, paddingBottom:3 }}
+            style={{ paddingTop:2, paddingBottom:3 }}
+            className="h-[31%]"
+            nestedScrollEnabled={true} // FlatList'in içindeki scroll'un çalışmasını sağlar
           />
 
           {/* KADROSU EKSİK MAÇLAR Başlığı */}
@@ -353,6 +355,8 @@ const router = useRouter(); // Router'ı tanımlayalım.
             renderItem={renderMatch}
             refreshControl={<RefreshControl refreshing={refreshing} onRefresh={fetchMatches} />}
             style={{ paddingTop:2, paddingBottom:3 }}
+            className="h-[59%]"
+            nestedScrollEnabled={true} // FlatList'in içindeki scroll'un çalışmasını sağlar
           />
         </View>
       )}

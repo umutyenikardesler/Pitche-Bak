@@ -47,7 +47,7 @@ export default function Pitches() {
   const fetchPitches = async (userLat?: number, userLon?: number) => {
     setLoading(true);
 
-    const { data, error } = await supabase.from("pitches").select("id, name, address, features, score, latitude, longitude");
+    const { data, error } = await supabase.from("pitches").select("id, name, address, price, features, score, latitude, longitude");
 
     if (error) {
       console.error("Veri çekme hatası:", error);
@@ -167,10 +167,10 @@ export default function Pitches() {
   if (loading) {
     return <ActivityIndicator size="large" color="green" className="flex-1 justify-center items-center" />;
   }
-  
+
   return (
     <GestureHandlerRootView className="flex-1">
-      <View className="bg-slate-100 flex-1 ">
+      <View className="bg-slate-100 flex-1">
         <View className="p-4 bg-white">
           <Text className="text-lg font-bold mb-2 text-green-700 text-center">Konumuna Göre Halı Sahaları Listele</Text>
           <View className="flex-row items-center space-x-2">
@@ -190,7 +190,7 @@ export default function Pitches() {
 
         {selectedPitch ? (
           <GestureDetector gesture={swipeGesture}>
-            <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
+            <ScrollView style={{ flex: 1 }}>
               <View className="flex-1 bg-white p-4 rounded-lg mx-4 mt-1.5 mb-1 shadow-lg">
 
                 <View className="flex-row my-2 justify-center">
@@ -227,8 +227,15 @@ export default function Pitches() {
                   <Text className="h-7 text-lg font-semibold text-green-700 text-center my-2">Açık Adres</Text>
                 </View>
                 <View className=" text-gray-700 text-md flex-row justify-center items-center pt-1">
-                  <Ionicons name="location" size={20} color="black" />
+                  <Ionicons name="location-outline" size={20} color="green" />
                   <Text className="pl-2 font-semibold text-gray-700 text-center">{selectedPitch.address}</Text>
+                </View>
+                <View className="">
+                  <Text className="h-7 text-lg font-semibold text-green-700 text-center mt-3 my-2">Saha Ücreti</Text>
+                </View>
+                <View className=" text-gray-700 text-md flex-row justify-center items-center pt-1">
+                  <Ionicons name="wallet-outline" size={18} color="green" />
+                  <Text className="pl-2 font-semibold text-gray-700">{selectedPitch.price} ₺</Text>
                 </View>
 
                 <View>
@@ -257,22 +264,26 @@ export default function Pitches() {
             </ScrollView>
           </GestureDetector>
         ) : (
-          <FlatList
-            data={pitches}
-            keyExtractor={(item) => item.id.toString()}
-            renderItem={({ item }) => (
-              <TouchableOpacity onPress={() => handleSelectPitch(item)}>
-                <View className="bg-white rounded-lg mx-4 mt-3 p-3 shadow-md">
-                  <View className="flex-row justify-between">
-                    <Text className="w-4/6 text-base font-semibold">{item.name}</Text>
-                    <Text className="w-1/6 text-right text-sm text-gray-500">{item.distance?.toFixed(2)} km</Text>
-                    <Ionicons className="w-3 text-right" name="chevron-forward-outline" size={16} color="green" />
+          <View style={{ flex: 1 }}>
+            <FlatList
+              data={pitches}
+              keyExtractor={(item) => item.id.toString()}
+              renderItem={({ item }) => (
+                <TouchableOpacity onPress={() => handleSelectPitch(item)}>
+                  <View className="bg-white rounded-lg mx-4 mt-3 p-3 shadow-md">
+                    <View className="flex-row justify-between">
+                      <Text className="w-4/6 text-base font-semibold">{item.name}</Text>
+                      <Text className="w-1/6 text-right text-sm text-gray-500">{item.distance?.toFixed(2)} km</Text>
+                      <Ionicons className="w-3 text-right" name="chevron-forward-outline" size={16} color="green" />
+                    </View>
                   </View>
-                </View>
-              </TouchableOpacity>
-            )}
-            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-          />
+                </TouchableOpacity>
+              )}
+              refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+              contentContainerStyle={{ paddingBottom: 10 }} // Alt kısma 10px boşluk ekler
+              nestedScrollEnabled={true} // ⚡ Bu satırı ekle
+            />
+          </View>
         )}
       </View>
     </GestureHandlerRootView>
