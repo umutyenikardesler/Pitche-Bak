@@ -1,5 +1,6 @@
 import { Tabs } from "expo-router";
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
+import CustomHeader from "@/components/CustomHeader"; // Özel başlık bileşenini import et
 
 export default function TabsLayout() {
   return (
@@ -15,13 +16,9 @@ export default function TabsLayout() {
         options={{
           title: "Ana Sayfa",
           tabBarLabel: "Find",
-          // tabBarShowLabel: false,
+          headerRight: () => <CustomHeader />, // Özel başlığı ekle
           tabBarIcon: ({ focused, color, size }) => (
-            <Ionicons 
-              name="search-outline" 
-              color={focused ? color : color} 
-              size={focused ? 30 : 20} 
-            />
+            <Ionicons name="search-outline" color={focused ? color : color} size={focused ? 30 : 20} />
           ),
         }}
       />
@@ -49,13 +46,13 @@ export default function TabsLayout() {
           tabBarIcon: ({ focused, color }) => (
             <MaterialIcons
               name="add-circle-outline"
-              color={focused ? "green" : color }
+              color={focused ? "green" : color}
               size={focused ? 30 : 20}
             />
           ),
         }}
       />
-      <Tabs.Screen
+      {/* <Tabs.Screen
         name="notifications"
         options={{
           title: "Bildirimler",
@@ -63,7 +60,22 @@ export default function TabsLayout() {
           // tabBarShowLabel: false,
           tabBarIcon: ({ focused, color }) => (
             <Ionicons
-              name="notifications-circle-outline"
+              name="heart-outline"
+              color={focused ? "green" : color}
+              size={focused ? 30 : 20}
+            />
+          ),
+        }}
+      /> */}
+      <Tabs.Screen
+        name="message"
+        options={{
+          title: "Mesajlar",
+          tabBarLabel: "Messages",
+          // tabBarShowLabel: false,
+          tabBarIcon: ({ focused, color }) => (
+            <Ionicons
+              name="paper-plane-outline"
               color={focused ? "green" : color}
               size={focused ? 30 : 20}
             />
@@ -83,6 +95,12 @@ export default function TabsLayout() {
               size={focused ? 30 : 20}
             />
           ),
+        }}
+      />
+       <Tabs.Screen
+        name="notifications"
+        options={{
+          href: null, // Tab bar'da gösterme
         }}
       />
     </Tabs>

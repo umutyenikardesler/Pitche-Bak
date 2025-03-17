@@ -22,86 +22,93 @@ export default function Index() {
 
   const fetchMatches = async () => {
     setRefreshing(true);
-
-    const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD formatında bugünün tarihi
-
+  
+    const today = new Date().toISOString().split("T")[0]; // YYYY-MM-DD formatında bugünün tarihi
+  
     const { data: authData, error: authError } = await supabase.auth.getUser();
-    if (authError || !authData.user) {
-      console.error('Kullanıcı kimlik doğrulama hatası:', authError);
+    if (authError || !authData.user || !authData.user.id) {
+      console.error("Kullanıcı kimlik doğrulama hatası veya geçersiz ID:", authError, authData);
       setRefreshing(false);
       return;
     }
-    setUserId(authData.user.id);
-
-    // Kullanıcının oluşturduğu maçları al
+  
+    const loggedUserId = authData.user.id;
+    setUserId(loggedUserId); // ✅ userId'yi güncelle
+  
+    if (!loggedUserId) {
+      console.error("Hata: Geçersiz kullanıcı ID’si:", loggedUserId);
+      setRefreshing(false);
+      return;
+    }
+  
+    // 🟢 Kullanıcının oluşturduğu maçları çek
     const { data: userMatchData, error: userMatchError } = await supabase
-      .from('match')
+      .from("match")
       .select(`
         id, title, time, date, prices, missing_groups, 
         pitches (name, address, features, district_id, latitude, longitude, 
         districts (name))
       `)
-      .eq("create_user", authData.user.id)
-      .gte('date', today)
-      .order('date', { ascending: true })
-      .order('time', { ascending: true });
-
+      .eq("create_user", loggedUserId) // ✅ userId yerine loggedUserId kullandık
+      .gte("date", today)
+      .order("date", { ascending: true })
+      .order("time", { ascending: true });
+  
     if (userMatchError) {
-      console.error('Kullanıcının maçları çekme hatası:', userMatchError);
+      console.error("Kullanıcının maçları çekme hatası:", userMatchError);
       setRefreshing(false);
       return;
     }
-
+  
     const userFormattedData = userMatchData?.map((item) => ({
       ...item,
-      formattedDate: new Date(item.date).toLocaleDateString('tr-TR'),
-      startFormatted: `${item.time.split(':')[0]}:${item.time.split(':')[1]}`,
-      endFormatted: `${parseInt(item.time.split(':')[0], 10) + 1}:${item.time.split(':')[1]}`,
+      formattedDate: new Date(item.date).toLocaleDateString("tr-TR"),
+      startFormatted: `${item.time.split(":")[0]}:${item.time.split(":")[1]}`,
+      endFormatted: `${parseInt(item.time.split(":")[0], 10) + 1}:${item.time.split(":")[1]}`,
     })) || [];
-
+  
     setUserMatches(userFormattedData);
-
-
-    // Kullanıcının oluşturmadığı maçları al
+  
+    // 🟢 Kullanıcının oluşturmadığı maçları çek
     const { data: otherMatchData, error: otherMatchError } = await supabase
-      .from('match')
+      .from("match")
       .select(`
         id, title, time, date, prices, missing_groups, 
         pitches (name, address, features, district_id, latitude, longitude, 
         districts (name))
       `)
-      .neq("create_user", authData.user.id)
-      .gte('date', today)
-      .order('date', { ascending: true })
-      .order('time', { ascending: true });
-
+      .neq("create_user", loggedUserId) // ✅ userId yerine loggedUserId kullandık
+      .gte("date", today)
+      .order("date", { ascending: true })
+      .order("time", { ascending: true });
+  
     if (otherMatchError) {
-      console.error('Diğer maçları çekme hatası:', otherMatchError);
+      console.error("Diğer maçları çekme hatası:", otherMatchError);
       setRefreshing(false);
       return;
     }
-
+  
     const otherFormattedData = otherMatchData?.map((item) => ({
       ...item,
-      formattedDate: new Date(item.date).toLocaleDateString('tr-TR'),
-      startFormatted: `${item.time.split(':')[0]}:${item.time.split(':')[1]}`,
-      endFormatted: `${parseInt(item.time.split(':')[0], 10) + 1}:${item.time.split(':')[1]}`,
+      formattedDate: new Date(item.date).toLocaleDateString("tr-TR"),
+      startFormatted: `${item.time.split(":")[0]}:${item.time.split(":")[1]}`,
+      endFormatted: `${parseInt(item.time.split(":")[0], 10) + 1}:${item.time.split(":")[1]}`,
     })) || [];
-
+  
     setOtherMatches(otherFormattedData);
     setRefreshing(false);
   };
 
-const router = useRouter(); // Router'ı tanımlayalım.
+  const router = useRouter(); // Router'ı tanımlayalım.
 
   useFocusEffect(
     useCallback(() => {
       fetchMatches();
-  
+
       if (router.params?.refreshProfile) {
         navigation.navigate("profile", { refreshMatches: true });
       }
-  
+
       return () => { };
     }, [router.params])
   );
@@ -337,7 +344,7 @@ const router = useRouter(); // Router'ı tanımlayalım.
             keyExtractor={(item) => item.id.toString()}
             renderItem={renderMatch}
             refreshControl={<RefreshControl refreshing={refreshing} onRefresh={fetchMatches} />}
-            style={{ paddingTop:2, paddingBottom:3 }}
+            style={{ paddingTop: 2, paddingBottom: 3 }}
             className="h-[31%]"
             nestedScrollEnabled={true} // FlatList'in içindeki scroll'un çalışmasını sağlar
           />
@@ -354,7 +361,7 @@ const router = useRouter(); // Router'ı tanımlayalım.
             keyExtractor={(item) => item.id.toString()}
             renderItem={renderMatch}
             refreshControl={<RefreshControl refreshing={refreshing} onRefresh={fetchMatches} />}
-            style={{ paddingTop:2, paddingBottom:3 }}
+            style={{ paddingTop: 2, paddingBottom: 3 }}
             className="h-[59%]"
             nestedScrollEnabled={true} // FlatList'in içindeki scroll'un çalışmasını sağlar
           />

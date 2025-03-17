@@ -253,11 +253,16 @@ export default function Profile() {
 
               <View className='flex-row justify-between items-center mx-4 mt-2'>
                 <View className='mx-1 w-1/2'>
-                  <Text className="text-center bg-green-600 text-white font-semibold p-1 rounded-md px-1 items-center"
-                    onPress={handleEditModalOpen}> Düzenle </Text>
+                  <TouchableOpacity className="text-center bg-green-600 text-white font-semibold rounded-md px-1 items-center"
+                    onPress={handleEditModalOpen}>
+                    <Text className="text-white font-semibold text-center p-1">Düzenle</Text>
+                  </TouchableOpacity>
                 </View>
                 <View className='mx-1 w-1/2'>
-                  <Text className='text-center bg-green-600 text-white font-semibold p-1 rounded-md px-1 items-center'>Takip Et</Text>
+                  <TouchableOpacity className="text-center bg-green-600 text-white font-semibold rounded-md px-1 items-center"
+                  >
+                    <Text className='text-center bg-green-600 text-white font-semibold p-1 rounded-md px-1 items-center'>Takip Et</Text>
+                  </TouchableOpacity>
                 </View>
                 {/* <View className='mx-1'>
                 <Text className='text-center bg-green-600 text-white font-semibold p-1 rounded-md px-3 items-center'>Mesaj At</Text>
