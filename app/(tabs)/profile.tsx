@@ -5,6 +5,9 @@ import * as ImagePicker from 'expo-image-picker';
 import { useFocusEffect } from "@react-navigation/native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { supabase } from '@/services/supabase';
+import { decode } from 'base64-arraybuffer';
+import * as FileSystem from "expo-file-system"; // 📂 Dosya işlemleri için
+// import { FileObject } from "@supabase/supabase-js";
 import '@/global.css';
 
 export default function Profile() {
@@ -17,7 +20,7 @@ export default function Profile() {
   const [refreshing, setRefreshing] = useState(false); // Refresh işlemi için state
 
   const [modalVisible, setModalVisible] = useState(false);
-  const [profileImage, setProfileImage] = useState(require('@/assets/images/ball.png'));
+  const [profileImage, setProfileImage] = useState(null);
   const [editModalVisible, setEditModalVisible] = useState(false);
 
   const [userData, setUserData] = useState({
@@ -54,31 +57,41 @@ export default function Profile() {
   }, [searchParams, userData]);
 
   const fetchUserData = async () => {
-    const { data, error } = await supabase.auth.getUser();
-    if (error || !data.user) return;
-
-    const { data: userInfo, error: userError } = await supabase
-      .from("users")
-      .select("*")
-      .eq("id", data.user.id)
-      .single();
-
-    if (userInfo) {
-      setUserData({
-        id: userInfo.id,
-        name: userInfo.name || "",
-        surname: userInfo.surname || "",
-        age: userInfo.age || "",
-        height: userInfo.height || "",
-        weight: userInfo.weight || "",
-        description: userInfo.description || "",
-      });
-
-      // userError kontrolü userInfo kontrolünün içine alındı
+    try {
+      const { data, error } = await supabase.auth.getUser();
+      if (error || !data?.user) {
+        console.error("Kullanıcı doğrulama hatası:", error);
+        return;
+      }
+  
+      const { data: userInfo, error: userError } = await supabase
+        .from("users")
+        .select("*")
+        .eq("id", data.user.id)
+        .single();
+  
       if (userError) {
         console.error("Kullanıcı bilgileri çekilirken hata oluştu:", userError.message);
+        return;
       }
-    };
+  
+      if (userInfo) {
+        setUserData({
+          id: userInfo.id,
+          name: userInfo.name || "",
+          surname: userInfo.surname || "",
+          age: userInfo.age || "",
+          height: userInfo.height || "",
+          weight: userInfo.weight || "",
+          description: userInfo.description || "",
+        });
+  
+        // 📌 Eğer profil resmi yoksa varsayılan resmi göster
+        setProfileImage(userInfo.profile_image ? { uri: userInfo.profile_image } : require("@/assets/images/ball.png"));
+      }
+    } catch (err) {
+      console.error("fetchUserData hata oluştu:", err);
+    }
   };
 
   const fetchUserMatches = async () => {
@@ -111,19 +124,85 @@ export default function Profile() {
     setLoading(false);
   };
 
-  const pickImage = async () => {
-    let result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images', 'videos'],
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 1,
-    });
+  // const pickImage = async () => {
+  //   let result = await ImagePicker.launchImageLibraryAsync({
+  //     mediaTypes: ['images', 'videos'],
+  //     allowsEditing: true,
+  //     aspect: [1, 1],
+  //     quality: 1,
+  //   });
 
-    if (!result.canceled) {
-      setProfileImage({ uri: result.assets[0].uri });
+  //   if (!result.canceled) {
+  //     setProfileImage({ uri: result.assets[0].uri });
+  //   }
+  // };
+
+  const pickImage = async () => {
+    try {
+      let result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ["images"],
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 1,
+      });
+  
+      if (!result.canceled) {
+        const uri = result.assets[0].uri;
+        const fileExt = uri.split(".").pop().toLowerCase(); // Dosya uzantısını al
+        const fileName = `profile_${userData.id}.${fileExt}`; // Kullanıcı ID'sine özel isim
+  
+        const filePath = `${userData.id}/${fileName}`; // Kullanıcı ID'sine özel klasör
+  
+        // 📌 Supabase Storage'a resim yükle
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from("pictures")
+          .upload(filePath, {
+            uri,
+            type: fileExt === "heic" ? "image/heic" : fileExt === "png" ? "image/png" : "image/jpeg",
+            name: fileName,
+          });
+  
+        if (uploadError) {
+          Alert.alert("Hata", `Resim yüklenirken bir hata oluştu: ${uploadError.message}`);
+          console.error("Resim yükleme hatası:", uploadError);
+          return;
+        }
+  
+        // 📌 Yüklenen resmin URL'sini al
+        const { data: publicURLData, error: publicURLError } = await supabase
+          .storage
+          .from("pictures")
+          .getPublicUrl(filePath);
+  
+        if (publicURLError || !publicURLData) {
+          Alert.alert("Hata", `Resim URL'si alınırken bir hata oluştu: ${publicURLError?.message || "Bilinmeyen hata"}`);
+          console.error("Resim URL hatası:", publicURLError);
+          return;
+        }
+  
+        // 📌 Kullanıcının profil tablosunu güncelle
+        const { error: updateError } = await supabase
+          .from("users")
+          .update({ profile_image: publicURLData.publicUrl })
+          .eq("id", userData.id);
+  
+        if (updateError) {
+          Alert.alert("Hata", `Profil resmi güncellenirken bir hata oluştu: ${updateError.message}`);
+          console.error("Profil resmi güncelleme hatası:", updateError);
+          return;
+        }
+  
+        // 📌 Güncellenmiş resmi state'e kaydet
+        setProfileImage({ uri: publicURLData.publicUrl });
+  
+        Alert.alert("Başarılı", "Profil resmi başarıyla güncellendi.");
+      }
+    } catch (err) {
+      Alert.alert("Hata", `Bir hata oluştu: ${err.message}`);
+      console.error("pickImage hata oluştu:", err);
     }
   };
-
+  
   const handleSave = async () => {
     const { error } = await supabase
       .from("users")
@@ -219,9 +298,9 @@ export default function Profile() {
               <TouchableOpacity onPress={() => setModalVisible(true)}>
                 <View className="justify-center px-4 py-3">
                   <Image
-                    source={profileImage}
-                    className="rounded-full mx-auto"
-                    style={{ width: 90, height: 90, resizeMode: 'contain' }}
+                     source={profileImage?.uri ? { uri: profileImage.uri } : require("@/assets/images/ball.png")}
+                     className="rounded-full mx-auto"
+                     style={{ width: 90, height: 90, resizeMode: 'contain' }}
                   />
                 </View>
               </TouchableOpacity>
@@ -381,9 +460,9 @@ export default function Profile() {
           >
             <TouchableOpacity activeOpacity={1} >
               <Image
-                source={profileImage}
-                style={{ width: 280, height: 280, resizeMode: 'contain' }}
-                className='rounded-full'
+                 source={profileImage?.uri ? { uri: profileImage.uri } : require("@/assets/images/ball.png")}
+                 style={{ width: 280, height: 280, resizeMode: 'contain' }}
+                 className='rounded-full'
               />
               <TouchableOpacity onPress={pickImage} className="static">
                 <View className='absolute -bottom-5 right-[7%] m-3 shadow-slate-600'>
@@ -397,7 +476,7 @@ export default function Profile() {
         </Modal>
 
         {/* Bilgi Düzenleme Modalı */}
-        <Modal visible={editModalVisible} transparent={true} animationType="slide">
+        <Modal visible={editModalVisible} transparent={true} animationType="fade">
           <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
             <View className="flex-1 justify-center items-center bg-black/50">
               <KeyboardAvoidingView

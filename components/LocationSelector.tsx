@@ -63,13 +63,13 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
 
   const renderDistrictModal = () => (
     // ... (İlçe modalı aynı kalıyor)
-    <Modal 
-            isVisible={showDistrictModal} // isVisible prop'u kullanılıyor
-            backdropOpacity={0.5} // Opaklık buradan ayarlanıyor
-            onBackdropPress={() => setShowDistrictModal(false)} // Arka plana tıklayınca kapanma
-            animationIn="slideInUp" // Animasyonlar eklenebilir
-            animationOut="slideOutDown"
-          >
+    <Modal
+      isVisible={showDistrictModal} // isVisible prop'u kullanılıyor
+      backdropOpacity={0.5} // Opaklık buradan ayarlanıyor
+      onBackdropPress={() => setShowDistrictModal(false)} // Arka plana tıklayınca kapanma
+      animationIn="fadeIn" // Animasyonlar eklenebilir
+      animationOut="fadeOut"
+      >
       <View className="flex-1 justify-center items-center">
         <View className="w-lg bg-white rounded-lg p-4" style={{ maxHeight: screenHeight * 0.75 }}>
           <FlatList
@@ -103,20 +103,18 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
 
   const renderPitchModal = () => (
     // ... (Saha modalı aynı kalıyor)
-    <Modal 
-            isVisible={showPitchModal} // isVisible prop'u kullanılıyor
-            backdropOpacity={0.5} // Opaklık buradan ayarlanıyor
-            onBackdropPress={() => setShowPitchModal(false)} // Arka plana tıklayınca kapanma
-            animationIn="slideInUp" // Animasyonlar eklenebilir
-            animationOut="slideOutDown"
-            style={{ flex: 1 }}
-          >
-       <View className="flex-1 justify-center items-center">
-        <View 
-          className="w-3/5 bg-white rounded-lg p-4" 
-          style={{ 
-            maxHeight: screenHeight * 0.75, 
-            // overflow: 'hidden' // İçeriğin taşmasını engeller (isteğe bağlı)
+    <Modal
+      isVisible={showPitchModal} // isVisible prop'u kullanılıyor
+      backdropOpacity={0.5} // Opaklık buradan ayarlanıyor
+      onBackdropPress={() => setShowPitchModal(false)} // Arka plana tıklayınca kapanma
+      animationIn="fadeIn" // Animasyonlar eklenebilir
+      animationOut="fadeOut"
+    // style={{ flex: 1 }}
+    >
+      <View className="flex-1 justify-center items-center">
+        <View
+          className="w-3/5 bg-white rounded-lg p-4" style={{
+            maxHeight: screenHeight * 0.75, overflow: 'hidden' // İçeriğin taşmasını engeller (isteğe bağlı)
           }}
         >
           <FlatList
@@ -134,7 +132,7 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
                 <Text> {item.name} </Text>
               </TouchableOpacity>
             )}
-            style={{ 
+            style={{
               flexGrow: 1, // FlatList'in modal içinde mümkün olduğunca fazla yer kaplamasını sağlar
               // height: 'auto' // İçeriğe göre yükseklik (bazı durumlarda sorunlara yol açabilir)
             }}
@@ -166,10 +164,10 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
         className="border border-gray-500 rounded mb-2 p-3"
         onPress={() => selectedDistrict ? setShowPitchModal(true) : null}
         disabled={!selectedDistrict}
-        style={{ 
+        style={{
           backgroundColor: !selectedDistrict ? '#eee' : 'transparent', // Arka plan rengini değiştir
           opacity: !selectedDistrict ? 0.7 : 1, // Opaklığı azalt (isteğe bağlı)
-      }}
+        }}
       >
         <Text> {/* Text componenti eklendi */}
           {selectedPitch ? pitches.find(p => p.id === selectedPitch)?.name : 'Halı Saha Seçiniz'}
@@ -186,11 +184,11 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
         placeholder="Halı Sahanın Fiyatı"
         value={price ? `${price} ₺` : ""} // State'deki fiyatı göster
         editable={false} // TextInput'u pasif yap
-        style={{ 
+        style={{
           color: 'green', fontWeight: '600',
           backgroundColor: selectedDistrict ? '#eee' : 'transparent', // Arka plan rengini değiştir
           opacity: !selectedDistrict ? 0.7 : 1, // Opaklığı azalt (isteğe bağlı)
-         }} // Fiyatı yeşil yap
+        }} // Fiyatı yeşil yap
       />
     </View>
   );

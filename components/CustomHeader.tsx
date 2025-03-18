@@ -1,7 +1,5 @@
-// components/CustomHeader.tsx
-
 import React from 'react';
-import { View, TouchableOpacity, StyleSheet, Text } from 'react-native';
+import { View, TouchableOpacity, Text } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 
@@ -13,33 +11,15 @@ const CustomHeader = ({ title, showNotificationIcon = true }) => {
   };
 
   return (
-    <View style={styles.header}>
-      <Text style={styles.title}>{title}</Text>
+    <View className="flex-row justify-between items-center px-4 py-3 bg-white">
+      <Text className="text-lg font-bold">{title}</Text>
       {showNotificationIcon && (
-        <TouchableOpacity style={styles.notificationButton} onPress={handleNotificationsPress}>
+        <TouchableOpacity className="ml-auto" onPress={handleNotificationsPress}>
           <Ionicons name="heart-outline" size={24} color="green" />
         </TouchableOpacity>
       )}
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    backgroundColor: '#fff',
-  },
-  title: {
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-  notificationButton: {
-    marginLeft: 'auto',
-  },
-});
 
 export default CustomHeader;
