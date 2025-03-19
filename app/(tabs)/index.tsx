@@ -14,89 +14,97 @@ export default function Index() {
   const screenWidth = Dimensions.get("window").width;
   const fontSize = screenWidth > 430 ? 12 : screenWidth > 320 ? 11.5 : 10;
 
+  // Ekran yüksekliğini al
+  const screenHeight = Dimensions.get('window').height;
+
+  // maxHeight'i ekran yüksekliğinin %31'i olarak ayarla
+  const maxHeightValue = screenHeight * 0.30;
+
   const [userMatches, setUserMatches] = useState([]);
   const [otherMatches, setOtherMatches] = useState([]);
   const [selectedMatch, setSelectedMatch] = useState(null);
+  const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [userId, setUserId] = useState(null); // Kullanıcı ID'si
 
   const fetchMatches = async () => {
-    setRefreshing(true);
-  
+    setLoading(true); // 🟢 Veri çekme başlıyor, yükleniyor durumuna geç
+    //setRefreshing(true);
+
     const today = new Date().toISOString().split("T")[0]; // YYYY-MM-DD formatında bugünün tarihi
-  
+
     const { data: authData, error: authError } = await supabase.auth.getUser();
     if (authError || !authData.user || !authData.user.id) {
       console.error("Kullanıcı kimlik doğrulama hatası veya geçersiz ID:", authError, authData);
       setRefreshing(false);
       return;
     }
-  
+
     const loggedUserId = authData.user.id;
     setUserId(loggedUserId); // ✅ userId'yi güncelle
-  
+
     if (!loggedUserId) {
       console.error("Hata: Geçersiz kullanıcı ID’si:", loggedUserId);
       setRefreshing(false);
       return;
     }
-  
+
     // 🟢 Kullanıcının oluşturduğu maçları çek
     const { data: userMatchData, error: userMatchError } = await supabase
       .from("match")
       .select(`
         id, title, time, date, prices, missing_groups, 
-        pitches (name, address, features, district_id, latitude, longitude, 
+        pitches (name, address, price, features, district_id, latitude, longitude, 
         districts (name))
       `)
       .eq("create_user", loggedUserId) // ✅ userId yerine loggedUserId kullandık
       .gte("date", today)
       .order("date", { ascending: true })
       .order("time", { ascending: true });
-  
+
     if (userMatchError) {
       console.error("Kullanıcının maçları çekme hatası:", userMatchError);
-      setRefreshing(false);
-      return;
+      setUserMatches([]); // Hata durumunda listeyi temizle
+      // setRefreshing(false);
+    } else {
+      const userFormattedData = userMatchData?.map((item) => ({
+        ...item,
+        formattedDate: new Date(item.date).toLocaleDateString("tr-TR"),
+        startFormatted: `${item.time.split(":")[0]}:${item.time.split(":")[1]}`,
+        endFormatted: `${parseInt(item.time.split(":")[0], 10) + 1}:${item.time.split(":")[1]}`,
+      })) || [];
+
+      setUserMatches(userFormattedData);
     }
-  
-    const userFormattedData = userMatchData?.map((item) => ({
-      ...item,
-      formattedDate: new Date(item.date).toLocaleDateString("tr-TR"),
-      startFormatted: `${item.time.split(":")[0]}:${item.time.split(":")[1]}`,
-      endFormatted: `${parseInt(item.time.split(":")[0], 10) + 1}:${item.time.split(":")[1]}`,
-    })) || [];
-  
-    setUserMatches(userFormattedData);
-  
+
     // 🟢 Kullanıcının oluşturmadığı maçları çek
     const { data: otherMatchData, error: otherMatchError } = await supabase
       .from("match")
       .select(`
         id, title, time, date, prices, missing_groups, 
-        pitches (name, address, features, district_id, latitude, longitude, 
+        pitches (name, price, address, features, district_id, latitude, longitude, 
         districts (name))
       `)
       .neq("create_user", loggedUserId) // ✅ userId yerine loggedUserId kullandık
       .gte("date", today)
       .order("date", { ascending: true })
       .order("time", { ascending: true });
-  
+
     if (otherMatchError) {
       console.error("Diğer maçları çekme hatası:", otherMatchError);
-      setRefreshing(false);
-      return;
+      // setRefreshing(false);
+    } else {
+      const otherFormattedData = otherMatchData?.map((item) => ({
+        ...item,
+        formattedDate: new Date(item.date).toLocaleDateString("tr-TR"),
+        startFormatted: `${item.time.split(":")[0]}:${item.time.split(":")[1]}`,
+        endFormatted: `${parseInt(item.time.split(":")[0], 10) + 1}:${item.time.split(":")[1]}`,
+      })) || [];
+
+      setOtherMatches(otherFormattedData);
     }
-  
-    const otherFormattedData = otherMatchData?.map((item) => ({
-      ...item,
-      formattedDate: new Date(item.date).toLocaleDateString("tr-TR"),
-      startFormatted: `${item.time.split(":")[0]}:${item.time.split(":")[1]}`,
-      endFormatted: `${parseInt(item.time.split(":")[0], 10) + 1}:${item.time.split(":")[1]}`,
-    })) || [];
-  
-    setOtherMatches(otherFormattedData);
-    setRefreshing(false);
+    setLoading(false); // 🔴 Veri çekme tamamlandı, yükleniyor durumundan çık
+    // setRefreshing(false);
   };
 
   const router = useRouter(); // Router'ı tanımlayalım.
@@ -282,6 +290,14 @@ export default function Index() {
                 <Text className="pl-2 font-semibold text-gray-700">{selectedMatch.pitches?.address}</Text>
               </View>
 
+              <View className="">
+                <Text className="h-7 text-lg font-semibold text-green-700 text-center mt-3 my-2">Saha Ücreti</Text>
+              </View>
+              <View className=" text-gray-700 text-md flex-row justify-center items-center pt-1">
+                <Ionicons name="wallet-outline" size={18} color="green" />
+                <Text className="pl-2 font-semibold text-gray-700">{selectedMatch.pitches?.price} ₺</Text>
+              </View>
+
               <View>
                 <Text className="h-7 text-lg font-semibold text-green-700 text-center mt-4">Sahanın Özellikleri</Text>
               </View>
@@ -339,15 +355,21 @@ export default function Index() {
           </View>
 
           {/* Kullanıcının oluşturduğu maçlar */}
-          <FlatList
-            data={userMatches}
-            keyExtractor={(item) => item.id.toString()}
-            renderItem={renderMatch}
-            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={fetchMatches} />}
-            style={{ paddingTop: 2, paddingBottom: 3 }}
-            className="h-[31%]"
-            nestedScrollEnabled={true} // FlatList'in içindeki scroll'un çalışmasını sağlar
-          />
+          {loading ? (
+            <Text className="text-center my-4 text-gray-500">Yükleniyor...</Text>
+          ) : userMatches.length > 0 ? (
+            <FlatList
+              data={userMatches}
+              keyExtractor={(item) => item.id.toString()}
+              renderItem={renderMatch}
+              refreshControl={<RefreshControl refreshing={refreshing} onRefresh={fetchMatches} />}
+              style={{ paddingTop: 2, paddingBottom: 3 }}
+              className="h-auto max-h-[26%]"
+              nestedScrollEnabled={true}
+            />
+          ) : (
+            <Text className="text-center my-4 text-gray-500">Henüz Maç Yapmadınız!</Text>
+          )}
 
           {/* KADROSU EKSİK MAÇLAR Başlığı */}
           <View className="flex-row px-3 py-3 bg-green-700 ">
@@ -356,15 +378,22 @@ export default function Index() {
           </View>
 
           {/* Kullanıcının oluşturmadığı maçlar */}
-          <FlatList
-            data={otherMatches}
-            keyExtractor={(item) => item.id.toString()}
-            renderItem={renderMatch}
-            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={fetchMatches} />}
-            style={{ paddingTop: 2, paddingBottom: 3 }}
-            className="h-[59%]"
-            nestedScrollEnabled={true} // FlatList'in içindeki scroll'un çalışmasını sağlar
-          />
+          {loading ? (
+            <Text className="text-center my-2 text-gray-500">Yükleniyor...</Text>
+          ) : otherMatches.length > 0 ? (
+            <FlatList
+              data={otherMatches}
+              keyExtractor={(item) => item.id.toString()}
+              renderItem={renderMatch}
+              refreshControl={<RefreshControl refreshing={refreshing} onRefresh={fetchMatches} />}
+              style={{ paddingTop: 2, paddingBottom: 3 }}
+              className="h-auto max-h-[74%]"
+              nestedScrollEnabled={true}
+            />
+          ) : (
+            <Text className="text-center mb-4 text-gray-500">Oluşturulan Maç Yok</Text>
+          )}
+
         </View>
       )}
     </GestureHandlerRootView>

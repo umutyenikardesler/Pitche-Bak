@@ -62,21 +62,6 @@ export default function TabsLayout() {
           ),
         }}
       />
-      {/* <Tabs.Screen
-        name="notifications"
-        options={{
-          title: "Bildirimler",
-          tabBarLabel: "Notifications",
-          // tabBarShowLabel: false,
-          tabBarIcon: ({ focused, color }) => (
-            <Ionicons
-              name="heart-outline"
-              color={focused ? "green" : color}
-              size={focused ? 30 : 20}
-            />
-          ),
-        }}
-      /> */}
       <Tabs.Screen
         name="message"
         options={{
@@ -118,6 +103,7 @@ export default function TabsLayout() {
         options={{
           title: "Bildirimler",
           tabBarLabel: "Notifications",
+          // tabBarShowLabel: false,
           href: null, // Tab bar'da gösterme
         }}
       />
