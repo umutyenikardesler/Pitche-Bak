@@ -5,15 +5,17 @@ import * as ImagePicker from 'expo-image-picker';
 import { useFocusEffect } from "@react-navigation/native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { supabase } from '@/services/supabase';
-import { decode } from 'base64-arraybuffer';
-import * as FileSystem from "expo-file-system"; // 📂 Dosya işlemleri için
-// import { FileObject } from "@supabase/supabase-js";
+// import { decode } from 'base64-arraybuffer';
+// import * as FileSystem from "expo-file-system"; // 📂 Dosya işlemleri için
+// // import { FileObject } from "@supabase/supabase-js";
 import '@/global.css';
 
 export default function Profile() {
   //const progress = 85;
   const screenWidth = Dimensions.get("window").width;
   const fontSize = screenWidth > 430 ? 12 : screenWidth > 320 ? 10.5 : 9;
+
+  const searchParams = useLocalSearchParams();
 
   const [matches, setMatches] = useState([]); // Kullanıcının maçları
   const [loading, setLoading] = useState(true);
@@ -34,11 +36,9 @@ export default function Profile() {
     description: "",
   });
 
-  const searchParams = useLocalSearchParams();
-
   useEffect(() => {
     fetchUserData();
-  }, []);
+  }, [searchParams.userId]);
 
   useEffect(() => {
     if (userData) {
@@ -59,17 +59,20 @@ export default function Profile() {
 
   const fetchUserData = async () => {
     try {
-      const { data, error } = await supabase.auth.getUser();
-      if (error || !data?.user) {
-        console.error("Kullanıcı doğrulama hatası:", error);
+
+      let userIdToFetch = searchParams.userId || (await supabase.auth.getUser()).data?.user?.id;
+
+      if (!userIdToFetch) {
+        console.error("Kullanıcı ID alınamadı!");
         return;
       }
 
       const { data: userInfo, error: userError } = await supabase
         .from("users")
         .select("*")
-        .eq("id", data.user.id)
+        .eq("id", userIdToFetch)
         .single();
+
 
       if (userError) {
         console.error("Kullanıcı bilgileri çekilirken hata oluştu:", userError.message);
@@ -238,31 +241,6 @@ export default function Profile() {
     useCallback(() => {
       const fetchData = async () => {
         await fetchUserData(); // Kullanıcı verisini al
-
-        //     // Yeni maç sayısını al (ID'leri çekerek hızlı sorgu)
-        //     const { data: matchData, error } = await supabase
-        //       .from("match")
-        //       .select("id") // Sadece ID çekiyoruz, performans için
-        //       .eq("create_user", userData.id);
-
-        //     if (error) {
-        //       console.error("Maçları kontrol ederken hata oluştu:", error.message);
-        //       return;
-        //     }
-
-        //     if (matchData) {
-        //       const newMatchCount = matchData.length;
-
-        //       if (newMatchCount !== prevMatchCount) { // Eğer değişiklik varsa
-        //         setPrevMatchCount(newMatchCount); // Yeni maç sayısını sakla
-        //         await fetchUserMatches(); // Maçları güncelle
-        //       }
-        //     }
-        //   };
-
-        //   fetchData();
-        // }, [prevMatchCount, userData.id]) // Sadece değişiklik olduğunda çalışsın
-
         await fetchUserMatches(); // Maçları güncelle
       };
 
@@ -330,7 +308,8 @@ export default function Profile() {
               <TouchableOpacity onPress={() => setModalVisible(true)}>
                 <View className="justify-center px-4 py-3">
                   <Image
-                    source={profileImage.uri ? { uri: profileImage.uri } : require("@/assets/images/ball.png")}
+                    // source={profileImage.uri ? { uri: profileImage.uri } : require("@/assets/images/ball.png")}
+                    source={userData.profile_image ? { uri: userData.profile_image } : require("@/assets/images/ball.png")}
                     className="rounded-full mx-auto"
                     style={{ width: 90, height: 90, resizeMode: 'contain' }}
                   />

@@ -28,8 +28,8 @@ export default function Index() {
     const today = new Date().toISOString().split("T")[0]; // YYYY-MM-DD formatında bugünün tarihi
 
     const { data: authData, error: authError } = await supabase.auth.getUser();
-    if (authError || !authData.user || !authData.user.id) {
-      console.error("Kullanıcı kimlik doğrulama hatası veya geçersiz ID:", authError, authData);
+    if (authError || !authData.user.id) {
+      console.error("Kullanıcı kimlik doğrulama hatası veya geçersiz ID:", authError);
       setRefreshing(false);
       // setLoading(false);
       return;
@@ -38,11 +38,11 @@ export default function Index() {
     const loggedUserId = authData.user.id;
     setUserId(loggedUserId); // ✅ userId'yi güncelle
 
-    if (!loggedUserId) {
-      console.error("Hata: Geçersiz kullanıcı ID’si:", loggedUserId);
-      setRefreshing(false);
-      return;
-    }
+    // if (!loggedUserId) {
+    //   console.error("Hata: Geçersiz kullanıcı ID’si:", loggedUserId);
+    //   setRefreshing(false);
+    //   return;
+    // }
 
     // 🟢 Kullanıcının oluşturduğu maçları çek
     // ✅ Tek sorgu ile geçmiş + gelecek tüm maçları çekiyoruz
@@ -78,9 +78,9 @@ export default function Index() {
     const { data: otherMatchData, error: otherMatchError } = await supabase
       .from("match")
       .select(`
-        id, title, time, date, prices, missing_groups, 
-        pitches (name, price, address, features, district_id, latitude, longitude, 
-        districts (name))
+        id, title, time, date, prices, missing_groups,
+        pitches (name, price, address, features, district_id, latitude, longitude, districts (name)),
+        users (id, name, surname)
       `)
       .neq("create_user", loggedUserId) // ✅ userId yerine loggedUserId kullandık
       .gte("date", today)
@@ -276,6 +276,16 @@ export default function Index() {
                 })}
               </View>
 
+              {/* Maçı Oluşturan kişi Profili */}
+              {selectedMatch?.users ? (
+                <View className="flex-row max-w-full items-center justify-center mt-2 mb-1">
+                  <Text className="font-semibold">Maçı oluşturan: </Text>
+                  <TouchableOpacity onPress={() => router.push(`/profile?userId=${selectedMatch.create_user}`)}>
+                    <Text className="text-green-600 font-semibold">{selectedMatch.users?.name} {selectedMatch.users?.surname}</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : null}
+
               <View className="h-[1px] bg-gray-600 my-3" />
 
               {/* HALI SAHA ÖZETİ */}
@@ -390,9 +400,7 @@ export default function Index() {
           </View>
 
           {/* Kullanıcının oluşturduğu maçlar */}
-          {/* {loading ? (
-            <Text className="text-center my-4 text-gray-500">Yükleniyor...</Text>
-          ) : userMatches.length > 0 ? ( */}
+
           {futureMatches.length === 0 ? (
             <Text className="text-center text-gray-500 my-2">Oluşturulan Maç Yok</Text>
           ) : (
@@ -405,8 +413,6 @@ export default function Index() {
               className="h-auto max-h-[26%]"
               nestedScrollEnabled={true}
             />
-            // ) : (
-            //   <Text className="text-center my-4 text-gray-500">Henüz Maç Yapmadınız!</Text>
           )}
 
           {/* KADROSU EKSİK MAÇLAR Başlığı */}
@@ -416,9 +422,6 @@ export default function Index() {
           </View>
 
           {/* Kullanıcının oluşturmadığı maçlar */}
-          {/* {loading ? (
-            <Text className="text-center my-2 text-gray-500">Yükleniyor...</Text>
-          ) : otherMatches.length > 0 ? ( */}
           {otherMatches.length === 0 ? (
             <View className='flex justify-center items-center'>
               <Text className="text-center font-bold my-4">Başkaları Tarafından Oluşturulan Kadrosu Eksik Maç Yok!</Text>
@@ -436,8 +439,6 @@ export default function Index() {
               className="h-auto max-h-[74%]"
               nestedScrollEnabled={true}
             />
-            // ) : (
-            //   <Text className="text-center my-4 text-gray-500">Henüz Maç Yapmadınız!</Text>
           )}
         </View>
       )}
