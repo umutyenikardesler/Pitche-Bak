@@ -10,17 +10,11 @@ import MapView, { Marker } from "react-native-maps";
 import { useRouter, useLocalSearchParams } from "expo-router";
 
 export default function Index() {
-  const progress = 85;
+  //const progress = 85;
   const screenWidth = Dimensions.get("window").width;
   const fontSize = screenWidth > 430 ? 12 : screenWidth > 320 ? 11.5 : 10;
 
-  // Ekran yüksekliğini al
-  const screenHeight = Dimensions.get('window').height;
-
-  // maxHeight'i ekran yüksekliğinin %31'i olarak ayarla
-  const maxHeightValue = screenHeight * 0.30;
-
-  const [userMatches, setUserMatches] = useState([]);
+  const [allMatches, setAllMatches] = useState([]);
   const [otherMatches, setOtherMatches] = useState([]);
   const [selectedMatch, setSelectedMatch] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -28,8 +22,8 @@ export default function Index() {
   const [userId, setUserId] = useState(null); // Kullanıcı ID'si
 
   const fetchMatches = async () => {
-    setLoading(true); // 🟢 Veri çekme başlıyor, yükleniyor durumuna geç
-    //setRefreshing(true);
+    //setLoading(true); // 🟢 Veri çekme başlıyor, yükleniyor durumuna geç
+    setRefreshing(true);
 
     const today = new Date().toISOString().split("T")[0]; // YYYY-MM-DD formatında bugünün tarihi
 
@@ -37,6 +31,7 @@ export default function Index() {
     if (authError || !authData.user || !authData.user.id) {
       console.error("Kullanıcı kimlik doğrulama hatası veya geçersiz ID:", authError, authData);
       setRefreshing(false);
+      // setLoading(false);
       return;
     }
 
@@ -50,32 +45,34 @@ export default function Index() {
     }
 
     // 🟢 Kullanıcının oluşturduğu maçları çek
-    const { data: userMatchData, error: userMatchError } = await supabase
+    // ✅ Tek sorgu ile geçmiş + gelecek tüm maçları çekiyoruz
+    const { data: matchData, error: matchError } = await supabase
       .from("match")
       .select(`
-        id, title, time, date, prices, missing_groups, 
-        pitches (name, address, price, features, district_id, latitude, longitude, 
-        districts (name))
-      `)
-      .eq("create_user", loggedUserId) // ✅ userId yerine loggedUserId kullandık
-      .gte("date", today)
+       id, title, time, date, prices, missing_groups, 
+       pitches (name, address, price, features, district_id, latitude, longitude, 
+       districts (name))
+     `)
+      .eq("create_user", loggedUserId)
       .order("date", { ascending: true })
       .order("time", { ascending: true });
 
-    if (userMatchError) {
-      console.error("Kullanıcının maçları çekme hatası:", userMatchError);
-      setUserMatches([]); // Hata durumunda listeyi temizle
-      // setRefreshing(false);
+    if (matchError) {
+      console.error("Maçları çekerken hata oluştu:", matchError);
+      setAllMatches([]);
     } else {
-      const userFormattedData = userMatchData?.map((item) => ({
+      const formattedData = matchData?.map((item) => ({
         ...item,
         formattedDate: new Date(item.date).toLocaleDateString("tr-TR"),
         startFormatted: `${item.time.split(":")[0]}:${item.time.split(":")[1]}`,
         endFormatted: `${parseInt(item.time.split(":")[0], 10) + 1}:${item.time.split(":")[1]}`,
       })) || [];
-
-      setUserMatches(userFormattedData);
+      setAllMatches(formattedData);
     }
+
+    setRefreshing(false);
+    //setLoading(false);
+
 
     // 🟢 Kullanıcının oluşturmadığı maçları çek
     const { data: otherMatchData, error: otherMatchError } = await supabase
@@ -92,7 +89,7 @@ export default function Index() {
 
     if (otherMatchError) {
       console.error("Diğer maçları çekme hatası:", otherMatchError);
-      // setRefreshing(false);
+      setRefreshing(false);
     } else {
       const otherFormattedData = otherMatchData?.map((item) => ({
         ...item,
@@ -103,8 +100,8 @@ export default function Index() {
 
       setOtherMatches(otherFormattedData);
     }
-    setLoading(false); // 🔴 Veri çekme tamamlandı, yükleniyor durumundan çık
-    // setRefreshing(false);
+    // setLoading(false); // 🔴 Veri çekme tamamlandı, yükleniyor durumundan çık
+    setRefreshing(false);
   };
 
   const router = useRouter(); // Router'ı tanımlayalım.
@@ -187,6 +184,39 @@ export default function Index() {
       </TouchableOpacity>
     );
   };
+
+  const today = new Date().toISOString().split("T")[0];
+  const futureMatches = allMatches.filter(match => match.date >= today);
+  const totalMatchCount = allMatches.length;
+
+  // ✅ Kondisyon seviyesini hesaplayan fonksiyon
+  const calculateCondition = (matchCount) => {
+    if (matchCount < 3) return 0;
+    if (matchCount === 3) return 60;
+    if (matchCount === 4) return 80;
+    if (matchCount === 5) return 90;
+    if (matchCount > 5) return Math.min(90 + (matchCount - 5) * 2, 100);
+    return 0;
+  };
+
+  const progress = calculateCondition(totalMatchCount);
+
+  // ✅ Kullanıcıya gösterilecek bilgilendirme mesajı
+  let conditionMessage = "";
+  let conditionMessageColor = "green";
+
+  if (totalMatchCount < 3) {
+    conditionMessage = "Kondisyon kazanman için en az 3 maç yapman lazım!";
+    conditionMessageColor = "red";
+  } else if (totalMatchCount === 3) {
+    conditionMessage = "Eğer 1 maç daha yaparsan kondisyonun 80'e yükselecek";
+  } else if (totalMatchCount === 4) {
+    conditionMessage = "Eğer 1 maç daha yaparsan kondisyonun 90'a yükselecek";
+  } else if (totalMatchCount === 5) {
+    conditionMessage = "İlk 5 maçını tamamladın. Spor yapmaya devam!";
+  } else {
+    conditionMessage = "Gerekli kondisyonu kazandın. Sağlıklı günler!";
+  }
 
   return (
 
@@ -340,11 +370,16 @@ export default function Index() {
             </View>
 
             {/* İkon ve Metin */}
-            <View className="flex-row items-center">
-              <Ionicons name="information-circle-outline" size={16} color="black" />
-              <Text className="text-xs text-slate-600 pl-2" style={{ fontSize }}>
-                Kondisyonun yaptığın maç sayısına göre değişiklik gösterebilir.
-              </Text>
+            <View className="flex-row items-center justify-start">
+              {/* <Ionicons name="information-circle-outline" size={16} color="black" /> */}
+              {/* Dinamik Uyarı Mesajı */}
+              {conditionMessage && (
+                <View className=''>
+                  <Text className={`text-xs font-semibold text-center`} style={{ color: conditionMessageColor }}>
+                    {conditionMessage}
+                  </Text>
+                </View>
+              )}
             </View>
           </View>
 
@@ -355,11 +390,14 @@ export default function Index() {
           </View>
 
           {/* Kullanıcının oluşturduğu maçlar */}
-          {loading ? (
+          {/* {loading ? (
             <Text className="text-center my-4 text-gray-500">Yükleniyor...</Text>
-          ) : userMatches.length > 0 ? (
+          ) : userMatches.length > 0 ? ( */}
+          {futureMatches.length === 0 ? (
+            <Text className="text-center text-gray-500 my-2">Oluşturulan Maç Yok</Text>
+          ) : (
             <FlatList
-              data={userMatches}
+              data={futureMatches}
               keyExtractor={(item) => item.id.toString()}
               renderItem={renderMatch}
               refreshControl={<RefreshControl refreshing={refreshing} onRefresh={fetchMatches} />}
@@ -367,8 +405,8 @@ export default function Index() {
               className="h-auto max-h-[26%]"
               nestedScrollEnabled={true}
             />
-          ) : (
-            <Text className="text-center my-4 text-gray-500">Henüz Maç Yapmadınız!</Text>
+            // ) : (
+            //   <Text className="text-center my-4 text-gray-500">Henüz Maç Yapmadınız!</Text>
           )}
 
           {/* KADROSU EKSİK MAÇLAR Başlığı */}
@@ -378,9 +416,17 @@ export default function Index() {
           </View>
 
           {/* Kullanıcının oluşturmadığı maçlar */}
-          {loading ? (
+          {/* {loading ? (
             <Text className="text-center my-2 text-gray-500">Yükleniyor...</Text>
-          ) : otherMatches.length > 0 ? (
+          ) : otherMatches.length > 0 ? ( */}
+          {otherMatches.length === 0 ? (
+            <View className='flex justify-center items-center'>
+              <Text className="text-center font-bold my-4">Başkaları Tarafından Oluşturulan Kadrosu Eksik Maç Yok!</Text>
+              <TouchableOpacity className="text-center bg-green-600 text-white font-semibold rounded-md px-1 items-center">
+                <Text className="w-1/2 text-white font-semibold text-center p-4">Hemen Maç Oluştur</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
             <FlatList
               data={otherMatches}
               keyExtractor={(item) => item.id.toString()}
@@ -390,10 +436,9 @@ export default function Index() {
               className="h-auto max-h-[74%]"
               nestedScrollEnabled={true}
             />
-          ) : (
-            <Text className="text-center mb-4 text-gray-500">Oluşturulan Maç Yok</Text>
+            // ) : (
+            //   <Text className="text-center my-4 text-gray-500">Henüz Maç Yapmadınız!</Text>
           )}
-
         </View>
       )}
     </GestureHandlerRootView>

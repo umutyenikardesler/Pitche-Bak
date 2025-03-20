@@ -11,7 +11,7 @@ import * as FileSystem from "expo-file-system"; // 📂 Dosya işlemleri için
 import '@/global.css';
 
 export default function Profile() {
-  const progress = 85;
+  //const progress = 85;
   const screenWidth = Dimensions.get("window").width;
   const fontSize = screenWidth > 430 ? 12 : screenWidth > 320 ? 10.5 : 9;
 
@@ -30,6 +30,7 @@ export default function Profile() {
     age: "",
     height: "",
     weight: "",
+    profile_image: "",
     description: "",
   });
 
@@ -48,7 +49,7 @@ export default function Profile() {
   useEffect(() => {
     if (searchParams.firstLogin === "true" && userData) {
       const hasMissingFields = !userData.name || !userData.surname || !userData.age ||
-        !userData.height || !userData.weight || !userData.description;
+        !userData.height || !userData.weight || !userData.profile_image || !userData.description;
 
       if (hasMissingFields) {
         setEditModalVisible(true);
@@ -83,6 +84,7 @@ export default function Profile() {
           age: userInfo.age || "",
           height: userInfo.height || "",
           weight: userInfo.weight || "",
+          profile_image: userInfo.profile_image || "",
           description: userInfo.description || "",
         });
 
@@ -269,6 +271,36 @@ export default function Profile() {
 
   );
 
+  // Kondisyon seviyesini hesaplayan fonksiyon
+  const calculateCondition = (matchCount) => {
+    if (matchCount < 3) return 0;
+    if (matchCount === 3) return 60;
+    if (matchCount === 4) return 80;
+    if (matchCount === 5) return 90;
+    if (matchCount > 5) return Math.min(90 + (matchCount - 5) * 2, 100); // 6 maçta 92, 7 maçta 94, max 100
+    return 0;
+  };
+
+  const progress = calculateCondition(matches.length);
+
+  // Kullanıcıya gösterilecek bilgilendirme mesajı ve rengi
+  let conditionMessage = "";
+  let conditionMessageColor = "green"; // Varsayılan olarak yeşil yapıyoruz
+
+  if (matches.length < 3) {
+    conditionMessage = "Kondisyon kazanman için en az 3 maç yapman lazım!";
+    conditionMessageColor = "red";
+  } else if (matches.length === 3) {
+    conditionMessage = "Eğer 1 maç daha yaparsan kondisyonun 80'e yükselecek";
+  } else if (matches.length === 4) {
+    conditionMessage = "Eğer 1 maç daha yaparsan kondisyonun 90'a yükselecek";
+  } else if (matches.length === 5) {
+    conditionMessage = "İlk 5 maçını tamamladın. Spor yapmaya devam iyi gidiyorsun ☺️";
+  } else {
+    conditionMessage = "Gerekli kondisyonu kazandın. Sağlıklı günler dilerim 👏";
+  }
+
+
   const handleLogout = async () => {
     const { error } = await supabase.auth.signOut();
 
@@ -391,12 +423,20 @@ export default function Profile() {
             </View>
 
             {/* İkon ve Metin */}
-            <View className="flex-row items-center -mt-2">
-              <Ionicons name="information-circle-outline" size={16} color="black" />
-              <Text className="text-xs text-slate-600 pl-2 " style={{ fontSize }}>
-                Kondisyonun yaptığın maç sayısına göre değişiklik gösterebilir.
-              </Text>
+            <View className="flex-row items-center justify-center -mt-2">
+              {/* <Ionicons name="information-circle-outline" size={16} color="black" /> */}
+              {/* Dinamik Uyarı Mesajı */}
+              {conditionMessage && (
+                <View className=''>
+                  <Text className={`text-xs font-semibold text-center`} style={{ color: conditionMessageColor }}>
+                    {conditionMessage}
+                  </Text>
+                </View>
+              )}
             </View>
+
+
+
           </View>
 
           {/* Maç Listesi ve İçeriği */}
