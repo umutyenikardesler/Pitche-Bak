@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, TextInput, ScrollView, TouchableOpacity, Alert, KeyboardAvoidingView, Platform, TouchableWithoutFeedback, Keyboard } from 'react-native';
-import { MatchDetailsForm } from '@/components/MatchDetailsForm';
-import { LocationSelector } from '@/components/LocationSelector';
-import { SquadSelector } from '@/components/SquadSelector';
+import { MatchDetailsForm } from '@/components/create/MatchDetailsForm';
+import { LocationSelector } from '@/components/create/LocationSelector';
+import { SquadSelector } from '@/components/create/SquadSelector';
 import { supabase } from '@/services/supabase';
 import '@/global.css';
 import { useNavigation, useRoute } from '@react-navigation/native';
