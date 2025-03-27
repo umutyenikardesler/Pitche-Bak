@@ -11,22 +11,27 @@ const CustomHeader = ({ title, showNotificationIcon = true }) => {
   };
 
   return (
-    <View className="flex-row justify-between items-center px-4 py-2 bg-white">
+    <View className="flex-row justify-center items-center px-4 py-2">
       {/* Sayfa Başlığı (Sol Taraf) */}
       <Text className="text-lg font-bold flex-1">{title}</Text>
 
       {/* Orta Kısım: Logo */}
-      <Image
-        source={require("@/assets/images/logo.jpeg")} // Logonu buraya ekleyebilirsin
-        style={{ width: 180, height: 60, resizeMode: 'contain' }}
-      />
+      <View className='text-center'>
+        <Image
+          source={require("@/assets/images/logo.png")} // Logonu buraya ekleyebilirsin
+          style={{ width: 180, height: 60, resizeMode: 'contain' }}
+          className='flex justify-center items-center text-center'
+        />
+      </View>
 
       {/* Bildirim İkonu (Sağ Taraf) */}
-      {showNotificationIcon && (
-        <TouchableOpacity className="ml-auto" onPress={handleNotificationsPress}>
-          <Ionicons name="heart-outline" size={24} color="green" />
-        </TouchableOpacity>
-      )}
+      <View>
+        {showNotificationIcon && (
+          <TouchableOpacity className="ml-auto bg-white" onPress={handleNotificationsPress}>
+            <Ionicons name="heart-outline" size={24} color="green" />
+          </TouchableOpacity>
+        )}
+      </View>
     </View>
   );
 };
