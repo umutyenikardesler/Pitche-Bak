@@ -51,7 +51,8 @@ export default function Index() {
       .select(`
        id, title, time, date, prices, missing_groups, 
        pitches (name, address, price, features, district_id, latitude, longitude, 
-       districts (name))
+       districts (name)),
+       users (id, name, surname, profile_image)
      `)
       .eq("create_user", loggedUserId)
       .order("date", { ascending: true })
@@ -80,7 +81,7 @@ export default function Index() {
       .select(`
         id, title, time, date, prices, missing_groups,
         pitches (name, price, address, features, district_id, latitude, longitude, districts (name)),
-        users (id, name, surname)
+        users (id, name, surname, profile_image)
       `)
       .neq("create_user", loggedUserId) // ✅ userId yerine loggedUserId kullandık
       .gte("date", today)
@@ -152,7 +153,9 @@ export default function Index() {
           <View className="flex-row">
             <View className="w-1/5 justify-center py-1 p-1">
               <Image
-                source={require('@/assets/images/ball.png')}
+                source={ item.users?.profile_image
+                  ? { uri: item.users.profile_image }
+                  : require('@/assets/images/ball.png')}
                 className="rounded-full mx-auto"
                 style={{ width: 60, height: 60, resizeMode: 'contain' }}
               />
@@ -425,7 +428,7 @@ export default function Index() {
           {otherMatches.length === 0 ? (
             <View className='flex justify-center items-center'>
               <Text className="text-center font-bold my-4">Başkaları Tarafından Oluşturulan Kadrosu Eksik Maç Yok!</Text>
-              <TouchableOpacity className="text-center bg-green-600 text-white font-semibold rounded-md px-1 items-center">
+              <TouchableOpacity className="text-center bg-green-600 text-white font-semibold rounded-md px-1 items-center" onPress={() => router.push("/create")} >
                 <Text className="w-1/2 text-white font-semibold text-center p-4">Hemen Maç Oluştur</Text>
               </TouchableOpacity>
             </View>
