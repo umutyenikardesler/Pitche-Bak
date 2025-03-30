@@ -186,8 +186,7 @@ export default function Profile() {
 
   return (
     <ScrollView refreshControl={<RefreshControl refreshing={refreshing} onRefresh={fetchUserData} />}>
-      <View className='flex-1'>
-        <View className='flex-1 bg-white rounded-lg m-3 p-1 shadow-lg'>
+        <View className=' bg-white rounded-lg m-3 p-1 shadow-lg'>
             <ProfileInfo
               userData={userData}
               fetchUserData={fetchUserData}
@@ -203,8 +202,6 @@ export default function Profile() {
               <Text className="text-white font-semibold text-center p-2">Çıkış Yap</Text>
             </TouchableOpacity>
           </View>
-
-        </View>
         {/* 🔹 PROFİL FOTOĞRAFI MODALI */}
         <Modal visible={modalVisible} transparent={true} onRequestClose={() => setModalVisible(false)}>
           <TouchableOpacity
@@ -220,7 +217,7 @@ export default function Profile() {
               />
               <TouchableOpacity onPress={pickImage} className="static">
                 <View className='absolute -bottom-5 right-[7%] m-3 shadow-slate-600'>
-                  <View className='p-2 bg-white rounded-full '>
+                  <View className='p-2 bg-white rounded-full absolute bottom-0 right-0 '>
                     <Ionicons name="color-wand" size={22} color="white" className='bg-green-700 rounded-full p-3' />
                   </View>
                 </View>

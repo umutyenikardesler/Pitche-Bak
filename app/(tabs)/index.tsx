@@ -405,15 +405,19 @@ export default function Index() {
           {/* Kullanıcının oluşturduğu maçlar */}
 
           {futureMatches.length === 0 ? (
-            <Text className="text-center text-gray-500 my-2">Oluşturulan Maç Yok</Text>
+            <View className='flex justify-center items-center'>
+              <Text className="text-center font-bold my-4">Oluşturduğun Maç Yok!</Text>
+              <TouchableOpacity className="text-center bg-green-600 text-white font-semibold rounded-md px-1 mb-2 items-center" onPress={() => router.push("/create")} >
+                <Text className="w-1/2 text-white font-semibold text-center p-3">Hemen Maç Oluştur</Text>
+              </TouchableOpacity>
+            </View>
           ) : (
             <FlatList
               data={futureMatches}
               keyExtractor={(item) => item.id.toString()}
               renderItem={renderMatch}
               refreshControl={<RefreshControl refreshing={refreshing} onRefresh={fetchMatches} />}
-              style={{ paddingTop: 2, paddingBottom: 3 }}
-              className="h-auto max-h-[26%]"
+              style={{ paddingTop: 2, paddingBottom: 3, maxHeight: futureMatches.length === 1 ? "13.3%" : "26%" }}
               nestedScrollEnabled={true}
             />
           )}

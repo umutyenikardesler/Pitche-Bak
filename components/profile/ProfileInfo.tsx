@@ -16,7 +16,7 @@ export default function ProfileInfo({ userData, setModalVisible, setEditModalVis
 
     return (
         <View className="flex flex-row p-2 ">  {/* En dış çerçeveye p-2 padding eklendi */}
-            <View className="w-1/4 py-3 px-1">
+            <View className="w-1/4 py-3 px-1 relative">
                 <TouchableOpacity onPress={() => setModalVisible(true)}>
                     <Image
                         source={userData?.profile_image ? { uri: userData.profile_image } : require("@/assets/images/ball.png")}
@@ -24,11 +24,9 @@ export default function ProfileInfo({ userData, setModalVisible, setEditModalVis
                         style={{ width: 90, height: 90, resizeMode: 'contain' }}
                     />
                 </TouchableOpacity>
-                <TouchableOpacity onPress={pickImage} className="static">
-                    <View className='absolute -bottom-5 left-[15%] m-2 shadow-slate-600'>
-                        <View className="bg-white rounded-full">
-                            <Ionicons name="add-circle" size={28} color="green" className='bg-white rounded-full p-1' />
-                        </View>
+                <TouchableOpacity onPress={pickImage} className="absolute right-0 bottom-0 " style={{marginBottom: 13}}>
+                    <View className="bg-white rounded-full p-1 shadow-md">
+                        <Ionicons name="add-circle" size={24} color="green" />
                     </View>
                 </TouchableOpacity>
             </View>

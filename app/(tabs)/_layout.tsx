@@ -1,9 +1,35 @@
-import { Tabs } from "expo-router";
+import { Tabs, useNavigation, useRouter } from "expo-router";
 import { View } from "react-native";
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import CustomHeader from "@/components/CustomHeader"; // Özel başlık bileşenini import et
+import { useEffect } from "react";
 
 export default function TabsLayout() {
+
+  const navigation = useNavigation();
+  const router = useRouter();
+
+  useEffect(() => {
+    const unsubscribe = navigation.addListener("tabPress", (e) => {
+      // Aktif olan sekmeye basıldığında yönlendirme yap
+      if (e.target.includes("index")) {
+        router.replace("/"); // Find sekmesi ana ekrana yönlendir
+      } else if (e.target.includes("pitches")) {
+        router.replace("/pitches");
+      } else if (e.target.includes("create")) {
+        router.replace("/create");
+      } else if (e.target.includes("message")) {
+        router.replace("/message");
+      } else if (e.target.includes("profile")) {
+        router.replace("/profile");
+      } else if (e.target.includes("notifications")) {
+        router.replace("/notifications");
+      }
+    });
+
+    return unsubscribe;
+  }, [navigation]);
+
   return (
     <Tabs
       screenOptions={{
