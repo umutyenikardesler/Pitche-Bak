@@ -24,7 +24,7 @@ export default function ProfileInfo({ userData, setModalVisible, setEditModalVis
                         style={{ width: 90, height: 90, resizeMode: 'contain' }}
                     />
                 </TouchableOpacity>
-                <TouchableOpacity onPress={pickImage} className="absolute right-0 bottom-0 " style={{marginBottom: 13}}>
+                <TouchableOpacity onPress={pickImage} className="absolute right-0 bottom-0" style={{marginBottom: 13}}>
                     <View className="bg-white rounded-full p-1 shadow-md">
                         <Ionicons name="add-circle" size={24} color="green" />
                     </View>

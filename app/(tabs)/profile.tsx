@@ -185,8 +185,8 @@ export default function Profile() {
   };
 
   return (
-    <ScrollView refreshControl={<RefreshControl refreshing={refreshing} onRefresh={fetchUserData} />}>
-        <View className=' bg-white rounded-lg m-3 p-1 shadow-lg'>
+    <View refreshControl={<RefreshControl refreshing={refreshing} onRefresh={fetchUserData} />}>
+        <View className='bg-white rounded-lg m-3 p-1 shadow-lg'>
             <ProfileInfo
               userData={userData}
               fetchUserData={fetchUserData}
@@ -197,7 +197,7 @@ export default function Profile() {
             <ProfileStatus matchCount={matches.length} />
             <ProfileCondition matchCount={matches.length} />
             <ProfileMatches userData={userData} matches={matches} refreshing={refreshing} onRefresh={fetchUserData} />
-          <View className="flex-1 pb-4">
+          <View className="flex pb-4">
             <TouchableOpacity onPress={handleLogout} className="bg-green-600 mx-4 rounded-lg">
               <Text className="text-white font-semibold text-center p-2">Çıkış Yap</Text>
             </TouchableOpacity>
@@ -256,6 +256,6 @@ export default function Profile() {
           </TouchableWithoutFeedback>
         </Modal>
       </View>
-    </ScrollView>
+    </View>
   );
 }
