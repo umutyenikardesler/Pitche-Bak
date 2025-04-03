@@ -41,23 +41,23 @@ export default function ProfileMatches({ userData }) {
   return (
     <View className="flex mb-2">
       {/* Maç Listesi ve İçeriği */}
-      <View className="flex-row mt-2 px-3 justify-center mb-2">
+      <View className="flex-row justify-center items-center my-1 mb-2.5">
         <Ionicons name="accessibility" size={16} color="green" className="pl-2" />
         <Text className="font-bold text-green-700"> MAÇLARIM </Text>
       </View>
 
       {/* Maç Listesi */}
-      <View className="flex mb-2">
+      <View className="flex-1 mb-2">
         {loading ? (
           <Text className="text-center mb-4 text-gray-500">Yükleniyor...</Text>
         ) : matches.length > 0 ? (
           <FlatList
-            className="mb-2"
+            className="mb-2 h-full"
             data={matches}
             keyExtractor={(item) => item.id.toString()}
             renderItem={({ item }) => (
-              <View className="bg-gray-100 rounded-lg p-3 mx-4 mt-2 mb-1 shadow-sm">
-                <Text className="text-green-700 font-bold mb-2">{item.title}</Text>
+              <View className="bg-gray-100 rounded-lg p-2 mx-4 mt-1 mb-1 shadow-sm flex-1 justify-center items-center">
+                <Text className="text-green-700 font-bold mb-1">{item.title}</Text>
                 <View className="text-gray-700 text-md flex-row items-center">
                   <Ionicons name="calendar-outline" size={18} color="black" />
                   <Text className="pl-2 font-semibold">{item.formattedDate} →</Text>
@@ -70,7 +70,7 @@ export default function ProfileMatches({ userData }) {
                 </View>
               </View>
             )}
-            style={{ maxHeight: 290, marginBottom: 0 }}
+            style={{ maxHeight: 325, marginBottom: 0 }}
             nestedScrollEnabled={true}
           />
         ) : (

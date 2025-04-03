@@ -1,13 +1,16 @@
-import { useState, useCallback } from 'react';
-import { View } from "react-native";
+import { useEffect, useState, useCallback } from 'react';
+import { View, Dimensions, Modal, TouchableOpacity } from "react-native";
 import { GestureHandlerRootView, GestureDetector, Gesture } from "react-native-gesture-handler";
 import { runOnJS } from "react-native-reanimated";
-import { useRouter, useFocusEffect } from "expo-router";
+import { useRouter, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { supabase } from '@/services/supabase';
+import '@/global.css';
+
 import IndexCondition from '@/components/index/IndexCondition';
 import MyMatches from '@/components/index/MyMatches';
 import OtherMatches from '@/components/index/OtherMatches';
 import MatchDetails from '@/components/index/MatchDetails';
+import ProfilePreview from '@/components/index/ProfilePreview';
 import { Match } from '@/components/index/types';
 
 export default function Index() {
@@ -17,6 +20,33 @@ export default function Index() {
   const [refreshing, setRefreshing] = useState(false);
   const [totalMatchCount, setTotalMatchCount] = useState(0);
   const router = useRouter();
+
+  // // Index.tsx içinde
+  const { height } = Dimensions.get('window');
+  const itemHeight = height * 0.14; // Her maç için yaklaşık yükseklik
+  const maxHeight = height * 0.233; // Maksimum yükseklik belirle
+  const myMatchesHeight = Math.min(futureMatches.length * itemHeight, maxHeight);
+
+  // State'leri ekleyin
+  const [profileModalVisible, setProfileModalVisible] = useState(false);
+  const [viewingUserId, setViewingUserId] = useState<string | null>(null);
+
+  // URL parametrelerini dinleyin
+  const params = useLocalSearchParams();
+  const userId = params.userId as string | undefined;
+
+  useEffect(() => {
+    if (userId) {
+      setViewingUserId(userId as string);
+      setProfileModalVisible(true);
+    }
+  }, [userId]);
+
+  // Modal kapatma fonksiyonu
+  const closeProfileModal = () => {
+    setProfileModalVisible(false);
+    router.setParams({ userId: undefined }); // URL'den parametreyi kaldır
+  };
 
   const fetchMatches = useCallback(async () => {
     setRefreshing(true);
@@ -60,8 +90,8 @@ export default function Index() {
       const filteredMatches = matchData?.filter((item) => {
         if (item.date > today) return true;
         const [matchHours, matchMinutes] = item.time.split(":").map(Number);
-        return matchHours + 1 > currentHours || 
-               (matchHours + 1 === currentHours && matchMinutes > currentMinutes);
+        return matchHours + 1 > currentHours ||
+          (matchHours + 1 === currentHours && matchMinutes > currentMinutes);
       });
 
       const formattedData = filteredMatches?.map((item) => ({
@@ -78,7 +108,7 @@ export default function Index() {
     const { data: otherMatchData, error: otherMatchError } = await supabase
       .from("match")
       .select(`
-        id, title, time, date, prices, missing_groups,
+        id, title, time, date, prices, missing_groups, create_user,
         pitches (name, price, address, features, district_id, latitude, longitude, districts (name)),
         users (id, name, surname, profile_image)
       `)
@@ -91,8 +121,8 @@ export default function Index() {
       const filteredOtherMatches = otherMatchData?.filter((item) => {
         if (item.date > today) return true;
         const [matchHours, matchMinutes] = item.time.split(":").map(Number);
-        return matchHours + 1 > currentHours || 
-               (matchHours + 1 === currentHours && matchMinutes > currentMinutes);
+        return matchHours + 1 > currentHours ||
+          (matchHours + 1 === currentHours && (matchMinutes > currentMinutes));
       });
 
       const otherFormattedData = filteredOtherMatches?.map((item) => ({
@@ -107,6 +137,7 @@ export default function Index() {
 
     setRefreshing(false);
   }, []);
+
 
   const handleSelectMatch = (match: Match) => {
     setSelectedMatch(match);
@@ -129,12 +160,22 @@ export default function Index() {
   useFocusEffect(
     useCallback(() => {
       fetchMatches();
-      return () => {};
+      return () => { };
     }, [fetchMatches])
   );
 
   return (
     <GestureHandlerRootView className="flex-1">
+      <Modal
+        visible={profileModalVisible}
+        animationType="slide"
+        onRequestClose={closeProfileModal}
+      >
+        <ProfilePreview
+          userId={viewingUserId}
+          onClose={closeProfileModal}
+        />
+      </Modal>
       {selectedMatch ? (
         <GestureDetector gesture={swipeGesture}>
           <MatchDetails match={selectedMatch} onClose={handleCloseDetail} />
@@ -143,22 +184,28 @@ export default function Index() {
         <View className="flex-1">
 
           <IndexCondition totalMatchCount={totalMatchCount} />
-          
-          <MyMatches 
-            matches={futureMatches} 
-            refreshing={refreshing} 
-            onRefresh={fetchMatches}
-            onSelectMatch={handleSelectMatch}
-            onCreateMatch={handleCreateMatch}
-          />
-          
-          <OtherMatches 
-            matches={otherMatches} 
-            refreshing={refreshing} 
-            onRefresh={fetchMatches}
-            onSelectMatch={handleSelectMatch}
-            onCreateMatch={handleCreateMatch}
-          />
+
+          {/* MyMatches için dinamik yükseklik hesapla */}
+          <View style={{ height: futureMatches.length === 0 ? 'auto' : myMatchesHeight }}>
+            <MyMatches
+              matches={futureMatches}
+              refreshing={refreshing}
+              onRefresh={fetchMatches}
+              onSelectMatch={handleSelectMatch}
+              onCreateMatch={handleCreateMatch}
+            />
+          </View>
+
+          {/* OtherMatches kalan alanı doldursun */}
+          <View style={{ flex: 1 }}>
+            <OtherMatches
+              matches={otherMatches}
+              refreshing={refreshing}
+              onRefresh={fetchMatches}
+              onSelectMatch={handleSelectMatch}
+              onCreateMatch={handleCreateMatch}
+            />
+          </View>
         </View>
       )}
     </GestureHandlerRootView>

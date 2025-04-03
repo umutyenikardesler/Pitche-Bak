@@ -35,3 +35,20 @@ export interface User {
     pitches: Pitch;
     users: User;
   }
+
+  export interface UserProfile {
+    id: string;
+    name: string;
+    surname: string;
+    email?: string;
+    profile_image?: string;
+    age?: number;
+    height?: number;
+    weight?: number;
+    description?: string;
+  }
+  
+  export interface ProfilePreviewProps {
+    userId: string;
+    onClose: () => void;
+  }

@@ -8,6 +8,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { supabase } from '@/services/supabase';
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
+import '@/global.css';
 
 import ProfileInfo from "@/components/profile/ProfileInfo";
 import ProfileStatus from "@/components/profile/ProfileStatus";
@@ -38,45 +39,45 @@ export default function Profile() {
 
   const fetchLatestProfileImage = async (userId) => {
     console.log("fetchLatestProfileImage çağrıldı, userId:", userId); // Log eklendi
-  
+
     if (!userId) {
       console.error("userId yok, fetchLatestProfileImage'den çıkılıyor."); // Log eklendi
       return null;
     }
-  
+
     const { data, error } = await supabase.storage
       .from("pictures")
       .list(`${userId}/`, {
         limit: 100,
         sortBy: { column: "created_at", order: "desc" },
       });
-  
+
     if (error) {
       console.error("Profil resmi alınamadı:", error); // Log eklendi
       return null;
     }
-  
+
     if (!data || data.length === 0) {
       console.log("Profil resmi bulunamadı."); // Log eklendi
       return null;
     }
-  
+
     const profileImages = data.filter((file) => file.name.startsWith("profile_"));
-  
+
     if (profileImages.length === 0) {
       console.log("profile_ ile başlayan resim bulunamadı."); // Log eklendi
       return null;
     }
-  
+
     const latestImage = profileImages[0];
     const filePath = `${userId}/${latestImage.name}`;
     const { data: publicURLData, error: publicUrlError } = supabase.storage.from("pictures").getPublicUrl(filePath);
-  
+
     if (publicUrlError) {
       console.error("Public URL alınamadı:", publicUrlError); // Log eklendi
       return null;
     }
-  
+
     console.log("En son profil resmi URL'si:", publicURLData.publicUrl); // Log eklendi
     return publicURLData.publicUrl;
   };
@@ -84,29 +85,29 @@ export default function Profile() {
   // Kullanıcı verisini çek
   const fetchUserData = async () => {
     console.log("fetchUserData çağrıldı"); // Log eklendi
-  
+
     let userIdToFetch = searchParams.userId || (await supabase.auth.getUser()).data?.user?.id;
     if (!userIdToFetch) {
       console.error("Kullanıcı ID alınamadı!"); // Log eklendi
       return;
     }
-  
+
     const { data: userInfo, error } = await supabase
       .from("users")
       .select("*")
       .eq("id", userIdToFetch)
       .single();
-  
+
     if (error) {
       console.error("Kullanıcı bilgileri alınamadı:", error); // Log eklendi
       return;
     }
-  
+
     const latestProfileImage = await fetchLatestProfileImage(userIdToFetch);
     if (latestProfileImage) {
       userInfo.profile_image = latestProfileImage;
     }
-  
+
     console.log("Kullanıcı verisi:", userInfo); // Log eklendi
     setUserData(userInfo);
     fetchUserMatches(userIdToFetch);
@@ -152,11 +153,11 @@ export default function Profile() {
 
       const { data: publicURLData } = supabase.storage.from("pictures").getPublicUrl(filePath);
       setProfileImage({ uri: publicURLData.publicUrl });
-  
+
       await supabase.from("users").update({ profile_image: publicURLData.publicUrl }).eq("id", userData.id);
       fetchUserData();
       Alert.alert("Başarılı", "Resminiz başarıyla yüklendi!"); // Başarılı uyarı eklendi
-  
+
     }
   };
 
@@ -186,25 +187,27 @@ export default function Profile() {
 
   return (
     <ScrollView refreshControl={<RefreshControl refreshing={refreshing} onRefresh={fetchUserData} />}>
-        <View className='bg-white rounded-lg m-3 p-1 shadow-lg'>
+      <View className='bg-white rounded-lg m-3 p-1 shadow-lg'>
+        <View className='flex-1'>
+          <ProfileInfo
+            userData={userData}
+            fetchUserData={fetchUserData}
+            setModalVisible={setModalVisible}
+            setEditModalVisible={setEditModalVisible}
+            pickImage={pickImage}
+          />
+          <ProfileStatus matchCount={matches.length} />
 
-            <ProfileInfo
-              userData={userData}
-              fetchUserData={fetchUserData}
-              setModalVisible={setModalVisible}
-              setEditModalVisible={setEditModalVisible}
-              pickImage={pickImage}
-            />
-            <ProfileStatus matchCount={matches.length} />
-            <ProfileCondition matchCount={matches.length} />
-            <ProfileMatches userData={userData} matches={matches} refreshing={refreshing} onRefresh={fetchUserData} />
+          <ProfileCondition matchCount={matches.length} />
 
-          <View className="flex pb-4">
-            <TouchableOpacity onPress={handleLogout} className="bg-green-600 mx-4 rounded-lg">
-              <Text className="text-white font-semibold text-center p-2">Çıkış Yap</Text>
-            </TouchableOpacity>
-          </View>
-          
+          <ProfileMatches userData={userData} matches={matches} refreshing={refreshing} onRefresh={fetchUserData} />
+        </View>
+        <View className="flex pb-4">
+          <TouchableOpacity onPress={handleLogout} className="bg-green-600 mx-4 rounded-lg">
+            <Text className="text-white font-semibold text-center p-2">Çıkış Yap</Text>
+          </TouchableOpacity>
+        </View>
+
         {/* 🔹 PROFİL FOTOĞRAFI MODALI */}
         <Modal visible={modalVisible} transparent={true} onRequestClose={() => setModalVisible(false)}>
           <TouchableOpacity

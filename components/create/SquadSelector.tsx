@@ -49,7 +49,7 @@ export const SquadSelector: React.FC<SquadSelectorProps> = ({
       {isSquadIncomplete && (
         <View>
           <Text className="text-green-700 font-semibold mb-2 mt-2">Eksik Mevkileri Seçin</Text>
-        
+
           <View className="flex flex-col">
             {/* İlk Satır: Kaleci & Defans */}
             <View className="flex flex-row justify-between">
@@ -71,11 +71,10 @@ export const SquadSelector: React.FC<SquadSelectorProps> = ({
                         keyExtractor={(item) => item.toString()}
                         renderItem={({ item }) => (
                           <TouchableOpacity
-                            className={`p-2 px-3 rounded-lg border ${
-                              missingPositions[position].count === item
+                            className={`p-2 px-3 rounded-lg border ${missingPositions[position].count === item
                                 ? 'bg-green-600 border-green-600 text-white'
                                 : 'bg-gray-300 border-gray-400'
-                            }`}
+                              }`}
                             onPress={() => handleCountChange(position, item)}
                           >
                             <Text className={missingPositions[position].count === item ? 'text-white' : 'text-black'}>
@@ -111,11 +110,10 @@ export const SquadSelector: React.FC<SquadSelectorProps> = ({
                         keyExtractor={(item) => item.toString()}
                         renderItem={({ item }) => (
                           <TouchableOpacity
-                            className={`p-2 px-3 rounded-lg border ${
-                              missingPositions[position].count === item
+                            className={`p-2 px-3 rounded-lg border ${missingPositions[position].count === item
                                 ? 'bg-green-600 border-green-600 text-white'
                                 : 'bg-gray-300 border-gray-400'
-                            }`}
+                              }`}
                             onPress={() => handleCountChange(position, item)}
                           >
                             <Text className={missingPositions[position].count === item ? 'text-white' : 'text-black'}>
@@ -149,6 +147,6 @@ const styles = StyleSheet.create({
   },
   buttonWrapper: {
     width: '48%', // %50 yerine %48 verdik, kenarlarda kayma olmaması için
-    marginBottom:10,
+    marginBottom: 10,
   },
 });

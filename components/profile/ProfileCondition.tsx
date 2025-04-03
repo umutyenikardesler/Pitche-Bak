@@ -1,6 +1,12 @@
-import { View, Text } from "react-native";
+import { View, Text, Dimensions } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import '@/global.css';
 
 export default function ProfileCondition({ matchCount = 0 }) {
+
+  const screenWidth = Dimensions.get("window").width;
+  const fontSize = screenWidth > 430 ? 12 : screenWidth > 320 ? 11.5 : 10;
+
   // Kondisyon seviyesini hesaplayan fonksiyon
   const calculateCondition = (matchCount) => {
     if (matchCount < 3) return 0;
@@ -14,7 +20,7 @@ export default function ProfileCondition({ matchCount = 0 }) {
   const progress = calculateCondition(matchCount);
 
   let conditionMessage = "";
-  let conditionMessageColor = "green";
+  let conditionMessageColor = "#16a34a";
 
   if (matchCount === 0) {
     conditionMessage = "Yükleniyor...";
@@ -27,22 +33,28 @@ export default function ProfileCondition({ matchCount = 0 }) {
   } else if (matchCount === 4) {
     conditionMessage = "Eğer 1 maç daha yaparsan kondisyonun 90'a yükselecek";
   } else if (matchCount === 5) {
-    conditionMessage = "İlk 5 maçını tamamladın. Spor yapmaya devam iyi gidiyorsun ☺️";
+    conditionMessage = "İlk 5 maçını tamamladın. Spor yapmaya devam ☺️";
   } else {
-    conditionMessage = "Gerekli kondisyonu kazandın. Sağlıklı günler dilerim 👏";
+    conditionMessage = "Gerekli kondisyonu kazandın. Sağlıklı günler 👏";
   }
 
   return (
-    <View className="bg-white rounded-lg mx-4 my-3 p-3 shadow-md">
-      <View className="w-full mb-3 flex-row items-center">
-        <View className="flex-1 h-3 bg-gray-200 rounded-full overflow-hidden">
-          <View className="bg-green-600 h-full" style={{ width: `${progress}%` }} />
-        </View>
-        <Text className="pl-2 font-semibold text-green-500">{progress}%</Text>
+    <View>
+      <View className="flex-row mt-2 px-3 justify-center items-center">
+        <Ionicons name="accessibility" size={16} color="green" className="pl-2" />
+        <Text className="font-bold text-green-700 text-center"> KONDİSYONUN </Text>
       </View>
-      <Text className={`text-xs font-semibold text-center`} style={{ color: conditionMessageColor }}>
-        {conditionMessage}
-      </Text>
+      <View className="bg-white rounded-lg mx-4 my-3 p-3 shadow-md">
+        <View className="w-full flex-row items-center mb-2">
+          <View className="" style={{ flex: 1, height: 12, backgroundColor: '#e5e7eb', borderRadius: 9999, overflow: 'hidden' }}>
+            <View className="" style={{ height: '100%', backgroundColor: '#16a34a', width: `${progress}%` }} />
+          </View>
+          <Text className="pl-2 font-semibold text-green-700">{progress}%</Text>
+        </View>
+        <Text className={`text-xs font-semibold text-center`} style={{ color: conditionMessageColor, fontSize: fontSize }}>
+          {conditionMessage}
+        </Text>
+      </View>
     </View>
   );
 }

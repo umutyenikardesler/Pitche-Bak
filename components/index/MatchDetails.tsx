@@ -3,6 +3,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { Match } from "./types";
 import MapView, { Marker } from "react-native-maps";
 import { useRouter } from "expo-router";
+import '@/global.css';
 
 interface MatchDetailsProps {
   match: Match;
@@ -45,7 +46,7 @@ export default function MatchDetails({ match, onClose }: MatchDetailsProps) {
           </View>
           <View className="w-2/5 text-gray-700 text-md flex-row justify-center items-center pt-1">
             <Ionicons name="wallet-outline" size={18} color="black" />
-            <Text className="pl-2 font-semibold text-green-600">{match.prices} ₺</Text>
+            <Text className="pl-2 font-semibold text-green-700">{match.prices} ₺</Text>
           </View>
         </View>
 
@@ -59,9 +60,9 @@ export default function MatchDetails({ match, onClose }: MatchDetailsProps) {
             return (
               <View key={index} className="flex-row items-center ml-2 border-solid border-2 border-gray-500 rounded-full p-1">
                 <View className={`rounded-full p-1 ${position === 'K' ? 'bg-red-500'
-                  : position === 'D' ? 'bg-blue-500'
-                    : position === 'O' ? 'bg-green-500'
-                      : 'bg-yellow-500'}`}>
+                  : position === 'D' ? 'bg-blue-700'
+                    : position === 'O' ? 'bg-green-700'
+                      : 'bg-yellow-600'}`}>
                   <Text className="text-white font-bold text-md px-1">{position}</Text>
                 </View>
                 <Text className="ml-2 font-semibold pr-1">x {count}</Text>
@@ -73,7 +74,7 @@ export default function MatchDetails({ match, onClose }: MatchDetailsProps) {
         {match.users && (
           <View className="flex-row max-w-full items-center justify-center mt-2 mb-1">
             <Text className="font-semibold">Maçı oluşturan: </Text>
-            <TouchableOpacity onPress={() => router.push(`/profile?userId=${match.create_user}`)}>
+            <TouchableOpacity onPress={() => router.push({ pathname: "./", params: { userId: match.create_user }})}>
               <Text className="text-green-600 font-semibold">{match.users?.name} {match.users?.surname}</Text>
             </TouchableOpacity>
           </View>

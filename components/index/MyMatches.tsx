@@ -1,6 +1,7 @@
-import { View, Text, FlatList, TouchableOpacity, Image, RefreshControl } from "react-native";
+import { View, Text, FlatList, TouchableOpacity, Image, RefreshControl, Dimensions } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Match } from "./types";
+import '@/global.css';
 
 interface MyMatchesProps {
   matches: Match[];
@@ -19,9 +20,10 @@ const formatTitle = (text: string) => {
 export default function MyMatches({ matches, refreshing, onRefresh, onSelectMatch, onCreateMatch }: MyMatchesProps) {
   const renderMatch = ({ item }: { item: Match }) => (
     <TouchableOpacity onPress={() => onSelectMatch(item)}>
-      <View className="bg-white rounded-lg mx-4 mt-1 mb-1 p-2 shadow-lg">
-        <View className="flex-row">
-          <View className="w-1/5 justify-center py-1 p-1">
+      <View className="bg-white rounded-lg mx-4 mt-1 p-1 shadow-lg">
+        <View className="flex-row items-center justify-between">
+          {/* Profil Resmi */}
+          <View className="w-1/5 flex justify-center p-1 py-1.5">
             <Image
               source={item.users?.profile_image
                 ? { uri: item.users.profile_image }
@@ -30,16 +32,16 @@ export default function MyMatches({ matches, refreshing, onRefresh, onSelectMatc
               style={{ width: 60, height: 60, resizeMode: 'contain' }}
             />
           </View>
-
-          <View className="w-4/6 px-2">
-            <Text className="text-lg text-green-600 font-semibold">
+          {/* Maç Bilgileri */}
+          <View className="w-4/6 flex justify-center -mt-2 -ml-4">
+            <Text className="text-lg text-green-700 font-semibold">
               {formatTitle(item.title)}
             </Text>
 
             <View className="text-gray-700 text-md flex-row items-center">
               <Ionicons name="calendar-outline" size={18} color="black" />
               <Text className="pl-2 font-semibold"> {item.formattedDate} →</Text>
-              <Text className="pl-2 font-bold text-green-600"> {item.startFormatted}-{item.endFormatted} </Text>
+              <Text className="pl-2 font-bold text-green-700"> {item.startFormatted}-{item.endFormatted} </Text>
             </View>
 
             <View className="text-gray-700 text-md flex-row items-center pt-1">
@@ -49,29 +51,31 @@ export default function MyMatches({ matches, refreshing, onRefresh, onSelectMatc
             </View>
           </View>
 
-          <View className="flex-1 items-end justify-center px-1">
+          {/* Sağda Chevron İkonu */}
+          <View className="mr-1">
             <Ionicons name="chevron-forward-outline" size={20} color="green" />
           </View>
+
         </View>
       </View>
     </TouchableOpacity>
   );
 
   return (
-    <View>
-      <View className="flex-row py-3 bg-green-700 px-3">
+    <View className="">
+      <View className="flex-row p-2 bg-green-700">
         <Ionicons name="alarm-outline" size={16} color="white" className="pl-2" />
-        <Text className="font-bold text-white"> SENİ BEKLEYEN MAÇLAR </Text>
+        <Text className="font-bold text-white "> SENİ BEKLEYEN MAÇLAR </Text>
       </View>
 
       {matches.length === 0 ? (
         <View className='flex justify-center items-center'>
-          <Text className="text-center font-bold my-4">Oluşturduğun Maç Yok!</Text>
-          <TouchableOpacity 
-            className="text-center bg-green-600 text-white font-semibold rounded-md px-1 mb-2 items-center" 
+          <Text className="text-center font-bold mt-3">Oluşturduğun Maç Yok!</Text>
+          <TouchableOpacity
+            className="text-center bg-green-600 text-white font-semibold rounded-md my-3 items-center"
             onPress={onCreateMatch}
           >
-            <Text className="w-1/2 text-white font-semibold text-center p-3">Hemen Maç Oluştur</Text>
+            <Text className="w-1/2 text-white font-semibold text-center px-4 py-2 mx-2">Hemen Maç Oluştur</Text>
           </TouchableOpacity>
         </View>
       ) : (
@@ -80,8 +84,10 @@ export default function MyMatches({ matches, refreshing, onRefresh, onSelectMatc
           keyExtractor={(item) => item.id.toString()}
           renderItem={renderMatch}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-          style={{ paddingTop: 2, paddingBottom: 3 }}
+          style={{ paddingTop: 5, paddingBottom: 5}}
+          contentContainerStyle={{ flexGrow: 1, paddingBottom: 40 }}
           nestedScrollEnabled={true}
+          scrollEnabled={matches.length > 1} // 2 veya daha fazla maç varsa scroll aktif olur
         />
       )}
     </View>
