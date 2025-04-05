@@ -1,52 +1,71 @@
 import { Tabs, useNavigation, useRouter } from "expo-router";
-import { View } from "react-native";
+import { useEffect, useRef } from "react";
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
-import CustomHeader from "@/components/CustomHeader"; // Özel başlık bileşenini import et
-import { useEffect } from "react";
+import CustomHeader from "@/components/CustomHeader";
+import * as Haptics from 'expo-haptics';
 
 export default function TabsLayout() {
-
   const navigation = useNavigation();
   const router = useRouter();
+  const tabPressTimers = useRef<Record<string, NodeJS.Timeout>>({});
+  const tabPressCounts = useRef<Record<string, number>>({});
 
   useEffect(() => {
     const unsubscribe = navigation.addListener("tabPress", (e) => {
-      // Aktif olan sekmeye basıldığında yönlendirme yap
-      if (e.target.includes("index")) {
-        router.replace("/"); // Find sekmesi ana ekrana yönlendir
-      } else if (e.target.includes("pitches")) {
-        router.replace("/pitches");
-      } else if (e.target.includes("create")) {
-        router.replace("/create");
-      } else if (e.target.includes("message")) {
-        router.replace("/message");
-      } else if (e.target.includes("profile")) {
-        router.replace("/profile");
-      } else if (e.target.includes("notifications")) {
-        router.replace("/notifications");
+      const currentRoute = navigation.getState().routes[navigation.getState().index];
+      const currentTab = currentRoute.name;
+      const currentPath = currentRoute.path;
+
+      // Eğer zaten bir timer varsa temizle
+      if (tabPressTimers.current[currentTab]) {
+        clearTimeout(tabPressTimers.current[currentTab]);
+      }
+
+      // Sayımı artır
+      tabPressCounts.current[currentTab] = (tabPressCounts.current[currentTab] || 0) + 1;
+
+      // Yeni bir timer başlat
+      tabPressTimers.current[currentTab] = setTimeout(() => {
+        tabPressCounts.current[currentTab] = 0;
+      }, 300); // 300ms içinde ikinci basış algılanmazsa sıfırla
+
+      // Eğer ikinci basış ise
+      if (tabPressCounts.current[currentTab] === 2) {
+        // Titreşim efekti ver
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+        
+        // Ana sayfaya dön
+        if (currentTab === "index") {
+          // Eğer zaten ana sayfada değilsek veya detay sayfasındaysak
+          if (currentPath !== "/" && currentPath !== "/index") {
+            router.replace("/");
+          }
+        } else {
+          // Diğer tab'lar için de aynı mantık
+          router.replace(`/${currentTab}`);
+        }
+        
+        // Sayacı sıfırla
+        tabPressCounts.current[currentTab] = 0;
       }
     });
 
     return unsubscribe;
-  }, [navigation]);
+  }, [navigation, router]);
 
   return (
     <Tabs
       screenOptions={{
-        tabBarStyle: { backgroundColor: "#f9f9f9" }, // Genel stil
-        tabBarActiveTintColor: "green", // Aktif sekme genel rengi
-        tabBarInactiveTintColor: "gray", // Pasif sekme genel rengi
+        tabBarStyle: { backgroundColor: "#f9f9f9" },
+        tabBarActiveTintColor: "green",
+        tabBarInactiveTintColor: "gray",
       }}
     >
       <Tabs.Screen
         name="index"
         options={{
-          title: "Ana Sayfa",
-          headerTitleAlign: "left",
           tabBarLabel: "Find",
-          // tabBarShowLabel: false,
-          headerLeft: () => <View className="pl-2" />, // Boş bir `View` ekleyerek title'ın sola yaslanmasını sağla
-          headerRight: () => <CustomHeader />, // Özel başlığı sağa ekle
+          headerTitle: () => <CustomHeader title="Ana Sayfa" />,
           tabBarIcon: ({ focused, color, size }) => (
             <Ionicons name="search-outline" color={focused ? color : color} size={focused ? 30 : 20} />
           ),
@@ -55,12 +74,8 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="pitches"
         options={{
-          title: "Sahalar",
-          headerTitleAlign: "left",
           tabBarLabel: "Pitches",
-          // tabBarShowLabel: false,
-          headerLeft: () => <View className="pl-2" />, // Boş bir `View` ekleyerek title'ın sola yaslanmasını sağla
-          headerRight: () => <CustomHeader />, // Özel başlığı sağa ekle
+          headerTitle: () => <CustomHeader title="Sahalar" />,
           tabBarIcon: ({ focused }) => (
             <Ionicons
               name="navigate-circle-outline"
@@ -73,12 +88,8 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="create"
         options={{
-          title: "Maç Oluştur",
-          headerTitleAlign: "left",
           tabBarLabel: "Create",
-          // tabBarShowLabel: false,
-          headerLeft: () => <View className="pl-2" />, // Boş bir `View` ekleyerek title'ın sola yaslanmasını sağla
-          headerRight: () => <CustomHeader />, // Özel başlığı sağa ekle
+          headerTitle: () => <CustomHeader title="Maç Oluştur" />,
           tabBarIcon: ({ focused, color }) => (
             <MaterialIcons
               name="add-circle-outline"
@@ -91,12 +102,8 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="message"
         options={{
-          title: "Mesajlar",
-          headerTitleAlign: "left",
           tabBarLabel: "Messages",
-          // tabBarShowLabel: false,
-          headerLeft: () => <View className="pl-2" />, // Boş bir `View` ekleyerek title'ın sola yaslanmasını sağla
-          headerRight: () => <CustomHeader />, // Özel başlığı sağa ekle
+          headerTitle: () => <CustomHeader title="Mesajlar" />,
           tabBarIcon: ({ focused, color }) => (
             <Ionicons
               name="paper-plane-outline"
@@ -109,12 +116,8 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="profile"
         options={{
-          title: "Profil",
-          headerTitleAlign: "left",
           tabBarLabel: "Profile",
-          // tabBarShowLabel: false,
-          headerLeft: () => <View className="pl-2" />, // Boş bir `View` ekleyerek title'ın sola yaslanmasını sağla
-          headerRight: () => <CustomHeader />, // Özel başlığı sağa ekle
+          headerTitle: () => <CustomHeader title="Profil" />,
           tabBarIcon: ({ focused, color }) => (
             <Ionicons
               name="person-circle-outline"
@@ -127,13 +130,10 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="notifications"
         options={{
-          title: "Bildirimler",
           tabBarLabel: "Notifications",
-          // tabBarShowLabel: false,
-          href: null, // Tab bar'da gösterme
+          href: null,
         }}
       />
     </Tabs>
   );
 }
-

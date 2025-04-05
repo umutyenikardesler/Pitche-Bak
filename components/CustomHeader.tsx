@@ -1,7 +1,9 @@
 import React from 'react';
-import { View, TouchableOpacity, Text, Image } from 'react-native';
+import { View, TouchableOpacity, Text, Image, Dimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
+
+const screenWidth = Dimensions.get('window').width;
 
 const CustomHeader = ({ title, showNotificationIcon = true }) => {
   const navigation = useNavigation();
@@ -11,23 +13,28 @@ const CustomHeader = ({ title, showNotificationIcon = true }) => {
   };
 
   return (
-    <View className="flex-row justify-center items-center px-4 py-2">
-      {/* Sayfa Başlığı (Sol Taraf) */}
-      <Text className="text-lg font-bold flex-1">{title}</Text>
+    <View className="flex-row justify-between items-center w-full -mx-0 ">
+      {/* Sol: Başlık */}
+      <View>
+        <Text className="text-lg font-bold text-green-700">{title}</Text>
+      </View>
 
-      {/* Orta Kısım: Logo */}
-      <View className='text-center'>
+      {/* Orta: Logo (mutlak konumda ortalanmış) */}
+      <View style={{
+          position: 'absolute',
+          left: screenWidth / 2 - 85, // yarı genişlik - yarı logo genişliği
+        }}
+        >
         <Image
-          source={require("@/assets/images/logo.png")} // Logonu buraya ekleyebilirsin
-          style={{ width: 180, height: 60, resizeMode: 'contain' }}
-          className='flex justify-center items-center text-center'
+          source={require("@/assets/images/logo.png")}
+          style={{ width: 130, height: 40, resizeMode: 'contain' }}
         />
       </View>
 
-      {/* Bildirim İkonu (Sağ Taraf) */}
-      <View>
+      {/* Sağ: Bildirim ikonu */}
+      <View style={{ alignItems: 'flex-end' }}>
         {showNotificationIcon && (
-          <TouchableOpacity className="ml-auto bg-white" onPress={handleNotificationsPress}>
+          <TouchableOpacity onPress={handleNotificationsPress}>
             <Ionicons name="heart-outline" size={24} color="green" />
           </TouchableOpacity>
         )}
