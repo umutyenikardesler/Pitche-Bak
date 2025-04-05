@@ -7,6 +7,7 @@ import { supabase } from '@/services/supabase';
 import '@/global.css';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import AsyncStorage from "@react-native-async-storage/async-storage"; // Kullanıcı ID'sini almak için eklendi
+import { useLocalSearchParams } from "expo-router";
 
 interface MissingPosition {
   selected: boolean;
@@ -37,19 +38,35 @@ export default function CreateMatch() {
   });
 
   const [userId, setUserId] = useState(null);
-  
-  useEffect(() => {
-    const fetchUserId = async () => {
-      const storedUserId = await AsyncStorage.getItem("userId");
-      if (storedUserId) {
-        setUserId(storedUserId);
-      }
-    };
-    fetchUserId();
-  }, []);
 
-  const navigation = useNavigation(); // Navigation hook'u tanımlandı
-  const route = useRoute(); // route değişkeni eklendi
+  
+const navigation = useNavigation();
+
+// const [matchTitle, setMatchTitle] = useState('');
+// const [selectedDistrict, setSelectedDistrict] = useState('');
+// const [selectedPitch, setSelectedPitch] = useState('');
+//const [price, setPrice] = useState('');
+
+const { pitchId, district, name, price: incomingPrice } = useLocalSearchParams();
+
+  
+useEffect(() => {
+  const fetchUserId = async () => {
+    const storedUserId = await AsyncStorage.getItem("userId");
+    if (storedUserId) {
+      setUserId(storedUserId);
+    }
+  };
+
+  fetchUserId();
+
+  if (pitchId) setSelectedPitch(pitchId.toString());
+  if (district) setSelectedDistrict(district.toString());
+  if (incomingPrice) setPrice(String(incomingPrice));
+  if (name) setMatchTitle(`⚽ ${name} Maçı`);
+}, []);
+
+  //const navigation = useNavigation(); // Navigation hook'u tanımlandı
 
   const handleCreateMatch = async () => {
 
