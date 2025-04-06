@@ -51,8 +51,9 @@ export default function Index() {
   const fetchMatches = useCallback(async () => {
     setRefreshing(true);
     const today = new Date().toISOString().split("T")[0];
-    const currentHours = new Date().getHours();
-    const currentMinutes = new Date().getMinutes();
+    const now = new Date();
+    const currentHours = now.getHours();
+    const currentMinutes = now.getMinutes();
 
     const { data: authData, error: authError } = await supabase.auth.getUser();
     if (authError || !authData.user.id) {
@@ -89,9 +90,26 @@ export default function Index() {
     if (!matchError) {
       const filteredMatches = matchData?.filter((item) => {
         if (item.date > today) return true;
+
         const [matchHours, matchMinutes] = item.time.split(":").map(Number);
-        return matchHours + 1 > currentHours ||
-          (matchHours + 1 === currentHours && matchMinutes > currentMinutes);
+        const matchEndHour = matchHours + 1;
+
+        // Gece yarısı kontrolü (00:00-03:00 arası özel durum)
+        if (currentHours >= 0 && currentHours < 3) {
+          // Eğer maç gece yarısından sonra bitiyorsa
+          if (matchEndHour >= 24) {
+            const normalizedEndHour = matchEndHour % 24;
+            // Maç bitiş saati şu anki saatten büyükse göster
+            return normalizedEndHour > currentHours ||
+              (normalizedEndHour === currentHours && matchMinutes > currentMinutes);
+          }
+          // Normal durum
+          return matchEndHour > currentHours ||
+            (matchEndHour === currentHours && matchMinutes > currentMinutes);
+        }
+        // Normal gündüz saatleri
+        return matchEndHour > currentHours ||
+          (matchEndHour === currentHours && matchMinutes > currentMinutes);
       });
 
       const formattedData = filteredMatches?.map((item) => ({
@@ -120,9 +138,23 @@ export default function Index() {
     if (!otherMatchError) {
       const filteredOtherMatches = otherMatchData?.filter((item) => {
         if (item.date > today) return true;
+
         const [matchHours, matchMinutes] = item.time.split(":").map(Number);
-        return matchHours + 1 > currentHours ||
-          (matchHours + 1 === currentHours && (matchMinutes > currentMinutes));
+        const matchEndHour = matchHours + 1;
+
+        // Gece yarısı kontrolü (00:00-03:00 arası özel durum)
+        if (currentHours >= 0 && currentHours < 3) {
+          // Eğer maç gece yarısından sonra bitiyorsa
+          if (matchEndHour >= 24) {
+            const normalizedEndHour = matchEndHour % 24;
+            return normalizedEndHour > currentHours ||
+              (normalizedEndHour === currentHours && matchMinutes > currentMinutes);
+          }
+          return matchEndHour > currentHours ||
+            (matchEndHour === currentHours && matchMinutes > currentMinutes);
+        }
+        return matchEndHour > currentHours ||
+          (matchEndHour === currentHours && matchMinutes > currentMinutes);
       });
 
       const otherFormattedData = filteredOtherMatches?.map((item) => ({
@@ -163,6 +195,28 @@ export default function Index() {
       return () => { };
     }, [fetchMatches])
   );
+
+  useEffect(() => {
+    const checkTimeAndRefresh = () => {
+      const now = new Date();
+      const minutes = now.getMinutes();
+      const seconds = now.getSeconds();
+      
+      // Saat başı kontrolü (00:00, 01:00, 02:00 vb.)
+      if (minutes === 0 && seconds === 0) {
+        fetchMatches();
+      }
+    };
+  
+    // Her dakika kontrol etmek için interval
+    const interval = setInterval(checkTimeAndRefresh, 60000); // 1 dakika
+    
+    // İlk yüklemede de kontrol et
+    checkTimeAndRefresh();
+    
+    // Temizleme fonksiyonu
+    return () => clearInterval(interval);
+  }, [fetchMatches]);
 
   return (
     <GestureHandlerRootView className="flex-1">

@@ -223,6 +223,16 @@ export default function CreateMatch() {
     }, [])
   );
 
+  const capitalizeWords = (text: string) => {
+    return text
+      .toLocaleLowerCase('tr-TR')
+      .split(' ')
+      .map(word =>
+        word.charAt(0).toLocaleUpperCase('tr-TR') + word.slice(1)
+      )
+      .join(' ');
+  };
+
   return (
     <ScrollView className="bg-white rounded-lg my-3 mx-4 p-4 shadow-md">
       <View className="mb-4">
@@ -231,7 +241,8 @@ export default function CreateMatch() {
           className="w-full border border-gray-500 p-2 rounded"
           placeholder="Maç Başlığı Giriniz"
           value={matchTitle}
-          onChangeText={setMatchTitle}
+          onChangeText={(text) => setMatchTitle(capitalizeWords(text))}
+          autoCapitalize="words" // Bu satırı da ekleyebilirsiniz (klavye özelliği)
         />
       </View>
 
