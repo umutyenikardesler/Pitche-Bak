@@ -49,7 +49,7 @@ export default function CreateMatch() {
   // const [selectedPitch, setSelectedPitch] = useState('');
   // const [price, setPrice] = useState('');
 
-  const { pitchId, district,  districtName: paramDistrictName, price: incomingPrice, shouldSetFields } = useLocalSearchParams();
+  const { pitchId, district, districtName: paramDistrictName, price: incomingPrice, shouldSetFields } = useLocalSearchParams();
 
   useEffect(() => {
     const fetchUserId = async () => {
@@ -67,7 +67,7 @@ export default function CreateMatch() {
       if (district) setSelectedDistrict(district.toString());
       if (paramDistrictName) setLocalDistrictName(paramDistrictName.toString());
       if (incomingPrice) setPrice(incomingPrice.toString());
-      
+
       // Router'ın parametrelerini temizle (bir sonraki açılışta tekrar doldurmaması için)
       router.setParams({ shouldSetFields: "false" });
     }
@@ -80,81 +80,125 @@ export default function CreateMatch() {
       return;
     }
 
-    const formattedTime = `${time.padStart(2, '0')}:00:00`;
-    const missingGroups = isSquadIncomplete
-      ? Object.keys(missingPositions)
-        .filter(position => missingPositions[position].selected)
-        .map(position => {
-          const shortCode = position === 'kaleci' ? 'K'
-            : position === 'defans' ? 'D'
-              : position === 'ortaSaha' ? 'O'
-                : 'F';
-          return `${shortCode}:${missingPositions[position].count}`;
-        })
-      : [];
+    try {
+      const formattedTime = `${time.padStart(2, '0')}:00:00`;
+      const missingGroups = isSquadIncomplete
+        ? Object.keys(missingPositions)
+          .filter(position => missingPositions[position].selected)
+          .map(position => {
+            const shortCode = position === 'kaleci' ? 'K'
+              : position === 'defans' ? 'D'
+                : position === 'ortaSaha' ? 'O'
+                  : 'F';
+            return `${shortCode}:${missingPositions[position].count}`;
+          })
+        : [];
 
-    const { data, error } = await supabase
-      .from('match')
-      .insert([
-        {
-          title: matchTitle,
-          location: selectedPitch,
-          time: formattedTime,
-          date: date.toISOString().split('T')[0],
-          prices: price,
-          missing_groups: missingGroups,
-          create_user: userId, // Kullanıcının ID'si burada ekleniyor
-        },
-      ]);
+      const { data, error } = await supabase
+        .from('match')
+        .insert([
+          {
+            title: matchTitle,
+            location: selectedPitch,
+            time: formattedTime,
+            date: date.toISOString().split('T')[0],
+            prices: price,
+            missing_groups: missingGroups,
+            create_user: userId, // Kullanıcının ID'si burada ekleniyor
+          },
+        ]);
 
-    if (error) {
-      console.error('Maç oluşturulurken hata oluştu:', error);
-      if (Platform.OS === 'web') {
-        alert("Hata: Maç oluşturulurken bir hata oluştu. Lütfen tekrar deneyin.");
-      } else {
-        Alert.alert("Hata", "Maç oluşturulurken bir hata oluştu. Lütfen tekrar deneyin.");
-      }
-    } else {
+      // if (error) {
+      //   console.error('Maç oluşturulurken hata oluştu:', error);
+      //   if (Platform.OS === 'web') {
+      //     alert("Hata: Maç oluşturulurken bir hata oluştu. Lütfen tekrar deneyin.");
+      //   } else {
+      //     Alert.alert("Hata", "Maç oluşturulurken bir hata oluştu. Lütfen tekrar deneyin.");
+      //   }
+      // } else {
+      //   console.log('Maç başarıyla oluşturuldu:', data);
+
+      //   if (route.params && route.params.onMatchCreated) {
+      //     route.params.onMatchCreated(); // Profil sayfasındaki güncelleme fonksiyonunu çağır
+      //   }
+
+      //   if (Platform.OS === 'web') {
+      //     alert("Tebrikler 🎉\nMaçınız başarılı bir şekilde oluşturulmuştur.");
+      //     window.location.href = '/'; // Web için yönlendirme
+      //   } else {
+      //     Alert.alert(
+      //       "Tebrikler 🎉",
+      //       "Maçınız başarılı bir şekilde oluşturulmuştur.",
+      //       [
+      //         {
+      //           text: "Tamam",
+      //           onPress: () => {
+      //             setMatchTitle('');
+      //             setSelectedDistrict('');
+      //             setSelectedPitch('');
+      //             setDate(new Date());
+      //             setTime('1');
+      //             setPrice('');
+      //             setIsSquadIncomplete(false);
+      //             setMissingPositions({
+      //               kaleci: { selected: false, count: 1 },
+      //               defans: { selected: false, count: 1 },
+      //               ortaSaha: { selected: false, count: 1 },
+      //               forvet: { selected: false, count: 1 },
+      //             });
+
+      //             navigation.navigate("index", { refreshProfile: true }); // Profil sayfasını güncellemek için parametre gönder
+      //           }
+      //         }
+      //       ]
+      //     );
+      //   }
+      // }
+      if (error) throw error;
+
       console.log('Maç başarıyla oluşturuldu:', data);
 
-      if (route.params && route.params.onMatchCreated) {
-        route.params.onMatchCreated(); // Profil sayfasındaki güncelleme fonksiyonunu çağır
-      }
-
-      if (Platform.OS === 'web') {
-        alert("Tebrikler 🎉\nMaçınız başarılı bir şekilde oluşturulmuştur.");
-        window.location.href = '/'; // Web için yönlendirme
-      } else {
-        Alert.alert(
-          "Tebrikler 🎉",
-          "Maçınız başarılı bir şekilde oluşturulmuştur.",
-          [
-            {
-              text: "Tamam",
-              onPress: () => {
-                setMatchTitle('');
-                setSelectedDistrict('');
-                setSelectedPitch('');
-                setDate(new Date());
-                setTime('1');
-                setPrice('');
-                setIsSquadIncomplete(false);
-                setMissingPositions({
-                  kaleci: { selected: false, count: 1 },
-                  defans: { selected: false, count: 1 },
-                  ortaSaha: { selected: false, count: 1 },
-                  forvet: { selected: false, count: 1 },
-                });
-
-                navigation.navigate("index", { refreshProfile: true }); // Profil sayfasını güncellemek için parametre gönder
+      // Başarılı mesajını göster
+      Alert.alert(
+        "Tebrikler 🎉",
+        "Maçınız başarılı bir şekilde oluşturulmuştur.",
+        [
+          {
+            text: "Tamam",
+            onPress: () => {
+              // Formu temizle
+              setMatchTitle('');
+              setSelectedDistrict('');
+              setSelectedPitch('');
+              setLocalDistrictName('');
+              setDate(new Date());
+              setTime('1');
+              setPrice('');
+              setIsSquadIncomplete(false);
+              setMissingPositions({
+                kaleci: { selected: false, count: 1 },
+                defans: { selected: false, count: 1 },
+                ortaSaha: { selected: false, count: 1 },
+                forvet: { selected: false, count: 1 },
+              });
+              // Ana sayfaya yönlendir
+              if (Platform.OS === 'web') {
+                window.location.href = '/';
+              } else {
+                navigation.navigate("(tabs)", { screen: "index" });
               }
             }
-          ]
-        );
-      }
+          }
+        ]
+      );
+
+    } catch (error) {
+      console.error('Maç oluşturulurken hata oluştu:', error);
+      Alert.alert(
+        "Hata",
+        "Maç oluşturulurken bir hata oluştu. Lütfen tekrar deneyin."
+      );
     }
-
-
   };
 
   useFocusEffect(
