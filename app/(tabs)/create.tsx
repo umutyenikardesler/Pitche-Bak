@@ -1,13 +1,16 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, TextInput, ScrollView, TouchableOpacity, Alert, KeyboardAvoidingView, Platform, TouchableWithoutFeedback, Keyboard } from 'react-native';
+
 import { MatchDetailsForm } from '@/components/create/MatchDetailsForm';
 import { LocationSelector } from '@/components/create/LocationSelector';
 import { SquadSelector } from '@/components/create/SquadSelector';
+
 import { supabase } from '@/services/supabase';
 import '@/global.css';
-import { useNavigation, useRoute } from '@react-navigation/native';
+
+import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
 import AsyncStorage from "@react-native-async-storage/async-storage"; // Kullanıcı ID'sini almak için eklendi
-import { useLocalSearchParams } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 
 interface MissingPosition {
   selected: boolean;
@@ -24,7 +27,7 @@ interface MissingPositions {
 export default function CreateMatch() {
   const [matchTitle, setMatchTitle] = useState('');
   const [selectedDistrict, setSelectedDistrict] = useState('');
-  // const [selectedNeighborhood, setSelectedNeighborhood] = useState('');
+  const [localDistrictName, setLocalDistrictName] = useState(''); // İsmini değiştirdik
   const [selectedPitch, setSelectedPitch] = useState('');
   const [date, setDate] = useState(new Date());
   const [time, setTime] = useState('1');
@@ -38,35 +41,37 @@ export default function CreateMatch() {
   });
 
   const [userId, setUserId] = useState(null);
+  const router = useRouter();
+  const navigation = useNavigation();
 
-  
-const navigation = useNavigation();
+  // const [matchTitle, setMatchTitle] = useState('');
+  // const [selectedDistrict, setSelectedDistrict] = useState('');
+  // const [selectedPitch, setSelectedPitch] = useState('');
+  // const [price, setPrice] = useState('');
 
-// const [matchTitle, setMatchTitle] = useState('');
-// const [selectedDistrict, setSelectedDistrict] = useState('');
-// const [selectedPitch, setSelectedPitch] = useState('');
-//const [price, setPrice] = useState('');
+  const { pitchId, district,  districtName: paramDistrictName, price: incomingPrice, shouldSetFields } = useLocalSearchParams();
 
-const { pitchId, district, name, price: incomingPrice } = useLocalSearchParams();
+  useEffect(() => {
+    const fetchUserId = async () => {
+      const storedUserId = await AsyncStorage.getItem("userId");
+      if (storedUserId) {
+        setUserId(storedUserId);
+      }
+    };
 
-  
-useEffect(() => {
-  const fetchUserId = async () => {
-    const storedUserId = await AsyncStorage.getItem("userId");
-    if (storedUserId) {
-      setUserId(storedUserId);
+    fetchUserId();
+
+    if (shouldSetFields === "true") {
+      // Yalnızca soccer iconuna basıldığında formu doldur
+      if (pitchId) setSelectedPitch(pitchId.toString());
+      if (district) setSelectedDistrict(district.toString());
+      if (paramDistrictName) setLocalDistrictName(paramDistrictName.toString());
+      if (incomingPrice) setPrice(incomingPrice.toString());
+      
+      // Router'ın parametrelerini temizle (bir sonraki açılışta tekrar doldurmaması için)
+      router.setParams({ shouldSetFields: "false" });
     }
-  };
-
-  fetchUserId();
-
-  if (pitchId) setSelectedPitch(pitchId.toString());
-  if (district) setSelectedDistrict(district.toString());
-  if (incomingPrice) setPrice(String(incomingPrice));
-  if (name) setMatchTitle(`⚽ ${name} Maçı`);
-}, []);
-
-  //const navigation = useNavigation(); // Navigation hook'u tanımlandı
+  }, [pitchId, district, paramDistrictName, incomingPrice, shouldSetFields]);
 
   const handleCreateMatch = async () => {
 
@@ -148,7 +153,31 @@ useEffect(() => {
         );
       }
     }
+
+
   };
+
+  useFocusEffect(
+    React.useCallback(() => {
+      return () => {
+        // Sayfadan çıkılırken temizleme işlemi
+        setMatchTitle('');
+        setSelectedDistrict('');
+        setSelectedPitch('');
+        setLocalDistrictName(''); // Yeni ismi kullan
+        setDate(new Date());
+        setTime('1');
+        setPrice('');
+        setIsSquadIncomplete(false);
+        setMissingPositions({
+          kaleci: { selected: false, count: 1 },
+          defans: { selected: false, count: 1 },
+          ortaSaha: { selected: false, count: 1 },
+          forvet: { selected: false, count: 1 },
+        });
+      };
+    }, [])
+  );
 
   return (
     <ScrollView className="bg-white rounded-lg my-3 mx-4 p-4 shadow-md">
@@ -165,12 +194,12 @@ useEffect(() => {
       <LocationSelector
         selectedDistrict={selectedDistrict}
         setSelectedDistrict={setSelectedDistrict}
-        // selectedNeighborhood={selectedNeighborhood}
-        // setSelectedNeighborhood={setSelectedNeighborhood}
         selectedPitch={selectedPitch}
         setSelectedPitch={setSelectedPitch}
         price={price}
         setPrice={setPrice}
+        districtName={localDistrictName} // Yeni ismi kullan
+        setDistrictName={setLocalDistrictName} // Yeni ismi kullan
       />
 
       <MatchDetailsForm

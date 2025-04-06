@@ -11,6 +11,8 @@ interface LocationSelectorProps {
   setSelectedPitch: (pitch: string) => void;
   price: string;
   setPrice: (price: string) => void;
+  districtName: string; // Bunu ekleyin
+  setDistrictName: (name: string) => void; // Bunu ekleyin
 }
 
 export const LocationSelector: React.FC<LocationSelectorProps> = ({
@@ -20,6 +22,8 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
   setSelectedPitch,
   price,
   setPrice,
+  districtName, // Props olarak alın
+  setDistrictName // Props olarak alın
 }) => {
   const [districts, setDistricts] = useState([]);
   const [pitches, setPitches] = useState([]);
@@ -31,11 +35,52 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
   }, []);
 
   useEffect(() => {
-    if (selectedDistrict) {
-      fetchPitches(selectedDistrict); // fetchPitches çağrısı burada kalıyor
+    if (selectedDistrict && districts.length > 0) {
+      const selected = districts.find(d => d.id === Number(selectedDistrict));
+      if (selected) {
+        setDistrictName(selected.name);
+      }
     } else {
-      setPitches([]);
+      setDistrictName(''); // District seçili değilse name'i temizle
     }
+  }, [selectedDistrict, districts]);
+
+  useEffect(() => {
+    const fetchDistrictsAndInit = async () => {
+      const { data, error } = await supabase.from('districts').select('*');
+      if (data) {
+        setDistricts(data);
+  
+        // Burada initializeFromPitchId çağır
+        if (selectedPitch && !selectedDistrict) {
+          const { data: pitchData, error } = await supabase
+            .from('pitches')
+            .select('id, name, price, district_id')
+            .eq('id', selectedPitch)
+            .single();
+  
+            if (pitchData) {
+              setPrice(pitchData.price.toString());
+              const district = data.find(d => d.id === Number(selectedDistrict));
+              if (district) {
+                setDistrictName(district.name);
+              }
+            }
+          }
+        }
+      };
+    
+      fetchDistrictsAndInit();
+    }, [selectedDistrict, selectedPitch]);
+
+
+  useEffect(() => {
+    const fetchPitchIfNeeded = async () => {
+      if (selectedDistrict) {
+        await fetchPitches(selectedDistrict);
+      }
+    };
+    fetchPitchIfNeeded();
   }, [selectedDistrict]);
 
 
@@ -66,9 +111,17 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
     <Modal
       isVisible={showDistrictModal} // isVisible prop'u kullanılıyor
       backdropOpacity={0.5} // Opaklık buradan ayarlanıyor
-      onBackdropPress={() => setShowDistrictModal(false)} // Arka plana tıklayınca kapanma
+     // onBackdropPress={() => setShowDistrictModal(false)} // Arka plana tıklayınca kapanma
       animationIn="fadeIn" // Animasyonlar eklenebilir
       animationOut="fadeOut"
+      onBackdropPress={() => {
+        setShowDistrictModal(false);
+        // Modal kapatıldığında districtName'i güncelle
+        if (selectedDistrict && districts.length > 0) {
+          const selected = districts.find(d => d.id === Number(selectedDistrict));
+          setDistrictName(selected ? selected.name : '');
+        }
+      }}
       >
       <View className="flex-1 justify-center items-center">
         <View className="w-lg bg-white rounded-lg p-4" style={{ maxHeight: screenHeight * 0.75 }}>
@@ -156,7 +209,7 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
         onPress={() => setShowDistrictModal(true)}
       >
         <Text> {/* Text componenti eklendi */}
-          {selectedDistrict ? districts.find(d => d.id === selectedDistrict)?.name : 'İlçe Seçiniz'}
+         {districtName || 'İlçe Seçiniz'}
         </Text>
       </TouchableOpacity>
 
