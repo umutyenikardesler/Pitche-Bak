@@ -121,13 +121,21 @@ export default function Profile() {
       .from("match")
       .select("*, pitches (name, districts (name))")
       .eq("create_user", userId)
-      .order("date", { ascending: false });
+      .order("date", { ascending: false })
+      .order("time", { ascending: false });
 
     if (error) {
       console.error("Maçları çekerken hata oluştu:", error);
       setMatches([]);
     } else {
-      setMatches(data || []);
+      // Ekstra sıralama güvenliği için istemci tarafında da sırala
+      const sortedMatches = [...(data || [])].sort((a, b) => {
+        const dateA = new Date(`${a.date}T${a.time}`);
+        const dateB = new Date(`${b.date}T${b.time}`);
+        return dateB - dateA; // En yakın tarih+saat en üstte
+      });
+      
+      setMatches(sortedMatches);
     }
   };
 

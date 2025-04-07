@@ -83,7 +83,7 @@ export default function OtherMatches({ matches, refreshing, onRefresh, onSelectM
           keyExtractor={(item) => item.id.toString()}
           renderItem={renderMatch}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-          style={{ paddingTop: 5, paddingBottom: 5 }}
+          style={{ paddingTop: 3, paddingBottom: 5 }}
           contentContainerStyle={{ flexGrow: 1, paddingBottom: 10 }} // En alta ekstra boşluk bırak
           nestedScrollEnabled={true}
         />

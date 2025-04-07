@@ -20,7 +20,8 @@ export default function ProfileMatches({ userData }) {
       .from("match")
       .select("*, pitches (name, districts (name))")
       .eq("create_user", userData.id)
-      .order("date", { ascending: false });
+      .order("date", { ascending: false })
+      .order("time", { ascending: false });
 
     if (error) {
       console.error("Maçları çekerken hata oluştu:", error);

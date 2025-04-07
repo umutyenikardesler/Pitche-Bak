@@ -24,7 +24,7 @@ export default function Index() {
   // // Index.tsx içinde
   const { height } = Dimensions.get('window');
   const itemHeight = height * 0.14; // Her maç için yaklaşık yükseklik
-  const maxHeight = height * 0.233; // Maksimum yükseklik belirle
+  const maxHeight = height * 0.24; // Maksimum yükseklik belirle
   const myMatchesHeight = Math.min(futureMatches.length * itemHeight, maxHeight);
 
   // State'leri ekleyin
