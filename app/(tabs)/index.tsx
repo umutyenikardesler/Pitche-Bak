@@ -36,17 +36,23 @@ export default function Index() {
   const userId = params.userId as string | undefined;
 
   useEffect(() => {
-    if (userId) {
-      setViewingUserId(userId as string);
+    if (userId && userId !== 'undefined') {
+      setViewingUserId(userId);
       setProfileModalVisible(true);
+    } else {
+      setViewingUserId(null);
+      setProfileModalVisible(false);
     }
   }, [userId]);
 
   // Modal kapatma fonksiyonu
-  const closeProfileModal = () => {
+  const closeProfileModal = useCallback(() => {
+    // Önce state'leri sıfırla
+    setViewingUserId(null);
     setProfileModalVisible(false);
-    router.setParams({ userId: undefined }); // URL'den parametreyi kaldır
-  };
+    // URL parametrelerini temizle
+    router.setParams({ userId: undefined });
+  }, [router]);
 
   const fetchMatches = useCallback(async () => {
     setRefreshing(true);
@@ -220,16 +226,19 @@ export default function Index() {
 
   return (
     <GestureHandlerRootView className="flex-1">
-      <Modal
-        visible={profileModalVisible}
-        animationType="slide"
-        onRequestClose={closeProfileModal}
-      >
-        <ProfilePreview
-          userId={viewingUserId}
-          onClose={closeProfileModal}
-        />
-      </Modal>
+      {profileModalVisible && (
+        <Modal
+          visible={profileModalVisible}
+          animationType="slide"
+          onRequestClose={closeProfileModal}
+          transparent={true}
+        >
+          <ProfilePreview
+            userId={viewingUserId || ''}
+            onClose={closeProfileModal}
+          />
+        </Modal>
+      )}
       {selectedMatch ? (
         <GestureDetector gesture={swipeGesture}>
           <MatchDetails match={selectedMatch} onClose={handleCloseDetail} />
