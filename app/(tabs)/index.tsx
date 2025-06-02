@@ -56,10 +56,15 @@ export default function Index() {
 
   const fetchMatches = useCallback(async () => {
     setRefreshing(true);
-    const today = new Date().toISOString().split("T")[0];
+    // Türkiye saati için düzeltme (UTC+3)
     const now = new Date();
-    const currentHours = now.getHours();
-    const currentMinutes = now.getMinutes();
+    const turkeyOffset = 3; // UTC+3 için offset
+    const utcNow = new Date(now.getTime() + (now.getTimezoneOffset() * 60000));
+    const turkeyNow = new Date(utcNow.getTime() + (turkeyOffset * 3600000));
+    
+    const today = turkeyNow.toISOString().split("T")[0];
+    const currentHours = turkeyNow.getHours();
+    const currentMinutes = turkeyNow.getMinutes();
 
     const { data: authData, error: authError } = await supabase.auth.getUser();
     if (authError || !authData.user.id) {
@@ -95,8 +100,10 @@ export default function Index() {
 
     if (!matchError) {
       const filteredMatches = matchData?.filter((item) => {
+        // Eğer maç bugünden sonraki bir tarihte ise direkt göster
         if (item.date > today) return true;
 
+        // Bugünkü maçlar için saat kontrolü
         const [matchHours, matchMinutes] = item.time.split(":").map(Number);
         const matchEndHour = matchHours + 1;
 
@@ -105,15 +112,14 @@ export default function Index() {
           // Eğer maç gece yarısından sonra bitiyorsa
           if (matchEndHour >= 24) {
             const normalizedEndHour = matchEndHour % 24;
-            // Maç bitiş saati şu anki saatten büyükse göster
             return normalizedEndHour > currentHours ||
               (normalizedEndHour === currentHours && matchMinutes > currentMinutes);
           }
-          // Normal durum
           return matchEndHour > currentHours ||
             (matchEndHour === currentHours && matchMinutes > currentMinutes);
         }
-        // Normal gündüz saatleri
+
+        // Normal gündüz saatleri için kontrol
         return matchEndHour > currentHours ||
           (matchEndHour === currentHours && matchMinutes > currentMinutes);
       });
