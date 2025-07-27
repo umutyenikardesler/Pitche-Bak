@@ -2,14 +2,22 @@ import React from 'react';
 import { View, TouchableOpacity, Text, Image, Dimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
+import { useNotification } from './NotificationContext';
+import { useRouter } from 'expo-router';
 
 const screenWidth = Dimensions.get('window').width;
 
-const CustomHeader = ({ title, showNotificationIcon = true }) => {
-  const navigation = useNavigation();
+// Add type for props
+interface CustomHeaderProps {
+  title: string;
+  showNotificationIcon?: boolean;
+}
 
+const CustomHeader = ({ title, showNotificationIcon = true }: CustomHeaderProps) => {
+  const router = useRouter();
+  const { count } = useNotification();
   const handleNotificationsPress = () => {
-    navigation.navigate('notifications');
+    router.push('/notifications');
   };
 
   return (
@@ -34,8 +42,25 @@ const CustomHeader = ({ title, showNotificationIcon = true }) => {
       {/* Sağ: Bildirim ikonu */}
       <View style={{ alignItems: 'flex-end' }}>
         {showNotificationIcon && (
-          <TouchableOpacity onPress={handleNotificationsPress}>
+          <TouchableOpacity onPress={handleNotificationsPress} style={{ position: 'relative' }}>
             <Ionicons name="heart-outline" size={24} color="green" />
+            {count > 0 && (
+              <View style={{
+                position: 'absolute',
+                top: -6,
+                right: -6,
+                backgroundColor: 'red',
+                borderRadius: 10,
+                minWidth: 18,
+                height: 18,
+                justifyContent: 'center',
+                alignItems: 'center',
+                paddingHorizontal: 4,
+                zIndex: 1,
+              }}>
+                <Text style={{ color: 'white', fontSize: 12, fontWeight: 'bold' }}>{count}</Text>
+              </View>
+            )}
           </TouchableOpacity>
         )}
       </View>

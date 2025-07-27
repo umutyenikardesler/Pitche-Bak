@@ -1,8 +1,10 @@
-import { View, Text, FlatList, TouchableOpacity, ActivityIndicator } from "react-native";
-import { useState, useEffect } from "react";
+import { View, Text, FlatList, TouchableOpacity, ActivityIndicator, Image } from "react-native";
+import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/services/supabase";
 import { Ionicons } from "@expo/vector-icons";
 import '@/global.css';
+import { useFocusEffect } from 'expo-router';
+import { useNotification } from '@/components/NotificationContext';
 
 interface Notification {
     id: string;
@@ -14,15 +16,21 @@ interface Notification {
     sender_id: string;
     sender_name: string;
     sender_surname: string;
+    sender_profile_image?: string; // Added for profile image
 }
 
 export default function Notifications() {
     const [notifications, setNotifications] = useState<Notification[]>([]);
     const [loading, setLoading] = useState(true);
+    const [refreshing, setRefreshing] = useState(false);
+    const { refresh } = useNotification();
 
-    useEffect(() => {
+    useFocusEffect(
+      useCallback(() => {
         fetchNotifications();
-    }, []);
+        refresh();
+      }, [])
+    );
 
     const fetchNotifications = async () => {
         try {
@@ -33,24 +41,29 @@ export default function Notifications() {
                 .from('notifications')
                 .select(`
                     *,
-                    sender:users!notifications_sender_id_fkey(name, surname)
+                    sender:users!notifications_sender_id_fkey(name, surname, profile_image)
                 `)
                 .eq('user_id', user.id)
                 .order('created_at', { ascending: false });
 
             if (error) throw error;
 
-            const formattedNotifications = data.map(notification => ({
-                ...notification,
-                sender_name: notification.sender?.name || '',
-                sender_surname: notification.sender?.surname || ''
-            }));
+            // Sadece okunmamış bildirimleri göster
+            const formattedNotifications = data
+                .filter(notification => !notification.is_read)
+                .map(notification => ({
+                    ...notification,
+                    sender_name: notification.sender?.name || '',
+                    sender_surname: notification.sender?.surname || '',
+                    sender_profile_image: notification.sender?.profile_image || undefined // Ensure profile_image is included
+                }));
 
             setNotifications(formattedNotifications);
         } catch (error) {
             console.error("Bildirimler yüklenirken hata:", error);
         } finally {
             setLoading(false);
+            setRefreshing(false);
         }
     };
 
@@ -77,6 +90,7 @@ export default function Notifications() {
 
                 // Bildirim listesini güncelle
                 setNotifications(prev => prev.filter(n => n.id !== notification.id));
+                refresh();
             } else {
                 // Takip isteğini reddet
                 const { error: deleteError } = await supabase
@@ -95,6 +109,7 @@ export default function Notifications() {
 
                 // Bildirim listesini güncelle
                 setNotifications(prev => prev.filter(n => n.id !== notification.id));
+                refresh();
             }
         } catch (error) {
             console.error("Takip isteği işlenirken hata:", error);
@@ -103,24 +118,48 @@ export default function Notifications() {
 
     const renderNotification = ({ item }: { item: Notification }) => {
         if (item.type === 'follow_request') {
+            // Tarih ve saat formatlama
+            const date = new Date(item.created_at);
+            const formatted = date.toLocaleString('tr-TR', { dateStyle: 'short', timeStyle: 'short' });
+            // Profil resmi için varsayılan görsel
+            const profileImage = item.sender_profile_image || require('@/assets/images/ball.png');
             return (
-                <View className="bg-white rounded-lg p-4 m-2 shadow-sm">
-                    <Text className="text-gray-700">
-                        {item.sender_name} {item.sender_surname} sana takip isteği gönderdi
-                    </Text>
-                    <View className="flex-row justify-end space-x-2 mt-2">
-                        <TouchableOpacity
-                            onPress={() => handleFollowRequest(item, 'reject')}
-                            className="bg-red-500 px-4 py-2 rounded"
-                        >
-                            <Text className="text-white">Reddet</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                            onPress={() => handleFollowRequest(item, 'accept')}
-                            className="bg-green-700 px-4 py-2 rounded"
-                        >
-                            <Text className="text-white">Kabul Et</Text>
-                        </TouchableOpacity>
+                <View className="bg-white rounded-lg p-3 mx-4 mt-3 shadow-sm flex-row items-center">
+                    {/* Profil Resmi */}
+                    <View className="mr-3">
+                        <Image
+                            source={item.sender_profile_image ? { uri: item.sender_profile_image } : require('@/assets/images/ball.png')}
+                            style={{ width: 48, height: 48, borderRadius: 24, resizeMode: 'cover' }}
+                        />
+                    </View>
+                    {/* Bildirim Metni ve Butonlar */}
+                    <View style={{ flex: 1 }}>
+                        <Text className="text-gray-700">
+                            <Text className="font-bold text-green-700">{item.sender_name} {item.sender_surname}</Text> sana takip isteği gönderdi.
+                        </Text>
+                        <View className="flex-row justify-between items-end mt-2">
+                            <Text className="text-xs font-bold text-green-700 bg-gray-200 px-2 py-1 rounded">
+                                {formatted}
+                            </Text>
+                            <View className="flex-row justify-end space-x-2">
+                                <View className="flex-row mr-2">
+                                    <TouchableOpacity
+                                        onPress={() => handleFollowRequest(item, 'reject')}
+                                        className="bg-red-500 px-4 py-2 rounded"
+                                    >
+                                        <Text className="text-white">Reddet</Text>
+                                    </TouchableOpacity>
+                                </View>
+                                <View className="flex-row">
+                                    <TouchableOpacity
+                                        onPress={() => handleFollowRequest(item, 'accept')}
+                                        className="bg-green-700 px-4 py-2 rounded"
+                                    >
+                                        <Text className="text-white">Kabul Et</Text>
+                                    </TouchableOpacity>
+                                </View>
+                            </View>
+                        </View>
                     </View>
                 </View>
             );
@@ -136,12 +175,13 @@ export default function Notifications() {
         );
     }
 
+    // FlatList'te refreshControl ekle
     return (
         <View className="flex-1 bg-gray-100">
-            <View className="flex-row p-2 bg-green-700">
+            {/* <View className="flex-row p-2 bg-green-700"> 
                 <Ionicons name="notifications-outline" size={16} color="white" className="pl-2" />
                 <Text className="font-bold text-white"> BİLDİRİMLER </Text>
-            </View>
+             </View> */}
             <FlatList
                 data={notifications}
                 renderItem={renderNotification}
@@ -152,6 +192,12 @@ export default function Notifications() {
                         <Text className="text-gray-500">Henüz bildiriminiz yok</Text>
                     </View>
                 }
+                refreshing={refreshing}
+                onRefresh={() => {
+                    setRefreshing(true);
+                    fetchNotifications();
+                    refresh();
+                }}
             />
         </View>
     );

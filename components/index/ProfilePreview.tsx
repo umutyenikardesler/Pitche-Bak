@@ -2,7 +2,7 @@
 import { View, Text, Image, TouchableOpacity, ActivityIndicator, Alert, Modal, ScrollView } from 'react-native';
 import { Ionicons } from "@expo/vector-icons";
 import { supabase } from '@/services/supabase';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import '@/global.css';
 import ProfileStatus from '@/components/profile/ProfileStatus';
 import ProfileCondition from '@/components/profile/ProfileCondition';
@@ -32,64 +32,59 @@ export default function ProfilePreview({ isVisible, onClose, userId }: ProfilePr
     const [loading, setLoading] = useState(true);
     const [isFollowing, setIsFollowing] = useState(false);
     const [followStatus, setFollowStatus] = useState<'pending' | 'accepted' | null>(null);
+    const [isFollowedByProfileUser, setIsFollowedByProfileUser] = useState(false);
 
-    useEffect(() => {
-        let isMounted = true;
+    const fetchData = useCallback(async () => {
+        try {
+            setLoading(true);
+            const { data, error } = await supabase
+                .from('users')
+                .select('*')
+                .eq('id', userId)
+                .single();
 
-        if (!userId) {
-            if (isMounted) {
-                setUserData(null);
-                setLoading(true);
-            }
-            return;
-        }
+            if (error) throw error;
 
-        const fetchData = async () => {
-            try {
-                setLoading(true);
-                const { data, error } = await supabase
-                    .from('users')
+            // Takip durumunu kontrol et
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user) {
+                // Sizin karşı tarafı takip durumunuz
+                const { data: followData } = await supabase
+                    .from('follow_requests')
                     .select('*')
-                    .eq('id', userId)
+                    .eq('follower_id', user.id)
+                    .eq('following_id', userId)
                     .single();
 
-                if (error) throw error;
+                // Karşı taraf sizi takip ediyor mu?
+                const { data: reverseFollowData } = await supabase
+                    .from('follow_requests')
+                    .select('*')
+                    .eq('follower_id', userId)
+                    .eq('following_id', user.id)
+                    .single();
 
-                // Takip durumunu kontrol et
-                const { data: { user } } = await supabase.auth.getUser();
-                if (user) {
-                    const { data: followData } = await supabase
-                        .from('follow_requests')
-                        .select('*')
-                        .eq('follower_id', user.id)
-                        .eq('following_id', userId)
-                        .single();
-
-                    if (isMounted) {
-                        setIsFollowing(!!followData);
-                        setFollowStatus(followData?.status || null);
-                    }
-                }
-
-                if (isMounted) {
-                    setUserData(data);
-                    setLoading(false);
-                }
-            } catch (error) {
-                console.error("Profil yüklenirken hata:", error);
-                if (isMounted) {
-                    setUserData(null);
-                    setLoading(false);
-                }
+                setIsFollowing(!!followData);
+                setFollowStatus(followData?.status || null);
+                setIsFollowedByProfileUser(!!reverseFollowData);
             }
-        };
 
-        fetchData();
-
-        return () => {
-            isMounted = false;
-        };
+            setUserData(data);
+            setLoading(false);
+        } catch (error) {
+            setUserData(null);
+            setLoading(false);
+        }
     }, [userId]);
+
+    useEffect(() => {
+        if (!userId) {
+            setUserData(null);
+            setLoading(true);
+            return;
+        }
+        fetchData();
+    }, [userId, fetchData]);
 
     const handleClose = () => {
         // Önce state'leri sıfırla
@@ -109,6 +104,28 @@ export default function ProfilePreview({ isVisible, onClose, userId }: ProfilePr
                 return;
             }
 
+            // Önce mevcut bir takip isteği var mı kontrol et
+            const { data: existingFollow, error: existingError } = await supabase
+                .from('follow_requests')
+                .select('*')
+                .eq('follower_id', user.id)
+                .eq('following_id', userId)
+                .single();
+
+            if (existingError && existingError.code !== 'PGRST116') {
+                // PGRST116: No rows found
+                throw existingError;
+            }
+
+            if (existingFollow) {
+                // Eğer zaten varsa önce sil
+                await supabase
+                    .from('follow_requests')
+                    .delete()
+                    .eq('follower_id', user.id)
+                    .eq('following_id', userId);
+            }
+
             // Takip isteği oluştur
             const { error: insertError } = await supabase
                 .from('follow_requests')
@@ -121,6 +138,10 @@ export default function ProfilePreview({ isVisible, onClose, userId }: ProfilePr
                 ]);
 
             if (insertError) {
+                if (insertError.code === '23505') { // unique violation
+                    Alert.alert("Hata", "Zaten takip isteği gönderdiniz veya takip ediyorsunuz.");
+                    return;
+                }
                 throw insertError;
             }
 
@@ -144,9 +165,37 @@ export default function ProfilePreview({ isVisible, onClose, userId }: ProfilePr
             setIsFollowing(true);
             setFollowStatus('pending');
             Alert.alert("Başarılı", "Takip isteği gönderildi");
+            fetchData();
         } catch (error) {
             console.error("Takip isteği gönderilirken hata:", error);
             Alert.alert("Hata", "Takip isteği gönderilirken bir hata oluştu. Lütfen tekrar deneyin.");
+        }
+    };
+
+    // Takipten çıkma fonksiyonu
+    const handleUnfollow = async () => {
+        try {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) {
+                Alert.alert("Hata", "Kullanıcı oturumu bulunamadı");
+                return;
+            }
+            // Takip isteğini sil
+            const { error: deleteError } = await supabase
+                .from('follow_requests')
+                .delete()
+                .eq('follower_id', user.id)
+                .eq('following_id', userId);
+            if (deleteError) {
+                throw deleteError;
+            }
+            setIsFollowing(false);
+            setFollowStatus(null);
+            Alert.alert("Başarılı", "Takipten çıkıldı");
+            fetchData();
+        } catch (error) {
+            console.error("Takipten çıkılırken hata:", error);
+            Alert.alert("Hata", "Takipten çıkılırken bir hata oluştu. Lütfen tekrar deneyin.");
         }
     };
 
@@ -198,14 +247,16 @@ export default function ProfilePreview({ isVisible, onClose, userId }: ProfilePr
                                     </View>
 
                                     <Text className="text-wrap font-semibold mb-1">
-                                        {userData?.description || "Açıklama Yok"}
+                                        <Text className="font-semibold">Mevki:</Text>
+                                        <Text className="text-green-600 font-semibold mb-1"> {userData?.description || "Açıklama Yok"} </Text>
                                     </Text>
 
                                     {/* Takip Et / Takip İsteğini Geri Çek Butonu */}
-                                    {followStatus === 'accepted' ? (
+                                    {isFollowing && followStatus === 'accepted' ? (
                                         <View className="flex-row space-x-2">
                                             <TouchableOpacity
                                                 className="bg-green-700 px-4 py-2 rounded"
+                                                onPress={handleUnfollow}
                                             >
                                                 <Text className="font-bold text-white">
                                                     Takip Ediliyor
@@ -213,20 +264,22 @@ export default function ProfilePreview({ isVisible, onClose, userId }: ProfilePr
                                             </TouchableOpacity>
                                         </View>
                                     ) : (
-                                        <TouchableOpacity
-                                            onPress={handleFollow}
-                                            className={`px-4 py-2 rounded ${isFollowing ? "bg-gray-400" : "bg-green-700"}`}
-                                            disabled={isFollowing}
-                                        >
-                                            <Text className="font-bold text-white">
-                                                {isFollowing ? "Takip isteğin gönderildi" : "Takip Et"}
-                                            </Text>
-                                        </TouchableOpacity>
+                                        <View className="flex-row">
+                                            <TouchableOpacity
+                                                onPress={handleFollow}
+                                                className={`px-4 py-2 rounded ${isFollowing ? "bg-gray-400" : "bg-green-700"}`}
+                                                disabled={isFollowing}
+                                            >
+                                                <Text className="font-bold text-white">
+                                                    {isFollowing ? "Takip isteğin gönderildi" : "Takip Et"}
+                                                </Text>
+                                            </TouchableOpacity>
+                                        </View>
                                     )}
                                 </View>
                             </View>
 
-                            {followStatus === 'accepted' && (
+                            {isFollowing && followStatus === 'accepted' && (
                                 <View className="bg-white rounded-lg shadow-lg p-4">
                                     {/* ProfileStatus bileşeni */}
                                     <ProfileStatus matchCount={userData?.match_count || 0} />

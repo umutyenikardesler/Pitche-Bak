@@ -48,8 +48,9 @@ export default function ProfileInfo({ userData, setModalVisible, setEditModalVis
                     <Text className="text-green-600 font-semibold"> {userData?.weight || "-"} kg</Text>
                 </View>
 
-                <View>
-                    <Text className="text-wrap font-semibold mb-1">{userData?.description || "Açıklama Yok"}</Text>
+                <View className="flex-row justify-start mb-1">
+                    <Text className="font-semibold">Mevki: </Text>
+                    <Text className="text-green-600 font-semibold">{userData?.description || "Açıklama Yok"}</Text>
                 </View>
 
                 {/* Butonlar */}

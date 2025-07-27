@@ -131,6 +131,7 @@ export default function TabsLayout() {
         name="notifications"
         options={{
           tabBarLabel: "Notifications",
+          headerTitle: () => <CustomHeader title="Bildirimler" />,
           href: null,
         }}
       />
