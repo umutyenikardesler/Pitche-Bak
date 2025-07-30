@@ -69,6 +69,7 @@ export default function TabsLayout() {
           tabBarIcon: ({ focused, color, size }) => (
             <Ionicons name="search-outline" color={focused ? color : color} size={focused ? 30 : 20} />
           ),
+          unmountOnBlur: true, // <-- Bunu ekle!
         }}
       />
       <Tabs.Screen

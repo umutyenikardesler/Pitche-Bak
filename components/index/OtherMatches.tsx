@@ -84,8 +84,10 @@ export default function OtherMatches({ matches, refreshing, onRefresh, onSelectM
           renderItem={renderMatch}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
           style={{ paddingTop: 3, paddingBottom: 5 }}
-          contentContainerStyle={{ flexGrow: 1, paddingBottom: 10 }} // En alta ekstra boşluk bırak
+          contentContainerStyle={{ paddingBottom: 0 }}
           nestedScrollEnabled={true}
+          scrollEnabled={matches.length > 1}
+          extraData={matches}
         />
       )}
     </View>

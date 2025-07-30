@@ -132,7 +132,7 @@ export default function Notifications() {
                             style={{ width: 48, height: 48, borderRadius: 24, resizeMode: 'cover' }}
                         />
                     </View>
-                    {/* Bildirim Metni ve Butonlar */}
+                {/* Bildirim Metni ve Butonlar */}
                     <View style={{ flex: 1 }}>
                         <Text className="text-gray-700">
                             <Text className="font-bold text-green-700">{item.sender_name} {item.sender_surname}</Text> sana takip isteği gönderdi.

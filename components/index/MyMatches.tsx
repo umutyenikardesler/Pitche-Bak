@@ -85,7 +85,7 @@ export default function MyMatches({ matches, refreshing, onRefresh, onSelectMatc
           renderItem={renderMatch}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
           style={{ paddingTop: 3, paddingBottom: 5}}
-          contentContainerStyle={{ flexGrow: 1, paddingBottom: 40 }}
+          contentContainerStyle={{ paddingBottom: 0 }}
           nestedScrollEnabled={true}
           scrollEnabled={matches.length > 1} // 2 veya daha fazla maç varsa scroll aktif olur
         />

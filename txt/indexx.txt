@@ -255,9 +255,7 @@ export default function Index() {
           <IndexCondition totalMatchCount={totalMatchCount} />
 
           {/* MyMatches için dinamik yükseklik hesapla */}
-          <View 
-            key={futureMatches.length} // farklı sayıda maç geldikçe yeniden render olur
-            style={{ height: futureMatches.length === 0 ? 'auto' : myMatchesHeight }}>
+          <View style={{ height: futureMatches.length === 0 ? 'auto' : myMatchesHeight }}>
             <MyMatches
               matches={futureMatches}
               refreshing={refreshing}
