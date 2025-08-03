@@ -55,18 +55,18 @@ export default function ProfileInfo({ userData, setModalVisible, setEditModalVis
 
                 {/* Butonlar */}
                 <View className="flex-row mt-1">
-                    <View className="w-1/2">
+                    <View className="w-full">
                         <TouchableOpacity className="bg-green-600 text-white font-semibold rounded-md p-2 items-center mr-1"
-                            onPress={() => setEditModalVisible(true)}
+                            onPress={setEditModalVisible}
                         >
-                            <Text className="text-white font-semibold">Düzenle</Text>
+                            <Text className="text-white font-bold">Profil Bilgilerimi Düzenle</Text>
                         </TouchableOpacity>
                     </View>
-                    <View className="w-1/2">
+                    {/* <View className="w-1/2">
                         <TouchableOpacity className="bg-green-600 text-white font-semibold rounded-md p-2 items-center">
                             <Text className='text-white font-semibold'>Takip Et</Text>
                         </TouchableOpacity>
-                    </View>
+                    </View> */}
                 </View>
             </View>
         </View>

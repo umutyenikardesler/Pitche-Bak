@@ -1,14 +1,25 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback } from "react";
 import {
-  Text, View, ScrollView, RefreshControl, Alert, TouchableOpacity, Modal,
-  TextInput, Image, KeyboardAvoidingView, Platform, TouchableWithoutFeedback, Keyboard
-} from 'react-native';
+  Text,
+  View,
+  ScrollView,
+  RefreshControl,
+  Alert,
+  TouchableOpacity,
+  Modal,
+  TextInput,
+  Image,
+  KeyboardAvoidingView,
+  Platform,
+  TouchableWithoutFeedback,
+  Keyboard,
+} from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { supabase } from '@/services/supabase';
+import { supabase } from "@/services/supabase";
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
-import '@/global.css';
+import "@/global.css";
 
 import ProfileInfo from "@/components/profile/ProfileInfo";
 import ProfileStatus from "@/components/profile/ProfileStatus";
@@ -25,6 +36,17 @@ export default function Profile() {
   const [modalVisible, setModalVisible] = useState(false);
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [profileImage, setProfileImage] = useState({ uri: null });
+  const [editUserData, setEditUserData] = useState(null);
+
+  const openEditModal = () => {
+    setEditUserData(userData ? { ...userData } : null);
+    setEditModalVisible(true);
+  };
+
+  const closeEditModal = () => {
+    setEditModalVisible(false);
+    setEditUserData(null);
+  };
 
   useEffect(() => {
     fetchUserData();
@@ -62,7 +84,9 @@ export default function Profile() {
       return null;
     }
 
-    const profileImages = data.filter((file) => file.name.startsWith("profile_"));
+    const profileImages = data.filter((file) =>
+      file.name.startsWith("profile_")
+    );
 
     if (profileImages.length === 0) {
       console.log("profile_ ile başlayan resim bulunamadı."); // Log eklendi
@@ -71,7 +95,9 @@ export default function Profile() {
 
     const latestImage = profileImages[0];
     const filePath = `${userId}/${latestImage.name}`;
-    const { data: publicURLData, error: publicUrlError } = supabase.storage.from("pictures").getPublicUrl(filePath);
+    const { data: publicURLData, error: publicUrlError } = supabase.storage
+      .from("pictures")
+      .getPublicUrl(filePath);
 
     if (publicUrlError) {
       console.error("Public URL alınamadı:", publicUrlError); // Log eklendi
@@ -86,7 +112,8 @@ export default function Profile() {
   const fetchUserData = async () => {
     console.log("fetchUserData çağrıldı"); // Log eklendi
 
-    let userIdToFetch = searchParams.userId || (await supabase.auth.getUser()).data?.user?.id;
+    let userIdToFetch =
+      searchParams.userId || (await supabase.auth.getUser()).data?.user?.id;
     if (!userIdToFetch) {
       console.error("Kullanıcı ID alınamadı!"); // Log eklendi
       return;
@@ -134,7 +161,7 @@ export default function Profile() {
         const dateB = new Date(`${b.date}T${b.time}`);
         return dateB - dateA; // En yakın tarih+saat en üstte
       });
-      
+
       setMatches(sortedMatches);
     }
   };
@@ -152,27 +179,45 @@ export default function Profile() {
       const fileName = `profile_${Date.now()}.jpg`;
       const filePath = `${userData.id}/${fileName}`;
 
-      const { error } = await supabase.storage.from("pictures").upload(filePath, { uri, type: "image/jpeg", name: fileName });
+      const { error } = await supabase.storage
+        .from("pictures")
+        .upload(filePath, { uri, type: "image/jpeg", name: fileName });
 
       if (error) {
         Alert.alert("Hata", "Resim yüklenirken bir hata oluştu.");
         return;
       }
 
-      const { data: publicURLData } = supabase.storage.from("pictures").getPublicUrl(filePath);
+      const { data: publicURLData } = supabase.storage
+        .from("pictures")
+        .getPublicUrl(filePath);
       setProfileImage({ uri: publicURLData.publicUrl });
 
-      await supabase.from("users").update({ profile_image: publicURLData.publicUrl }).eq("id", userData.id);
+      await supabase
+        .from("users")
+        .update({ profile_image: publicURLData.publicUrl })
+        .eq("id", userData.id);
       fetchUserData();
       Alert.alert("Başarılı", "Resminiz başarıyla yüklendi!"); // Başarılı uyarı eklendi
-
     }
   };
 
   const handleSave = async () => {
-    const { error } = await supabase.from("users").update(userData).eq("id", userData.id);
+    if (!editUserData) return;
+    const { error } = await supabase
+      .from("users")
+      .update({
+        name: editUserData.name,
+        surname: editUserData.surname,
+        age: editUserData.age,
+        height: editUserData.height,
+        weight: editUserData.weight,
+        description: editUserData.description
+      })
+      .eq("id", editUserData.id);
     if (!error) {
       setEditModalVisible(false);
+      setEditUserData(null);
       fetchUserData();
     }
   };
@@ -194,45 +239,74 @@ export default function Profile() {
   };
 
   return (
-    <ScrollView refreshControl={<RefreshControl refreshing={refreshing} onRefresh={fetchUserData} />}>
-      <View className='bg-white rounded-lg m-3 p-1 shadow-lg'>
-        <View className='flex-1'>
+    <ScrollView style={{ flex: 1 }}
+      refreshControl={
+        !editModalVisible && (
+          <RefreshControl refreshing={refreshing} onRefresh={fetchUserData} />
+        )
+      }
+    >
+      <View className="bg-white rounded-lg m-3 p-1 shadow-lg">
+        <View className="flex-1">
           <ProfileInfo
             userData={userData}
             fetchUserData={fetchUserData}
             setModalVisible={setModalVisible}
-            setEditModalVisible={setEditModalVisible}
+            setEditModalVisible={openEditModal}
             pickImage={pickImage}
           />
           <ProfileStatus matchCount={matches.length} />
 
           <ProfileCondition matchCount={matches.length} />
 
-          <ProfileMatches userData={userData} matches={matches} refreshing={refreshing} onRefresh={fetchUserData} />
+          <ProfileMatches
+            userData={userData}
+            matches={matches}
+            refreshing={refreshing}
+            onRefresh={fetchUserData}
+          />
         </View>
         <View className="flex pb-4">
-          <TouchableOpacity onPress={handleLogout} className="bg-green-600 mx-4 rounded-lg">
-            <Text className="text-white font-semibold text-center p-2">Çıkış Yap</Text>
+          <TouchableOpacity
+            onPress={handleLogout}
+            className="bg-green-600 mx-4 rounded-lg"
+          >
+            <Text className="text-white font-semibold text-center p-2">
+              Çıkış Yap
+            </Text>
           </TouchableOpacity>
         </View>
 
         {/* 🔹 PROFİL FOTOĞRAFI MODALI */}
-        <Modal visible={modalVisible} transparent={true} onRequestClose={() => setModalVisible(false)}>
+        <Modal
+          visible={modalVisible}
+          transparent={true}
+          onRequestClose={() => setModalVisible(false)}
+        >
           <TouchableOpacity
-            className='flex-1 justify-center items-center bg-white/95'
+            className="flex-1 justify-center items-center bg-white/95"
             activeOpacity={1}
             onPressOut={() => setModalVisible(false)}
           >
-            <TouchableOpacity activeOpacity={1} >
+            <TouchableOpacity activeOpacity={1}>
               <Image
-                source={userData?.profile_image ? { uri: userData.profile_image } : require("@/assets/images/ball.png")}
-                style={{ width: 280, height: 280, resizeMode: 'contain' }}
-                className='rounded-full'
+                source={
+                  userData?.profile_image
+                    ? { uri: userData.profile_image }
+                    : require("@/assets/images/ball.png")
+                }
+                style={{ width: 280, height: 280, resizeMode: "contain" }}
+                className="rounded-full"
               />
               <TouchableOpacity onPress={pickImage} className="static">
-                <View className='absolute -bottom-5 right-[7%] m-3 shadow-slate-600'>
-                  <View className='p-2 bg-white rounded-full absolute bottom-0 right-0 '>
-                    <Ionicons name="color-wand" size={22} color="white" className='bg-green-700 rounded-full p-3' />
+                <View className="absolute -bottom-5 right-[7%] m-3 shadow-slate-600">
+                  <View className="p-2 bg-white rounded-full absolute bottom-0 right-0 ">
+                    <Ionicons
+                      name="color-wand"
+                      size={22}
+                      color="white"
+                      className="bg-green-700 rounded-full p-3"
+                    />
                   </View>
                 </View>
               </TouchableOpacity>
@@ -241,34 +315,106 @@ export default function Profile() {
         </Modal>
 
         {/* 🔹 BİLGİ DÜZENLEME MODALI */}
-        <Modal visible={editModalVisible} transparent={true} animationType="fade">
+        {editUserData && (
+        <Modal
+          visible={editModalVisible}
+          transparent={true}
+          animationType="fade"
+        >
           <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
             <View className="flex-1 justify-center items-center bg-black/50">
-              <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} className="w-full">
-                <ScrollView
-                  contentContainerStyle={{ justifyContent: "center", alignItems: "center", padding: 10 }}
-                  keyboardShouldPersistTaps="handled"
+              <KeyboardAvoidingView
+                behavior={Platform.OS === "ios" ? "padding" : "height"}
+                className="w-full"
+              >
+                <View
+                  style={{
+                    justifyContent: "center",
+                    alignItems: "center",
+                    padding: 10,
+                  }}
                 >
                   <View className="bg-white p-6 rounded-lg w-3/4">
-                    <Text className="text-xl font-bold text-center text-green-700 mb-4">Kişisel Bilgilerini Tamamla</Text>
+                    <Text className="text-xl font-bold text-center text-green-700 mb-4">
+                      Kişisel Bilgilerini Tamamla
+                    </Text>
 
-                    <TextInput placeholder="Adınız" value={userData?.name || ""} onChangeText={(text) => setUserData({ ...userData, name: text })} className="border border-gray-300 rounded p-2 mb-2" />
-                    <TextInput placeholder="Soyadınız" value={userData?.surname || ""} onChangeText={(text) => setUserData({ ...userData, surname: text })} className="border border-gray-300 rounded p-2 mb-2" />
-                    <TextInput placeholder="Yaş" value={userData?.age?.toString() || ""} onChangeText={(text) => setUserData({ ...userData, age: text })} className="border border-gray-300 rounded p-2 mb-2" keyboardType="numeric" />
-                    <TextInput placeholder="Boy (cm)" value={userData?.height?.toString() || ""} onChangeText={(text) => setUserData({ ...userData, height: text })} className="border border-gray-300 rounded p-2 mb-2" keyboardType="numeric" />
-                    <TextInput placeholder="Kilo (kg)" value={userData?.weight?.toString() || ""} onChangeText={(text) => setUserData({ ...userData, weight: text })} className="border border-gray-300 rounded p-2 mb-2" keyboardType="numeric" />
-                    <TextInput placeholder="Biyografi" value={userData?.description || ""} onChangeText={(text) => setUserData({ ...userData, description: text })} className="border border-gray-300 rounded p-2 mb-2" multiline />
+                    <TextInput
+                      placeholder="Adınız"
+                      value={editUserData?.name || ""}
+                      onChangeText={(text) =>
+                        setEditUserData({ ...editUserData, name: text })
+                      }
+                      className="border border-gray-300 rounded p-2 mb-2"
+                    />
+                    <TextInput
+                      placeholder="Soyadınız"
+                      value={editUserData?.surname || ""}
+                      onChangeText={(text) =>
+                        setEditUserData({ ...editUserData, surname: text })
+                      }
+                      className="border border-gray-300 rounded p-2 mb-2"
+                    />
+                    <TextInput
+                      placeholder="Yaş"
+                      value={editUserData?.age?.toString() || ""}
+                      onChangeText={(text) =>
+                        setEditUserData({ ...editUserData, age: text })
+                      }
+                      className="border border-gray-300 rounded p-2 mb-2"
+                      keyboardType="numeric"
+                    />
+                    <TextInput
+                      placeholder="Boy (cm)"
+                      value={editUserData?.height?.toString() || ""}
+                      onChangeText={(text) =>
+                        setEditUserData({ ...editUserData, height: text })
+                      }
+                      className="border border-gray-300 rounded p-2 mb-2"
+                      keyboardType="numeric"
+                    />
+                    <TextInput
+                      placeholder="Kilo (kg)"
+                      value={editUserData?.weight?.toString() || ""}
+                      onChangeText={(text) =>
+                        setEditUserData({ ...editUserData, weight: text })
+                      }
+                      className="border border-gray-300 rounded p-2 mb-2"
+                      keyboardType="numeric"
+                    />
+                    <TextInput
+                      placeholder="Mevki / Biyografi"
+                      value={editUserData?.description || ""}
+                      onChangeText={(text) =>
+                        setEditUserData({ ...editUserData, description: text })
+                      }
+                      className="border border-gray-300 rounded p-2 mb-2"
+                      multiline
+                    />
 
                     <View className="flex-row justify-between mt-3">
-                      <Text className='text-white bg-red-500 p-2 rounded-lg' onPress={() => setEditModalVisible(false)}> İptal Et </Text>
-                      <Text className='text-white bg-green-600 p-2 rounded-lg' onPress={handleSave}> Kaydet </Text>
+                      <Text
+                        className="text-white font-semibold bg-red-500 p-2 rounded-lg"
+                        onPress={closeEditModal}
+                      >
+                        {" "}
+                        İptal Et{" "}
+                      </Text>
+                      <Text
+                        className="text-white font-semibold bg-green-600 p-2 rounded-lg"
+                        onPress={handleSave}
+                      >
+                        {" "}
+                        Kaydet{" "}
+                      </Text>
                     </View>
                   </View>
-                </ScrollView>
+                </View>
               </KeyboardAvoidingView>
             </View>
-          </TouchableWithoutFeedback>
-        </Modal>
+            </TouchableWithoutFeedback>
+          </Modal>
+        )}
       </View>
     </ScrollView>
   );

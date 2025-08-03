@@ -3,15 +3,33 @@ import { FlatList, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { supabase } from "@/services/supabase";
 
+type Match = {
+  id: number;
+  title: string;
+  date: string;
+  time: string;
+  pitches?: {
+    name?: string;
+    districts?: { name?: string };
+  };
+  formattedDate?: string;
+  startFormatted?: string;
+  endFormatted?: string;
+};
+
+type Props = {
+  userData: { id: string };
+};
+
 export default function ProfileMatches({ userData }) {
   const [loading, setLoading] = useState(true);
-  const [matches, setMatches] = useState([]);
+  const [matches, setMatches] = useState<Match[]>([]);
 
   useEffect(() => {
     if (userData && userData.id) {
       fetchUserMatches();
     }
-  }, [userData]);
+  }, [userData?.id]);
 
   const fetchUserMatches = async () => {
     setLoading(true);

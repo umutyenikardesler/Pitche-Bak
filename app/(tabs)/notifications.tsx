@@ -120,21 +120,22 @@ export default function Notifications() {
         if (item.type === 'follow_request') {
             // Tarih ve saat formatlama
             const date = new Date(item.created_at);
+            date.setHours(date.getHours() -3);
             const formatted = date.toLocaleString('tr-TR', { dateStyle: 'short', timeStyle: 'short' });
             // Profil resmi için varsayılan görsel
             const profileImage = item.sender_profile_image || require('@/assets/images/ball.png');
             return (
-                <View className="bg-white rounded-lg p-3 mx-4 mt-3 shadow-sm flex-row items-center">
+                <View className="bg-white rounded-lg p-4 mx-4 mt-3 shadow-sm flex-row items-center">
                     {/* Profil Resmi */}
                     <View className="mr-3">
                         <Image
                             source={item.sender_profile_image ? { uri: item.sender_profile_image } : require('@/assets/images/ball.png')}
-                            style={{ width: 48, height: 48, borderRadius: 24, resizeMode: 'cover' }}
+                            style={{ width: 72, height: 72, borderRadius: 36, resizeMode: 'cover' }}
                         />
                     </View>
                 {/* Bildirim Metni ve Butonlar */}
-                    <View style={{ flex: 1 }}>
-                        <Text className="text-gray-700">
+                    <View className="flex-1 p-1">
+                        <Text className="text-gray-700 mb-3">
                             <Text className="font-bold text-green-700">{item.sender_name} {item.sender_surname}</Text> sana takip isteği gönderdi.
                         </Text>
                         <View className="flex-row justify-between items-end mt-2">
@@ -145,7 +146,7 @@ export default function Notifications() {
                                 <View className="flex-row mr-2">
                                     <TouchableOpacity
                                         onPress={() => handleFollowRequest(item, 'reject')}
-                                        className="bg-red-500 px-4 py-2 rounded"
+                                        className="bg-red-500 font-bold px-2 py-2 rounded"
                                     >
                                         <Text className="text-white">Reddet</Text>
                                     </TouchableOpacity>
@@ -153,7 +154,7 @@ export default function Notifications() {
                                 <View className="flex-row">
                                     <TouchableOpacity
                                         onPress={() => handleFollowRequest(item, 'accept')}
-                                        className="bg-green-700 px-4 py-2 rounded"
+                                        className="bg-green-700 font-bold px-2 py-2 rounded"
                                     >
                                         <Text className="text-white">Kabul Et</Text>
                                     </TouchableOpacity>
