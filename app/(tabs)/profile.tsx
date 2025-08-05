@@ -31,7 +31,15 @@ export default function Profile() {
   const router = useRouter();
   const [refreshing, setRefreshing] = useState(false);
   const [userData, setUserData] = useState(null);
+  const [userId, setUserId] = useState(null);
   const [matches, setMatches] = useState([]);
+  const [followerCount, setFollowerCount] = useState(0); // takipçi sayısı
+  const [followingCount, setFollowingCount] = useState(0); // takip edilen sayısı
+
+  const [followersList, setFollowersList] = useState([]);
+  const [followingList, setFollowingList] = useState([]);
+  const [activeListType, setActiveListType] = useState(null); // "followers" | "following"
+  const [listModalVisible, setListModalVisible] = useState(false);
 
   const [modalVisible, setModalVisible] = useState(false);
   const [editModalVisible, setEditModalVisible] = useState(false);
@@ -112,6 +120,27 @@ export default function Profile() {
   const fetchUserData = async () => {
     console.log("fetchUserData çağrıldı"); // Log eklendi
 
+    const fetchFollowCounts = async (userId) => {
+      try {
+        const { data: followers, error: followerError } = await supabase
+          .from("follow_requests")
+          .select("id")
+          .eq("following_id", userId)
+          .eq("status", "accepted");
+
+        const { data: following, error: followingError } = await supabase
+          .from("follow_requests")
+          .select("id")
+          .eq("follower_id", userId)
+          .eq("status", "accepted");
+
+        if (!followerError) setFollowerCount(followers.length);
+        if (!followingError) setFollowingCount(following.length);
+      } catch (error) {
+        console.error("Takip verileri çekilirken hata:", error);
+      }
+    };
+
     let userIdToFetch =
       searchParams.userId || (await supabase.auth.getUser()).data?.user?.id;
     if (!userIdToFetch) {
@@ -138,6 +167,7 @@ export default function Profile() {
     console.log("Kullanıcı verisi:", userInfo); // Log eklendi
     setUserData(userInfo);
     fetchUserMatches(userIdToFetch);
+    await fetchFollowCounts(userIdToFetch);
   };
 
   // Kullanıcının maçlarını çek
@@ -212,7 +242,7 @@ export default function Profile() {
         age: editUserData.age,
         height: editUserData.height,
         weight: editUserData.weight,
-        description: editUserData.description
+        description: editUserData.description,
       })
       .eq("id", editUserData.id);
     if (!error) {
@@ -238,8 +268,62 @@ export default function Profile() {
     }
   };
 
+  const fetchFollowersList = async (userId) => {
+    const { data, error } = await supabase
+      .from("follow_requests")
+      .select(
+        "follower_id, user:users!follower_id(name, surname, profile_image)"
+      )
+      .eq("following_id", userId)
+      .eq("status", "accepted");
+
+    if (!error) {
+      console.log("Takipçi listesi:", data); // 👈 Bu satır ekle
+      setFollowersList(data);
+    }
+  };
+
+  const fetchFollowingList = async (userId) => {
+    const { data, error } = await supabase
+      .from("follow_requests")
+      .select(
+        "following_id, user:users!following_id(name, surname, profile_image)"
+      )
+      .eq("follower_id", userId)
+      .eq("status", "accepted");
+
+    if (!error) {
+      console.log("Takip edilen listesi:", data); // 👈 Bu satır ekle
+      setFollowingList(data);
+    }
+  };
+
+  const openUserListModal = async (type: "followers" | "following") => {
+    if (!userId) return;
+
+    setActiveListType(type);
+    setListModalVisible(true);
+
+    let userIdToFetch =
+      searchParams.userId || (await supabase.auth.getUser()).data?.user?.id;
+
+    if (!userIdToFetch) {
+      console.warn("Kullanıcı ID alınamadı!");
+      return;
+    }
+
+    setUserId(userIdToFetch); // 👈 Bu satırı ekle
+
+    if (type === "followers") {
+      await fetchFollowersList(userIdToFetch);
+    } else {
+      await fetchFollowingList(userIdToFetch);
+    }
+  };
+
   return (
-    <ScrollView style={{ flex: 1 }}
+    <ScrollView
+      style={{ flex: 1 }}
       refreshControl={
         !editModalVisible && (
           <RefreshControl refreshing={refreshing} onRefresh={fetchUserData} />
@@ -255,7 +339,13 @@ export default function Profile() {
             setEditModalVisible={openEditModal}
             pickImage={pickImage}
           />
-          <ProfileStatus matchCount={matches.length} />
+          <ProfileStatus
+            matchCount={matches.length}
+            followerCount={followerCount}
+            followingCount={followingCount}
+            onPressFollowers={() => openUserListModal("followers")}
+            onPressFollowing={() => openUserListModal("following")}
+          />
 
           <ProfileCondition matchCount={matches.length} />
 
@@ -316,105 +406,154 @@ export default function Profile() {
 
         {/* 🔹 BİLGİ DÜZENLEME MODALI */}
         {editUserData && (
-        <Modal
-          visible={editModalVisible}
-          transparent={true}
-          animationType="fade"
-        >
-          <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-            <View className="flex-1 justify-center items-center bg-black/50">
-              <KeyboardAvoidingView
-                behavior={Platform.OS === "ios" ? "padding" : "height"}
-                className="w-full"
-              >
-                <View
-                  style={{
-                    justifyContent: "center",
-                    alignItems: "center",
-                    padding: 10,
-                  }}
+          <Modal
+            visible={editModalVisible}
+            transparent={true}
+            animationType="fade"
+          >
+            <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+              <View className="flex-1 justify-center items-center bg-black/50">
+                <KeyboardAvoidingView
+                  behavior={Platform.OS === "ios" ? "padding" : "height"}
+                  className="w-full"
                 >
-                  <View className="bg-white p-6 rounded-lg w-3/4">
-                    <Text className="text-xl font-bold text-center text-green-700 mb-4">
-                      Kişisel Bilgilerini Tamamla
-                    </Text>
-
-                    <TextInput
-                      placeholder="Adınız"
-                      value={editUserData?.name || ""}
-                      onChangeText={(text) =>
-                        setEditUserData({ ...editUserData, name: text })
-                      }
-                      className="border border-gray-300 rounded p-2 mb-2"
-                    />
-                    <TextInput
-                      placeholder="Soyadınız"
-                      value={editUserData?.surname || ""}
-                      onChangeText={(text) =>
-                        setEditUserData({ ...editUserData, surname: text })
-                      }
-                      className="border border-gray-300 rounded p-2 mb-2"
-                    />
-                    <TextInput
-                      placeholder="Yaş"
-                      value={editUserData?.age?.toString() || ""}
-                      onChangeText={(text) =>
-                        setEditUserData({ ...editUserData, age: text })
-                      }
-                      className="border border-gray-300 rounded p-2 mb-2"
-                      keyboardType="numeric"
-                    />
-                    <TextInput
-                      placeholder="Boy (cm)"
-                      value={editUserData?.height?.toString() || ""}
-                      onChangeText={(text) =>
-                        setEditUserData({ ...editUserData, height: text })
-                      }
-                      className="border border-gray-300 rounded p-2 mb-2"
-                      keyboardType="numeric"
-                    />
-                    <TextInput
-                      placeholder="Kilo (kg)"
-                      value={editUserData?.weight?.toString() || ""}
-                      onChangeText={(text) =>
-                        setEditUserData({ ...editUserData, weight: text })
-                      }
-                      className="border border-gray-300 rounded p-2 mb-2"
-                      keyboardType="numeric"
-                    />
-                    <TextInput
-                      placeholder="Mevki / Biyografi"
-                      value={editUserData?.description || ""}
-                      onChangeText={(text) =>
-                        setEditUserData({ ...editUserData, description: text })
-                      }
-                      className="border border-gray-300 rounded p-2 mb-2"
-                      multiline
-                    />
-
-                    <View className="flex-row justify-between mt-3">
-                      <Text
-                        className="text-white font-semibold bg-red-500 p-2 rounded-lg"
-                        onPress={closeEditModal}
-                      >
-                        {" "}
-                        İptal Et{" "}
+                  <View
+                    style={{
+                      justifyContent: "center",
+                      alignItems: "center",
+                      padding: 10,
+                    }}
+                  >
+                    <View className="bg-white p-6 rounded-lg w-3/4">
+                      <Text className="text-xl font-bold text-center text-green-700 mb-4">
+                        Kişisel Bilgilerini Tamamla
                       </Text>
-                      <Text
-                        className="text-white font-semibold bg-green-600 p-2 rounded-lg"
-                        onPress={handleSave}
-                      >
-                        {" "}
-                        Kaydet{" "}
-                      </Text>
+
+                      <TextInput
+                        placeholder="Adınız"
+                        value={editUserData?.name || ""}
+                        onChangeText={(text) =>
+                          setEditUserData({ ...editUserData, name: text })
+                        }
+                        className="border border-gray-300 rounded p-2 mb-2"
+                      />
+                      <TextInput
+                        placeholder="Soyadınız"
+                        value={editUserData?.surname || ""}
+                        onChangeText={(text) =>
+                          setEditUserData({ ...editUserData, surname: text })
+                        }
+                        className="border border-gray-300 rounded p-2 mb-2"
+                      />
+                      <TextInput
+                        placeholder="Yaş"
+                        value={editUserData?.age?.toString() || ""}
+                        onChangeText={(text) =>
+                          setEditUserData({ ...editUserData, age: text })
+                        }
+                        className="border border-gray-300 rounded p-2 mb-2"
+                        keyboardType="numeric"
+                      />
+                      <TextInput
+                        placeholder="Boy (cm)"
+                        value={editUserData?.height?.toString() || ""}
+                        onChangeText={(text) =>
+                          setEditUserData({ ...editUserData, height: text })
+                        }
+                        className="border border-gray-300 rounded p-2 mb-2"
+                        keyboardType="numeric"
+                      />
+                      <TextInput
+                        placeholder="Kilo (kg)"
+                        value={editUserData?.weight?.toString() || ""}
+                        onChangeText={(text) =>
+                          setEditUserData({ ...editUserData, weight: text })
+                        }
+                        className="border border-gray-300 rounded p-2 mb-2"
+                        keyboardType="numeric"
+                      />
+                      <TextInput
+                        placeholder="Mevki / Biyografi"
+                        value={editUserData?.description || ""}
+                        onChangeText={(text) =>
+                          setEditUserData({
+                            ...editUserData,
+                            description: text,
+                          })
+                        }
+                        className="border border-gray-300 rounded p-2 mb-2"
+                        multiline
+                      />
+
+                      <View className="flex-row justify-between mt-3">
+                        <Text
+                          className="text-white font-semibold bg-red-500 p-2 rounded-lg"
+                          onPress={closeEditModal}
+                        >
+                          {" "}
+                          İptal Et{" "}
+                        </Text>
+                        <Text
+                          className="text-white font-semibold bg-green-600 p-2 rounded-lg"
+                          onPress={handleSave}
+                        >
+                          {" "}
+                          Kaydet{" "}
+                        </Text>
+                      </View>
                     </View>
                   </View>
-                </View>
-              </KeyboardAvoidingView>
-            </View>
+                </KeyboardAvoidingView>
+              </View>
             </TouchableWithoutFeedback>
           </Modal>
         )}
+
+        {/* 🔹 TAKİPÇİ VE TAKİP EDİLEN LİSTESİ MODALI */}
+        <Modal
+          visible={listModalVisible}
+          onRequestClose={() => setListModalVisible(false)}
+          transparent
+        >
+          <View className="flex-1 bg-black/50 justify-center items-center">
+            <View className="bg-white w-9/12 rounded-lg p-4 max-h-[80%]">
+              <Text className="text-xl font-bold text-center mb-4 text-green-700">
+                {activeListType === "followers"
+                  ? "Takipçiler"
+                  : "Takip Edilenler"}
+              </Text>
+
+              <ScrollView>
+                {(activeListType === "followers"
+                  ? followersList
+                  : followingList
+                ).map((userData, index) => (
+                  <View key={index} className="flex-row items-center mb-3">
+                    <Image
+                      source={
+                        userData.user?.profile_image
+                          ? { uri: userData.user.profile_image }
+                          : require("@/assets/images/ball.png")
+                      }
+                    />
+                    <Text className="ml-3 text-base font-semibold">
+                      {userData.user?.name} {userData.user?.surname}
+                    </Text>
+                  </View>
+                ))}
+              </ScrollView>
+
+              <TouchableOpacity
+                onPress={() => setListModalVisible(false)}
+                className="min-w-fit mt-4 bg-green-600 p-2 rounded-lg"
+              >
+                <Text className="text-white font-bold text-center">
+                  Kapat
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
       </View>
     </ScrollView>
   );
