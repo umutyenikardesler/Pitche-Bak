@@ -30,21 +30,39 @@ export default function Profile() {
   const searchParams = useLocalSearchParams();
   const router = useRouter();
   const [refreshing, setRefreshing] = useState(false);
-  const [userData, setUserData] = useState(null);
-  const [userId, setUserId] = useState(null);
-  const [matches, setMatches] = useState([]);
+  interface UserDataType {
+    id: string;
+    name?: string;
+    surname?: string;
+    profile_image?: string;
+    age?: number;
+    height?: number;
+    weight?: number;
+    description?: string;
+  }
+
+  interface FollowUser {
+    id: string;
+    name: string;
+    surname: string;
+    profile_image?: string;
+  }
+
+  const [userData, setUserData] = useState<UserDataType | null>(null);
+  const [userId, setUserId] = useState<string | null>(null);
+  const [matches, setMatches] = useState<any[]>([]);
   const [followerCount, setFollowerCount] = useState(0); // takipçi sayısı
   const [followingCount, setFollowingCount] = useState(0); // takip edilen sayısı
 
-  const [followersList, setFollowersList] = useState([]);
-  const [followingList, setFollowingList] = useState([]);
-  const [activeListType, setActiveListType] = useState(null); // "followers" | "following"
+  const [followersList, setFollowersList] = useState<FollowUser[]>([]);
+  const [followingList, setFollowingList] = useState<FollowUser[]>([]);
+  const [activeListType, setActiveListType] = useState<"followers" | "following" | null>(null);
   const [listModalVisible, setListModalVisible] = useState(false);
 
   const [modalVisible, setModalVisible] = useState(false);
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [profileImage, setProfileImage] = useState({ uri: null });
-  const [editUserData, setEditUserData] = useState(null);
+  const [editUserData, setEditUserData] = useState<UserDataType | null>(null);
 
   const openEditModal = () => {
     setEditUserData(userData ? { ...userData } : null);
@@ -63,11 +81,10 @@ export default function Profile() {
   useFocusEffect(
     useCallback(() => {
       fetchUserData();
-      fetchUserMatches();
     }, [])
   );
 
-  const fetchLatestProfileImage = async (userId) => {
+  const fetchLatestProfileImage = async (userId: string) => {
     console.log("fetchLatestProfileImage çağrıldı, userId:", userId); // Log eklendi
 
     if (!userId) {
@@ -103,24 +120,19 @@ export default function Profile() {
 
     const latestImage = profileImages[0];
     const filePath = `${userId}/${latestImage.name}`;
-    const { data: publicURLData, error: publicUrlError } = supabase.storage
+    const { data: publicURLData } = supabase.storage
       .from("pictures")
       .getPublicUrl(filePath);
-
-    if (publicUrlError) {
-      console.error("Public URL alınamadı:", publicUrlError); // Log eklendi
-      return null;
-    }
 
     console.log("En son profil resmi URL'si:", publicURLData.publicUrl); // Log eklendi
     return publicURLData.publicUrl;
   };
 
   // Kullanıcı verisini çek
-  const fetchUserData = async () => {
+  const fetchUserData = async (): Promise<void> => {
     console.log("fetchUserData çağrıldı"); // Log eklendi
 
-    const fetchFollowCounts = async (userId) => {
+    const fetchFollowCounts = async (userId: string) => {
       try {
         const { data: followers, error: followerError } = await supabase
           .from("follow_requests")
@@ -166,12 +178,12 @@ export default function Profile() {
 
     console.log("Kullanıcı verisi:", userInfo); // Log eklendi
     setUserData(userInfo);
-    fetchUserMatches(userIdToFetch);
+    fetchUserMatches(userIdToFetch); // ProfileStatus için maç sayısını çek
     await fetchFollowCounts(userIdToFetch);
   };
 
-  // Kullanıcının maçlarını çek
-  const fetchUserMatches = async (userId) => {
+  // Kullanıcının maçlarını çek (ProfileStatus için)
+  const fetchUserMatches = async (userId: string) => {
     if (!userId) return;
 
     const { data, error } = await supabase
@@ -186,9 +198,9 @@ export default function Profile() {
       setMatches([]);
     } else {
       // Ekstra sıralama güvenliği için istemci tarafında da sırala
-      const sortedMatches = [...(data || [])].sort((a, b) => {
-        const dateA = new Date(`${a.date}T${a.time}`);
-        const dateB = new Date(`${b.date}T${b.time}`);
+      const sortedMatches = [...(data || [])].sort((a: any, b: any) => {
+        const dateA = new Date(`${a.date}T${a.time}`).getTime();
+        const dateB = new Date(`${b.date}T${b.time}`).getTime();
         return dateB - dateA; // En yakın tarih+saat en üstte
       });
 
@@ -196,7 +208,7 @@ export default function Profile() {
     }
   };
 
-  const pickImage = async () => {
+  const pickImage = async (): Promise<void> => {
     let result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ["images"],
       allowsEditing: true,
@@ -207,11 +219,11 @@ export default function Profile() {
     if (!result.canceled) {
       const uri = result.assets[0].uri;
       const fileName = `profile_${Date.now()}.jpg`;
-      const filePath = `${userData.id}/${fileName}`;
+      const filePath = `${userData!.id}/${fileName}`;
 
       const { error } = await supabase.storage
         .from("pictures")
-        .upload(filePath, { uri, type: "image/jpeg", name: fileName });
+        .upload(filePath, await (await fetch(uri)).blob());
 
       if (error) {
         Alert.alert("Hata", "Resim yüklenirken bir hata oluştu.");
@@ -221,12 +233,12 @@ export default function Profile() {
       const { data: publicURLData } = supabase.storage
         .from("pictures")
         .getPublicUrl(filePath);
-      setProfileImage({ uri: publicURLData.publicUrl });
+      setProfileImage({ uri: publicURLData.publicUrl as any });
 
       await supabase
         .from("users")
         .update({ profile_image: publicURLData.publicUrl })
-        .eq("id", userData.id);
+        .eq("id", userData!.id);
       fetchUserData();
       Alert.alert("Başarılı", "Resminiz başarıyla yüklendi!"); // Başarılı uyarı eklendi
     }
@@ -259,67 +271,120 @@ export default function Profile() {
     setRefreshing(false);
   };
 
-  const handleLogout = async () => {
+  const handleLogout = async (): Promise<void> => {
     const { error } = await supabase.auth.signOut();
     if (error) {
       Alert.alert("Çıkış Yapılamadı", "Bir hata oluştu.");
     } else {
-      router.replace("auth/");
+      router.replace("/auth");
     }
   };
 
-  const fetchFollowersList = async (userId) => {
-    const { data, error } = await supabase
+  // Takipçi listesini çek (updated_at/created_at'e göre en yeni üstte) ve kullanıcıları sırayla getir
+  const fetchFollowersList = async (userId: string) => {
+    const { data: frData, error: frErr } = await supabase
       .from("follow_requests")
-      .select(
-        "follower_id, user:users!follower_id(name, surname, profile_image)"
-      )
+      .select("follower_id, updated_at, created_at")
       .eq("following_id", userId)
-      .eq("status", "accepted");
+      .eq("status", "accepted")
+      .order("updated_at", { ascending: false })
+      .order("created_at", { ascending: false });
 
-    if (!error) {
-      console.log("Takipçi listesi:", data); // 👈 Bu satır ekle
-      setFollowersList(data);
-    }
-  };
-
-  const fetchFollowingList = async (userId) => {
-    const { data, error } = await supabase
-      .from("follow_requests")
-      .select(
-        "following_id, user:users!following_id(name, surname, profile_image)"
-      )
-      .eq("follower_id", userId)
-      .eq("status", "accepted");
-
-    if (!error) {
-      console.log("Takip edilen listesi:", data); // 👈 Bu satır ekle
-      setFollowingList(data);
-    }
-  };
-
-  const openUserListModal = async (type: "followers" | "following") => {
-    if (!userId) return;
-
-    setActiveListType(type);
-    setListModalVisible(true);
-
-    let userIdToFetch =
-      searchParams.userId || (await supabase.auth.getUser()).data?.user?.id;
-
-    if (!userIdToFetch) {
-      console.warn("Kullanıcı ID alınamadı!");
+    if (frErr || !frData || frData.length === 0) {
+      setFollowersList([]);
       return;
     }
 
-    setUserId(userIdToFetch); // 👈 Bu satırı ekle
+    const ids = frData.map((r: any) => r.follower_id);
+    const { data: usersData, error: usersErr } = await supabase
+      .from("users")
+      .select("id, name, surname, profile_image")
+      .in("id", ids);
 
-    if (type === "followers") {
-      await fetchFollowersList(userIdToFetch);
-    } else {
-      await fetchFollowingList(userIdToFetch);
+    if (usersErr || !usersData) {
+      setFollowersList([]);
+      return;
+    }
+
+    const byId = new Map((usersData as any[]).map((u: any) => [u.id, u]));
+    const ordered = ids
+      .map((id: string) => byId.get(id))
+      .filter(Boolean)
+      .map((u: any) => ({ id: u.id, name: u.name, surname: u.surname, profile_image: u.profile_image }));
+
+    setFollowersList(ordered);
+  };
+
+  // Takip edilen listesini çek (updated_at/created_at'e göre en yeni üstte) ve kullanıcıları sırayla getir
+  const fetchFollowingList = async (userId: string) => {
+    const { data: frData, error: frErr } = await supabase
+      .from("follow_requests")
+      .select("following_id, updated_at, created_at")
+      .eq("follower_id", userId)
+      .eq("status", "accepted")
+      .order("updated_at", { ascending: false })
+      .order("created_at", { ascending: false });
+
+    if (frErr || !frData || frData.length === 0) {
+      setFollowingList([]);
+      return;
+    }
+
+    const ids = frData.map((r: any) => r.following_id);
+    const { data: usersData, error: usersErr } = await supabase
+      .from("users")
+      .select("id, name, surname, profile_image")
+      .in("id", ids);
+
+    if (usersErr || !usersData) {
+      setFollowingList([]);
+      return;
+    }
+
+    const byId = new Map((usersData as any[]).map((u: any) => [u.id, u]));
+    const ordered = ids
+      .map((id: string) => byId.get(id))
+      .filter(Boolean)
+      .map((u: any) => ({ id: u.id, name: u.name, surname: u.surname, profile_image: u.profile_image }));
+
+    setFollowingList(ordered);
+  };
+
+  const openUserListModal = async (type: "followers" | "following") => {
+    try {
+      console.log("openUserListModal -> tıklandı, type:", type);
+      // Önce güvenilir userId'yi belirle
+      const authUserId = (await supabase.auth.getUser()).data?.user?.id || null;
+      const paramUserIdRaw = searchParams.userId as string | string[] | undefined;
+      const paramUserId = typeof paramUserIdRaw === "string" ? paramUserIdRaw : null;
+      const userIdToFetch: string | null = paramUserId || authUserId || null;
+
+      console.log("openUserListModal -> userIdToFetch:", userIdToFetch);
+
+      if (!userIdToFetch) {
+        console.warn("openUserListModal -> Kullanıcı ID alınamadı!");
+        return;
+      }
+
+      setUserId(userIdToFetch);
+      setActiveListType(type);
+      setListModalVisible(true);
+      console.log("openUserListModal -> listModalVisible TRUE yapıldı");
+
+      if (type === "followers") {
+        await fetchFollowersList(userIdToFetch);
+      } else {
+        await fetchFollowingList(userIdToFetch);
+      }
+      console.log("openUserListModal -> veri çekme tamamlandı");
+    } catch (e) {
+      console.error("openUserListModal -> hata:", e);
     }
   };
+
+  useEffect(() => {
+    console.log("listModalVisible:", listModalVisible, "activeListType:", activeListType);
+  }, [listModalVisible, activeListType]);
 
   return (
     <ScrollView
@@ -351,7 +416,6 @@ export default function Profile() {
 
           <ProfileMatches
             userData={userData}
-            matches={matches}
             refreshing={refreshing}
             onRefresh={fetchUserData}
           />
@@ -514,43 +578,60 @@ export default function Profile() {
           visible={listModalVisible}
           onRequestClose={() => setListModalVisible(false)}
           transparent
+          animationType="fade"
+          statusBarTranslucent
         >
           <View className="flex-1 bg-black/50 justify-center items-center">
-            <View className="bg-white w-9/12 rounded-lg p-4 max-h-[80%]">
-              <Text className="text-xl font-bold text-center mb-4 text-green-700">
-                {activeListType === "followers"
-                  ? "Takipçiler"
-                  : "Takip Edilenler"}
-              </Text>
+            {/* Boş alana tıklayınca kapatma */}
+            <TouchableOpacity
+              className="absolute inset-0"
+              onPress={() => setListModalVisible(false)}
+              activeOpacity={1}
+            />
 
-              <ScrollView>
-                {(activeListType === "followers"
-                  ? followersList
-                  : followingList
-                ).map((userData, index) => (
-                  <View key={index} className="flex-row items-center mb-3">
-                    <Image
-                      source={
-                        userData.user?.profile_image
-                          ? { uri: userData.user.profile_image }
-                          : require("@/assets/images/ball.png")
-                      }
-                    />
-                    <Text className="ml-3 text-base font-semibold">
-                      {userData.user?.name} {userData.user?.surname}
-                    </Text>
-                  </View>
-                ))}
-              </ScrollView>
-
-              <TouchableOpacity
-                onPress={() => setListModalVisible(false)}
-                className="min-w-fit mt-4 bg-green-600 p-2 rounded-lg"
-              >
-                <Text className="text-white font-bold text-center">
-                  Kapat
+            {/* Modal içeriği */}
+            <View className="bg-white rounded-xl w-10/12 max-h-2/3 shadow-2xl">
+              {/* Header */}
+              <View className="flex-row justify-between items-center p-4 border-b border-gray-200 bg-green-50 rounded-t-xl">
+                <Text className="text-xl font-bold text-green-700">
+                  {activeListType === "followers" ? "Takipçiler" : "Takip Edilenler"}
                 </Text>
-              </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => setListModalVisible(false)}
+                  className="bg-green-700 px-3 py-1 rounded-full"
+                >
+                  <Ionicons name="close" size={20} color="white" />
+                </TouchableOpacity>
+              </View>
+
+              {/* Liste */}
+              <ScrollView
+                style={{ maxHeight: 335 }}
+                contentContainerStyle={{ paddingBottom: 10 }}
+                showsVerticalScrollIndicator
+                nestedScrollEnabled
+                bounces={false}
+              >
+                {(activeListType === "followers" ? followersList : followingList).map(
+                  (u) => (
+                    <View key={u.id} className="flex-row items-center p-4 border-b border-gray-100">
+                      <Image
+                        source={u.profile_image ? { uri: u.profile_image } : require("@/assets/images/ball.png")}
+                        className="rounded-full border-2 border-green-200"
+                        style={{ width: 55, height: 55, resizeMode: "cover" }}
+                      />
+                      <View className="ml-4 flex-1">
+                        <Text className="text-lg font-semibold text-green-700">
+                          {u.name} {u.surname}
+                        </Text>
+                        <Text className="text-sm text-gray-500 mt-1">
+                          {activeListType === "followers" ? "Seni takip ediyor" : "Takip ediyorsun"}
+                        </Text>
+                      </View>
+                    </View>
+                  )
+                )}
+              </ScrollView>
             </View>
           </View>
         </Modal>

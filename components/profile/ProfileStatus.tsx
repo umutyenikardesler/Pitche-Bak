@@ -1,7 +1,20 @@
 import { View, Text, TouchableOpacity } from "react-native";
 
-export default function ProfileStatus({ matchCount = 0, followerCount = 0, followingCount = 0, onPressFollowers,
-  onPressFollowing }) {
+interface ProfileStatusProps {
+  matchCount?: number;
+  followerCount?: number;
+  followingCount?: number;
+  onPressFollowers: () => void;
+  onPressFollowing: () => void;
+}
+
+export default function ProfileStatus({
+  matchCount = 0,
+  followerCount = 0,
+  followingCount = 0,
+  onPressFollowers,
+  onPressFollowing,
+}: ProfileStatusProps) {
   return (
     <View className="flex-row justify-between mx-4 mb-1">
       <View className="">

@@ -19,11 +19,21 @@ export const MatchDetailsForm: React.FC<MatchDetailsFormProps> = ({ date, setDat
   const [showTimeModal, setShowTimeModal] = useState(false);
   const screenHeight = Dimensions.get('window').height;
 
-  // Türkiye saatine göre bugünü hesapla
+  // Türkiye saatine göre bugünü hesapla - düzeltilmiş versiyon
   const getTurkishDate = (d = new Date()) => {
-    const turkishOffset = 3 * 60 * 60 * 1000; // UTC+3 (ms cinsinden)
-    const localOffset = d.getTimezoneOffset() * 60 * 1000;
-    return new Date(d.getTime() + localOffset + turkishOffset);
+    // Yerel saat dilimini UTC'ye çevir, sonra Türkiye saatine (UTC+3) çevir
+    const utcTime = d.getTime() + (d.getTimezoneOffset() * 60000);
+    return new Date(utcTime + (3 * 3600000)); // UTC+3
+  };
+
+  // Seçilen tarihi doğru şekilde işlemek için yeni fonksiyon
+  const createTurkishDate = (year: number, month: number, day: number) => {
+    // Yerel saat diliminde yeni bir tarih oluştur
+    const localDate = new Date(year, month, day);
+    // UTC'ye çevir
+    const utcTime = localDate.getTime() + (localDate.getTimezoneOffset() * 60000);
+    // Türkiye saatine çevir
+    return new Date(utcTime + (3 * 3600000));
   };
 
   const turkishNow = getTurkishDate();
@@ -56,8 +66,12 @@ export const MatchDetailsForm: React.FC<MatchDetailsFormProps> = ({ date, setDat
 
   const handleDateChange = (selectedDate: Date | null) => {
     if (selectedDate) {
-      // Seçilen tarihi Türkiye saatine göre ayarla
-      const turkishDate = getTurkishDate(selectedDate);
+      // Seçilen tarihi doğru şekilde işle
+      const year = selectedDate.getFullYear();
+      const month = selectedDate.getMonth();
+      const day = selectedDate.getDate();
+      
+      const turkishDate = createTurkishDate(year, month, day);
       setDate(turkishDate);
     }
     setShowDatePicker(false);
@@ -166,12 +180,18 @@ export const MatchDetailsForm: React.FC<MatchDetailsFormProps> = ({ date, setDat
             display={Platform.OS === 'ios' ? 'inline' : 'default'}
             onChange={(event, selectedDate) => {
               if (selectedDate) {
-                const turkishDate = new Date(selectedDate.getTime() - (selectedDate.getTimezoneOffset() * 60000) + (3 * 3600000));
+                // Seçilen tarihi doğru şekilde işle
+                const year = selectedDate.getFullYear();
+                const month = selectedDate.getMonth();
+                const day = selectedDate.getDate();
+                
+                const turkishDate = createTurkishDate(year, month, day);
                 setDate(turkishDate);
               }
-              setShowDatePicker(false); }}
-                locale="tr-TR"
-                minimumDate={new Date(new Date().getTime() - (new Date().getTimezoneOffset() * 60000) + (3 * 3600000))}
+              setShowDatePicker(false);
+            }}
+            locale="tr-TR"
+            minimumDate={getTurkishDate()}
             style={{ width: '100%' }}
           />
         </View>
