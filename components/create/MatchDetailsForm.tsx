@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, Platform, FlatList, Dimensions } from 'react-native';
+import { View, Text, TouchableOpacity, Platform, FlatList, Dimensions, Modal } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import Modal from 'react-native-modal';
 import ReactDatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import { tr } from 'date-fns/locale';
@@ -79,11 +78,10 @@ export const MatchDetailsForm: React.FC<MatchDetailsFormProps> = ({ date, setDat
 
   const renderTimeModal = () => (
     <Modal
-      isVisible={showTimeModal}
-      backdropOpacity={0.5}
-      animationIn="slideInUp"
-      animationOut="slideOutDown"
-      onBackdropPress={() => setShowTimeModal(false)}
+      visible={showTimeModal}
+      transparent={true}
+      animationType="slide"
+      onRequestClose={() => setShowTimeModal(false)}
     >
       <View className="flex-1 justify-center items-center">
         <View className="w-50 bg-white rounded-lg p-4" style={{ maxHeight: screenHeight * 0.75 }}>
@@ -128,11 +126,10 @@ export const MatchDetailsForm: React.FC<MatchDetailsFormProps> = ({ date, setDat
 
             {showDatePicker && (
               <Modal
-                isVisible={true}
-                backdropOpacity={0.5}
-                animationIn="slideInUp"
-                animationOut="slideOutDown"
-                onBackdropPress={() => setShowDatePicker(false)}
+                visible={true}
+                transparent={true}
+                animationType="slide"
+                onRequestClose={() => setShowDatePicker(false)}
               >
                 <View className="flex-1 justify-center items-center">
                   <View className="bg-white p-4 rounded-lg">

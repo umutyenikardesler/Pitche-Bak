@@ -18,7 +18,7 @@ export interface User {
     district_id: string;
     latitude?: number;
     longitude?: number;
-    districts?: District;
+    districts?: District | District[];
   }
   
   export interface Match {
@@ -32,8 +32,8 @@ export interface User {
     formattedDate?: string;
     startFormatted?: string;
     endFormatted?: string;
-    pitches: Pitch;
-    users: User;
+    pitches: Pitch | Pitch[];
+    users: User | User[];
   }
 
   export interface UserProfile {
@@ -51,4 +51,5 @@ export interface User {
   export interface ProfilePreviewProps {
     userId: string;
     onClose: () => void;
+    isVisible: boolean;
   }

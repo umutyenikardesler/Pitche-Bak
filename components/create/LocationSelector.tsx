@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, TouchableOpacity, FlatList, Dimensions } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, FlatList, Dimensions, Modal } from 'react-native';
 import { supabase } from '@/services/supabase';
 import '@/global.css';
-import Modal from 'react-native-modal';
 
 interface LocationSelectorProps {
   selectedDistrict: string;
@@ -109,20 +108,11 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
   const renderDistrictModal = () => (
     // ... (İlçe modalı aynı kalıyor)
     <Modal
-      isVisible={showDistrictModal} // isVisible prop'u kullanılıyor
-      backdropOpacity={0.5} // Opaklık buradan ayarlanıyor
-     // onBackdropPress={() => setShowDistrictModal(false)} // Arka plana tıklayınca kapanma
-      animationIn="fadeIn" // Animasyonlar eklenebilir
-      animationOut="fadeOut"
-      onBackdropPress={() => {
-        setShowDistrictModal(false);
-        // Modal kapatıldığında districtName'i güncelle
-        if (selectedDistrict && districts.length > 0) {
-          const selected = districts.find(d => d.id === Number(selectedDistrict));
-          setDistrictName(selected ? selected.name : '');
-        }
-      }}
-      >
+      visible={showDistrictModal} // isVisible yerine visible kullan
+      transparent={true}
+      animationType="slide"
+      onRequestClose={() => setShowDistrictModal(false)}
+    >
       <View className="flex-1 justify-center items-center">
         <View className="w-lg bg-white rounded-lg p-4" style={{ maxHeight: screenHeight * 0.75 }}>
           <FlatList
@@ -157,12 +147,10 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
   const renderPitchModal = () => (
     // ... (Saha modalı aynı kalıyor)
     <Modal
-      isVisible={showPitchModal} // isVisible prop'u kullanılıyor
-      backdropOpacity={0.5} // Opaklık buradan ayarlanıyor
-      onBackdropPress={() => setShowPitchModal(false)} // Arka plana tıklayınca kapanma
-      animationIn="fadeIn" // Animasyonlar eklenebilir
-      animationOut="fadeOut"
-    // style={{ flex: 1 }}
+      visible={showPitchModal} // isVisible yerine visible kullan
+      transparent={true}
+      animationType="slide"
+      onRequestClose={() => setShowPitchModal(false)}
     >
       <View className="flex-1 justify-center items-center">
         <View

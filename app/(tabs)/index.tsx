@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { View, Dimensions, Modal, TouchableOpacity } from "react-native";
 import { GestureHandlerRootView, GestureDetector, Gesture } from "react-native-gesture-handler";
 import { runOnJS } from "react-native-reanimated";
@@ -19,13 +19,37 @@ export default function Index() {
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [totalMatchCount, setTotalMatchCount] = useState(0);
+  const [myMatchesHeight, setMyMatchesHeight] = useState(0); // Yüksekliği state olarak tut
   const router = useRouter();
 
-  // // Index.tsx içinde
+  // Dinamik yükseklik hesaplaması - Her render'da yeniden hesaplanır
   const { height } = Dimensions.get('window');
-  const itemHeight = height * 0.14; // Her maç için yaklaşık yükseklik
-  const maxHeight = height * 0.24; // Maksimum yükseklik belirle
-  const myMatchesHeight = Math.min(futureMatches.length * itemHeight, maxHeight);
+  const itemHeight = 80; // Sabit maç yüksekliği (px)
+  const headerHeight = 20; // "SENİ BEKLEYEN MAÇLAR" başlığı yüksekliği
+  
+  // Yükseklik hesaplama fonksiyonu
+  const calculateHeight = useCallback(() => {
+    const calculatedHeight = (() => {
+      if (futureMatches.length === 0) return headerHeight + 120; // Boş durum için ekstra alan
+      if (futureMatches.length === 1) return headerHeight + itemHeight + 40; // 1 maç + padding
+      if (futureMatches.length === 2) return headerHeight + (itemHeight * 2) + 25; // 2 maç + padding
+      // 3 veya daha fazla maç varsa 2 maç + daha fazla padding + header
+      return headerHeight + (itemHeight * 2) + 30; // 80px padding ekledik
+    })();
+    
+    console.log('Yükseklik hesaplandı:', calculatedHeight, 'Maç sayısı:', futureMatches.length);
+    setMyMatchesHeight(calculatedHeight);
+  }, [futureMatches.length, headerHeight, itemHeight]);
+
+  // Dimensions değişikliklerini dinle
+  useEffect(() => {
+    const subscription = Dimensions.addEventListener('change', () => {
+      // Ekran boyutu değiştiğinde yükseklikleri yeniden hesapla
+      setFutureMatches(prev => [...prev]);
+    });
+
+    return () => subscription?.remove();
+  }, []);
 
   // State'leri ekleyin
   const [profileModalVisible, setProfileModalVisible] = useState(false);
@@ -62,9 +86,25 @@ export default function Index() {
     const utcNow = new Date(now.getTime() + (now.getTimezoneOffset() * 60000));
     const turkeyNow = new Date(utcNow.getTime() + (turkeyOffset * 3600000));
     
-    const today = turkeyNow.toISOString().split("T")[0];
+    // Gece yarısı kontrolü - saat 00:00-03:00 arası önceki günün tarihini kullan
+    let today;
+    if (turkeyNow.getHours() >= 0 && turkeyNow.getHours() < 3) {
+      // Gece yarısı - önceki günün tarihini kullan
+      const previousDay = new Date(turkeyNow);
+      previousDay.setDate(previousDay.getDate() - 1);
+      today = previousDay.toISOString().split("T")[0];
+    } else {
+      // Normal saatler - bugünün tarihini kullan
+      today = turkeyNow.toISOString().split("T")[0];
+    }
+    
     const currentHours = turkeyNow.getHours();
     const currentMinutes = turkeyNow.getMinutes();
+    
+    console.log('Türkiye saati:', turkeyNow.toISOString());
+    console.log('Hesaplanan bugün tarihi:', today);
+    console.log('Şu anki saat:', currentHours + ':' + currentMinutes);
+    console.log('Supabase sorgusu:', `date.gt.${today} OR (date.eq.${today} AND time.gt.${String(currentHours - 1).padStart(2, '0')}:${String(currentMinutes).padStart(2, '0')})`);
 
     const { data: authData, error: authError } = await supabase.auth.getUser();
     if (authError || !authData.user.id) {
@@ -85,7 +125,7 @@ export default function Index() {
       setTotalMatchCount(allMatchData.length);
     }
 
-    // Gelecekteki maçları çek
+    // Gelecekteki maçları çek - Saat dilimi farkını düzelterek
     const { data: matchData, error: matchError } = await supabase
       .from("match")
       .select(`
@@ -94,7 +134,7 @@ export default function Index() {
         users (id, name, surname, profile_image)
       `)
       .eq("create_user", loggedUserId)
-      .gte("date", today)
+      .or(`date.gt.${today},and(date.eq.${today},time.gt.${String(currentHours - 1).padStart(2, '0')}:${String(currentMinutes).padStart(2, '0')})`)
       .order("date", { ascending: true })
       .order("time", { ascending: true });
 
@@ -132,9 +172,14 @@ export default function Index() {
       })) || [];
 
       setFutureMatches(formattedData);
+      // Maç verisi değiştiğinde yüksekliği güncelle
+      setTimeout(() => {
+        console.log('Maç verisi yüklendi, yükseklik güncelleniyor...');
+        calculateHeight();
+      }, 100);
     }
 
-    // Diğer kullanıcıların maçları
+    // Diğer kullanıcıların maçları - Saat dilimi farkını düzelterek
     const { data: otherMatchData, error: otherMatchError } = await supabase
       .from("match")
       .select(`
@@ -143,7 +188,7 @@ export default function Index() {
         users (id, name, surname, profile_image)
       `)
       .neq("create_user", loggedUserId)
-      .gte("date", today)
+      .or(`date.gt.${today},and(date.eq.${today},time.gt.${String(currentHours - 1).padStart(2, '0')}:${String(currentMinutes).padStart(2, '0')})`)
       .order("date", { ascending: true })
       .order("time", { ascending: true });
 
@@ -180,6 +225,9 @@ export default function Index() {
     }
 
     setRefreshing(false);
+    
+    // Refresh sonrasında yüksekliği güncelleme kaldırıldı
+    // Yükseklik sadece maç verisi yüklendiğinde güncelleniyor
   }, []);
 
 
@@ -201,11 +249,31 @@ export default function Index() {
     }
   });
 
+  useEffect(() => {
+    // Component mount olduğunda yükseklikleri ayarla
+    const timer = setTimeout(() => {
+      calculateHeight();
+    }, 200);
+    
+    return () => clearTimeout(timer);
+  }, [calculateHeight]);
+
+  // Tab değişimlerini dinle - useFocusEffect ile
   useFocusEffect(
     useCallback(() => {
+      console.log('Index tab\'ına odaklanıldı - useFocusEffect');
+      
+      // Tab'a her dönüldüğünde maç verilerini ve yükseklikleri güncelle
       fetchMatches();
+      
+      // Sadece bir kez yükseklik güncellemesi yap
+      setTimeout(() => {
+        console.log('Tab değişimi sonrası yükseklik güncelleniyor...');
+        calculateHeight();
+      }, 200);
+      
       return () => { };
-    }, [fetchMatches])
+    }, [fetchMatches, calculateHeight])
   );
 
   useEffect(() => {
@@ -228,7 +296,7 @@ export default function Index() {
     
     // Temizleme fonksiyonu
     return () => clearInterval(interval);
-  }, [fetchMatches]);
+  }, [fetchMatches, calculateHeight]);
 
   return (
     <GestureHandlerRootView className="flex-1">
@@ -242,6 +310,7 @@ export default function Index() {
           <ProfilePreview
             userId={viewingUserId || ''}
             onClose={closeProfileModal}
+            isVisible={profileModalVisible}
           />
         </Modal>
       )}
@@ -254,10 +323,9 @@ export default function Index() {
 
           <IndexCondition totalMatchCount={totalMatchCount} />
 
-          {/* MyMatches için dinamik yükseklik hesapla */}
+          {/* MyMatches için dinamik yükseklik */}
           <View 
-            key={futureMatches.length} // farklı sayıda maç geldikçe yeniden render olur
-            style={{ height: futureMatches.length === 0 ? 'auto' : myMatchesHeight }}>
+            style={{ height: myMatchesHeight }}>
             <MyMatches
               matches={futureMatches}
               refreshing={refreshing}

@@ -20,14 +20,16 @@ const formatTitle = (text: string) => {
 export default function MyMatches({ matches, refreshing, onRefresh, onSelectMatch, onCreateMatch }: MyMatchesProps) {
   const renderMatch = ({ item }: { item: Match }) => (
     <TouchableOpacity onPress={() => onSelectMatch(item)}>
-      <View className="bg-white rounded-lg mx-4 mt-1 p-1 shadow-lg">
+      <View className="bg-white rounded-lg mx-4 my-1 p-1 shadow-lg">
         <View className="flex-row items-center justify-between">
           {/* Profil Resmi */}
           <View className="w-1/5 flex justify-center p-1 py-1.5">
             <Image
-              source={item.users?.profile_image
+              source={Array.isArray(item.users) ? (item.users[0]?.profile_image
+                ? { uri: item.users[0].profile_image }
+                : require('@/assets/images/ball.png')) : (item.users?.profile_image
                 ? { uri: item.users.profile_image }
-                : require('@/assets/images/ball.png')}
+                : require('@/assets/images/ball.png'))}
               className="rounded-full mx-auto"
               style={{ width: 60, height: 60, resizeMode: 'contain' }}
             />
@@ -46,8 +48,8 @@ export default function MyMatches({ matches, refreshing, onRefresh, onSelectMatc
 
             <View className="text-gray-700 text-md flex-row items-center pt-1">
               <Ionicons name="location" size={18} color="black" />
-              <Text className="pl-2 font-semibold"> {item.pitches?.districts?.name ?? 'Bilinmiyor'} →</Text>
-              <Text className="pl-2 font-bold text-green-700"> {item.pitches?.name ?? 'Bilinmiyor'} </Text>
+              <Text className="pl-2 font-semibold"> {Array.isArray(item.pitches?.districts) ? item.pitches.districts[0]?.name : item.pitches?.districts?.name ?? 'Bilinmiyor'} →</Text>
+              <Text className="pl-2 font-bold text-green-700"> {Array.isArray(item.pitches) ? item.pitches[0]?.name : item.pitches?.name ?? 'Bilinmiyor'} </Text>
             </View>
           </View>
 
@@ -69,8 +71,8 @@ export default function MyMatches({ matches, refreshing, onRefresh, onSelectMatc
       </View>
 
       {matches.length === 0 ? (
-        <View className='flex justify-center items-center'>
-          <Text className="text-center font-bold mt-3">Oluşturduğun Maç Yok!</Text>
+        <View className='flex justify-center items-center py-4'>
+          <Text className="text-center font-bold">Oluşturduğun Maç Yok!</Text>
           <TouchableOpacity
             className="text-center bg-green-600 text-white font-semibold rounded-md my-3 items-center"
             onPress={onCreateMatch}
@@ -85,9 +87,13 @@ export default function MyMatches({ matches, refreshing, onRefresh, onSelectMatc
           renderItem={renderMatch}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
           style={{ paddingTop: 3, paddingBottom: 5}}
-          contentContainerStyle={{ paddingBottom: 0 }}
+          contentContainerStyle={{ paddingBottom: matches.length > 2 ? 35 : 0 }} // 3+ maç varsa daha fazla padding
           nestedScrollEnabled={true}
-          scrollEnabled={matches.length > 1} // 2 veya daha fazla maç varsa scroll aktif olur
+          scrollEnabled={matches.length > 2} // 3 veya daha fazla maç varsa scroll aktif
+          showsVerticalScrollIndicator={matches.length > 2} // 3+ maç varsa scroll bar göster
+          removeClippedSubviews={true} // Performans için
+          maxToRenderPerBatch={5} // Performans için
+          windowSize={5} // Performans için
         />
       )}
     </View>
