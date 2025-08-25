@@ -395,7 +395,7 @@ export default function Profile() {
         )
       }
     >
-      <View className="bg-white rounded-lg m-3 p-1 shadow-lg">
+      <View className="bg-white rounded-lg m-3 p-1 shadow-lg flex-1">
         <View className="flex-1">
           <ProfileInfo
             userData={userData}
@@ -420,7 +420,7 @@ export default function Profile() {
             onRefresh={fetchUserData}
           />
         </View>
-        <View className="flex pb-4">
+        <View className="flex pb-4 mt-auto">
           <TouchableOpacity
             onPress={handleLogout}
             className="bg-green-600 mx-4 rounded-lg"

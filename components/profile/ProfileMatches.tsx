@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { FlatList, Text, View, RefreshControl } from "react-native";
+import { FlatList, Text, View, RefreshControl, Dimensions } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { supabase } from "@/services/supabase";
 import { useFocusEffect } from "@react-navigation/native";
@@ -86,10 +86,10 @@ export default function ProfileMatches({ userData, refreshing = false, onRefresh
   };
 
   return (
-    <View className="flex mb-2">
+    <View className="flex mb-2" style={{ height: Dimensions.get('window').height * 0.38 }}>
       {/* Maç Listesi ve İçeriği */}
       <View className="flex-row justify-center items-center my-1 mb-2.5">
-        <Ionicons name="accessibility" size={16} color="green" className="pl-2" />
+        <Ionicons name="calendar-outline" size={16} color="green" className="pl-2" />
         <Text className="font-bold text-green-700"> MAÇLARIM </Text>
       </View>
 
@@ -99,11 +99,11 @@ export default function ProfileMatches({ userData, refreshing = false, onRefresh
           <Text className="text-center mb-4 text-gray-500">Yükleniyor...</Text>
         ) : matches.length > 0 ? (
           <FlatList
-            className="mb-2 h-full"
+            className="mb-2 h-auto"
             data={matches}
             keyExtractor={(item) => item.id.toString()}
             renderItem={({ item }) => (
-              <View className="bg-gray-100 rounded-lg p-2 mx-4 mt-1 mb-1 shadow-sm flex-1 justify-center items-center">
+              <View className="bg-gray-100 rounded-lg p-2 mx-4 mt-1 mb-1 shadow-sm justify-center items-center">
                 <Text className="text-green-700 font-bold mb-1">{item.title}</Text>
                 <View className="text-gray-700 text-md flex-row items-center">
                   <Ionicons name="calendar-outline" size={18} color="black" />
@@ -117,7 +117,7 @@ export default function ProfileMatches({ userData, refreshing = false, onRefresh
                 </View>
               </View>
             )}
-            style={{ maxHeight: 325, marginBottom: 0 }}
+            style={{ marginBottom: 0 }}
             nestedScrollEnabled={true}
             refreshControl={
               <RefreshControl 

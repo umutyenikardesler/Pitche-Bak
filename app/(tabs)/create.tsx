@@ -94,6 +94,12 @@ export default function CreateMatch() {
           })
         : [];
 
+      // Tarihi Türkiye saati ile kaydet
+      const turkeyOffset = 3; // UTC+3 için offset
+      const utcDate = new Date(date.getTime() - (date.getTimezoneOffset() * 60000));
+      const turkeyDate = new Date(utcDate.getTime() + (turkeyOffset * 3600000));
+      const formattedDate = turkeyDate.toISOString().split('T')[0];
+
       const { data, error } = await supabase
         .from('match')
         .insert([
@@ -101,7 +107,7 @@ export default function CreateMatch() {
             title: matchTitle,
             location: selectedPitch,
             time: formattedTime,
-            date: date.toISOString().split('T')[0],
+            date: formattedDate, // Türkiye saati ile formatlanmış tarih
             prices: price,
             missing_groups: missingGroups,
             create_user: userId, // Kullanıcının ID'si burada ekleniyor

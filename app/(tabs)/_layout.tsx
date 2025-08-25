@@ -13,6 +13,7 @@ export default function TabsLayout() {
   useEffect(() => {
     const unsubscribe = navigation.addListener("tabPress", (e) => {
       const currentRoute = navigation.getState().routes[navigation.getState().index];
+      if (!currentRoute) return;
       const currentTab = currentRoute.name;
       const currentPath = currentRoute.path;
 
@@ -27,7 +28,7 @@ export default function TabsLayout() {
       // Yeni bir timer başlat
       tabPressTimers.current[currentTab] = setTimeout(() => {
         tabPressCounts.current[currentTab] = 0;
-      }, 300); // 300ms içinde ikinci basış algılanmazsa sıfırla
+      }, 300) as unknown as NodeJS.Timeout; // 300ms içinde ikinci basış algılanmazsa sıfırla
 
       // Eğer ikinci basış ise
       if (tabPressCounts.current[currentTab] === 2) {
@@ -42,7 +43,15 @@ export default function TabsLayout() {
           }
         } else {
           // Diğer tab'lar için de aynı mantık
-          router.replace(`/${currentTab}`);
+          if (currentTab === 'create') {
+            router.replace('/(tabs)/create');
+          } else if (currentTab === 'pitches') {
+            router.replace('/(tabs)/pitches');
+          } else if (currentTab === 'message') {
+            router.replace('/(tabs)/message');
+          } else if (currentTab === 'profile') {
+            router.replace('/(tabs)/profile');
+          }
         }
         
         // Sayacı sıfırla

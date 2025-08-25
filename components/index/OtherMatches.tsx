@@ -49,7 +49,16 @@ export default function OtherMatches({ matches, refreshing, onRefresh, onSelectM
 
             <View className="text-gray-700 text-md flex-row items-center pt-1">
               <Ionicons name="location" size={18} color="black" />
-              <Text className="pl-2 font-semibold"> {Array.isArray(item.pitches?.districts) ? item.pitches.districts[0]?.name : item.pitches?.districts?.name ?? 'Bilinmiyor'} →</Text>
+              <Text className="pl-2 font-semibold"> {
+                Array.isArray(item.pitches) 
+                  ? (Array.isArray(item.pitches[0]?.districts) 
+                      ? item.pitches[0]?.districts[0]?.name 
+                      : item.pitches[0]?.districts?.name)
+                  : (Array.isArray(item.pitches?.districts) 
+                      ? item.pitches?.districts[0]?.name 
+                      : item.pitches?.districts?.name)
+                ?? 'Bilinmiyor'
+              } →</Text>
               <Text className="pl-2 font-bold text-green-700"> {Array.isArray(item.pitches) ? item.pitches[0]?.name : item.pitches?.name ?? 'Bilinmiyor'} </Text>
             </View>
           </View>
@@ -69,7 +78,7 @@ export default function OtherMatches({ matches, refreshing, onRefresh, onSelectM
         <Text className="font-bold text-white"> KADROSU EKSİK MAÇLAR </Text>
       </View>
 
-      {matches.length === 0 ? (
+      {matches.length === 0 && !refreshing ? (
         <View className='flex justify-center items-center py-2'>
           <Text className="text-center font-bold my-4">Başkaları Tarafından Oluşturulan Kadrosu Eksik Maç Yok!</Text>
           <TouchableOpacity
@@ -78,6 +87,10 @@ export default function OtherMatches({ matches, refreshing, onRefresh, onSelectM
           >
             <Text className="w-1/2 text-white font-semibold text-center p-4">Hemen Maç Oluştur</Text>
           </TouchableOpacity>
+        </View>
+      ) : matches.length === 0 && refreshing ? (
+        <View className='flex justify-center items-center py-2'>
+          <Text className="text-center font-bold text-gray-600 my-4">Maç Listesi Yükleniyor..</Text>
         </View>
       ) : (
         <FlatList

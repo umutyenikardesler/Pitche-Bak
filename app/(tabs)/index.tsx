@@ -30,8 +30,8 @@ export default function Index() {
   // Yükseklik hesaplama fonksiyonu
   const calculateHeight = useCallback(() => {
     const calculatedHeight = (() => {
-      if (futureMatches.length === 0) return headerHeight + 120; // Boş durum için ekstra alan
-      if (futureMatches.length === 1) return headerHeight + itemHeight + 40; // 1 maç + padding
+      if (futureMatches.length === 0) return headerHeight + 90; // Boş durum için ekstra alan
+      if (futureMatches.length === 1) return headerHeight + itemHeight + 22; // 1 maç + padding
       if (futureMatches.length === 2) return headerHeight + (itemHeight * 2) + 25; // 2 maç + padding
       // 3 veya daha fazla maç varsa 2 maç + daha fazla padding + header
       return headerHeight + (itemHeight * 2) + 30; // 80px padding ekledik
@@ -45,11 +45,11 @@ export default function Index() {
   useEffect(() => {
     const subscription = Dimensions.addEventListener('change', () => {
       // Ekran boyutu değiştiğinde yükseklikleri yeniden hesapla
-      setFutureMatches(prev => [...prev]);
+      calculateHeight();
     });
 
     return () => subscription?.remove();
-  }, []);
+  }, [calculateHeight]);
 
   // State'leri ekleyin
   const [profileModalVisible, setProfileModalVisible] = useState(false);
@@ -86,25 +86,16 @@ export default function Index() {
     const utcNow = new Date(now.getTime() + (now.getTimezoneOffset() * 60000));
     const turkeyNow = new Date(utcNow.getTime() + (turkeyOffset * 3600000));
     
-    // Gece yarısı kontrolü - saat 00:00-03:00 arası önceki günün tarihini kullan
-    let today;
-    if (turkeyNow.getHours() >= 0 && turkeyNow.getHours() < 3) {
-      // Gece yarısı - önceki günün tarihini kullan
-      const previousDay = new Date(turkeyNow);
-      previousDay.setDate(previousDay.getDate() - 1);
-      today = previousDay.toISOString().split("T")[0];
-    } else {
-      // Normal saatler - bugünün tarihini kullan
-      today = turkeyNow.toISOString().split("T")[0];
-    }
-    
+    // Bugünün tarihini al (Türkiye saati) - toISOString yerine toLocaleDateString kullan
+    const today = turkeyNow.toLocaleDateString('en-CA'); // YYYY-MM-DD formatında
     const currentHours = turkeyNow.getHours();
     const currentMinutes = turkeyNow.getMinutes();
     
-    console.log('Türkiye saati:', turkeyNow.toISOString());
-    console.log('Hesaplanan bugün tarihi:', today);
+    console.log('Türkiye saati (UTC):', turkeyNow.toISOString());
+    console.log('Türkiye saati (yerel):', turkeyNow.toString());
+    console.log('Bugünün tarihi:', today);
     console.log('Şu anki saat:', currentHours + ':' + currentMinutes);
-    console.log('Supabase sorgusu:', `date.gt.${today} OR (date.eq.${today} AND time.gt.${String(currentHours - 1).padStart(2, '0')}:${String(currentMinutes).padStart(2, '0')})`);
+    console.log('Şu anki zaman (dakika):', currentHours * 60 + currentMinutes);
 
     const { data: authData, error: authError } = await supabase.auth.getUser();
     if (authError || !authData.user.id) {
@@ -125,7 +116,7 @@ export default function Index() {
       setTotalMatchCount(allMatchData.length);
     }
 
-    // Gelecekteki maçları çek - Saat dilimi farkını düzelterek
+    // Tüm maçları çek (tarih filtrelemesi yapmadan)
     const { data: matchData, error: matchError } = await supabase
       .from("match")
       .select(`
@@ -134,34 +125,31 @@ export default function Index() {
         users (id, name, surname, profile_image)
       `)
       .eq("create_user", loggedUserId)
-      .or(`date.gt.${today},and(date.eq.${today},time.gt.${String(currentHours - 1).padStart(2, '0')}:${String(currentMinutes).padStart(2, '0')})`)
       .order("date", { ascending: true })
       .order("time", { ascending: true });
 
     if (!matchError) {
       const filteredMatches = matchData?.filter((item) => {
+        // Maç tarihini Date objesine çevir
+        const matchDate = new Date(item.date);
+        const matchDateStr = matchDate.toISOString().split('T')[0];
+        
         // Eğer maç bugünden sonraki bir tarihte ise direkt göster
-        if (item.date > today) return true;
+        if (matchDateStr > today) return true;
+        
+        // Eğer maç bugünden önceki bir tarihte ise kesinlikle gösterme
+        if (matchDateStr < today) return false;
 
         // Bugünkü maçlar için saat kontrolü
         const [matchHours, matchMinutes] = item.time.split(":").map(Number);
         const matchEndHour = matchHours + 1;
-
-        // Gece yarısı kontrolü (00:00-03:00 arası özel durum)
-        if (currentHours >= 0 && currentHours < 3) {
-          // Eğer maç gece yarısından sonra bitiyorsa
-          if (matchEndHour >= 24) {
-            const normalizedEndHour = matchEndHour % 24;
-            return normalizedEndHour > currentHours ||
-              (normalizedEndHour === currentHours && matchMinutes > currentMinutes);
-          }
-          return matchEndHour > currentHours ||
-            (matchEndHour === currentHours && matchMinutes > currentMinutes);
-        }
-
-        // Normal gündüz saatleri için kontrol
-        return matchEndHour > currentHours ||
-          (matchEndHour === currentHours && matchMinutes > currentMinutes);
+        
+        // Şu anki zamanı dakika cinsinden hesapla
+        const currentTimeInMinutes = currentHours * 60 + currentMinutes;
+        const matchEndTimeInMinutes = matchEndHour * 60 + matchMinutes;
+        
+        // Maç bitiş saati şu anki saatten sonra olmalı
+        return matchEndTimeInMinutes > currentTimeInMinutes;
       });
 
       const formattedData = filteredMatches?.map((item) => ({
@@ -172,14 +160,21 @@ export default function Index() {
       })) || [];
 
       setFutureMatches(formattedData);
-      // Maç verisi değiştiğinde yüksekliği güncelle
-      setTimeout(() => {
-        console.log('Maç verisi yüklendi, yükseklik güncelleniyor...');
-        calculateHeight();
-      }, 100);
+      
+      // Debug: Filtrelenen maçları göster
+      console.log('Filtrelenen maçlar:');
+      formattedData.forEach(match => {
+        const [matchHours, matchMinutes] = match.time.split(":").map(Number);
+        const matchEndHour = matchHours + 1;
+        const matchEndTimeInMinutes = matchEndHour * 60 + matchMinutes;
+        console.log(`- ${match.date} ${match.time} (bitiş: ${matchEndHour}:${matchMinutes}) - EndTime: ${matchEndTimeInMinutes} > Current: ${currentHours * 60 + currentMinutes}`);
+      });
+      
+      // Maç verisi değiştiğinde yüksekliği güncelleniyor - useEffect ile otomatik
+      console.log('Maç verisi yüklendi, maç sayısı:', formattedData.length);
     }
 
-    // Diğer kullanıcıların maçları - Saat dilimi farkını düzelterek
+    // Diğer kullanıcıların tüm maçları (tarih filtrelemesi yapmadan)
     const { data: otherMatchData, error: otherMatchError } = await supabase
       .from("match")
       .select(`
@@ -188,30 +183,31 @@ export default function Index() {
         users (id, name, surname, profile_image)
       `)
       .neq("create_user", loggedUserId)
-      .or(`date.gt.${today},and(date.eq.${today},time.gt.${String(currentHours - 1).padStart(2, '0')}:${String(currentMinutes).padStart(2, '0')})`)
       .order("date", { ascending: true })
       .order("time", { ascending: true });
 
     if (!otherMatchError) {
       const filteredOtherMatches = otherMatchData?.filter((item) => {
-        if (item.date > today) return true;
+        // Maç tarihini Date objesine çevir
+        const matchDate = new Date(item.date);
+        const matchDateStr = matchDate.toISOString().split('T')[0];
+        
+        // Eğer maç bugünden sonraki bir tarihte ise direkt göster
+        if (matchDateStr > today) return true;
+        
+        // Eğer maç bugünden önceki bir tarihte ise kesinlikle gösterme
+        if (matchDateStr < today) return false;
 
+        // Bugünkü maçlar için saat kontrolü
         const [matchHours, matchMinutes] = item.time.split(":").map(Number);
         const matchEndHour = matchHours + 1;
-
-        // Gece yarısı kontrolü (00:00-03:00 arası özel durum)
-        if (currentHours >= 0 && currentHours < 3) {
-          // Eğer maç gece yarısından sonra bitiyorsa
-          if (matchEndHour >= 24) {
-            const normalizedEndHour = matchEndHour % 24;
-            return normalizedEndHour > currentHours ||
-              (normalizedEndHour === currentHours && matchMinutes > currentMinutes);
-          }
-          return matchEndHour > currentHours ||
-            (matchEndHour === currentHours && matchMinutes > currentMinutes);
-        }
-        return matchEndHour > currentHours ||
-          (matchEndHour === currentHours && matchMinutes > currentMinutes);
+        
+        // Şu anki zamanı dakika cinsinden hesapla
+        const currentTimeInMinutes = currentHours * 60 + currentMinutes;
+        const matchEndTimeInMinutes = matchEndHour * 60 + matchMinutes;
+        
+        // Maç bitiş saati şu anki saatten sonra olmalı
+        return matchEndTimeInMinutes > currentTimeInMinutes;
       });
 
       const otherFormattedData = filteredOtherMatches?.map((item) => ({
@@ -225,9 +221,6 @@ export default function Index() {
     }
 
     setRefreshing(false);
-    
-    // Refresh sonrasında yüksekliği güncelleme kaldırıldı
-    // Yükseklik sadece maç verisi yüklendiğinde güncelleniyor
   }, []);
 
 
@@ -258,22 +251,31 @@ export default function Index() {
     return () => clearTimeout(timer);
   }, [calculateHeight]);
 
+  // futureMatches değiştiğinde yüksekliği otomatik güncelle
+  useEffect(() => {
+    if (futureMatches.length > 0 || myMatchesHeight === 0) {
+      console.log('futureMatches değişti, yükseklik güncelleniyor...');
+      calculateHeight();
+    }
+  }, [futureMatches.length, calculateHeight]);
+
   // Tab değişimlerini dinle - useFocusEffect ile
   useFocusEffect(
     useCallback(() => {
       console.log('Index tab\'ına odaklanıldı - useFocusEffect');
       
-      // Tab'a her dönüldüğünde maç verilerini ve yükseklikleri güncelle
+      // Tab'a her dönüldüğünde maç verilerini güncelle (pull to refresh gibi)
+      // Loading göstergesi için refreshing'i true yap ve state'leri sıfırla
+      setRefreshing(true);
+      setFutureMatches([]);
+      setOtherMatches([]);
+      setMyMatchesHeight(0);
+      
+      // Verileri yükle
       fetchMatches();
       
-      // Sadece bir kez yükseklik güncellemesi yap
-      setTimeout(() => {
-        console.log('Tab değişimi sonrası yükseklik güncelleniyor...');
-        calculateHeight();
-      }, 200);
-      
       return () => { };
-    }, [fetchMatches, calculateHeight])
+    }, [fetchMatches])
   );
 
   useEffect(() => {
@@ -296,7 +298,7 @@ export default function Index() {
     
     // Temizleme fonksiyonu
     return () => clearInterval(interval);
-  }, [fetchMatches, calculateHeight]);
+  }, [fetchMatches]);
 
   return (
     <GestureHandlerRootView className="flex-1">

@@ -1,4 +1,5 @@
-import { View, Text, FlatList, TouchableOpacity, Image, RefreshControl, Dimensions } from "react-native";
+import { useState, useEffect } from "react";
+import { View, Text, FlatList, TouchableOpacity, Image, RefreshControl, Dimensions, Animated } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Match } from "./types";
 import '@/global.css';
@@ -18,6 +19,64 @@ const formatTitle = (text: string) => {
 };
 
 export default function MyMatches({ matches, refreshing, onRefresh, onSelectMatch, onCreateMatch }: MyMatchesProps) {
+  // Animasyon için opacity state'i
+  const [fadeAnim] = useState(new Animated.Value(1));
+
+  // Soluk gitgel animasyonu
+  useEffect(() => {
+    const fadeInOut = () => {
+      Animated.sequence([
+        Animated.timing(fadeAnim, {
+          toValue: 0.3,
+          duration: 1000,
+          useNativeDriver: true,
+        }),
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: 1000,
+          useNativeDriver: true,
+        }),
+      ]).start(() => fadeInOut()); // Sonsuz döngü
+    };
+
+    fadeInOut();
+  }, [fadeAnim]);
+
+  // Maçın şu anda oynanıp oynanmadığını kontrol eden fonksiyon
+  const isMatchCurrentlyPlaying = (match: Match) => {
+    const now = new Date();
+    const turkeyOffset = 3; // UTC+3 için offset
+    const utcNow = new Date(now.getTime() + (now.getTimezoneOffset() * 60000));
+    const turkeyNow = new Date(utcNow.getTime() + (turkeyOffset * 3600000));
+    
+    const today = turkeyNow.toLocaleDateString('en-CA'); // YYYY-MM-DD formatında
+    const currentHours = turkeyNow.getHours();
+    const currentMinutes = turkeyNow.getMinutes();
+    
+    // Debug bilgisi
+    console.log(`[isMatchCurrentlyPlaying] Maç: ${match.date} ${match.time}, Bugün: ${today}, Şu an: ${currentHours}:${currentMinutes}`);
+    
+    // Eğer maç bugünkü değilse false
+    if (match.date !== today) {
+      console.log(`[isMatchCurrentlyPlaying] Maç bugünkü değil: ${match.date} !== ${today}`);
+      return false;
+    }
+    
+    const [matchHours, matchMinutes] = match.time.split(":").map(Number);
+    const matchEndHour = matchHours + 1;
+    
+    // Maç şu anda oynanıyor mu veya henüz bitmemiş mi kontrol et
+    const matchStartTime = matchHours * 60 + matchMinutes;
+    const matchEndTime = matchEndHour * 60 + matchMinutes;
+    const currentTime = currentHours * 60 + currentMinutes;
+    
+    const isPlaying = currentTime >= matchStartTime && currentTime < matchEndTime;
+    console.log(`[isMatchCurrentlyPlaying] Maç: ${matchHours}:${matchMinutes}-${matchEndHour}:${matchMinutes}, Şu an: ${currentTime}, Başlangıç: ${matchStartTime}, Bitiş: ${matchEndTime}, Oynanıyor: ${isPlaying}`);
+    
+    // Maç başladı ve henüz bitmedi
+    return isPlaying;
+  };
+
   const renderMatch = ({ item }: { item: Match }) => (
     <TouchableOpacity onPress={() => onSelectMatch(item)}>
       <View className="bg-white rounded-lg mx-4 my-1 p-1 shadow-lg">
@@ -36,9 +95,19 @@ export default function MyMatches({ matches, refreshing, onRefresh, onSelectMatc
           </View>
           {/* Maç Bilgileri */}
           <View className="w-4/6 flex justify-center -mt-2 -ml-4">
-            <Text className="text-lg text-green-700 font-semibold">
-              {formatTitle(item.title)}
-            </Text>
+            <View className="flex-row items-center justify-between">
+              <Text className="text-lg text-green-700 font-semibold">
+                {formatTitle(item.title)}
+              </Text>
+              {isMatchCurrentlyPlaying(item) && (
+                <Animated.Text 
+                  className="text-red-600 font-bold text-sm"
+                  style={{ opacity: fadeAnim }}
+                >
+                  Maç şuan oynanıyor..
+                </Animated.Text>
+              )}
+            </View>
 
             <View className="text-gray-700 text-md flex-row items-center">
               <Ionicons name="calendar-outline" size={18} color="black" />
@@ -48,7 +117,16 @@ export default function MyMatches({ matches, refreshing, onRefresh, onSelectMatc
 
             <View className="text-gray-700 text-md flex-row items-center pt-1">
               <Ionicons name="location" size={18} color="black" />
-              <Text className="pl-2 font-semibold"> {Array.isArray(item.pitches?.districts) ? item.pitches.districts[0]?.name : item.pitches?.districts?.name ?? 'Bilinmiyor'} →</Text>
+              <Text className="pl-2 font-semibold"> {
+                Array.isArray(item.pitches) 
+                  ? (Array.isArray(item.pitches[0]?.districts) 
+                      ? item.pitches[0]?.districts[0]?.name 
+                      : item.pitches[0]?.districts?.name)
+                  : (Array.isArray(item.pitches?.districts) 
+                      ? item.pitches?.districts[0]?.name 
+                      : item.pitches?.districts?.name)
+                ?? 'Bilinmiyor'
+              } →</Text>
               <Text className="pl-2 font-bold text-green-700"> {Array.isArray(item.pitches) ? item.pitches[0]?.name : item.pitches?.name ?? 'Bilinmiyor'} </Text>
             </View>
           </View>
@@ -70,7 +148,7 @@ export default function MyMatches({ matches, refreshing, onRefresh, onSelectMatc
         <Text className="font-bold text-white "> SENİ BEKLEYEN MAÇLAR </Text>
       </View>
 
-      {matches.length === 0 ? (
+      {matches.length === 0 && !refreshing ? (
         <View className='flex justify-center items-center py-4'>
           <Text className="text-center font-bold">Oluşturduğun Maç Yok!</Text>
           <TouchableOpacity
@@ -79,6 +157,10 @@ export default function MyMatches({ matches, refreshing, onRefresh, onSelectMatc
           >
             <Text className="w-1/2 text-white font-semibold text-center px-4 py-2 mx-2">Hemen Maç Oluştur</Text>
           </TouchableOpacity>
+        </View>
+      ) : matches.length === 0 && refreshing ? (
+        <View className='flex justify-center items-center py-4'>
+          <Text className="text-center font-bold text-gray-600">Maç Listesi Yükleniyor..</Text>
         </View>
       ) : (
         <FlatList
