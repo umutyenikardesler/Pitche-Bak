@@ -3,6 +3,7 @@ import { FlatList, Text, View, RefreshControl, Dimensions } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { supabase } from "@/services/supabase";
 import { useFocusEffect } from "@react-navigation/native";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 type Match = {
   id: number;
@@ -25,6 +26,7 @@ type Props = {
 };
 
 export default function ProfileMatches({ userData, refreshing = false, onRefresh }: Props) {
+  const { t } = useLanguage();
   const [loading, setLoading] = useState(true);
   const [matches, setMatches] = useState<Match[]>([]);
 
@@ -90,13 +92,13 @@ export default function ProfileMatches({ userData, refreshing = false, onRefresh
       {/* Maç Listesi ve İçeriği */}
       <View className="flex-row justify-center items-center my-1 mb-2.5">
         <Ionicons name="calendar-outline" size={16} color="green" className="pl-2" />
-        <Text className="font-bold text-green-700"> MAÇLARIM </Text>
+        <Text className="font-bold text-green-700"> {t('profile.myMatches')} </Text>
       </View>
 
       {/* Maç Listesi */}
       <View className="flex-1 mb-2">
         {loading ? (
-          <Text className="text-center mb-4 text-gray-500">Yükleniyor...</Text>
+          <Text className="text-center mb-4 text-gray-500">{t('general.loading')}</Text>
         ) : matches.length > 0 ? (
           <FlatList
             className="mb-2 h-auto"

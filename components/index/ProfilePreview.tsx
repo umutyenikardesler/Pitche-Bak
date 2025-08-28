@@ -13,6 +13,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { supabase } from "@/services/supabase";
 import { useState, useEffect, useCallback } from "react";
+import { useLanguage } from "@/contexts/LanguageContext";
 import "@/global.css";
 import ProfileStatus from "@/components/profile/ProfileStatus";
 import ProfileCondition from "@/components/profile/ProfileCondition";
@@ -49,6 +50,7 @@ export default function ProfilePreview({
   onClose,
   userId,
 }: ProfilePreviewProps) {
+  const { t } = useLanguage();
   const [userData, setUserData] = useState<UserData | null>(null);
   const [loading, setLoading] = useState(true);
   const [isFollowing, setIsFollowing] = useState(false);
@@ -56,7 +58,7 @@ export default function ProfilePreview({
     "pending" | "accepted" | null
   >(null);
   const [isFollowedByProfileUser, setIsFollowedByProfileUser] = useState(false);
-  
+
   // Yeni state'ler ekleyelim
   const [matchCount, setMatchCount] = useState(0);
   const [followerCount, setFollowerCount] = useState(0);
@@ -105,10 +107,13 @@ export default function ProfilePreview({
   };
 
   // Takipçi listesini çek
-  const fetchFollowersList = async (userId: string, callback?: (followers: FollowUser[]) => void) => {
+  const fetchFollowersList = async (
+    userId: string,
+    callback?: (followers: FollowUser[]) => void
+  ) => {
     try {
       console.log("fetchFollowersList çağrıldı, userId:", userId);
-      
+
       // Önce takipçi ID'lerini al
       const { data: followData, error: followError } = await supabase
         .from("follow_requests")
@@ -138,7 +143,9 @@ export default function ProfilePreview({
 
       if (!userError && userData) {
         // user kayıtlarını, follow_requests sırasına göre yeniden sırala
-        const userById = new Map((userData as any[]).map((u: any) => [u.id, u]));
+        const userById = new Map(
+          (userData as any[]).map((u: any) => [u.id, u])
+        );
         const followers = followerIds
           .map((id: string) => userById.get(id))
           .filter(Boolean)
@@ -146,7 +153,7 @@ export default function ProfilePreview({
             id: user.id,
             name: user.name,
             surname: user.surname,
-            profile_image: user.profile_image
+            profile_image: user.profile_image,
           }));
         console.log("İşlenmiş takipçi listesi:", followers);
         setFollowersList(followers);
@@ -165,10 +172,13 @@ export default function ProfilePreview({
   };
 
   // Takip edilen listesini çek
-  const fetchFollowingList = async (userId: string, callback?: (following: FollowUser[]) => void) => {
+  const fetchFollowingList = async (
+    userId: string,
+    callback?: (following: FollowUser[]) => void
+  ) => {
     try {
       console.log("fetchFollowingList çağrıldı, userId:", userId);
-      
+
       // Önce takip edilen ID'lerini al
       const { data: followData, error: followError } = await supabase
         .from("follow_requests")
@@ -198,7 +208,9 @@ export default function ProfilePreview({
 
       if (!userError && userData) {
         // user kayıtlarını, follow_requests sırasına göre yeniden sırala
-        const userById = new Map((userData as any[]).map((u: any) => [u.id, u]));
+        const userById = new Map(
+          (userData as any[]).map((u: any) => [u.id, u])
+        );
         const following = followingIds
           .map((id: string) => userById.get(id))
           .filter(Boolean)
@@ -206,7 +218,7 @@ export default function ProfilePreview({
             id: user.id,
             name: user.name,
             surname: user.surname,
-            profile_image: user.profile_image
+            profile_image: user.profile_image,
           }));
         console.log("İşlenmiş takip edilen listesi:", following);
         setFollowingList(following);
@@ -262,11 +274,11 @@ export default function ProfilePreview({
       }
 
       setUserData(data);
-      
+
       // Maç ve takip sayılarını çek
       await fetchMatchCount(userId);
       await fetchFollowCounts(userId);
-      
+
       setLoading(false);
     } catch (error) {
       setUserData(null);
@@ -282,8 +294,6 @@ export default function ProfilePreview({
     }
     fetchData();
   }, [userId, fetchData]);
-
-
 
   const handleClose = () => {
     // Önce state'leri sıfırla
@@ -309,7 +319,7 @@ export default function ProfilePreview({
         data: { user },
       } = await supabase.auth.getUser();
       if (!user) {
-        Alert.alert("Hata", "Kullanıcı oturumu bulunamadı");
+        Alert.alert(t("general.error"), t("profile.userSessionNotFound"));
         return;
       }
 
@@ -321,7 +331,7 @@ export default function ProfilePreview({
         .single();
 
       if (senderError) {
-        Alert.alert("Hata", "Kendi kullanıcı bilgilerin alınamadı");
+        Alert.alert(t("general.error"), t("profile.ownUserDataNotFound"));
         return;
       }
 
@@ -364,8 +374,8 @@ export default function ProfilePreview({
         if (insertError.code === "23505") {
           // unique violation
           Alert.alert(
-            "Hata",
-            "Zaten takip isteği gönderdiniz veya takip ediyorsunuz."
+            t("general.error"),
+            t("profile.alreadyFollowingOrRequested")
           );
           return;
         }
@@ -392,14 +402,11 @@ export default function ProfilePreview({
 
       setIsFollowing(true);
       setFollowStatus("pending");
-      Alert.alert("Başarılı", "Takip isteği gönderildi");
+      Alert.alert(t("general.success"), t("profile.followRequestSentSuccess"));
       fetchData();
     } catch (error) {
       console.error("Takip isteği gönderilirken hata:", error);
-      Alert.alert(
-        "Hata",
-        "Takip isteği gönderilirken bir hata oluştu. Lütfen tekrar deneyin."
-      );
+      Alert.alert(t("general.error"), t("profile.followRequestError"));
     }
   };
 
@@ -410,7 +417,7 @@ export default function ProfilePreview({
         data: { user },
       } = await supabase.auth.getUser();
       if (!user) {
-        Alert.alert("Hata", "Kullanıcı oturumu bulunamadı");
+        Alert.alert(t("general.error"), t("profile.userSessionNotFound"));
         return;
       }
       // Takip isteğini sil
@@ -424,20 +431,19 @@ export default function ProfilePreview({
       }
       setIsFollowing(false);
       setFollowStatus(null);
-      Alert.alert("Başarılı", "Takipten çıkıldı");
+      Alert.alert(t("general.success"), t("profile.unfollowed"));
       fetchData();
     } catch (error) {
       console.error("Takipten çıkılırken hata:", error);
-      Alert.alert(
-        "Hata",
-        "Takipten çıkılırken bir hata oluştu. Lütfen tekrar deneyin."
-      );
+      Alert.alert(t("general.error"), t("profile.unfollowError"));
     }
   };
 
   // State'ler ekleyelim
   const [listModalVisible, setListModalVisible] = useState(false);
-  const [activeListType, setActiveListType] = useState<'followers' | 'following'>('followers');
+  const [activeListType, setActiveListType] = useState<
+    "followers" | "following"
+  >("followers");
   const [currentList, setCurrentList] = useState<FollowUser[]>([]);
   const [imageModalVisible, setImageModalVisible] = useState(false);
 
@@ -446,12 +452,12 @@ export default function ProfilePreview({
     console.log("handlePressFollowers çağrıldı");
     await fetchFollowersList(userId, (followers) => {
       if (followers.length === 0) {
-        Alert.alert("Takipçiler", "Henüz takipçi yok");
+        Alert.alert(t("profile.followers"), t("profile.noFollowersYet"));
         return;
       }
 
       setCurrentList(followers);
-      setActiveListType('followers');
+      setActiveListType("followers");
       setListModalVisible(true);
     });
   };
@@ -461,12 +467,12 @@ export default function ProfilePreview({
     console.log("handlePressFollowing çağrıldı");
     await fetchFollowingList(userId, (following) => {
       if (following.length === 0) {
-        Alert.alert("Takip Edilenler", "Henüz kimseyi takip etmiyor");
+        Alert.alert(t("profile.following"), t("profile.notFollowingAnyoneYet"));
         return;
       }
 
       setCurrentList(following);
-      setActiveListType('following');
+      setActiveListType("following");
       setListModalVisible(true);
     });
   };
@@ -497,16 +503,14 @@ export default function ProfilePreview({
           {item.name} {item.surname}
         </Text>
         <Text className="text-sm text-gray-500 mt-1">
-          {activeListType === 'followers' ? 'Seni takip ediyor' : 'Takip ediyorsun'}
+          {activeListType === "followers"
+            ? "Seni takip ediyor"
+            : "Takip ediyorsun"}
         </Text>
       </View>
       {/* <Ionicons name="chevron-forward" size={20} color="#16a34a" /> */}
     </View>
   );
-
-
-
-
 
   return (
     <>
@@ -528,16 +532,19 @@ export default function ProfilePreview({
               </TouchableOpacity>
             </View>
 
-            <ScrollView 
-              className="flex-1" 
+            <ScrollView
+              className="flex-1"
               scrollEnabled={!listModalVisible}
               nestedScrollEnabled={true}
             >
-              <View className="p-4">
+              <View className="p-2">
                 <View className="flex flex-row bg-white rounded-lg shadow-lg px-4 py-2 mb-2">
                   {/* Profil Resmi */}
-                  <View className="w-1/4 py-2 px-1">
-                    <TouchableOpacity onPress={() => setImageModalVisible(true)} activeOpacity={0.8}>
+                  <View className="w-1/4 py-2">
+                    <TouchableOpacity
+                      onPress={() => setImageModalVisible(true)}
+                      activeOpacity={0.8}
+                    >
                       <Image
                         source={
                           userData?.profile_image
@@ -551,36 +558,45 @@ export default function ProfilePreview({
                   </View>
 
                   {/* Bilgiler */}
-                  <View className="w-3/4 pl-8">
+                  <View className="w-3/4 pl-4">
                     <Text className="font-semibold text-lg text-green-700 my-1">
-                      {userData?.name || "İsim Yok"} {userData?.surname || ""}
+                      {userData?.name || t("profile.noName")}{" "}
+                      {userData?.surname || ""}
                     </Text>
 
-                    <View className="flex-row justify-between mb-1">
-                      <Text className="text-wrap font-semibold">Yaş:</Text>
+                    <View className="flex-row flex-wrap justify-between mb-1">
+                      <Text className="text-wrap font-semibold">
+                        {t("profile.age")}:
+                      </Text>
                       <Text className="text-green-600 font-semibold">
                         {" "}
                         {userData?.age || "-"}{" "}
                       </Text>
-                      <Text className="font-semibold">Boy:</Text>
-                      <Text className="text-green-600 font-semibold">
-                        {" "}
-                        {userData?.height || "-"} cm{" "}
+                      <Text className="font-semibold">
+                        {t("profile.height")}:
                       </Text>
-                      <Text className="font-semibold">Ağırlık:</Text>
                       <Text className="text-green-600 font-semibold">
                         {" "}
-                        {userData?.weight || "-"} kg
+                        {userData?.height || "-"} cm {" "}
+                      </Text>
+                      <Text className="font-semibold">
+                        {t("profile.weight")}:
+                      </Text>
+                      <Text className="text-green-600 font-semibold">
+                        {" "}
+                        {userData?.weight || "-"} kg {" "}
+                      </Text>
+                      <Text className="text-wrap font-semibold mb-1">
+                        <Text className="font-semibold">
+                          {t("profile.position")}:
+                        </Text>
+                        <Text className="text-green-600 font-semibold mb-1">
+                          {" "}
+                          {userData?.description ||
+                            t("profile.noDescription")}{" "}
+                        </Text>
                       </Text>
                     </View>
-
-                    <Text className="text-wrap font-semibold mb-1">
-                      <Text className="font-semibold">Mevki:</Text>
-                      <Text className="text-green-600 font-semibold mb-1">
-                        {" "}
-                        {userData?.description || "Açıklama Yok"}{" "}
-                      </Text>
-                    </Text>
 
                     {/* Takip Et / Takip İsteğini Geri Çek Butonu */}
                     {isFollowing && followStatus === "accepted" ? (
@@ -590,7 +606,7 @@ export default function ProfilePreview({
                           onPress={handleUnfollow}
                         >
                           <Text className="text-center font-bold text-white">
-                            Takip Ediliyor
+                            {t("profile.following")}
                           </Text>
                         </TouchableOpacity>
                       </View>
@@ -605,8 +621,8 @@ export default function ProfilePreview({
                         >
                           <Text className="font-bold text-white text-center">
                             {isFollowing
-                              ? "Takip isteğin gönderildi"
-                              : "Takip Et"}
+                              ? t("profile.followRequestSent")
+                              : t("profile.follow")}
                           </Text>
                         </TouchableOpacity>
                       </View>
@@ -617,7 +633,7 @@ export default function ProfilePreview({
                 {isFollowing && followStatus === "accepted" && (
                   <View className="bg-white rounded-lg shadow-lg p-4">
                     {/* ProfileStatus bileşeni - gerçek verilerle */}
-                    <ProfileStatus 
+                    <ProfileStatus
                       matchCount={matchCount}
                       followerCount={followerCount}
                       followingCount={followingCount}
@@ -637,18 +653,20 @@ export default function ProfilePreview({
                 {listModalVisible && (
                   <View className="absolute inset-0 bg-white/60 justify-center items-center z-50">
                     {/* Boş alana tıklayınca kapatma */}
-                    <TouchableOpacity 
-                      className="absolute inset-0" 
+                    <TouchableOpacity
+                      className="absolute inset-0"
                       onPress={closeListModal}
                       activeOpacity={1}
                     />
-                    
+
                     {/* Modal içeriği */}
                     <View className="bg-white rounded-xl w-10/12 max-h-2/3 shadow-2xl">
                       {/* Header */}
                       <View className="flex-row justify-between items-center p-4 border-b border-gray-200 bg-green-50 rounded-t-xl">
                         <Text className="text-xl font-bold text-green-700">
-                          {activeListType === 'followers' ? 'Takipçiler' : 'Takip Edilenler'}
+                          {activeListType === "followers"
+                            ? t("profile.followers")
+                            : t("profile.following")}
                         </Text>
                         <TouchableOpacity
                           onPress={closeListModal}
@@ -659,7 +677,7 @@ export default function ProfilePreview({
                       </View>
 
                       {/* Liste - ScrollView kullanarak */}
-                      <ScrollView 
+                      <ScrollView
                         style={{ maxHeight: 250 }}
                         contentContainerStyle={{ paddingBottom: 10 }}
                         showsVerticalScrollIndicator={true}
@@ -667,7 +685,10 @@ export default function ProfilePreview({
                         bounces={false}
                       >
                         {currentList.map((item) => (
-                          <View key={item.id} className="flex-row items-center p-4 border-b border-gray-100">
+                          <View
+                            key={item.id}
+                            className="flex-row items-center p-4 border-b border-gray-100"
+                          >
                             <View className="relative">
                               <Image
                                 source={
@@ -676,7 +697,11 @@ export default function ProfilePreview({
                                     : require("@/assets/images/ball.png")
                                 }
                                 className="rounded-full border-2 border-green-200"
-                                style={{ width: 55, height: 55, resizeMode: "cover" }}
+                                style={{
+                                  width: 55,
+                                  height: 55,
+                                  resizeMode: "cover",
+                                }}
                               />
                             </View>
                             <View className="ml-4 flex-1">
@@ -684,7 +709,9 @@ export default function ProfilePreview({
                                 {item.name} {item.surname}
                               </Text>
                               <Text className="text-sm text-gray-500 mt-1">
-                                {activeListType === 'followers' ? 'Seni takip ediyor' : 'Takip ediyorsun'}
+                                {activeListType === "followers"
+                                  ? t("profile.followingYou")
+                                  : t("profile.youFollowing")}
                               </Text>
                             </View>
                           </View>
@@ -712,20 +739,20 @@ export default function ProfilePreview({
                             : require("@/assets/images/ball.png")
                         }
                         className="rounded-full"
-                        style={{ width: 280, height: 280, resizeMode: "contain" }}
+                        style={{
+                          width: 280,
+                          height: 280,
+                          resizeMode: "contain",
+                        }}
                       />
                     </View>
                   </View>
                 )}
-
               </View>
             </ScrollView>
           </View>
         </View>
       </Modal>
-
-
-
     </>
   );
 }

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, FlatList, Switch, StyleSheet, Platform } from 'react-native';
 import { supabase } from '@/services/supabase';
+import { useLanguage } from '@/contexts/LanguageContext';
 import '@/global.css';
 
 interface SquadSelectorProps {
@@ -16,6 +17,7 @@ export const SquadSelector: React.FC<SquadSelectorProps> = ({
   missingPositions,
   setMissingPositions,
 }) => {
+  const { t } = useLanguage();
   const handlePositionSelection = (position: string) => {
     setMissingPositions((prev: any) => ({
       ...prev,
@@ -36,7 +38,7 @@ export const SquadSelector: React.FC<SquadSelectorProps> = ({
 
   return (
     <View className="mb-4">
-      <Text className="text-green-700 font-semibold mb-2">Kadro Eksik mi?</Text>
+      <Text className="text-green-700 font-semibold mb-2">{t('create.squadIncompleteQuestion')}</Text>
       <Switch
         value={isSquadIncomplete}
         onValueChange={setIsSquadIncomplete}
@@ -48,7 +50,7 @@ export const SquadSelector: React.FC<SquadSelectorProps> = ({
 
       {isSquadIncomplete && (
         <View>
-          <Text className="text-green-700 font-semibold mb-2 mt-2">Eksik Mevkileri Seçin</Text>
+          <Text className="text-green-700 font-semibold mb-2 mt-2">{t('create.selectMissingPositionsTitle')}</Text>
 
           <View className="flex flex-col">
             {/* İlk Satır: Kaleci & Defans */}
@@ -59,12 +61,18 @@ export const SquadSelector: React.FC<SquadSelectorProps> = ({
                     className="flex p-3 rounded bg-green-600"
                     onPress={() => handlePositionSelection(position)}
                   >
-                    <Text className="text-white">{position.charAt(0).toUpperCase() + position.slice(1)}</Text>
+                    <Text className="text-white">
+                      {position === 'kaleci' ? t('create.goalkeeper') :
+                       position === 'defans' ? t('create.defender') :
+                       position === 'ortaSaha' ? t('create.midfielder') :
+                       position === 'forvet' ? t('create.forward') :
+                       position.charAt(0).toUpperCase() + position.slice(1)}
+                    </Text>
                   </TouchableOpacity>
 
                   {missingPositions[position] && missingPositions[position].selected && (
                     <View className="mt-2">
-                      <Text className="text-gray-600 mb-2">Kaç {position} eksik?</Text>
+                      <Text className="text-gray-600 mb-2">{t('create.howManyMissingQuestion').replace('{position}', position === 'ortaSaha' ? 'Orta Saha' : position.charAt(0).toUpperCase() + position.slice(1))}</Text>
                       <FlatList
                         horizontal
                         data={Array.from({ length: position === 'kaleci' ? 2 : 3 }, (_, i) => i + 1)}
@@ -98,12 +106,20 @@ export const SquadSelector: React.FC<SquadSelectorProps> = ({
                     className="flex p-3 rounded bg-green-600"
                     onPress={() => handlePositionSelection(position)}
                   >
-                    <Text className="text-white">{position.charAt(0).toUpperCase() + position.slice(1)}</Text>
+                    <Text className="text-white">
+                      {position === 'kaleci' ? t('create.goalkeeper') :
+                       position === 'defans' ? t('create.defender') :
+                       position === 'ortaSaha' ? t('create.midfielder') :
+                       position === 'forvet' ? t('create.forward') :
+                       position.charAt(0).toUpperCase() + position.slice(1)}
+                    </Text>
                   </TouchableOpacity>
 
                   {missingPositions[position] && missingPositions[position].selected && (
                     <View className="mt-2">
-                      <Text className="text-gray-600 mb-2">Kaç {position} eksik?</Text>
+                      <Text className="text-gray-600 mb-2">
+                        {t('create.howManyMissingQuestion').replace('{position}', position === 'ortaSaha' ? 'Orta Saha' : position)}
+                      </Text>
                       <FlatList
                         horizontal
                         data={Array.from({ length: 3 }, (_, i) => i + 1)}

@@ -1,8 +1,10 @@
 import { View, Text, Dimensions } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { useLanguage } from "@/contexts/LanguageContext";
 import '@/global.css';
 
 export default function ProfileCondition({ matchCount = 0 }) {
+  const { t } = useLanguage();
 
   const screenWidth = Dimensions.get("window").width;
   const fontSize = screenWidth > 430 ? 12 : screenWidth > 320 ? 11.5 : 10;
@@ -23,26 +25,26 @@ export default function ProfileCondition({ matchCount = 0 }) {
   let conditionMessageColor = "#16a34a";
 
   if (matchCount === 0) {
-    conditionMessage = "Yükleniyor...";
+    conditionMessage = t('general.loading');
     conditionMessageColor = "gray";
   } else if (matchCount < 3) {
-    conditionMessage = "Kondisyon kazanman için en az 3 maç yapman lazım!";
+    conditionMessage = t('profile.conditionNeed3Matches');
     conditionMessageColor = "red";
   } else if (matchCount === 3) {
-    conditionMessage = "Eğer 1 maç daha yaparsan kondisyonun 80'e yükselecek";
+    conditionMessage = t('profile.conditionNextMatch80');
   } else if (matchCount === 4) {
-    conditionMessage = "Eğer 1 maç daha yaparsan kondisyonun 90'a yükselecek";
+    conditionMessage = t('profile.conditionNextMatch90');
   } else if (matchCount === 5) {
-    conditionMessage = "İlk 5 maçını tamamladın. Spor yapmaya devam ☺️";
+    conditionMessage = t('profile.conditionFirst5Complete');
   } else {
-    conditionMessage = "Gerekli kondisyonu kazandın. Sağlıklı günler 👏";
+    conditionMessage = t('profile.conditionAchieved');
   }
 
   return (
     <View>
       <View className="flex-row mt-2 px-3 justify-center items-center">
         <Ionicons name="accessibility" size={16} color="green" className="pl-2" />
-        <Text className="font-bold text-green-700 text-center"> KONDİSYONUN </Text>
+        <Text className="font-bold text-green-700 text-center"> {t('profile.condition')} </Text>
       </View>
       <View className="bg-white rounded-lg mx-4 my-3 p-3 shadow-md">
         <View className="w-full flex-row items-center mb-2">

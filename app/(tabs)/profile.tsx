@@ -19,6 +19,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { supabase } from "@/services/supabase";
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
+import { useLanguage } from "@/contexts/LanguageContext";
 import "@/global.css";
 
 import ProfileInfo from "@/components/profile/ProfileInfo";
@@ -29,6 +30,7 @@ import ProfileMatches from "@/components/profile/ProfileMatches";
 export default function Profile() {
   const searchParams = useLocalSearchParams();
   const router = useRouter();
+  const { currentLanguage, changeLanguage, t } = useLanguage();
   const [refreshing, setRefreshing] = useState(false);
   interface UserDataType {
     id: string;
@@ -61,6 +63,8 @@ export default function Profile() {
 
   const [modalVisible, setModalVisible] = useState(false);
   const [editModalVisible, setEditModalVisible] = useState(false);
+  const [settingsModalVisible, setSettingsModalVisible] = useState(false);
+  const [languageOptionsVisible, setLanguageOptionsVisible] = useState(false);
   const [profileImage, setProfileImage] = useState({ uri: null });
   const [editUserData, setEditUserData] = useState<UserDataType | null>(null);
 
@@ -421,14 +425,24 @@ export default function Profile() {
           />
         </View>
         <View className="flex pb-4 mt-auto">
-          <TouchableOpacity
-            onPress={handleLogout}
-            className="bg-green-600 mx-4 rounded-lg"
-          >
-            <Text className="text-white font-semibold text-center p-2">
-              Çıkış Yap
-            </Text>
-          </TouchableOpacity>
+          <View className="flex-row mx-4">
+            <TouchableOpacity
+              onPress={() => setSettingsModalVisible(true)}
+              className="bg-green-600 rounded-lg flex-1 mr-1"
+            >
+              <Text className="text-white font-semibold text-center p-2.5">
+                {t('profile.settings')}
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={handleLogout}
+              className="bg-green-600 rounded-lg flex-1 ml-1"
+            >
+              <Text className="text-white font-semibold text-center p-2.5">
+                {t('profile.logout')}
+              </Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* 🔹 PROFİL FOTOĞRAFI MODALI */}
@@ -490,11 +504,11 @@ export default function Profile() {
                   >
                     <View className="bg-white p-6 rounded-lg w-3/4">
                       <Text className="text-xl font-bold text-center text-green-700 mb-4">
-                        Kişisel Bilgilerini Tamamla
+                        {t('profile.completePersonalInfo')}
                       </Text>
 
                       <TextInput
-                        placeholder="Adınız"
+                        placeholder={t('profile.name')}
                         value={editUserData?.name || ""}
                         onChangeText={(text) =>
                           setEditUserData({ ...editUserData, name: text })
@@ -502,7 +516,7 @@ export default function Profile() {
                         className="border border-gray-300 rounded p-2 mb-2"
                       />
                       <TextInput
-                        placeholder="Soyadınız"
+                        placeholder={t('profile.surname')}
                         value={editUserData?.surname || ""}
                         onChangeText={(text) =>
                           setEditUserData({ ...editUserData, surname: text })
@@ -510,7 +524,7 @@ export default function Profile() {
                         className="border border-gray-300 rounded p-2 mb-2"
                       />
                       <TextInput
-                        placeholder="Yaş"
+                        placeholder={t('profile.age')}
                         value={editUserData?.age?.toString() || ""}
                         onChangeText={(text) =>
                           setEditUserData({ ...editUserData, age: text })
@@ -519,7 +533,7 @@ export default function Profile() {
                         keyboardType="numeric"
                       />
                       <TextInput
-                        placeholder="Boy (cm)"
+                        placeholder={t('profile.height')}
                         value={editUserData?.height?.toString() || ""}
                         onChangeText={(text) =>
                           setEditUserData({ ...editUserData, height: text })
@@ -528,7 +542,7 @@ export default function Profile() {
                         keyboardType="numeric"
                       />
                       <TextInput
-                        placeholder="Kilo (kg)"
+                        placeholder={t('profile.weight')}
                         value={editUserData?.weight?.toString() || ""}
                         onChangeText={(text) =>
                           setEditUserData({ ...editUserData, weight: text })
@@ -537,7 +551,7 @@ export default function Profile() {
                         keyboardType="numeric"
                       />
                       <TextInput
-                        placeholder="Mevki / Biyografi"
+                        placeholder={t('profile.description')}
                         value={editUserData?.description || ""}
                         onChangeText={(text) =>
                           setEditUserData({
@@ -555,14 +569,14 @@ export default function Profile() {
                           onPress={closeEditModal}
                         >
                           {" "}
-                          İptal Et{" "}
+                          {t('general.cancel')}{" "}
                         </Text>
                         <Text
                           className="text-white font-semibold bg-green-600 p-2 rounded-lg"
                           onPress={handleSave}
                         >
                           {" "}
-                          Kaydet{" "}
+                          {t('general.save')}{" "}
                         </Text>
                       </View>
                     </View>
@@ -635,6 +649,125 @@ export default function Profile() {
             </View>
           </View>
         </Modal>
+
+                {/* 🔹 AYARLAR MODALI */}
+        <Modal
+          visible={settingsModalVisible}
+          transparent={true}
+          animationType="fade"
+          onRequestClose={() => setSettingsModalVisible(false)}
+          presentationStyle="overFullScreen"
+        >
+          <View className="flex-1 justify-end">
+                                        <TouchableOpacity
+                activeOpacity={1}
+                onPress={(e) => e.stopPropagation()}
+                className="bg-white rounded-t-3xl h-1/2"
+                style={{
+                  borderTopWidth: 4,
+                  borderTopColor: '#16a34a',
+                  borderLeftWidth: 2,
+                  borderLeftColor: '#16a34a',
+                  borderRightWidth: 2,
+                  borderRightColor: '#16a34a',
+                  shadowColor: '#000',
+                  shadowOffset: {
+                    width: 0,
+                    height: -6,
+                  },
+                  shadowOpacity: 0.5,
+                  shadowRadius: 12,
+                  elevation: 12,
+                }}
+              >
+                {/* Header */}
+                <View className="flex-row items-center justify-between p-4 border-b border-gray-200">
+                                      <Text className="text-xl font-bold text-green-600">{t('profile.settings')}</Text>
+                  <TouchableOpacity
+                    onPress={() => setSettingsModalVisible(false)}
+                    className="bg-green-600 p-2 rounded-full"
+                  >
+                    <Ionicons name="close" size={20} color="white" />
+                  </TouchableOpacity>
+                </View>
+
+                {/* İçerik */}
+                <View className="flex-1 p-4">
+                  <TouchableOpacity 
+                    className="flex-row items-center justify-between p-3 bg-green-600 rounded-lg mb-3"
+                    onPress={() => setLanguageOptionsVisible(!languageOptionsVisible)}
+                  >
+                    <View className="flex-row items-center">
+                      <Ionicons name="language" size={24} color="white" />
+                                              <Text className="text-white font-semibold text-lg ml-3">
+                          {t('language.settings')}
+                        </Text>
+                    </View>
+                    <Ionicons 
+                      name={languageOptionsVisible ? "chevron-up" : "chevron-down"} 
+                      size={24} 
+                      color="white" 
+                    />
+                  </TouchableOpacity>
+
+                  {/* Dil Seçenekleri */}
+                  {languageOptionsVisible && (
+                    <View className="mb-3">
+                      <View className="flex-row">
+                        <TouchableOpacity 
+                          className={`flex-row items-center justify-between p-3 rounded-lg flex-1 mr-2 ${
+                            currentLanguage === "tr" ? "bg-green-100 border-2 border-green-600" : "bg-gray-100"
+                          }`}
+                          onPress={async () => {
+                            try {
+                              await changeLanguage("tr");
+                              setLanguageOptionsVisible(false);
+                              Alert.alert(t('language.changed'), t('language.changedToTurkish'));
+                            } catch (error) {
+                              Alert.alert(t('general.error'), 'Dil değiştirilemedi');
+                            }
+                          }}
+                        >
+                          <View className="flex-row items-center">
+                            <Text className="text-lg font-semibold text-gray-800">🇹🇷 {t('language.turkish')}</Text>
+                          </View>
+                          {currentLanguage === "tr" && (
+                            <Ionicons name="checkmark-circle" size={24} color="#16a34a" />
+                          )}
+                        </TouchableOpacity>
+
+                        <TouchableOpacity 
+                          className={`flex-row items-center justify-between p-3 rounded-lg flex-1 ml-2 ${
+                            currentLanguage === "en" ? "bg-green-100 border-2 border-green-600" : "bg-gray-100"
+                          }`}
+                          onPress={async () => {
+                            try {
+                              await changeLanguage("en");
+                              setLanguageOptionsVisible(false);
+                              Alert.alert(t('language.changed'), t('language.changedToEnglish'));
+                            } catch (error) {
+                              Alert.alert(t('general.error'), 'Language could not be changed');
+                            }
+                          }}
+                        >
+                          <View className="flex-row items-center">
+                            <Text className="text-lg font-semibold text-gray-800">🇬🇧 {t('language.english')}</Text>
+                          </View>
+                          {currentLanguage === "en" && (
+                            <Ionicons name="checkmark-circle" size={24} color="#16a34a" />
+                          )}
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  )}
+                  
+                  {/* Diğer ayar seçenekleri buraya eklenebilir */}
+                </View>
+              </TouchableOpacity>
+          </View>
+        </Modal>
+
+
       </View>
     </ScrollView>
   );

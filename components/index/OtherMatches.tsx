@@ -1,6 +1,7 @@
 import { View, Text, FlatList, TouchableOpacity, Image, RefreshControl } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Match } from "./types";
+import { useLanguage } from "@/contexts/LanguageContext";
 import '@/global.css';
 
 interface OtherMatchesProps {
@@ -19,6 +20,7 @@ const formatTitle = (text: string) => {
 
 export default function OtherMatches({ matches, refreshing, onRefresh, onSelectMatch, onCreateMatch
 }: OtherMatchesProps) {
+  const { t } = useLanguage();
   const renderMatch = ({ item }: { item: Match }) => (
     <TouchableOpacity onPress={() => onSelectMatch(item)}>
      <View className="bg-white rounded-lg mx-4 mt-1 p-1 shadow-lg">
@@ -75,22 +77,22 @@ export default function OtherMatches({ matches, refreshing, onRefresh, onSelectM
     <View className="flex-1">
       <View className="flex-row p-2 bg-green-700">
         <Ionicons name="alarm-outline" size={16} color="white" className="pl-2" />
-        <Text className="font-bold text-white"> KADROSU EKSİK MAÇLAR </Text>
+        <Text className="font-bold text-white"> {t('home.incompleteSquadMatches')} </Text>
       </View>
 
       {matches.length === 0 && !refreshing ? (
         <View className='flex justify-center items-center py-2'>
-          <Text className="text-center font-bold my-4">Başkaları Tarafından Oluşturulan Kadrosu Eksik Maç Yok!</Text>
+          <Text className="text-center font-bold my-4">{t('home.noIncompleteSquadMatches')}</Text>
           <TouchableOpacity
             className="text-center bg-green-600 text-white font-semibold rounded-md px-1 items-center"
             onPress={onCreateMatch}
           >
-            <Text className="w-1/2 text-white font-semibold text-center p-4">Hemen Maç Oluştur</Text>
+            <Text className="w-1/2 text-white font-semibold text-center p-4">{t('home.createMatchNow')}</Text>
           </TouchableOpacity>
         </View>
       ) : matches.length === 0 && refreshing ? (
         <View className='flex justify-center items-center py-2'>
-          <Text className="text-center font-bold text-gray-600 my-4">Maç Listesi Yükleniyor..</Text>
+          <Text className="text-center font-bold text-gray-600 my-4">{t('home.matchesLoading')}</Text>
         </View>
       ) : (
         <FlatList

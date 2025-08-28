@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { View, Text, FlatList, TouchableOpacity, Image, RefreshControl, Dimensions, Animated } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Match } from "./types";
+import { useLanguage } from "@/contexts/LanguageContext";
 import '@/global.css';
 
 interface MyMatchesProps {
@@ -19,6 +20,7 @@ const formatTitle = (text: string) => {
 };
 
 export default function MyMatches({ matches, refreshing, onRefresh, onSelectMatch, onCreateMatch }: MyMatchesProps) {
+  const { t } = useLanguage();
   // Animasyon için opacity state'i
   const [fadeAnim] = useState(new Animated.Value(1));
 
@@ -101,10 +103,10 @@ export default function MyMatches({ matches, refreshing, onRefresh, onSelectMatc
               </Text>
               {isMatchCurrentlyPlaying(item) && (
                 <Animated.Text 
-                  className="text-red-600 font-bold text-sm"
+                  className="text-white p-1 px-2 bg-green-600 font-bold text-sm rounded-md"
                   style={{ opacity: fadeAnim }}
                 >
-                  Maç şuan oynanıyor..
+                  {t('home.matchPlaying')} ⚽
                 </Animated.Text>
               )}
             </View>
@@ -145,22 +147,22 @@ export default function MyMatches({ matches, refreshing, onRefresh, onSelectMatc
     <View className="">
       <View className="flex-row p-2 bg-green-700">
         <Ionicons name="alarm-outline" size={16} color="white" className="pl-2" />
-        <Text className="font-bold text-white "> SENİ BEKLEYEN MAÇLAR </Text>
+        <Text className="font-bold text-white "> {t('home.waitingMatches')} </Text>
       </View>
 
       {matches.length === 0 && !refreshing ? (
         <View className='flex justify-center items-center py-4'>
-          <Text className="text-center font-bold">Oluşturduğun Maç Yok!</Text>
+          <Text className="text-center font-bold">{t('home.noMatchesCreated')}</Text>
           <TouchableOpacity
             className="text-center bg-green-600 text-white font-semibold rounded-md my-3 items-center"
             onPress={onCreateMatch}
           >
-            <Text className="w-1/2 text-white font-semibold text-center px-4 py-2 mx-2">Hemen Maç Oluştur</Text>
+            <Text className="w-1/2 text-white font-semibold text-center px-4 py-2 mx-2">{t('home.createMatchNow')}</Text>
           </TouchableOpacity>
         </View>
       ) : matches.length === 0 && refreshing ? (
         <View className='flex justify-center items-center py-4'>
-          <Text className="text-center font-bold text-gray-600">Maç Listesi Yükleniyor..</Text>
+          <Text className="text-center font-bold text-gray-600">{t('home.matchesLoading')}</Text>
         </View>
       ) : (
         <FlatList

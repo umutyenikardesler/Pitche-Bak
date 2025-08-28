@@ -5,6 +5,7 @@ import { Ionicons } from "@expo/vector-icons";
 import '@/global.css';
 import { useFocusEffect } from 'expo-router';
 import { useNotification } from '@/components/NotificationContext';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface Notification {
     id: string;
@@ -24,6 +25,7 @@ export default function Notifications() {
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const { refresh } = useNotification();
+    const { t } = useLanguage();
 
     useFocusEffect(
       useCallback(() => {
@@ -60,7 +62,7 @@ export default function Notifications() {
 
             setNotifications(formattedNotifications);
         } catch (error) {
-            console.error("Bildirimler yüklenirken hata:", error);
+            console.error(t('notifications.loadingError'), error);
         } finally {
             setLoading(false);
             setRefreshing(false);
@@ -112,7 +114,7 @@ export default function Notifications() {
                 refresh();
             }
         } catch (error) {
-            console.error("Takip isteği işlenirken hata:", error);
+            console.error(t('notifications.followRequestError'), error);
         }
     };
 
@@ -136,7 +138,7 @@ export default function Notifications() {
                 {/* Bildirim Metni ve Butonlar */}
                     <View className="flex-1 p-1">
                         <Text className="text-gray-700 mb-3">
-                            <Text className="font-bold text-green-700">{item.sender_name} {item.sender_surname}</Text> sana takip isteği gönderdi.
+                            <Text className="font-bold text-green-700">{item.sender_name} {item.sender_surname}</Text> {t('notifications.sentFollowRequest')}
                         </Text>
                         <View className="flex-row justify-between items-end mt-2">
                             <Text className="text-xs font-bold text-green-700 bg-gray-200 px-2 py-1 rounded">
@@ -148,7 +150,7 @@ export default function Notifications() {
                                         onPress={() => handleFollowRequest(item, 'reject')}
                                         className="bg-red-500 font-bold px-2 py-2 rounded"
                                     >
-                                        <Text className="text-white">Reddet</Text>
+                                        <Text className="text-white">{t('general.reject')}</Text>
                                     </TouchableOpacity>
                                 </View>
                                 <View className="flex-row">
@@ -156,7 +158,7 @@ export default function Notifications() {
                                         onPress={() => handleFollowRequest(item, 'accept')}
                                         className="bg-green-700 font-bold px-2 py-2 rounded"
                                     >
-                                        <Text className="text-white">Kabul Et</Text>
+                                        <Text className="text-white">{t('general.accept')}</Text>
                                     </TouchableOpacity>
                                 </View>
                             </View>
@@ -190,7 +192,7 @@ export default function Notifications() {
                 contentContainerStyle={{ paddingBottom: 20 }}
                 ListEmptyComponent={
                     <View className="flex-1 justify-center items-center mt-4">
-                        <Text className="text-gray-500">Henüz bildiriminiz yok</Text>
+                        <Text className="text-gray-500">{t('notifications.noNotificationsYet')}</Text>
                     </View>
                 }
                 refreshing={refreshing}

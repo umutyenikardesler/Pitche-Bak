@@ -3,10 +3,12 @@ import { useEffect, useRef } from "react";
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import CustomHeader from "@/components/CustomHeader";
 import * as Haptics from 'expo-haptics';
+import { useLanguage } from "@/contexts/LanguageContext";
 
 export default function TabsLayout() {
   const navigation = useNavigation();
   const router = useRouter();
+  const { t } = useLanguage();
   const tabPressTimers = useRef<Record<string, NodeJS.Timeout>>({});
   const tabPressCounts = useRef<Record<string, number>>({});
 
@@ -65,30 +67,35 @@ export default function TabsLayout() {
   return (
     <Tabs
       screenOptions={{
-        tabBarStyle: { backgroundColor: "#f9f9f9" },
+        tabBarStyle: { 
+          backgroundColor: "#ffffff",
+          borderTopWidth: 4,
+          borderTopColor: "#16a34a"
+        },
         tabBarActiveTintColor: "green",
-        tabBarInactiveTintColor: "gray",
+        tabBarInactiveTintColor: "#444444",
+        tabBarLabelStyle: { fontWeight: "700" },
       }}
     >
       <Tabs.Screen
         name="index"
         options={{
-          tabBarLabel: "Find",
-          headerTitle: () => <CustomHeader title="Ana Sayfa" />,
+          tabBarLabel: t('home.findMatch'),
+          headerTitle: () => <CustomHeader title={t('home.title')} />,
           tabBarIcon: ({ focused, color, size }) => (
-            <Ionicons name="search-outline" color={focused ? color : color} size={focused ? 30 : 20} />
+            <Ionicons name="search-outline" color={focused ? "green" : "#444444"} size={focused ? 30 : 20} />
           ),
         }}
       />
       <Tabs.Screen
         name="pitches"
         options={{
-          tabBarLabel: "Pitches",
-          headerTitle: () => <CustomHeader title="Sahalar" />,
+          tabBarLabel: t('pitches.title'),
+          headerTitle: () => <CustomHeader title={t('pitches.title')} />,
           tabBarIcon: ({ focused }) => (
             <Ionicons
               name="navigate-circle-outline"
-              color={focused ? "green" : "gray"}
+              color={focused ? "green" : "#444444"}
               size={focused ? 30 : 20}
             />
           ),
@@ -97,12 +104,12 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="create"
         options={{
-          tabBarLabel: "Create",
-          headerTitle: () => <CustomHeader title="Maç Oluştur" />,
+          tabBarLabel: t('create.title'),
+          headerTitle: () => <CustomHeader title={t('create.title')} />,
           tabBarIcon: ({ focused, color }) => (
             <MaterialIcons
               name="add-circle-outline"
-              color={focused ? "green" : color}
+              color={focused ? "green" : "#444444"}
               size={focused ? 30 : 20}
             />
           ),
@@ -111,12 +118,12 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="message"
         options={{
-          tabBarLabel: "Messages",
-          headerTitle: () => <CustomHeader title="Mesajlar" />,
+          tabBarLabel: t('messages.title'),
+          headerTitle: () => <CustomHeader title={t('messages.title')} />,
           tabBarIcon: ({ focused, color }) => (
             <Ionicons
               name="paper-plane-outline"
-              color={focused ? "green" : color}
+              color={focused ? "green" : "#444444"}
               size={focused ? 30 : 20}
             />
           ),
@@ -125,12 +132,12 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="profile"
         options={{
-          tabBarLabel: "Profile",
-          headerTitle: () => <CustomHeader title="Profil" />,
+          tabBarLabel: t('profile.title'),
+          headerTitle: () => <CustomHeader title={t('profile.title')} />,
           tabBarIcon: ({ focused, color }) => (
             <Ionicons
               name="person-circle-outline"
-              color={focused ? "green" : color}
+              color={focused ? "green" : "#444444"}
               size={focused ? 30 : 20}
             />
           ),
@@ -139,8 +146,8 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="notifications"
         options={{
-          tabBarLabel: "Notifications",
-          headerTitle: () => <CustomHeader title="Bildirimler" />,
+          tabBarLabel: t('notifications.title'),
+          headerTitle: () => <CustomHeader title={t('notifications.title')} />,
           href: null,
         }}
       />

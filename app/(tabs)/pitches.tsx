@@ -5,10 +5,12 @@ import { supabase } from "@/services/supabase";
 import haversine from "haversine";
 import * as Location from "expo-location";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useLanguage } from "@/contexts/LanguageContext";
 import PitchesLocation from "@/components/pitches/PitchesLocation";
 import PitchesList from "@/components/pitches/PitchesList";
 
 export default function Pitches() {
+  const { t } = useLanguage();
   const [pitches, setPitches] = useState([]);
   const [selectedPitch, setSelectedPitch] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -33,11 +35,11 @@ export default function Pitches() {
         setLocationPermissionStatus(status);
         await AsyncStorage.setItem("locationPermissionStatus", status);
         if (status !== "granted") {
-          Alert.alert("Konum izni gerekli", "Uygulamayı kullanmak için konum izni vermeniz gerekiyor.");
+          Alert.alert(t('pitches.locationPermissionRequired'), t('pitches.locationPermissionMessage'));
         }
       }
     } catch (error) {
-      console.error("İzin kontrolünde hata:", error);
+      console.error(t('pitches.permissionCheckError'), error);
     }
   };
 
@@ -45,7 +47,7 @@ export default function Pitches() {
     setLoading(true);
     const { data, error } = await supabase.from("pitches").select("*");
     if (error) {
-      console.error("Veri çekme hatası:", error);
+      console.error(t('pitches.dataFetchError'), error);
       setLoading(false);
       setRefreshing(false);
       return;
@@ -79,19 +81,108 @@ export default function Pitches() {
       setLocation({ latitude, longitude });
 
       try {
+        // Önce standart reverse geocoding
         const address = await Location.reverseGeocodeAsync({ latitude, longitude });
-        const { street, name, subregion, region } = address[0] || {};
-        const formatted = `${street ?? name ?? ""}, ${subregion ?? ""}, ${region ?? ""}`.trim();
-        setLocationText(formatted || "Adres bulunamadı.");
-      } catch {
-        setLocationText("Adres alınamadı.");
+        console.log("📍 Tam adres verisi:", address[0]); // Debug için
+        
+        let formatted = "";
+        
+                 if (address && address.length > 0) {
+           const addr = address[0];
+           const { street, streetNumber, name, subregion, region, city, country, postalCode } = addr;
+           
+           // Türkiye için özel adres formatı
+           if (country === "Turkey" || country === "Türkiye") {
+             // Sokak ve numara
+             if (street) {
+               if (streetNumber) {
+                 formatted = `${street} ${streetNumber}`;
+               } else {
+                 formatted = street;
+               }
+             } else if (name) {
+               formatted = name;
+             }
+             
+             // Mahalle/İlçe (Türkiye'de genellikle subregion)
+             if (subregion && subregion !== street && subregion !== name) {
+               formatted += formatted ? `, ${subregion}` : subregion;
+             }
+             
+             // Şehir (Türkiye'de genellikle city)
+             if (city && city !== subregion && city !== street && city !== name) {
+               formatted += formatted ? `, ${city}` : city;
+             }
+             
+             // İl (Türkiye'de genellikle region)
+             if (region && region !== city && region !== subregion && region !== street && region !== name) {
+               formatted += formatted ? `, ${region}` : region;
+             }
+           } else {
+             // Diğer ülkeler için standart format
+             if (street) {
+               if (streetNumber) {
+                 formatted = `${street} ${streetNumber}`;
+               } else {
+                 formatted = street;
+               }
+             } else if (name) {
+               formatted = name;
+             }
+             
+             if (subregion && subregion !== street && subregion !== name) {
+               formatted += formatted ? `, ${subregion}` : subregion;
+             }
+             
+             if (city && city !== subregion && city !== street && city !== name) {
+               formatted += formatted ? `, ${city}` : city;
+             }
+             
+             if (region && region !== city && region !== subregion && region !== street && region !== name) {
+               formatted += formatted ? `, ${region}` : region;
+             }
+             
+             if (country) {
+               formatted += formatted ? `, ${country}` : country;
+             }
+           }
+           
+           // Posta kodu (varsa)
+           if (postalCode) {
+             formatted += formatted ? `, ${postalCode}` : postalCode;
+           }
+           
+           // Son temizlik
+           formatted = formatted
+             .replace(/^,\s*/, "") // Baştaki virgülü kaldır
+             .replace(/,\s*,/g, ",") // Çift virgülleri tek yap
+             // Türkçe sokak türlerindeki noktaları kaldır
+             .replace(/(\d+)\.\s*(Sokak|Cadde|Mahalle|Bulvar|Caddesi|Sokağı|Mahallesi|Bulvarı|Sk\.|Cd\.|Mh\.|Blv\.)/g, "$1 $2")
+             // İngilizce sokak türlerindeki noktaları kaldır
+             .replace(/(\d+)\.\s*(Street|Road|Avenue|Boulevard|Lane|Drive|Way|St\.|Rd\.|Ave\.|Blvd\.)/g, "$1 $2")
+             // Genel sayı + nokta + boşluk + kelime formatını düzelt
+             .replace(/(\d+)\.\s+([A-Za-zğüşıöçĞÜŞİÖÇ]+)/g, "$1 $2")
+             // Kısaltmalardaki noktaları kaldır
+             .replace(/(\d+)\.\s*(Sk|Cd|Mh|Blv|St|Rd|Ave|Blvd)/g, "$1 $2")
+             .trim();
+         }
+        
+                 // Eğer hala adres bulunamadıysa, koordinatları göster
+         if (!formatted) {
+           formatted = `📍 ${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;
+         }
+        
+        setLocationText(formatted || t('pitches.addressNotFound'));
+      } catch (error) {
+        console.log("📍 Adres bulma hatası:", error);
+        setLocationText(t('pitches.addressCouldNotBeRetrieved'));
       }
 
       fetchPitches(latitude, longitude);
     } catch (err) {
-      console.error("Konum hatası:", err);
-      setLocationText("Konum alınamadı.");
-      Alert.alert("Konum Hatası", "Konum bilgisi alınamadı.");
+      console.error(t('pitches.locationError'), err);
+      setLocationText(t('pitches.locationCouldNotBeRetrieved'));
+      Alert.alert(t('pitches.locationError'), t('pitches.locationInfoCouldNotBeRetrieved'));
     }
   };
 

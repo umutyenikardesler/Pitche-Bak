@@ -1,12 +1,13 @@
 import { View, Text, Dimensions } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 interface IndexConditionProps {
     totalMatchCount: number;
 }
 
 export default function IndexCondition({ totalMatchCount }: IndexConditionProps) {
-
+    const { t } = useLanguage();
     const screenWidth = Dimensions.get("window").width;
     const fontSize = screenWidth > 430 ? 12 : screenWidth > 320 ? 11.5 : 10;
 
@@ -27,23 +28,23 @@ export default function IndexCondition({ totalMatchCount }: IndexConditionProps)
     let conditionMessageColor = "green";
 
     if (totalMatchCount < 3) {
-        conditionMessage = "Kondisyon kazanman için en az 3 maç yapman lazım!";
+        conditionMessage = t('home.conditionNeed3Matches');
         conditionMessageColor = "red";
     } else if (totalMatchCount === 3) {
-        conditionMessage = "Eğer 1 maç daha yaparsan kondisyonun 80'e yükselecek";
+        conditionMessage = t('home.conditionNextMatch80');
     } else if (totalMatchCount === 4) {
-        conditionMessage = "Eğer 1 maç daha yaparsan kondisyonun 90'a yükselecek";
+        conditionMessage = t('home.conditionNextMatch90');
     } else if (totalMatchCount === 5) {
-        conditionMessage = "İlk 5 maçını tamamladın. Spor yapmaya devam ☺️";
+        conditionMessage = t('home.conditionFirst5Complete');
     } else {
-        conditionMessage = "Gerekli kondisyonu kazandın. Sağlıklı günler 👏";
+        conditionMessage = t('home.conditionAchieved');
     }
 
     return (
         <View>
             <View className="flex-row px-4 bg-green-700 p-2 items-center">
                 <Ionicons name="accessibility" size={16} color="white" className="" />
-                <Text className="font-bold text-white"> KONDİSYONUN </Text>
+                <Text className="font-bold text-white"> {t('home.condition')} </Text>
             </View>
 
 

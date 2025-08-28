@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity, FlatList, Dimensions, Modal } from 'react-native';
 import { supabase } from '@/services/supabase';
+import { useLanguage } from '@/contexts/LanguageContext';
 import '@/global.css';
 
 interface LocationSelectorProps {
@@ -24,6 +25,7 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
   districtName, // Props olarak alın
   setDistrictName // Props olarak alın
 }) => {
+  const { t } = useLanguage();
   const [districts, setDistricts] = useState([]);
   const [pitches, setPitches] = useState([]);
   const [showDistrictModal, setShowDistrictModal] = useState(false);
@@ -110,10 +112,10 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
     <Modal
       visible={showDistrictModal} // isVisible yerine visible kullan
       transparent={true}
-      animationType="slide"
+      animationType="fade"
       onRequestClose={() => setShowDistrictModal(false)}
     >
-      <View className="flex-1 justify-center items-center">
+      <View className="flex-1 justify-center items-center bg-black/50">
         <View className="w-lg bg-white rounded-lg p-4" style={{ maxHeight: screenHeight * 0.75 }}>
           <FlatList
             data={districts}
@@ -135,7 +137,7 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
             className="mt-4 bg-green-600 rounded p-3"
             onPress={() => setShowDistrictModal(false)}
           >
-            <Text className="text-white text-center">Kapat</Text>
+            <Text className="text-white text-center">{t('general.close')}</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -149,10 +151,10 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
     <Modal
       visible={showPitchModal} // isVisible yerine visible kullan
       transparent={true}
-      animationType="slide"
+      animationType="fade"
       onRequestClose={() => setShowPitchModal(false)}
     >
-      <View className="flex-1 justify-center items-center">
+      <View className="flex-1 justify-center items-center bg-black/50">
         <View
           className="w-3/5 bg-white rounded-lg p-4" style={{
             maxHeight: screenHeight * 0.75, overflow: 'hidden' // İçeriğin taşmasını engeller (isteğe bağlı)
@@ -182,7 +184,7 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
             className="mt-4 bg-green-600 rounded p-3"
             onPress={() => setShowPitchModal(false)}
           >
-            <Text className="text-white text-center">Kapat</Text>
+            <Text className="text-white text-center">{t('general.close')}</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -191,13 +193,13 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
 
   return (
     <View className="mb-4">
-      <Text className="text-green-700 font-semibold mb-2">Saha Seç</Text> {/* Text componenti eklendi */}
+              <Text className="text-green-700 font-semibold mb-2">{t('create.locationTitle')}</Text> {/* Text componenti eklendi */}
       <TouchableOpacity
         className="border border-gray-500 rounded mb-2 p-3"
         onPress={() => setShowDistrictModal(true)}
       >
         <Text> {/* Text componenti eklendi */}
-         {districtName || 'İlçe Seçiniz'}
+                     {districtName || t('create.selectDistrictPlaceholder')}
         </Text>
       </TouchableOpacity>
 
@@ -211,7 +213,7 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
         }}
       >
         <Text> {/* Text componenti eklendi */}
-          {selectedPitch ? pitches.find(p => p.id === selectedPitch)?.name : 'Halı Saha Seçiniz'}
+                      {selectedPitch ? pitches.find(p => p.id === selectedPitch)?.name : t('create.selectPitchPlaceholder')}
         </Text>
       </TouchableOpacity>
 
@@ -219,10 +221,11 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
       {renderDistrictModal()}
       {renderPitchModal()}
 
-      <Text className="text-green-700 font-semibold mb-2">Fiyat</Text> {/* Text componenti eklendi */}
+        <Text className="text-green-700 font-semibold mb-2">{t('create.priceTitle')}</Text> {/* Text componenti eklendi */}
       <TextInput
         className="w-full border border-gray-500 p-3 rounded"
-        placeholder="Halı Sahanın Fiyatı"
+                  placeholder={t('create.pricePlaceholder')}
+        placeholderTextColor="#9CA3AF"
         value={price ? `${price} ₺` : ""} // State'deki fiyatı göster
         editable={false} // TextInput'u pasif yap
         style={{

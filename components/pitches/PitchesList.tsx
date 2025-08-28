@@ -6,6 +6,7 @@ import { runOnJS } from "react-native-reanimated";
 import { useRouter } from "expo-router"; // Router'ı getir
 import { useNavigation } from '@react-navigation/native';
 import { supabase } from '@/services/supabase';
+import { useLanguage } from "@/contexts/LanguageContext";
 
 import Animated, { useSharedValue, useAnimatedStyle, withRepeat, withTiming, interpolateColor, Easing } from 'react-native-reanimated';
 import { FontAwesome } from '@expo/vector-icons'; // Top ikonu için
@@ -13,6 +14,7 @@ import { FontAwesome } from '@expo/vector-icons'; // Top ikonu için
 import { useEffect } from 'react';
 
 export default function PitchesList({ pitches, selectedPitch, setSelectedPitch, handleCloseDetail, refreshing, onRefresh }) {
+  const { t } = useLanguage();
 
   const router = useRouter();
 
@@ -96,7 +98,7 @@ export default function PitchesList({ pitches, selectedPitch, setSelectedPitch, 
           <View className="flex-1"> {/* Ana container'a flex-1 ekledik */}
             <ScrollView className="bg-white rounded-lg my-3 mx-4 p-4 shadow-md" contentContainerStyle={{ flexGrow: 1 }}>
               <View className="flex flex-col flex-1 justify-between items-center">
-                <Text className="text-xl font-bold text-green-700 text-center mb-2">HALI SAHA ÖZETİ</Text>
+                <Text className="text-xl font-bold text-green-700 text-center mb-2">{t('pitches.pitchSummary')}</Text>
 
                 {selectedPitch.latitude && selectedPitch.longitude && Platform.OS !== "web" && (
                   <View className="w-full h-48 rounded-lg overflow-hidden my-2">
@@ -119,7 +121,7 @@ export default function PitchesList({ pitches, selectedPitch, setSelectedPitch, 
                 </View>
 
                 <View>
-                  <Text className="text-lg font-semibold text-green-700 text-center mt-4">Açık Adres</Text>
+                  <Text className="text-lg font-semibold text-green-700 text-center mt-4">{t('pitches.openAddress')}</Text>
                   <View className="flex-row justify-center items-center">
                     <Ionicons name="location-outline" size={20} color="green" />
                     <Text className="pl-2 text-gray-700 font-semibold">{selectedPitch.address}</Text>
@@ -127,7 +129,7 @@ export default function PitchesList({ pitches, selectedPitch, setSelectedPitch, 
                 </View>
 
                 <View>
-                  <Text className="text-lg font-semibold text-green-700 text-center mt-4">Saha Ücreti</Text>
+                  <Text className="text-lg font-semibold text-green-700 text-center mt-4">{t('pitches.pitchPrice')}</Text>
                   <View className="flex-row justify-center items-center">
                     <Ionicons name="wallet-outline" size={18} color="green" />
                     <Text className="pl-2 text-gray-700 font-semibold">{selectedPitch.price} ₺</Text>
@@ -135,7 +137,7 @@ export default function PitchesList({ pitches, selectedPitch, setSelectedPitch, 
                 </View>
 
                 <View>
-                  <Text className="text-lg font-semibold text-green-700 text-center mt-3 mb-2">Sahanın Özellikleri</Text>
+                  <Text className="text-lg font-semibold text-green-700 text-center mt-3 mb-2">{t('pitches.pitchFeatures')}</Text>
                   <View className="flex-row flex-wrap justify-center">
                     {featuresArray.map((feature, index) => (
                       <View key={index} className={`${featuresArray.length === 1 ? 'w-auto' : 'w-1/2'}  mb-1`} >
@@ -154,7 +156,7 @@ export default function PitchesList({ pitches, selectedPitch, setSelectedPitch, 
                     className="w-1/2 self-center bg-green-700 px-4 py-2 rounded"
                     onPress={handleCloseDetail}
                   >
-                    <Text className="text-white font-bold text-center p-1">Geri dön</Text>
+                    <Text className="text-white font-bold text-center p-1">{t('general.back')}</Text>
                   </TouchableOpacity>
                 </View>
               </View>

@@ -6,6 +6,7 @@ import { LocationSelector } from '@/components/create/LocationSelector';
 import { SquadSelector } from '@/components/create/SquadSelector';
 
 import { supabase } from '@/services/supabase';
+import { useLanguage } from '@/contexts/LanguageContext';
 import '@/global.css';
 
 import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
@@ -25,6 +26,7 @@ interface MissingPositions {
 }
 
 export default function CreateMatch() {
+  const { t } = useLanguage();
   const [matchTitle, setMatchTitle] = useState('');
   const [selectedDistrict, setSelectedDistrict] = useState('');
   const [localDistrictName, setLocalDistrictName] = useState(''); // İsmini değiştirdik
@@ -240,49 +242,56 @@ export default function CreateMatch() {
   };
 
   return (
-    <ScrollView className="bg-white rounded-lg my-3 mx-4 p-4 shadow-md">
-      <View className="mb-4">
-        <Text className="text-green-700 font-semibold mb-2">Maç Başlığı</Text>
-        <TextInput
-          className="w-full border border-gray-500 p-2 rounded"
-          placeholder="Maç Başlığı Giriniz"
-          value={matchTitle}
-          onChangeText={(text) => setMatchTitle(capitalizeWords(text))}
-          autoCapitalize="words" // Bu satırı da ekleyebilirsiniz (klavye özelliği)
+    <ScrollView 
+      className="bg-white rounded-lg my-3 mx-4 p-4 shadow-md"
+      contentContainerStyle={{ flexGrow: 1, justifyContent: 'space-between' }}
+    >
+      <View>
+        <View className="mb-4">
+                          <Text className="text-green-700 font-semibold mb-2">{t('create.matchTitle')}</Text>
+          <TextInput
+            className="w-full border border-gray-500 p-2 rounded"
+                          placeholder={t('create.matchTitlePlaceholder')}
+            placeholderTextColor="#9CA3AF"
+            value={matchTitle}
+            onChangeText={(text) => setMatchTitle(capitalizeWords(text))}
+            autoCapitalize="words" // Bu satırı da ekleyebilirsiniz (klavye özelliği)
+          />
+        </View>
+
+        <LocationSelector
+          selectedDistrict={selectedDistrict}
+          setSelectedDistrict={setSelectedDistrict}
+          selectedPitch={selectedPitch}
+          setSelectedPitch={setSelectedPitch}
+          price={price}
+          setPrice={setPrice}
+          districtName={localDistrictName} // Yeni ismi kullan
+          setDistrictName={setLocalDistrictName} // Yeni ismi kullan
+        />
+
+        <MatchDetailsForm
+          date={date}
+          setDate={setDate}
+          time={time}
+          setTime={setTime}
+        />
+
+        <SquadSelector
+          isSquadIncomplete={isSquadIncomplete}
+          setIsSquadIncomplete={setIsSquadIncomplete}
+          missingPositions={missingPositions}
+          setMissingPositions={setMissingPositions}
         />
       </View>
 
-      <LocationSelector
-        selectedDistrict={selectedDistrict}
-        setSelectedDistrict={setSelectedDistrict}
-        selectedPitch={selectedPitch}
-        setSelectedPitch={setSelectedPitch}
-        price={price}
-        setPrice={setPrice}
-        districtName={localDistrictName} // Yeni ismi kullan
-        setDistrictName={setLocalDistrictName} // Yeni ismi kullan
-      />
-
-      <MatchDetailsForm
-        date={date}
-        setDate={setDate}
-        time={time}
-        setTime={setTime}
-      />
-
-      <SquadSelector
-        isSquadIncomplete={isSquadIncomplete}
-        setIsSquadIncomplete={setIsSquadIncomplete}
-        missingPositions={missingPositions}
-        setMissingPositions={setMissingPositions}
-      />
-
-      <View className="mb-4">
+      {/* Maç Oluştur Butonu - En altta */}
+      <View className="mt-8">
         <TouchableOpacity
-          className="bg-green-600 rounded p-3 mb-4"
+          className="bg-green-600 rounded p-3"
           onPress={handleCreateMatch}
         >
-          <Text className="text-white text-center">Maç Oluştur</Text>
+                          <Text className="text-white font-bold text-center">{t('create.createMatch')}</Text>
         </TouchableOpacity>
       </View>
     </ScrollView>

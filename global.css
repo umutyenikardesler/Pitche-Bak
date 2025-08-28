@@ -1,3 +1,294 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Tarih seçici için özel stiller */
+.date-picker-calendar {
+  color: #1f2937 !important;
+  font-weight: 600 !important;
+}
+
+.date-picker-calendar .react-datepicker__day {
+  color: #1f2937 !important;
+  font-weight: 500 !important;
+  font-size: 14px !important;
+}
+
+.date-picker-calendar .react-datepicker__day:hover {
+  background-color: #16a34a !important;
+  color: white !important;
+}
+
+.date-picker-calendar .react-datepicker__day--selected {
+  background-color: #16a34a !important;
+  color: white !important;
+}
+
+.date-picker-calendar .react-datepicker__day--keyboard-selected {
+  background-color: #16a34a !important;
+  color: white !important;
+}
+
+.date-picker-calendar .react-datepicker__day--today {
+  background-color: #fbbf24 !important;
+  color: #1f2937 !important;
+  font-weight: 600 !important;
+}
+
+.date-picker-calendar .react-datepicker__day--disabled {
+  color: #9ca3af !important;
+  background-color: #f3f4f6 !important;
+}
+
+.date-picker-calendar .react-datepicker__day--outside-month {
+  color: #6b7280 !important;
+  background-color: transparent !important;
+}
+
+.date-picker-calendar .react-datepicker__day--in-range {
+  background-color: #16a34a !important;
+  color: white !important;
+}
+
+.date-picker-calendar .react-datepicker__day--in-selecting-range {
+  background-color: #86efac !important;
+  color: #1f2937 !important;
+}
+
+/* Tüm tarih türleri için genel stil - AGGRESIF OVERRIDE */
+.date-picker-calendar .react-datepicker__day,
+.date-picker-calendar .react-datepicker__day--keyboard-selected,
+.date-picker-calendar .react-datepicker__day--in-selecting-range,
+.date-picker-calendar .react-datepicker__day--in-range,
+.date-picker-calendar .react-datepicker__day--range-end,
+.date-picker-calendar .react-datepicker__day--range-start {
+  color: #1f2937 !important;
+  font-weight: 500 !important;
+  font-size: 14px !important;
+  background-color: transparent !important;
+}
+
+/* Geçmiş tarihler için - AGGRESIF */
+.date-picker-calendar .react-datepicker__day--disabled {
+  color: #9ca3af !important;
+  background-color: #f3f4f6 !important;
+  opacity: 0.7 !important;
+}
+
+/* Ay dışı tarihler için - AGGRESIF */
+.date-picker-calendar .react-datepicker__day--outside-month {
+  color: #6b7280 !important;
+  background-color: transparent !important;
+  opacity: 0.6 !important;
+}
+
+/* EN AGGRESIF OVERRIDE - Tüm tarih elementleri için */
+.react-datepicker__day {
+  color: #1f2937 !important;
+  font-weight: 500 !important;
+  font-size: 14px !important;
+}
+
+.react-datepicker__day--disabled {
+  color: #9ca3af !important;
+  background-color: #f3f4f6 !important;
+}
+
+.react-datepicker__day--outside-month {
+  color: #6b7280 !important;
+}
+
+.react-datepicker__day--today {
+  background-color: #fbbf24 !important;
+  color: #1f2937 !important;
+  font-weight: 600 !important;
+}
+
+.react-datepicker__day--selected {
+  background-color: #16a34a !important;
+  color: white !important;
+}
+
+.react-datepicker__day:hover {
+  background-color: #16a34a !important;
+  color: white !important;
+}
+
+/* DARK MODE İÇİN ÖZEL STİLLER - EN AGGRESIF OVERRIDE */
+@media (prefers-color-scheme: dark) {
+  /* En spesifik selector'lar ile dark mode override */
+  .date-picker-calendar.react-datepicker,
+  .date-picker-calendar .react-datepicker,
+  .react-datepicker {
+    background-color: #1f2937 !important;
+    border-color: #374151 !important;
+    color: #ffffff !important;
+  }
+
+  /* Dark mode için tarih sayıları - EN AGGRESIF */
+  .date-picker-calendar .react-datepicker__day,
+  .date-picker-calendar .react-datepicker__day--keyboard-selected,
+  .date-picker-calendar .react-datepicker__day--in-selecting-range,
+  .date-picker-calendar .react-datepicker__day--in-range,
+  .date-picker-calendar .react-datepicker__day--range-end,
+  .date-picker-calendar .react-datepicker__day--range-start,
+  .react-datepicker__day,
+  .react-datepicker__day--keyboard-selected,
+  .react-datepicker__day--in-selecting-range,
+  .react-datepicker__day--in-range,
+  .react-datepicker__day--range-end,
+  .react-datepicker__day--range-start {
+    color: #ffffff !important;
+    font-weight: 600 !important;
+    font-size: 14px !important;
+    background-color: transparent !important;
+    text-shadow: none !important;
+  }
+
+  /* Dark mode için geçmiş tarihler */
+  .date-picker-calendar .react-datepicker__day--disabled,
+  .react-datepicker__day--disabled {
+    color: #9ca3af !important;
+    background-color: #374151 !important;
+    opacity: 1 !important;
+  }
+
+  /* Dark mode için ay dışı tarihler */
+  .date-picker-calendar .react-datepicker__day--outside-month,
+  .react-datepicker__day--outside-month {
+    color: #6b7280 !important;
+    background-color: transparent !important;
+    opacity: 1 !important;
+  }
+
+  /* Dark mode için bugün */
+  .date-picker-calendar .react-datepicker__day--today,
+  .react-datepicker__day--today {
+    background-color: #fbbf24 !important;
+    color: #1f2937 !important;
+    font-weight: 700 !important;
+  }
+
+  /* Dark mode için seçili tarih */
+  .date-picker-calendar .react-datepicker__day--selected,
+  .react-datepicker__day--selected {
+    background-color: #16a34a !important;
+    color: #ffffff !important;
+    font-weight: 700 !important;
+  }
+
+  /* Dark mode için hover */
+  .date-picker-calendar .react-datepicker__day:hover,
+  .react-datepicker__day:hover {
+    background-color: #16a34a !important;
+    color: #ffffff !important;
+  }
+
+  /* Dark mode için header */
+  .date-picker-calendar .react-datepicker__header,
+  .react-datepicker__header {
+    background-color: #374151 !important;
+    color: #ffffff !important;
+    border-color: #6b7280 !important;
+  }
+
+  /* Dark mode için ay ve gün isimleri */
+  .date-picker-calendar .react-datepicker__current-month,
+  .react-datepicker__current-month {
+    color: #ffffff !important;
+    font-weight: 700 !important;
+    font-size: 16px !important;
+  }
+
+  .date-picker-calendar .react-datepicker__day-name,
+  .react-datepicker__day-name {
+    color: #ffffff !important;
+    font-weight: 600 !important;
+    font-size: 14px !important;
+  }
+
+  /* Dark mode için navigation */
+  .date-picker-calendar .react-datepicker__navigation,
+  .react-datepicker__navigation {
+    color: #ffffff !important;
+  }
+
+  .date-picker-calendar .react-datepicker__navigation:hover,
+  .react-datepicker__navigation:hover {
+    color: #16a34a !important;
+  }
+}
+
+/* DİL DESTEĞİ İÇİN EK CSS */
+/* İngilizce dil için DatePicker stilleri */
+.date-picker-calendar-en .react-datepicker__header,
+.date-picker-calendar-en .react-datepicker__current-month,
+.date-picker-calendar-en .react-datepicker__day-name {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+}
+
+/* Türkçe dil için DatePicker stilleri */
+.date-picker-calendar-tr .react-datepicker__header,
+.date-picker-calendar-tr .react-datepicker__current-month,
+.date-picker-calendar-tr .react-datepicker__day-name {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+}
+
+/* İngilizce dil için ay isimleri */
+.date-picker-calendar-en .react-datepicker__month-dropdown,
+.date-picker-calendar-en .react-datepicker__year-dropdown {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+}
+
+/* Türkçe dil için ay isimleri */
+.date-picker-calendar-tr .react-datepicker__month-dropdown,
+.date-picker-calendar-tr .react-datepicker__year-dropdown {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+}
+
+/* İngilizce dil için DatePicker genel stilleri */
+.date-picker-calendar-en .react-datepicker {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+}
+
+.date-picker-calendar-en .react-datepicker__month,
+.date-picker-calendar-en .react-datepicker__day-name,
+.date-picker-calendar-en .react-datepicker__day {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+}
+
+/* Türkçe dil için DatePicker genel stilleri */
+.date-picker-calendar-tr .react-datepicker {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+}
+
+.date-picker-calendar-tr .react-datepicker__month,
+.date-picker-calendar-tr .react-datepicker__day-name,
+.date-picker-calendar-tr .react-datepicker__day {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+}
+
+.date-picker-calendar .react-datepicker__header {
+  background-color: #f3f4f6 !important;
+  color: #1f2937 !important;
+}
+
+.date-picker-calendar .react-datepicker__current-month {
+  color: #1f2937 !important;
+  font-weight: 700 !important;
+  font-size: 16px !important;
+}
+
+.date-picker-calendar .react-datepicker__day-name {
+  color: #1f2937 !important;
+  font-weight: 600 !important;
+  font-size: 14px !important;
+}
+
+.date-picker-calendar .react-datepicker__navigation {
+  color: #1f2937 !important;
+}
+
+.date-picker-calendar .react-datepicker__navigation:hover {
+  color: #16a34a !important;
+}

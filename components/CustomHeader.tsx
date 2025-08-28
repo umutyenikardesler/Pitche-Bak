@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useNotification } from './NotificationContext';
 import { useRouter } from 'expo-router';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 const screenWidth = Dimensions.get('window').width;
 
@@ -16,6 +17,7 @@ interface CustomHeaderProps {
 const CustomHeader = ({ title, showNotificationIcon = true }: CustomHeaderProps) => {
   const router = useRouter();
   const { count } = useNotification();
+  const { t } = useLanguage();
   const handleNotificationsPress = () => {
     router.push('/notifications');
   };
@@ -42,7 +44,12 @@ const CustomHeader = ({ title, showNotificationIcon = true }: CustomHeaderProps)
       {/* Sağ: Bildirim ikonu */}
       <View style={{ alignItems: 'flex-end' }}>
         {showNotificationIcon && (
-          <TouchableOpacity onPress={handleNotificationsPress} style={{ position: 'relative' }}>
+          <TouchableOpacity 
+            onPress={handleNotificationsPress} 
+            style={{ position: 'relative' }}
+            accessibilityLabel={t('general.notifications')}
+            accessibilityHint={t('general.notificationCount')}
+          >
             <Ionicons name="heart-outline" size={24} color="green" />
             {count > 0 && (
               <View style={{
@@ -58,7 +65,12 @@ const CustomHeader = ({ title, showNotificationIcon = true }: CustomHeaderProps)
                 paddingHorizontal: 4,
                 zIndex: 1,
               }}>
-                <Text style={{ color: 'white', fontSize: 12, fontWeight: 'bold' }}>{count}</Text>
+                <Text 
+                  style={{ color: 'white', fontSize: 12, fontWeight: 'bold' }}
+                  accessibilityLabel={`${t('general.notificationCount')}: ${count}`}
+                >
+                  {count}
+                </Text>
               </View>
             )}
           </TouchableOpacity>

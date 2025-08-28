@@ -3,6 +3,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { Match } from "./types";
 import MapView, { Marker } from "react-native-maps";
 import { useRouter } from "expo-router";
+import { useLanguage } from "@/contexts/LanguageContext";
 import '@/global.css';
 
 interface MatchDetailsProps {
@@ -12,6 +13,7 @@ interface MatchDetailsProps {
 
 export default function MatchDetails({ match, onClose }: MatchDetailsProps) {
   const router = useRouter();
+  const { t } = useLanguage();
   const featuresArray = match.pitches?.features
     ? Array.isArray(match.pitches.features)
       ? match.pitches.features
@@ -23,7 +25,7 @@ export default function MatchDetails({ match, onClose }: MatchDetailsProps) {
       <View className="flex-1 bg-white p-4 rounded-lg m-3 shadow-lg">
         <View className="flex-row mb-2 justify-center">
           <Ionicons name="accessibility-outline" size={16} color="green" className="pt-1" />
-          <Text className="text-xl font-bold text-green-700 "> MAÇ ÖZETİ </Text>
+          <Text className="text-xl font-bold text-green-700 "> {t('home.matchSummary')} </Text>
         </View>
 
         <Text className="text-lg text-green-700 font-semibold text-center">{match.title}</Text>
@@ -51,7 +53,7 @@ export default function MatchDetails({ match, onClose }: MatchDetailsProps) {
         </View>
 
         <View>
-          <Text className="text-lg font-semibold text-green-700 text-center my-2">Eksik Kadrolar</Text>
+          <Text className="text-lg font-semibold text-green-700 text-center my-2">{t('home.missingSquads')}</Text>
         </View>
 
         <View className="flex-row max-w-full items-center justify-center mb-2">
@@ -73,7 +75,7 @@ export default function MatchDetails({ match, onClose }: MatchDetailsProps) {
 
         {match.users && (
           <View className="flex-row max-w-full items-center justify-center mt-2 mb-1">
-            <Text className="font-semibold">Maçı oluşturan: </Text>
+            <Text className="font-semibold">{t('home.matchCreatedBy')} </Text>
             <TouchableOpacity onPress={() => router.push({ pathname: "./", params: { userId: match.create_user }})}>
               <Text className="text-green-600 font-semibold">{match.users?.name} {match.users?.surname}</Text>
             </TouchableOpacity>
@@ -84,7 +86,7 @@ export default function MatchDetails({ match, onClose }: MatchDetailsProps) {
 
         <View className="flex-row mb-2 justify-center">
           <Ionicons name="accessibility-outline" size={16} color="green" className="pt-1" />
-          <Text className="h-7 text-xl font-bold text-green-700 "> HALI SAHA ÖZETİ </Text>
+          <Text className="h-7 text-xl font-bold text-green-700 "> {t('home.pitchSummary')} </Text>
         </View>
 
         {match.pitches?.latitude && match.pitches?.longitude && (
@@ -114,7 +116,7 @@ export default function MatchDetails({ match, onClose }: MatchDetailsProps) {
         </View>
 
         <View className="">
-          <Text className="h-7 text-lg font-semibold text-green-700 text-center my-2">Açık Adres</Text>
+          <Text className="h-7 text-lg font-semibold text-green-700 text-center my-2">{t('home.openAddress')}</Text>
         </View>
         <View className=" text-gray-700 text-md flex-row justify-center items-center pt-1">
           <Ionicons name="location" size={18} color="black" />
@@ -122,7 +124,7 @@ export default function MatchDetails({ match, onClose }: MatchDetailsProps) {
         </View>
 
         <View className="">
-          <Text className="h-7 text-lg font-semibold text-green-700 text-center mt-3 my-2">Saha Ücreti</Text>
+          <Text className="h-7 text-lg font-semibold text-green-700 text-center mt-3 my-2">{t('home.pitchPrice')}</Text>
         </View>
         <View className=" text-gray-700 text-md flex-row justify-center items-center pt-1">
           <Ionicons name="wallet-outline" size={18} color="green" />
@@ -130,7 +132,7 @@ export default function MatchDetails({ match, onClose }: MatchDetailsProps) {
         </View>
 
         <View>
-          <Text className="h-7 text-lg font-semibold text-green-700 text-center mt-4">Sahanın Özellikleri</Text>
+          <Text className="h-7 text-lg font-semibold text-green-700 text-center mt-4">{t('home.pitchFeatures')}</Text>
         </View>
         <View className="flex-row flex-wrap justify-center items-center mt-3">
           {featuresArray.map((feature, index) => (
@@ -145,7 +147,7 @@ export default function MatchDetails({ match, onClose }: MatchDetailsProps) {
 
         <View className="flex-1 flex-col-reverse justifyy-end items-center">
           <TouchableOpacity className="w-1/2 items-center mt-4 bg-green-700 px-4 py-2 rounded " onPress={onClose}>
-            <Text className="text-white font-bold">Geri dön</Text>
+            <Text className="text-white font-bold">{t('general.back')}</Text>
           </TouchableOpacity>
         </View>
       </View>

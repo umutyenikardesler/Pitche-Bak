@@ -1,9 +1,11 @@
 import { useState, useEffect } from "react";
 import { Text, View, Image, TouchableOpacity, Alert } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { useLanguage } from "@/contexts/LanguageContext";
 import '@/global.css';
 
 export default function ProfileInfo({ userData, setModalVisible, setEditModalVisible, pickImage }) {
+    const { t } = useLanguage();
 
     const [profileImage, setProfileImage] = useState({ uri: userData?.profile_image || null });
 
@@ -35,22 +37,22 @@ export default function ProfileInfo({ userData, setModalVisible, setEditModalVis
             <View className="w-3/4 px-4">  {/* Diğer bilgilerin olduğu kısım %75 */}
                 <View className="w-full">
                     <Text className="font-semibold text-lg text-green-700 my-1">
-                        {userData?.name || "İsim Yok"} {userData?.surname || ""}
+                        {userData?.name || t('profile.noName')} {userData?.surname || ""}
                     </Text>
                 </View>
 
                 <View className="flex-row justify-between mb-1">
-                    <Text className="text-wrap font-semibold">Yaş:</Text>
+                    <Text className="text-wrap font-semibold">{t('profile.age')}:</Text>
                     <Text className="text-green-600 font-semibold"> {userData?.age || "-"}  </Text>
-                    <Text className="font-semibold">Boy:</Text>
+                    <Text className="font-semibold">{t('profile.height')}:</Text>
                     <Text className="text-green-600 font-semibold"> {userData?.height || "-"} cm  </Text>
-                    <Text className="font-semibold">Ağırlık:</Text>
+                    <Text className="font-semibold">{t('profile.weight')}:</Text>
                     <Text className="text-green-600 font-semibold"> {userData?.weight || "-"} kg</Text>
                 </View>
 
                 <View className="flex-row justify-start mb-1">
-                    <Text className="font-semibold">Mevki: </Text>
-                    <Text className="text-green-600 font-semibold">{userData?.description || "Açıklama Yok"}</Text>
+                    <Text className="font-semibold">{t('profile.position')}: </Text>
+                    <Text className="text-green-600 font-semibold">{userData?.description || t('profile.noDescription')}</Text>
                 </View>
 
                 {/* Butonlar */}
@@ -59,7 +61,7 @@ export default function ProfileInfo({ userData, setModalVisible, setEditModalVis
                         <TouchableOpacity className="bg-green-600 text-white font-semibold rounded-md p-2 items-center mr-1"
                             onPress={setEditModalVisible}
                         >
-                            <Text className="text-white font-bold">Profil Bilgilerimi Düzenle</Text>
+                            <Text className="text-white font-bold">{t('profile.editProfileInfo')}</Text>
                         </TouchableOpacity>
                     </View>
                     {/* <View className="w-1/2">
