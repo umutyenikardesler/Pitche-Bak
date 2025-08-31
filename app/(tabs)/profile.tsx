@@ -1,24 +1,11 @@
 import { useEffect, useState, useCallback } from "react";
-import {
-  Text,
-  View,
-  ScrollView,
-  RefreshControl,
-  Alert,
-  TouchableOpacity,
-  Modal,
-  TextInput,
-  Image,
-  KeyboardAvoidingView,
-  Platform,
-  TouchableWithoutFeedback,
-  Keyboard,
-} from "react-native";
+import { Text, View, ScrollView, RefreshControl, Alert, TouchableOpacity, Image } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { supabase } from "@/services/supabase";
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
+import * as FileSystem from "expo-file-system";
 import { useLanguage } from "@/contexts/LanguageContext";
 import "@/global.css";
 
@@ -26,12 +13,17 @@ import ProfileInfo from "@/components/profile/ProfileInfo";
 import ProfileStatus from "@/components/profile/ProfileStatus";
 import ProfileCondition from "@/components/profile/ProfileCondition";
 import ProfileMatches from "@/components/profile/ProfileMatches";
+import ProfileImageModal from "@/components/modals/ProfileImageModal";
+import EditProfileModal from "@/components/modals/EditProfileModal";
+import UserListModal from "@/components/modals/UserListModal";
+import SettingsModal from "@/components/modals/SettingsModal";
+
 
 export default function Profile() {
   const searchParams = useLocalSearchParams();
   const router = useRouter();
   const { currentLanguage, changeLanguage, t } = useLanguage();
-  const [refreshing, setRefreshing] = useState(false);
+
   interface UserDataType {
     id: string;
     name?: string;
@@ -58,78 +50,430 @@ export default function Profile() {
 
   const [followersList, setFollowersList] = useState<FollowUser[]>([]);
   const [followingList, setFollowingList] = useState<FollowUser[]>([]);
-  const [activeListType, setActiveListType] = useState<"followers" | "following" | null>(null);
+  const [activeListType, setActiveListType] = useState < "followers" | "following" | null > (null);
   const [listModalVisible, setListModalVisible] = useState(false);
 
   const [modalVisible, setModalVisible] = useState(false);
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [settingsModalVisible, setSettingsModalVisible] = useState(false);
-  const [languageOptionsVisible, setLanguageOptionsVisible] = useState(false);
+  
+  // Modal state'ini debug et
+  useEffect(() => {
+    console.log("Modal state değişti:", {
+      modalVisible,
+      editModalVisible,
+      settingsModalVisible,
+      listModalVisible
+    });
+    
+    // Modal state'lerinde çakışma kontrolü
+    const activeModals = [modalVisible, editModalVisible, settingsModalVisible, listModalVisible].filter(Boolean);
+    if (activeModals.length > 1) {
+      console.warn("⚠️ Birden fazla modal açık! Çakışma tespit edildi:", {
+        modalVisible,
+        editModalVisible,
+        settingsModalVisible,
+        listModalVisible
+      });
+    }
+  }, [modalVisible, editModalVisible, settingsModalVisible, listModalVisible]);
+
   const [profileImage, setProfileImage] = useState({ uri: null });
   const [editUserData, setEditUserData] = useState<UserDataType | null>(null);
 
   const openEditModal = () => {
-    setEditUserData(userData ? { ...userData } : null);
-    setEditModalVisible(true);
+    console.log("openEditModal çağrıldı!");
+    console.log("userData:", userData);
+    
+    // Önce diğer modal'ları kapat ve state'leri temizle
+    setModalVisible(false);
+    setSettingsModalVisible(false);
+    setListModalVisible(false);
+    
+    // State'lerin temizlenmesi için daha uzun gecikme
+    setTimeout(() => {
+      setEditUserData(userData ? { ...userData } : null);
+      setEditModalVisible(true);
+      console.log("editModalVisible true yapıldı");
+    }, 200);
   };
 
   const closeEditModal = () => {
+    console.log("closeEditModal çağrıldı");
     setEditModalVisible(false);
-    setEditUserData(null);
+    
+    // State temizleme için gecikme
+    setTimeout(() => {
+      setEditUserData(null);
+      console.log("EditUserData temizlendi");
+    }, 100);
   };
 
-  useEffect(() => {
+    useEffect(() => {
+    // Sadece ilk yüklemede fetchUserData çağır
+    if (searchParams.userId) {
+      const userId = Array.isArray(searchParams.userId) 
+        ? searchParams.userId[0] 
+        : searchParams.userId;
+      
+      if (userId) {
+        // İlk yüklemede kullanıcı verilerini çek
     fetchUserData();
-  }, [searchParams.userId]);
+        
+        // Eski resimleri yeni klasör yapısına taşı (sadece bir kez)
+        setTimeout(async () => {
+          await migrateOldImagesToNewStructure(userId);
+        }, 2000); // 2 saniye sonra çalıştır
+      }
+    } else {
+      // Eğer searchParams.userId yoksa, mevcut kullanıcı verilerini çek
+      fetchUserData();
+    }
 
+    // Tüm kullanıcılar için migration çalıştır (sadece bir kez)
+    setTimeout(async () => {
+      await migrateAllUsersImagesToNewFormat();
+    }, 5000); // 5 saniye sonra çalıştır
+  }, []); // Sadece bir kez çalışsın
+
+  // Profile sayfasına her dönüşte kullanıcı verilerini yenile
   useFocusEffect(
     useCallback(() => {
-      fetchUserData();
-    }, [])
+      console.log("🔄 Profile sayfasına odaklanıldı, veriler yenileniyor...");
+      
+      if (searchParams.userId) {
+        const userId = Array.isArray(searchParams.userId) 
+          ? searchParams.userId[0] 
+          : searchParams.userId;
+        
+        if (userId) {
+          fetchUserData();
+        }
+      } else {
+        fetchUserData();
+      }
+    }, [searchParams.userId])
   );
 
+
+
+  // Tüm kullanıcıların eski resimlerini yeni formata çevir
+  const migrateAllUsersImagesToNewFormat = async () => {
+    try {
+      // Tüm kullanıcıları al
+      const { data: allUsers, error: usersError } = await supabase
+        .from("users")
+        .select("id");
+
+      if (usersError || !allUsers) {
+        console.error("Kullanıcılar alınamadı:", usersError);
+        return;
+      }
+
+      for (const user of allUsers) {
+        try {
+          await migrateOldImagesToNewStructure(user.id);
+        } catch (userError) {
+          console.error(`❌ Kullanıcı ${user.id} için migration hatası:`, userError);
+        }
+      }
+    } catch (error) {
+      console.error("Genel migration hatası:", error);
+    }
+  };
+
+  // Eski resimleri yeni klasör yapısına taşı ve formatını düzelt
+  const migrateOldImagesToNewStructure = async (userId: string) => {
+    try {
+      // Ana klasördeki tüm dosyaları listele
+      const { data: allFiles, error: listError } = await supabase.storage
+        .from("pictures")
+        .list(`${userId}/`, {
+          limit: 1000,
+        });
+
+      if (listError || !allFiles) {
+        console.error("Dosyalar listelenemedi:", listError);
+        return;
+      }
+
+      // Sadece profile resimlerini filtrele (eski yapıda olanlar)
+      const oldProfileImages = allFiles.filter(file => 
+        file.name.startsWith("profile_") && 
+        !file.name.includes("/") // Klasör yapısında olanlar
+      );
+
+      // Year/month klasörlerindeki eski format resimleri de bul
+      let yearMonthOldImages: Array<{ name: string; path: string }> = [];
+      
+      for (const yearFolder of allFiles) {
+        if (yearFolder.name && /^\d{4}$/.test(yearFolder.name)) {
+          const { data: monthFolders } = await supabase.storage
+            .from("pictures")
+            .list(`${userId}/${yearFolder.name}/`, {
+              limit: 100,
+            });
+
+          if (monthFolders) {
+            for (const monthFolder of monthFolders) {
+              if (monthFolder.name && /^\d{2}$/.test(monthFolder.name)) {
+                const { data: files } = await supabase.storage
+                  .from("pictures")
+                  .list(`${userId}/${yearFolder.name}/${monthFolder.name}/`, {
+                    limit: 100,
+                  });
+
+                if (files) {
+                  const oldFormatFiles = files
+                    .filter(file => 
+                      file.name.startsWith("profile_") && 
+                      file.name.includes('-') && // Eski format: profile_2025-08-31_17-46-16.jpg
+                      !file.name.includes(':') // Yeni format değil
+                    )
+                    .map(file => ({
+                      name: file.name,
+                      path: `${userId}/${yearFolder.name}/${monthFolder.name}/${file.name}`
+                    }));
+
+                  yearMonthOldImages.push(...oldFormatFiles);
+                }
+              }
+            }
+          }
+        }
+      }
+
+      // Tüm eski format resimleri birleştir
+      const allOldImages = [
+        ...oldProfileImages.map(file => ({ name: file.name, path: `${userId}/${file.name}` })),
+        ...yearMonthOldImages
+      ];
+
+      if (allOldImages.length === 0) {
+        return;
+      }
+
+      for (const oldImage of allOldImages) {
+        try {
+          // Dosya adından timestamp çıkar
+          const timestampStr = oldImage.name.replace("profile_", "").replace(".jpg", "");
+          let timestamp: number;
+          
+          if (timestampStr.includes('-')) {
+            // Yeni format: profile_2025-08-31_14-30-25.jpg
+            const dateTimeStr = timestampStr.replace(/_/g, ' ').replace(/-/g, ':');
+            timestamp = new Date(dateTimeStr).getTime();
+          } else {
+            // Eski format: profile_1756644880709.jpg
+            timestamp = parseInt(timestampStr);
+          }
+          
+          if (isNaN(timestamp)) continue;
+
+          // Tarih bilgilerini hesapla
+          const date = new Date(timestamp);
+          const year = date.getFullYear();
+          const month = String(date.getMonth() + 1).padStart(2, '0');
+
+          // Yeni dosya yolu (yeni format ile)
+          const day = String(date.getDate()).padStart(2, '0');
+          const hours = String(date.getHours()).padStart(2, '0');
+          const minutes = String(date.getMinutes()).padStart(2, '0');
+          const seconds = String(date.getSeconds()).padStart(2, '0');
+          
+          const newFileName = `profile_${year}-${month}-${day}_${hours}-${minutes}-${seconds}.jpg`;
+          const newPath = `${userId}/${year}/${month}/${newFileName}`;
+          const oldPath = oldImage.path || `${userId}/${oldImage.name}`;
+
+          // Dosyayı yeni konuma kopyala
+          const { data: fileData } = await supabase.storage
+            .from("pictures")
+            .download(oldPath);
+
+          if (fileData) {
+            // Yeni konuma yükle
+            const { error: uploadError } = await supabase.storage
+              .from("pictures")
+              .upload(newPath, fileData, {
+                contentType: 'image/jpeg',
+                cacheControl: '3600'
+              });
+
+            if (!uploadError) {
+              // Eski dosyayı sil
+              await supabase.storage
+                .from("pictures")
+                .remove([oldPath]);
+            } else {
+              console.error(`❌ Yükleme hatası: ${oldImage.name}`, uploadError);
+            }
+          }
+        } catch (migrateError) {
+          console.error(`❌ Taşıma hatası: ${oldImage.name}`, migrateError);
+        }
+      }
+    } catch (error) {
+      console.error("Resim taşıma hatası:", error);
+    }
+  };
+
+
+
+
+
   const fetchLatestProfileImage = async (userId: string) => {
-    console.log("fetchLatestProfileImage çağrıldı, userId:", userId); // Log eklendi
+    console.log("🔍 fetchLatestProfileImage çağrıldı, userId:", userId);
 
     if (!userId) {
-      console.error("userId yok, fetchLatestProfileImage'den çıkılıyor."); // Log eklendi
+      console.error("❌ userId yok, fetchLatestProfileImage'den çıkılıyor.");
       return null;
     }
 
-    const { data, error } = await supabase.storage
-      .from("pictures")
-      .list(`${userId}/`, {
-        limit: 100,
-        sortBy: { column: "created_at", order: "desc" },
+    try {
+      // Ana kullanıcı klasörünü listele
+      console.log("📁 Kullanıcı klasörü listeleniyor:", `${userId}/`);
+      const { data: userFolders, error: userError } = await supabase.storage
+        .from("pictures")
+        .list(`${userId}/`, {
+          limit: 100,
+        });
+
+      if (userError) {
+        console.error("❌ Kullanıcı klasörleri listelenemedi:", userError);
+        return null;
+      }
+
+      if (!userFolders || userFolders.length === 0) {
+        console.log("❌ Kullanıcı klasörü bulunamadı.");
+        return null;
+      }
+
+      console.log("✅ Kullanıcı klasörleri bulundu:", userFolders.map(f => f.name));
+
+      // Tüm profile resimlerini topla
+      let allProfileImages: Array<{ path: string; timestamp: number; name: string }> = [];
+
+      // 1. Yeni klasör yapısındaki resimleri topla (year/month)
+      for (const yearFolder of userFolders) {
+        if (yearFolder.name && /^\d{4}$/.test(yearFolder.name)) {
+          console.log(`  📁 Yıl klasörü bulundu: ${yearFolder.name}`);
+          const { data: monthFolders } = await supabase.storage
+            .from("pictures")
+            .list(`${userId}/${yearFolder.name}/`, {
+              limit: 100,
+            });
+
+          if (monthFolders) {
+            console.log(`    📁 ${yearFolder.name} klasöründe ${monthFolders.length} ay klasörü bulundu`);
+            for (const monthFolder of monthFolders) {
+              if (monthFolder.name && /^\d{2}$/.test(monthFolder.name)) {
+                console.log(`      📁 Ay klasörü: ${monthFolder.name}`);
+                const { data: files } = await supabase.storage
+                  .from("pictures")
+                  .list(`${userId}/${yearFolder.name}/${monthFolder.name}/`, {
+                    limit: 100,
+                  });
+
+                if (files) {
+                  console.log(`        📁 ${monthFolder.name} klasöründe ${files.length} dosya bulundu`);
+                  const profileFiles = files
+                    .filter(file => file.name.startsWith("profile_"))
+                    .map(file => {
+                      // Hem yeni format (profile_2025-08-31_17:08:46.jpg) hem eski format (profile_2025-08-31_16-37-08.jpg) destekle
+                      const dateTimeStr = file.name.replace("profile_", "").replace(".jpg", "");
+                      
+                      let timestamp: number;
+                      let date: Date;
+                      
+                      if (dateTimeStr.includes(':')) {
+                        // Yeni format: profile_2025-08-31_17:08:46.jpg
+                        const formattedDateTime = dateTimeStr.replace(/_/g, ' ');
+                        const [datePart, timePart] = formattedDateTime.split(' ');
+                        const [year, month, day] = datePart.split('-').map(Number);
+                        const [hours, minutes, seconds] = timePart.split(':').map(Number);
+                        
+                        date = new Date(year, month - 1, day, hours, minutes, seconds);
+                        timestamp = date.getTime();
+                        
+                        console.log(`          📅 Parsing (Yeni Format): ${file.name}`);
+                        console.log(`            -> ${dateTimeStr} -> ${formattedDateTime}`);
+                        console.log(`            -> Date: ${year}-${month}-${day} ${hours}:${minutes}:${seconds}`);
+                        console.log(`            -> Timestamp: ${timestamp} -> ${date.toLocaleString("tr-TR")}`);
+                      } else {
+                        // Eski format: profile_2025-08-31_16-37-08.jpg
+                        const formattedDateTime = dateTimeStr.replace(/_/g, ' ');
+                        const [datePart, timePart] = formattedDateTime.split(' ');
+                        const [year, month, day] = datePart.split('-').map(Number);
+                        const [hours, minutes, seconds] = timePart.split('-').map(Number);
+                        
+                        date = new Date(year, month - 1, day, hours, minutes, seconds);
+                        timestamp = date.getTime();
+                        
+                        console.log(`          📅 Parsing (Eski Format): ${file.name}`);
+                        console.log(`            -> ${dateTimeStr} -> ${formattedDateTime}`);
+                        console.log(`            -> Date: ${year}-${month}-${day} ${hours}:${minutes}:${seconds}`);
+                        console.log(`            -> Timestamp: ${timestamp} -> ${date.toLocaleString("tr-TR")}`);
+                      }
+                      
+                      // Debug: Timestamp parsing kontrolü
+                      if (isNaN(timestamp)) {
+                        console.log(`          ⚠️ HATA: Geçersiz timestamp oluştu!`);
+                        console.log(`            -> dateTimeStr: "${dateTimeStr}"`);
+                        console.log(`            -> Timestamp: ${timestamp}`);
+                        return null;
+                      }
+                      
+                      return {
+                        path: `${userId}/${yearFolder.name}/${monthFolder.name}/${file.name}`,
+                        timestamp,
+                        name: file.name
+                      };
+                    })
+                    .filter((item): item is { path: string; timestamp: number; name: string } => item !== null);
+
+                  console.log(`        📸 ${profileFiles.length} profile resmi bulundu`);
+                  allProfileImages.push(...profileFiles);
+                }
+              }
+            }
+          }
+        }
+      }
+
+
+
+      if (allProfileImages.length === 0) {
+        console.log("❌ Hiç profile resmi bulunamadı.");
+        return null;
+      }
+
+      console.log("📸 Toplam profile resim sayısı:", allProfileImages.length);
+
+      // Timestamp'e göre sırala (en yeni en üstte)
+      allProfileImages.sort((a, b) => b.timestamp - a.timestamp);
+      
+      console.log("📅 Tarih/saat sırasına göre sıralanmış resimler:");
+      allProfileImages.forEach((img, index) => {
+        console.log(`  ${index + 1}. ${img.name} - ${new Date(img.timestamp).toLocaleString("tr-TR")} - ${img.path}`);
       });
 
-    if (error) {
-      console.error("Profil resmi alınamadı:", error); // Log eklendi
+      // En son yüklenen resmi al
+      const latestImage = allProfileImages[0];
+      console.log("🏆 En son yüklenen resim:", latestImage.name);
+      console.log("📅 Tarih:", new Date(latestImage.timestamp).toLocaleString("tr-TR"));
+      console.log("🛣️ Yol:", latestImage.path);
+
+      // Public URL al
+      const { data: publicURLData } = supabase.storage
+        .from("pictures")
+        .getPublicUrl(latestImage.path);
+
+      return publicURLData.publicUrl;
+
+    } catch (error) {
+      console.error("fetchLatestProfileImage'de hata:", error);
       return null;
     }
-
-    if (!data || data.length === 0) {
-      console.log("Profil resmi bulunamadı."); // Log eklendi
-      return null;
-    }
-
-    const profileImages = data.filter((file) =>
-      file.name.startsWith("profile_")
-    );
-
-    if (profileImages.length === 0) {
-      console.log("profile_ ile başlayan resim bulunamadı."); // Log eklendi
-      return null;
-    }
-
-    const latestImage = profileImages[0];
-    const filePath = `${userId}/${latestImage.name}`;
-    const { data: publicURLData } = supabase.storage
-      .from("pictures")
-      .getPublicUrl(filePath);
-
-    console.log("En son profil resmi URL'si:", publicURLData.publicUrl); // Log eklendi
-    return publicURLData.publicUrl;
   };
 
   // Kullanıcı verisini çek
@@ -157,8 +501,17 @@ export default function Profile() {
       }
     };
 
-    let userIdToFetch =
-      searchParams.userId || (await supabase.auth.getUser()).data?.user?.id;
+    let userIdToFetch: string | null = null;
+    
+    if (searchParams.userId) {
+      userIdToFetch = Array.isArray(searchParams.userId) 
+        ? searchParams.userId[0] 
+        : searchParams.userId;
+    }
+    
+    if (!userIdToFetch) {
+      userIdToFetch = (await supabase.auth.getUser()).data?.user?.id || null;
+    }
     if (!userIdToFetch) {
       console.error("Kullanıcı ID alınamadı!"); // Log eklendi
       return;
@@ -178,6 +531,11 @@ export default function Profile() {
     const latestProfileImage = await fetchLatestProfileImage(userIdToFetch);
     if (latestProfileImage) {
       userInfo.profile_image = latestProfileImage;
+      console.log("✅ Profil resmi bulundu:", latestProfileImage);
+    } else {
+      // Eğer profil resmi yoksa, default resmi kullan
+      userInfo.profile_image = null;
+      console.log("❌ Profil resmi bulunamadı, default resim kullanılacak");
     }
 
     console.log("Kullanıcı verisi:", userInfo); // Log eklendi
@@ -212,39 +570,210 @@ export default function Profile() {
     }
   };
 
-  const pickImage = async (): Promise<void> => {
-    let result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ["images"],
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 1,
-    });
+  const pickImage = async (fromProfileInfo: boolean = false): Promise<void> => {
+    try {
+      let result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: "images",
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+        base64: false,
+      });
 
-    if (!result.canceled) {
-      const uri = result.assets[0].uri;
-      const fileName = `profile_${Date.now()}.jpg`;
-      const filePath = `${userData!.id}/${fileName}`;
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const asset = result.assets[0];
+        const uri = asset.uri;
+        
+        if (!uri) {
+          Alert.alert("Hata", "Resim URI'si alınamadı.");
+          return;
+        }
 
-      const { error } = await supabase.storage
-        .from("pictures")
-        .upload(filePath, await (await fetch(uri)).blob());
+        // Tarih bazlı klasör yapısı oluştur
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
+        const hours = String(now.getHours()).padStart(2, '0');
+        const minutes = String(now.getMinutes()).padStart(2, '0');
+        const seconds = String(now.getSeconds()).padStart(2, '0');
+        
+        // Tarih/saat bazlı dosya adı: profile_2025-08-31_17:08:46.jpg (saat kısmında : kullan)
+        const fileName = `profile_${year}-${month}-${day}_${hours}:${minutes}:${seconds}.jpg`;
+        const filePath = `${userData!.id}/${year}/${month}/${fileName}`;
+        
+        console.log("📁 Dosya yolu:", filePath);
+        console.log("📅 Tarih bilgileri:", { year, month, day, hours, minutes, seconds });
+        console.log("🕐 Şu anki zaman:", now.toLocaleString("tr-TR"));
+        console.log("🆔 Kullanıcı ID:", userData!.id);
 
-      if (error) {
-        Alert.alert("Hata", "Resim yüklenirken bir hata oluştu.");
-        return;
+        // React Native için güvenilir dosya yükleme - FileSystem ile
+        console.log("Resim URI:", uri);
+        
+        // Dosya bilgilerini al
+        const fileInfo = await FileSystem.getInfoAsync(uri);
+        console.log("Dosya bilgileri:", fileInfo);
+        
+        if (!fileInfo.exists || fileInfo.size === 0) {
+          Alert.alert("Hata", "Seçilen dosya bulunamadı veya boş.");
+          return;
+        }
+        
+        console.log("Dosya boyutu:", fileInfo.size, "bytes");
+        
+        // Dosyayı base64 olarak oku
+        const base64 = await FileSystem.readAsStringAsync(uri, {
+          encoding: FileSystem.EncodingType.Base64,
+        });
+        
+        if (!base64 || base64.length === 0) {
+          Alert.alert("Hata", "Dosya okunamadı.");
+          return;
+        }
+        
+        console.log("Base64 uzunluğu:", base64.length);
+        
+        // Base64'ü Uint8Array'e çevir
+        const binaryString = atob(base64);
+        const bytes = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) {
+          bytes[i] = binaryString.charCodeAt(i);
+        }
+        
+        console.log("Uint8Array boyutu:", bytes.length, "bytes");
+        
+        const fileData = bytes;
+
+        // Supabase'e yükle
+        const { error: uploadError } = await supabase.storage
+          .from("pictures")
+          .upload(filePath, fileData, {
+            contentType: 'image/jpeg',
+            cacheControl: '3600',
+            upsert: false
+          });
+
+        if (uploadError) {
+          console.error("Upload error:", uploadError);
+          Alert.alert("Hata", "Resim yüklenirken bir hata oluştu: " + uploadError.message);
+          return;
+        }
+
+        // Public URL al
+        const { data: publicURLData } = supabase.storage
+          .from("pictures")
+          .getPublicUrl(filePath);
+
+        if (!publicURLData.publicUrl) {
+          Alert.alert("Hata", "Resim URL'si alınamadı.");
+          return;
+        }
+
+        // Kullanıcı veritabanını güncelle
+        const { error: updateError } = await supabase
+          .from("users")
+          .update({ profile_image: publicURLData.publicUrl })
+          .eq("id", userData!.id);
+
+        if (updateError) {
+          console.error("Database update error:", updateError);
+          Alert.alert("Hata", "Veritabanı güncellenirken hata oluştu.");
+          return;
+        }
+
+        // UI'ı güncelle
+        setProfileImage({ uri: publicURLData.publicUrl as any });
+        
+        // En son profil resmini al (storage'dan)
+        console.log("fetchLatestProfileImage çağrılıyor, userId:", userData!.id);
+        const latestProfileImage = await fetchLatestProfileImage(userData!.id);
+        console.log("En son profil resmi alındı:", latestProfileImage);
+        console.log("Upload edilen resim URL:", publicURLData.publicUrl);
+        
+        // Profil resmi state'ini güncelle
+        const finalProfileImage = latestProfileImage || publicURLData.publicUrl;
+        console.log("🎯 Final profil resmi:", finalProfileImage);
+        
+        // ProfileImage state'ini güncelle
+        setProfileImage({ uri: finalProfileImage as any });
+        console.log("✅ setProfileImage güncellendi");
+        
+        // Eğer ProfileInfo'dan çağrıldıysa sadece gerekli state'leri güncelle
+        if (fromProfileInfo) {
+          // Sadece profil resmini güncelle, maç listesini yenileme
+          setUserData(prevData => {
+            const newData = prevData ? {
+              ...prevData,
+              profile_image: finalProfileImage
+            } : null;
+            console.log("🔄 setUserData güncellendi:", newData?.profile_image);
+            return newData;
+          });
+          console.log("✅ ProfileInfo'dan resim yüklendi, en son profil resmi güncellendi:", finalProfileImage);
+          
+          // ProfileImage state'ini de güncelle (güvenlik için)
+          setTimeout(() => {
+            setProfileImage({ uri: finalProfileImage as any });
+            console.log("🔄 ProfileImage state tekrar güncellendi (güvenlik için)");
+          }, 100);
+        } else {
+          // ProfileImageModal'dan çağrıldıysa tüm verileri güncelle
+          console.log("🔄 ProfileImageModal'dan çağrıldı, fetchUserData çalıştırılıyor...");
+          await fetchUserData();
+          
+          // fetchUserData'dan sonra profileImage state'ini de güncelle
+          const updatedProfileImage = await fetchLatestProfileImage(userData!.id);
+          if (updatedProfileImage) {
+            setProfileImage({ uri: updatedProfileImage as any });
+            console.log("✅ ProfileImageModal sonrası profileImage güncellendi:", updatedProfileImage);
+          }
+        }
+        
+        // Eski resimleri yeni klasör yapısına taşı
+        setTimeout(async () => {
+          await migrateOldImagesToNewStructure(userData!.id);
+        }, 500);
+        
+        // Index sayfasındaki maç listelerini de güncelle (eğer index sayfası açıksa)
+        // Bu sayede index sayfasında da yeni profil resmi görünür
+        console.log("🔄 Index sayfası için profil resmi güncellendi, maç listeleri yenilenecek");
+        
+        // Profil resmi güncellendiğinde userData'yı da yenile
+        setTimeout(async () => {
+          console.log("🔄 Profil resmi güncellendi, userData yenileniyor...");
+          await fetchUserData();
+        }, 1000);
+        
+        // Eğer profil resmi silindiyse, hemen userData'yı yenile
+        if (!latestProfileImage) {
+          console.log("🔄 Profil resmi silindi, userData hemen yenileniyor...");
+          setTimeout(async () => {
+            await fetchUserData();
+          }, 500);
+        }
+        
+
+        
+        Alert.alert("Başarılı", "Resminiz başarıyla yüklendi!");
+        console.log("Resim başarıyla yüklendi:", publicURLData.publicUrl);
+        
+        // Eğer ProfileInfo'dan çağrıldıysa modal açılmasın
+        if (!fromProfileInfo) {
+          // Modal'ı kapat ve kısa süre sonra tekrar açılabilir hale getir
+          console.log("Modal kapatılıyor...");
+          setModalVisible(false);
+          
+          setTimeout(() => {
+            console.log("Modal tekrar açılıyor...");
+            setModalVisible(true);
+          }, 300);
+        } else {
+          console.log("ProfileInfo'dan resim yüklendi, modal açılmayacak");
+        }
       }
-
-      const { data: publicURLData } = supabase.storage
-        .from("pictures")
-        .getPublicUrl(filePath);
-      setProfileImage({ uri: publicURLData.publicUrl as any });
-
-      await supabase
-        .from("users")
-        .update({ profile_image: publicURLData.publicUrl })
-        .eq("id", userData!.id);
-      fetchUserData();
-      Alert.alert("Başarılı", "Resminiz başarıyla yüklendi!"); // Başarılı uyarı eklendi
+    } catch (error: any) {
+      console.error("Resim yükleme hatası:", error);
+      Alert.alert("Hata", "Resim yüklenirken beklenmeyen bir hata oluştu: " + (error.message || "Bilinmeyen hata"));
     }
   };
 
@@ -262,18 +791,24 @@ export default function Profile() {
       })
       .eq("id", editUserData.id);
     if (!error) {
+      // Sadece gerekli state'leri güncelle, fetchUserData çağırma
+      setUserData(prevData => prevData ? {
+        ...prevData,
+        name: editUserData.name,
+        surname: editUserData.surname,
+        age: editUserData.age,
+        height: editUserData.height,
+        weight: editUserData.weight,
+        description: editUserData.description,
+      } : null);
+      
       setEditModalVisible(false);
       setEditUserData(null);
-      fetchUserData();
+      console.log("Profil bilgileri güncellendi, maç listesi yenilenmedi");
     }
   };
 
-  // Sayfayı yenileme işlemi
-  const handleRefresh = async () => {
-    setRefreshing(true);
-    await fetchUserData();
-    setRefreshing(false);
-  };
+
 
   const handleLogout = async (): Promise<void> => {
     const { error } = await supabase.auth.signOut();
@@ -314,7 +849,12 @@ export default function Profile() {
     const ordered = ids
       .map((id: string) => byId.get(id))
       .filter(Boolean)
-      .map((u: any) => ({ id: u.id, name: u.name, surname: u.surname, profile_image: u.profile_image }));
+      .map((u: any) => ({
+        id: u.id,
+        name: u.name,
+        surname: u.surname,
+        profile_image: u.profile_image,
+      }));
 
     setFollowersList(ordered);
   };
@@ -349,7 +889,12 @@ export default function Profile() {
     const ordered = ids
       .map((id: string) => byId.get(id))
       .filter(Boolean)
-      .map((u: any) => ({ id: u.id, name: u.name, surname: u.surname, profile_image: u.profile_image }));
+      .map((u: any) => ({
+        id: u.id,
+        name: u.name,
+        surname: u.surname,
+        profile_image: u.profile_image,
+      }));
 
     setFollowingList(ordered);
   };
@@ -357,10 +902,18 @@ export default function Profile() {
   const openUserListModal = async (type: "followers" | "following") => {
     try {
       console.log("openUserListModal -> tıklandı, type:", type);
+      
+      // Önce diğer modal'ları kapat
+      setModalVisible(false);
+      setEditModalVisible(false);
+      setSettingsModalVisible(false);
+      
       // Önce güvenilir userId'yi belirle
       const authUserId = (await supabase.auth.getUser()).data?.user?.id || null;
-      const paramUserIdRaw = searchParams.userId as string | string[] | undefined;
-      const paramUserId = typeof paramUserIdRaw === "string" ? paramUserIdRaw : null;
+      const paramUserIdRaw = searchParams.userId;
+      const paramUserId = Array.isArray(paramUserIdRaw) 
+        ? paramUserIdRaw[0] 
+        : paramUserIdRaw;
       const userIdToFetch: string | null = paramUserId || authUserId || null;
 
       console.log("openUserListModal -> userIdToFetch:", userIdToFetch);
@@ -372,8 +925,12 @@ export default function Profile() {
 
       setUserId(userIdToFetch);
       setActiveListType(type);
-      setListModalVisible(true);
-      console.log("openUserListModal -> listModalVisible TRUE yapıldı");
+      
+      // Kısa bir gecikme ile list modal'ı aç
+      setTimeout(() => {
+        setListModalVisible(true);
+        console.log("openUserListModal -> listModalVisible TRUE yapıldı");
+      }, 100);
 
       if (type === "followers") {
         await fetchFollowersList(userIdToFetch);
@@ -387,26 +944,44 @@ export default function Profile() {
   };
 
   useEffect(() => {
-    console.log("listModalVisible:", listModalVisible, "activeListType:", activeListType);
+    console.log(
+      "listModalVisible:",
+      listModalVisible,
+      "activeListType:",
+      activeListType
+    );
   }, [listModalVisible, activeListType]);
 
   return (
     <ScrollView
       style={{ flex: 1 }}
-      refreshControl={
-        !editModalVisible && (
-          <RefreshControl refreshing={refreshing} onRefresh={fetchUserData} />
-        )
-      }
     >
       <View className="bg-white rounded-lg m-3 p-1 shadow-lg flex-1">
         <View className="flex-1">
           <ProfileInfo
             userData={userData}
-            fetchUserData={fetchUserData}
-            setModalVisible={setModalVisible}
+            setModalVisible={(visible: boolean) => {
+              if (visible) {
+                // ProfileImageModal açılırken diğer modal'ları kapat
+                setEditModalVisible(false);
+                setSettingsModalVisible(false);
+                setListModalVisible(false);
+                
+                // State'lerin temizlenmesi için gecikme
+                setTimeout(() => {
+                  setModalVisible(visible);
+                }, 100);
+              } else {
+                setModalVisible(visible);
+              }
+            }}
             setEditModalVisible={openEditModal}
             pickImage={pickImage}
+            onImagePicked={() => {
+              console.log("ProfileInfo'dan resim yüklendi, modal açılmayacak");
+              // Modal açılmasın, sadece resim güncellensin
+              // Maç listesi yenilenmesin, sadece profil resmi güncellensin
+            }}
           />
           <ProfileStatus
             matchCount={matches.length}
@@ -420,18 +995,27 @@ export default function Profile() {
 
           <ProfileMatches
             userData={userData}
-            refreshing={refreshing}
-            onRefresh={fetchUserData}
+            refreshing={false}
+            onRefresh={() => {
+              // Maç listesi yenilenmesin
+              console.log("Maç listesi yenilenmesi engellendi");
+            }}
           />
         </View>
         <View className="flex pb-4 mt-auto">
           <View className="flex-row mx-4">
             <TouchableOpacity
-              onPress={() => setSettingsModalVisible(true)}
+              onPress={() => {
+                // Settings modal açılırken diğer modal'ları kapat
+                setModalVisible(false);
+                setEditModalVisible(false);
+                setListModalVisible(false);
+                setSettingsModalVisible(true);
+              }}
               className="bg-green-600 rounded-lg flex-1 mr-1"
             >
               <Text className="text-white font-semibold text-center p-2.5">
-                {t('profile.settings')}
+                {t("profile.settings")}
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
@@ -439,333 +1023,43 @@ export default function Profile() {
               className="bg-green-600 rounded-lg flex-1 ml-1"
             >
               <Text className="text-white font-semibold text-center p-2.5">
-                {t('profile.logout')}
+                {t("profile.logout")}
               </Text>
             </TouchableOpacity>
           </View>
         </View>
 
         {/* 🔹 PROFİL FOTOĞRAFI MODALI */}
-        <Modal
+        <ProfileImageModal
           visible={modalVisible}
-          transparent={true}
-          onRequestClose={() => setModalVisible(false)}
-        >
-          <TouchableOpacity
-            className="flex-1 justify-center items-center bg-white/95"
-            activeOpacity={1}
-            onPressOut={() => setModalVisible(false)}
-          >
-            <TouchableOpacity activeOpacity={1}>
-              <Image
-                source={
-                  userData?.profile_image
-                    ? { uri: userData.profile_image }
-                    : require("@/assets/images/ball.png")
-                }
-                style={{ width: 280, height: 280, resizeMode: "contain" }}
-                className="rounded-full"
-              />
-              <TouchableOpacity onPress={pickImage} className="static">
-                <View className="absolute -bottom-5 right-[7%] m-3 shadow-slate-600">
-                  <View className="p-2 bg-white rounded-full absolute bottom-0 right-0 ">
-                    <Ionicons
-                      name="color-wand"
-                      size={22}
-                      color="white"
-                      className="bg-green-700 rounded-full p-3"
-                    />
-                  </View>
-                </View>
-              </TouchableOpacity>
-            </TouchableOpacity>
-          </TouchableOpacity>
-        </Modal>
+          onClose={() => setModalVisible(false)}
+          profileImage={userData?.profile_image}
+          onPickImage={pickImage}
+        />
 
         {/* 🔹 BİLGİ DÜZENLEME MODALI */}
-        {editUserData && (
-          <Modal
-            visible={editModalVisible}
-            transparent={true}
-            animationType="fade"
-          >
-            <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-              <View className="flex-1 justify-center items-center bg-black/50">
-                <KeyboardAvoidingView
-                  behavior={Platform.OS === "ios" ? "padding" : "height"}
-                  className="w-full"
-                >
-                  <View
-                    style={{
-                      justifyContent: "center",
-                      alignItems: "center",
-                      padding: 10,
-                    }}
-                  >
-                    <View className="bg-white p-6 rounded-lg w-3/4">
-                      <Text className="text-xl font-bold text-center text-green-700 mb-4">
-                        {t('profile.completePersonalInfo')}
-                      </Text>
-
-                      <TextInput
-                        placeholder={t('profile.name')}
-                        value={editUserData?.name || ""}
-                        onChangeText={(text) =>
-                          setEditUserData({ ...editUserData, name: text })
-                        }
-                        className="border border-gray-300 rounded p-2 mb-2"
-                      />
-                      <TextInput
-                        placeholder={t('profile.surname')}
-                        value={editUserData?.surname || ""}
-                        onChangeText={(text) =>
-                          setEditUserData({ ...editUserData, surname: text })
-                        }
-                        className="border border-gray-300 rounded p-2 mb-2"
-                      />
-                      <TextInput
-                        placeholder={t('profile.age')}
-                        value={editUserData?.age?.toString() || ""}
-                        onChangeText={(text) =>
-                          setEditUserData({ ...editUserData, age: text })
-                        }
-                        className="border border-gray-300 rounded p-2 mb-2"
-                        keyboardType="numeric"
-                      />
-                      <TextInput
-                        placeholder={t('profile.height')}
-                        value={editUserData?.height?.toString() || ""}
-                        onChangeText={(text) =>
-                          setEditUserData({ ...editUserData, height: text })
-                        }
-                        className="border border-gray-300 rounded p-2 mb-2"
-                        keyboardType="numeric"
-                      />
-                      <TextInput
-                        placeholder={t('profile.weight')}
-                        value={editUserData?.weight?.toString() || ""}
-                        onChangeText={(text) =>
-                          setEditUserData({ ...editUserData, weight: text })
-                        }
-                        className="border border-gray-300 rounded p-2 mb-2"
-                        keyboardType="numeric"
-                      />
-                      <TextInput
-                        placeholder={t('profile.description')}
-                        value={editUserData?.description || ""}
-                        onChangeText={(text) =>
-                          setEditUserData({
-                            ...editUserData,
-                            description: text,
-                          })
-                        }
-                        className="border border-gray-300 rounded p-2 mb-2"
-                        multiline
-                      />
-
-                      <View className="flex-row justify-between mt-3">
-                        <Text
-                          className="text-white font-semibold bg-red-500 p-2 rounded-lg"
-                          onPress={closeEditModal}
-                        >
-                          {" "}
-                          {t('general.cancel')}{" "}
-                        </Text>
-                        <Text
-                          className="text-white font-semibold bg-green-600 p-2 rounded-lg"
-                          onPress={handleSave}
-                        >
-                          {" "}
-                          {t('general.save')}{" "}
-                        </Text>
-                      </View>
-                    </View>
-                  </View>
-                </KeyboardAvoidingView>
-              </View>
-            </TouchableWithoutFeedback>
-          </Modal>
-        )}
+        <EditProfileModal
+          visible={editModalVisible}
+          onClose={closeEditModal}
+          editUserData={editUserData}
+          onSave={handleSave}
+          onEditUserDataChange={setEditUserData}
+        />
 
         {/* 🔹 TAKİPÇİ VE TAKİP EDİLEN LİSTESİ MODALI */}
-        <Modal
+        <UserListModal
           visible={listModalVisible}
-          onRequestClose={() => setListModalVisible(false)}
-          transparent
-          animationType="fade"
-          statusBarTranslucent
-        >
-          <View className="flex-1 bg-black/50 justify-center items-center">
-            {/* Boş alana tıklayınca kapatma */}
-            <TouchableOpacity
-              className="absolute inset-0"
-              onPress={() => setListModalVisible(false)}
-              activeOpacity={1}
-            />
+          onClose={() => setListModalVisible(false)}
+          activeListType={activeListType}
+          followersList={followersList}
+          followingList={followingList}
+        />
 
-            {/* Modal içeriği */}
-            <View className="bg-white rounded-xl w-10/12 max-h-2/3 shadow-2xl">
-              {/* Header */}
-              <View className="flex-row justify-between items-center p-4 border-b border-gray-200 bg-green-50 rounded-t-xl">
-                <Text className="text-xl font-bold text-green-700">
-                  {activeListType === "followers" ? "Takipçiler" : "Takip Edilenler"}
-                </Text>
-                <TouchableOpacity
-                  onPress={() => setListModalVisible(false)}
-                  className="bg-green-700 px-3 py-1 rounded-full"
-                >
-                  <Ionicons name="close" size={20} color="white" />
-                </TouchableOpacity>
-              </View>
-
-              {/* Liste */}
-              <ScrollView
-                style={{ maxHeight: 335 }}
-                contentContainerStyle={{ paddingBottom: 10 }}
-                showsVerticalScrollIndicator
-                nestedScrollEnabled
-                bounces={false}
-              >
-                {(activeListType === "followers" ? followersList : followingList).map(
-                  (u) => (
-                    <View key={u.id} className="flex-row items-center p-4 border-b border-gray-100">
-                      <Image
-                        source={u.profile_image ? { uri: u.profile_image } : require("@/assets/images/ball.png")}
-                        className="rounded-full border-2 border-green-200"
-                        style={{ width: 55, height: 55, resizeMode: "cover" }}
-                      />
-                      <View className="ml-4 flex-1">
-                        <Text className="text-lg font-semibold text-green-700">
-                          {u.name} {u.surname}
-                        </Text>
-                        <Text className="text-sm text-gray-500 mt-1">
-                          {activeListType === "followers" ? "Seni takip ediyor" : "Takip ediyorsun"}
-                        </Text>
-                      </View>
-                    </View>
-                  )
-                )}
-              </ScrollView>
-            </View>
-          </View>
-        </Modal>
-
-                {/* 🔹 AYARLAR MODALI */}
-        <Modal
+        {/* 🔹 AYARLAR MODALI */}
+        <SettingsModal
           visible={settingsModalVisible}
-          transparent={true}
-          animationType="fade"
-          onRequestClose={() => setSettingsModalVisible(false)}
-          presentationStyle="overFullScreen"
-        >
-          <View className="flex-1 justify-end">
-                                        <TouchableOpacity
-                activeOpacity={1}
-                onPress={(e) => e.stopPropagation()}
-                className="bg-white rounded-t-3xl h-1/2"
-                style={{
-                  borderTopWidth: 4,
-                  borderTopColor: '#16a34a',
-                  borderLeftWidth: 2,
-                  borderLeftColor: '#16a34a',
-                  borderRightWidth: 2,
-                  borderRightColor: '#16a34a',
-                  shadowColor: '#000',
-                  shadowOffset: {
-                    width: 0,
-                    height: -6,
-                  },
-                  shadowOpacity: 0.5,
-                  shadowRadius: 12,
-                  elevation: 12,
-                }}
-              >
-                {/* Header */}
-                <View className="flex-row items-center justify-between p-4 border-b border-gray-200">
-                                      <Text className="text-xl font-bold text-green-600">{t('profile.settings')}</Text>
-                  <TouchableOpacity
-                    onPress={() => setSettingsModalVisible(false)}
-                    className="bg-green-600 p-2 rounded-full"
-                  >
-                    <Ionicons name="close" size={20} color="white" />
-                  </TouchableOpacity>
-                </View>
-
-                {/* İçerik */}
-                <View className="flex-1 p-4">
-                  <TouchableOpacity 
-                    className="flex-row items-center justify-between p-3 bg-green-600 rounded-lg mb-3"
-                    onPress={() => setLanguageOptionsVisible(!languageOptionsVisible)}
-                  >
-                    <View className="flex-row items-center">
-                      <Ionicons name="language" size={24} color="white" />
-                                              <Text className="text-white font-semibold text-lg ml-3">
-                          {t('language.settings')}
-                        </Text>
-                    </View>
-                    <Ionicons 
-                      name={languageOptionsVisible ? "chevron-up" : "chevron-down"} 
-                      size={24} 
-                      color="white" 
-                    />
-                  </TouchableOpacity>
-
-                  {/* Dil Seçenekleri */}
-                  {languageOptionsVisible && (
-                    <View className="mb-3">
-                      <View className="flex-row">
-                        <TouchableOpacity 
-                          className={`flex-row items-center justify-between p-3 rounded-lg flex-1 mr-2 ${
-                            currentLanguage === "tr" ? "bg-green-100 border-2 border-green-600" : "bg-gray-100"
-                          }`}
-                          onPress={async () => {
-                            try {
-                              await changeLanguage("tr");
-                              setLanguageOptionsVisible(false);
-                              Alert.alert(t('language.changed'), t('language.changedToTurkish'));
-                            } catch (error) {
-                              Alert.alert(t('general.error'), 'Dil değiştirilemedi');
-                            }
-                          }}
-                        >
-                          <View className="flex-row items-center">
-                            <Text className="text-lg font-semibold text-gray-800">🇹🇷 {t('language.turkish')}</Text>
-                          </View>
-                          {currentLanguage === "tr" && (
-                            <Ionicons name="checkmark-circle" size={24} color="#16a34a" />
-                          )}
-                        </TouchableOpacity>
-
-                        <TouchableOpacity 
-                          className={`flex-row items-center justify-between p-3 rounded-lg flex-1 ml-2 ${
-                            currentLanguage === "en" ? "bg-green-100 border-2 border-green-600" : "bg-gray-100"
-                          }`}
-                          onPress={async () => {
-                            try {
-                              await changeLanguage("en");
-                              setLanguageOptionsVisible(false);
-                              Alert.alert(t('language.changed'), t('language.changedToEnglish'));
-                            } catch (error) {
-                              Alert.alert(t('general.error'), 'Language could not be changed');
-                            }
-                          }}
-                        >
-                          <View className="flex-row items-center">
-                            <Text className="text-lg font-semibold text-gray-800">🇬🇧 {t('language.english')}</Text>
-                          </View>
-                          {currentLanguage === "en" && (
-                            <Ionicons name="checkmark-circle" size={24} color="#16a34a" />
-                          )}
-                        </TouchableOpacity>
-                      </View>
-                    </View>
-                  )}
-                  
-                  {/* Diğer ayar seçenekleri buraya eklenebilir */}
-                </View>
-              </TouchableOpacity>
-          </View>
-        </Modal>
+          onClose={() => setSettingsModalVisible(false)}
+        />
 
 
       </View>

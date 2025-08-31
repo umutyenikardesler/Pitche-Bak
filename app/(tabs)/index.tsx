@@ -22,6 +22,136 @@ export default function Index() {
   const [myMatchesHeight, setMyMatchesHeight] = useState(0); // Yüksekliği state olarak tut
   const router = useRouter();
 
+  // En son profil resmini çek
+  const fetchLatestProfileImage = async (userId: string) => {
+    console.log("fetchLatestProfileImage çağrıldı, userId:", userId);
+
+    if (!userId) {
+      console.error("userId yok, fetchLatestProfileImage'den çıkılıyor.");
+      return null;
+    }
+
+    try {
+      // Ana kullanıcı klasörünü listele
+      const { data: userFolders, error: userError } = await supabase.storage
+        .from("pictures")
+        .list(`${userId}/`, {
+          limit: 100,
+        });
+
+      if (userError) {
+        console.error("Kullanıcı klasörleri listelenemedi:", userError);
+        return null;
+      }
+
+      if (!userFolders || userFolders.length === 0) {
+        console.log("Kullanıcı klasörü bulunamadı.");
+        return null;
+      }
+
+      console.log("Kullanıcı klasörleri:", userFolders.map(f => f.name));
+
+      // Tüm profile resimlerini topla
+      let allProfileImages: Array<{ path: string; timestamp: number; name: string }> = [];
+
+      // 1. Yeni klasör yapısındaki resimleri topla (year/month)
+      for (const yearFolder of userFolders) {
+        if (yearFolder.name && /^\d{4}$/.test(yearFolder.name)) {
+          const { data: monthFolders } = await supabase.storage
+            .from("pictures")
+            .list(`${userId}/${yearFolder.name}/`, {
+              limit: 100,
+            });
+
+          if (monthFolders) {
+            for (const monthFolder of monthFolders) {
+              if (monthFolder.name && /^\d{2}$/.test(monthFolder.name)) {
+                const { data: files } = await supabase.storage
+                  .from("pictures")
+                  .list(`${userId}/${yearFolder.name}/${monthFolder.name}/`, {
+                    limit: 100,
+                  });
+
+                if (files) {
+                  const profileFiles = files
+                    .filter(file => file.name.startsWith("profile_"))
+                    .map(file => {
+                      // Hem yeni format (profile_2025-08-31_17:08:46.jpg) hem eski format (profile_2025-08-31_16-37-08.jpg) destekle
+                      const dateTimeStr = file.name.replace("profile_", "").replace(".jpg", "");
+                      
+                      let timestamp: number;
+                      
+                      if (dateTimeStr.includes(':')) {
+                        // Yeni format: profile_2025-08-31_17:08:46.jpg
+                        const formattedDateTime = dateTimeStr.replace(/_/g, ' ');
+                        const [datePart, timePart] = formattedDateTime.split(' ');
+                        const [year, month, day] = datePart.split('-').map(Number);
+                        const [hours, minutes, seconds] = timePart.split(':').map(Number);
+                        
+                        const date = new Date(year, month - 1, day, hours, minutes, seconds);
+                        timestamp = date.getTime();
+                      } else {
+                        // Eski format: profile_2025-08-31_16-37-08.jpg
+                        const formattedDateTime = dateTimeStr.replace(/_/g, ' ');
+                        const [datePart, timePart] = formattedDateTime.split(' ');
+                        const [year, month, day] = datePart.split('-').map(Number);
+                        const [hours, minutes, seconds] = timePart.split('-').map(Number);
+                        
+                        const date = new Date(year, month - 1, day, hours, minutes, seconds);
+                        timestamp = date.getTime();
+                      }
+                      
+                      if (isNaN(timestamp)) {
+                        return null;
+                      }
+                      
+                      return {
+                        path: `${userId}/${yearFolder.name}/${monthFolder.name}/${file.name}`,
+                        timestamp,
+                        name: file.name
+                      };
+                    })
+                    .filter((item): item is { path: string; timestamp: number; name: string } => item !== null);
+
+                  allProfileImages.push(...profileFiles);
+                }
+              }
+            }
+          }
+        }
+      }
+
+      if (allProfileImages.length === 0) {
+        console.log("Hiç profile resmi bulunamadı.");
+        return null;
+      }
+
+      // Timestamp'e göre sırala (en yeni en üstte)
+      allProfileImages.sort((a, b) => b.timestamp - a.timestamp);
+      
+      console.log("Tarih/saat sırasına göre sıralanmış resimler:", allProfileImages.map(img => ({
+        name: img.name,
+        tarih: new Date(img.timestamp).toLocaleString("tr-TR"),
+        path: img.path
+      })));
+
+      // En son yüklenen resmi al
+      const latestImage = allProfileImages[0];
+      console.log("En son yüklenen resim:", latestImage.name, "Tarih:", new Date(latestImage.timestamp).toLocaleString("tr-TR"));
+
+      // Public URL al
+      const { data: publicURLData } = supabase.storage
+        .from("pictures")
+        .getPublicUrl(latestImage.path);
+
+      return publicURLData.publicUrl;
+
+    } catch (error) {
+      console.error("fetchLatestProfileImage'de hata:", error);
+      return null;
+    }
+  };
+
   // Dinamik yükseklik hesaplaması - Her render'da yeniden hesaplanır
   const { height } = Dimensions.get('window');
   const itemHeight = 80; // Sabit maç yüksekliği (px)
@@ -152,18 +282,35 @@ export default function Index() {
         return matchEndTimeInMinutes > currentTimeInMinutes;
       });
 
-      const formattedData = filteredMatches?.map((item) => ({
-        ...item,
-        formattedDate: new Date(item.date).toLocaleDateString("tr-TR"),
-        startFormatted: `${item.time.split(":")[0]}:${item.time.split(":")[1]}`,
-        endFormatted: `${parseInt(item.time.split(":")[0], 10) + 1}:${item.time.split(":")[1]}`,
-      })) || [];
+      // Profil resimlerini güncelle
+      const updatedMatches = await Promise.all(
+        filteredMatches?.map(async (item) => {
+          let updatedProfileImage = null;
+          
+          // Güvenli şekilde profil resmini al
+          if (Array.isArray(item.users) && item.users[0]?.id) {
+            updatedProfileImage = await fetchLatestProfileImage(item.users[0].id);
+          } else if (item.users && typeof item.users === 'object' && 'id' in item.users) {
+            updatedProfileImage = await fetchLatestProfileImage((item.users as any).id);
+          }
+          
+          return {
+            ...item,
+            users: Array.isArray(item.users) 
+              ? item.users.map(user => ({ ...user, profile_image: updatedProfileImage }))
+              : { ...(item.users as any), profile_image: updatedProfileImage },
+            formattedDate: new Date(item.date).toLocaleDateString("tr-TR"),
+            startFormatted: `${item.time.split(":")[0]}:${item.time.split(":")[1]}`,
+            endFormatted: `${parseInt(item.time.split(":")[0], 10) + 1}:${item.time.split(":")[1]}`,
+          };
+        }) || []
+      );
 
-      setFutureMatches(formattedData);
+      setFutureMatches(updatedMatches);
       
       // Debug: Filtrelenen maçları göster
       console.log('Filtrelenen maçlar:');
-      formattedData.forEach(match => {
+      updatedMatches.forEach(match => {
         const [matchHours, matchMinutes] = match.time.split(":").map(Number);
         const matchEndHour = matchHours + 1;
         const matchEndTimeInMinutes = matchEndHour * 60 + matchMinutes;
@@ -171,7 +318,7 @@ export default function Index() {
       });
       
       // Maç verisi değiştiğinde yüksekliği güncelleniyor - useEffect ile otomatik
-      console.log('Maç verisi yüklendi, maç sayısı:', formattedData.length);
+      console.log('Maç verisi yüklendi, maç sayısı:', updatedMatches.length);
     }
 
     // Diğer kullanıcıların tüm maçları (tarih filtrelemesi yapmadan)
@@ -210,14 +357,31 @@ export default function Index() {
         return matchEndTimeInMinutes > currentTimeInMinutes;
       });
 
-      const otherFormattedData = filteredOtherMatches?.map((item) => ({
-        ...item,
-        formattedDate: new Date(item.date).toLocaleDateString("tr-TR"),
-        startFormatted: `${item.time.split(":")[0]}:${item.time.split(":")[1]}`,
-        endFormatted: `${parseInt(item.time.split(":")[0], 10) + 1}:${item.time.split(":")[1]}`,
-      })) || [];
+      // Diğer maçlar için de profil resimlerini güncelle
+      const updatedOtherMatches = await Promise.all(
+        filteredOtherMatches?.map(async (item) => {
+          let updatedProfileImage = null;
+          
+          // Güvenli şekilde profil resmini al
+          if (Array.isArray(item.users) && item.users[0]?.id) {
+            updatedProfileImage = await fetchLatestProfileImage(item.users[0].id);
+          } else if (item.users && typeof item.users === 'object' && 'id' in item.users) {
+            updatedProfileImage = await fetchLatestProfileImage((item.users as any).id);
+          }
+          
+          return {
+            ...item,
+            users: Array.isArray(item.users) 
+              ? item.users.map(user => ({ ...user, profile_image: updatedProfileImage }))
+              : { ...(item.users as any), profile_image: updatedProfileImage },
+            formattedDate: new Date(item.date).toLocaleDateString("tr-TR"),
+            startFormatted: `${item.time.split(":")[0]}:${item.time.split(":")[1]}`,
+            endFormatted: `${parseInt(item.time.split(":")[0], 10) + 1}:${item.time.split(":")[1]}`,
+          };
+        }) || []
+      );
 
-      setOtherMatches(otherFormattedData);
+      setOtherMatches(updatedOtherMatches);
     }
 
     setRefreshing(false);

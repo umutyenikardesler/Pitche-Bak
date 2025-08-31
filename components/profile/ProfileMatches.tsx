@@ -20,7 +20,7 @@ type Match = {
 };
 
 type Props = {
-  userData: { id: string };
+  userData: { id: string } | null;
   refreshing?: boolean;
   onRefresh?: () => void;
 };
@@ -33,7 +33,7 @@ export default function ProfileMatches({ userData, refreshing = false, onRefresh
   // Sayfa odaklandığında maçları yeniden çek
   useFocusEffect(
     useCallback(() => {
-      if (userData && userData.id) {
+      if (userData?.id) {
         fetchUserMatches();
       }
     }, [userData?.id])
@@ -41,7 +41,7 @@ export default function ProfileMatches({ userData, refreshing = false, onRefresh
 
   // useEffect'i de koruyalım (ilk yükleme için)
   useEffect(() => {
-    if (userData && userData.id) {
+    if (userData?.id) {
       fetchUserMatches();
     }
   }, [userData?.id]);
