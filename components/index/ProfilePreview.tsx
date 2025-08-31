@@ -112,7 +112,7 @@ export default function ProfilePreview({
     callback?: (followers: FollowUser[]) => void
   ) => {
     try {
-      console.log("fetchFollowersList çağrıldı, userId:", userId);
+      console.log("fetchFollowersList called, userId:", userId);
 
       // Önce takipçi ID'lerini al
       const { data: followData, error: followError } = await supabase
@@ -123,7 +123,7 @@ export default function ProfilePreview({
         .order("updated_at", { ascending: false })
         .order("created_at", { ascending: false });
 
-      console.log("Takipçi ID'leri:", followData, "Hata:", followError);
+      console.log("Follower IDs:", followData, "Error:", followError);
 
       if (followError || !followData || followData.length === 0) {
         const emptyList: FollowUser[] = [];
@@ -139,7 +139,7 @@ export default function ProfilePreview({
         .select("id, name, surname, profile_image")
         .in("id", followerIds);
 
-      console.log("Kullanıcı verisi:", userData, "Hata:", userError);
+      console.log("User data:", userData, "Error:", userError);
 
       if (!userError && userData) {
         // user kayıtlarını, follow_requests sırasına göre yeniden sırala
@@ -155,7 +155,7 @@ export default function ProfilePreview({
             surname: user.surname,
             profile_image: user.profile_image,
           }));
-        console.log("İşlenmiş takipçi listesi:", followers);
+        console.log("Processed followers list:", followers);
         setFollowersList(followers);
         if (callback) callback(followers);
       } else {
@@ -164,7 +164,7 @@ export default function ProfilePreview({
         if (callback) callback(emptyList);
       }
     } catch (error) {
-      console.error("Takipçi listesi çekilirken hata:", error);
+      console.error("Error fetching followers list:", error);
       const emptyList: FollowUser[] = [];
       setFollowersList(emptyList);
       if (callback) callback(emptyList);
@@ -177,7 +177,7 @@ export default function ProfilePreview({
     callback?: (following: FollowUser[]) => void
   ) => {
     try {
-      console.log("fetchFollowingList çağrıldı, userId:", userId);
+      console.log("fetchFollowingList called, userId:", userId);
 
       // Önce takip edilen ID'lerini al
       const { data: followData, error: followError } = await supabase
@@ -188,7 +188,7 @@ export default function ProfilePreview({
         .order("updated_at", { ascending: false })
         .order("created_at", { ascending: false });
 
-      console.log("Takip edilen ID'leri:", followData, "Hata:", followError);
+      console.log("Following IDs:", followData, "Error:", followError);
 
       if (followError || !followData || followData.length === 0) {
         const emptyList: FollowUser[] = [];
@@ -204,7 +204,7 @@ export default function ProfilePreview({
         .select("id, name, surname, profile_image")
         .in("id", followingIds);
 
-      console.log("Kullanıcı verisi:", userData, "Hata:", userError);
+      console.log("User data:", userData, "Error:", userError);
 
       if (!userError && userData) {
         // user kayıtlarını, follow_requests sırasına göre yeniden sırala
@@ -220,7 +220,7 @@ export default function ProfilePreview({
             surname: user.surname,
             profile_image: user.profile_image,
           }));
-        console.log("İşlenmiş takip edilen listesi:", following);
+        console.log("Processed following list:", following);
         setFollowingList(following);
         if (callback) callback(following);
       } else {
@@ -229,7 +229,7 @@ export default function ProfilePreview({
         if (callback) callback(emptyList);
       }
     } catch (error) {
-      console.error("Takip edilen listesi çekilirken hata:", error);
+      console.error("Error fetching following list:", error);
       const emptyList: FollowUser[] = [];
       setFollowingList(emptyList);
       if (callback) callback(emptyList);
@@ -390,7 +390,7 @@ export default function ProfilePreview({
             user_id: userId,
             sender_id: user.id,
             type: "follow_request",
-            message: `${senderData?.name} ${senderData?.surname} sizi takip etmek istiyor`,
+            message: `${senderData?.name} ${senderData?.surname} ${t("notifications.sentFollowRequest")}`,
             is_read: false,
             created_at: turkiyeNow.toISOString(), // <-- Türkiye saatiyle kaydet
           },
@@ -449,7 +449,7 @@ export default function ProfilePreview({
 
   // Takipçi listesini aç
   const handlePressFollowers = async () => {
-    console.log("handlePressFollowers çağrıldı");
+    console.log("handlePressFollowers called");
     await fetchFollowersList(userId, (followers) => {
       if (followers.length === 0) {
         Alert.alert(t("profile.followers"), t("profile.noFollowersYet"));
@@ -464,7 +464,7 @@ export default function ProfilePreview({
 
   // Takip edilen listesini aç
   const handlePressFollowing = async () => {
-    console.log("handlePressFollowing çağrıldı");
+    console.log("handlePressFollowing called");
     await fetchFollowingList(userId, (following) => {
       if (following.length === 0) {
         Alert.alert(t("profile.following"), t("profile.notFollowingAnyoneYet"));
@@ -502,11 +502,11 @@ export default function ProfilePreview({
         <Text className="text-lg font-semibold text-green-700">
           {item.name} {item.surname}
         </Text>
-        <Text className="text-sm text-gray-500 mt-1">
-          {activeListType === "followers"
-            ? "Seni takip ediyor"
-            : "Takip ediyorsun"}
-        </Text>
+                                <Text className="text-sm text-gray-500 mt-1">
+                          {activeListType === "followers"
+                            ? t("profile.followingYou")
+                            : t("profile.youFollowing")}
+                        </Text>
       </View>
       {/* <Ionicons name="chevron-forward" size={20} color="#16a34a" /> */}
     </View>
@@ -521,24 +521,22 @@ export default function ProfilePreview({
         transparent={true}
         onRequestClose={handleClose}
       >
-        <View className="flex-1 bg-gray-100">
-          <View className="flex-1 bg-white mt-12 rounded-t-2xl overflow-hidden">
-            <View className="flex-row justify-end items-center p-4 border-b border-gray-200">
-              <TouchableOpacity
-                onPress={handleClose}
-                className="bg-green-700 px-4 py-2 rounded-full"
-              >
-                <Ionicons name="close" size={24} color="white" />
-              </TouchableOpacity>
-            </View>
-
+        <View className="flex-1 bg-black/60 justify-center items-center">
+          {/* Boş alana tıklayınca kapatma */}
+          <TouchableOpacity
+            className="absolute inset-0"
+            onPress={handleClose}
+            activeOpacity={1}
+          />
+          
+          <View className="bg-white rounded-2xl w-11/12 h-3/4 overflow-hidden">
             <ScrollView
               className="flex-1"
               scrollEnabled={!listModalVisible}
               nestedScrollEnabled={true}
             >
-              <View className="p-2">
-                <View className="flex flex-row bg-white rounded-lg shadow-lg px-4 py-2 mb-2">
+              <View className="pt-8">
+                <View className="flex flex-row bg-white rounded-lg shadow-lg px-4 mb-2">
                   {/* Profil Resmi */}
                   <View className="w-1/4 py-2">
                     <TouchableOpacity
@@ -577,14 +575,14 @@ export default function ProfilePreview({
                       </Text>
                       <Text className="text-green-600 font-semibold">
                         {" "}
-                        {userData?.height || "-"} cm {" "}
+                        {userData?.height || "-"} {t("units.cm")} {" "}
                       </Text>
                       <Text className="font-semibold">
                         {t("profile.weight")}:
                       </Text>
                       <Text className="text-green-600 font-semibold">
                         {" "}
-                        {userData?.weight || "-"} kg {" "}
+                        {userData?.weight || "-"} {t("units.kg")} {" "}
                       </Text>
                       <Text className="text-wrap font-semibold mb-1">
                         <Text className="font-semibold">
@@ -606,7 +604,7 @@ export default function ProfilePreview({
                           onPress={handleUnfollow}
                         >
                           <Text className="text-center font-bold text-white">
-                            {t("profile.following")}
+                            {t("profilePreview.youAreFollowing")}
                           </Text>
                         </TouchableOpacity>
                       </View>
@@ -621,7 +619,7 @@ export default function ProfilePreview({
                         >
                           <Text className="font-bold text-white text-center">
                             {isFollowing
-                              ? t("profile.followRequestSent")
+                              ? t("profilePreview.followRequestPending")
                               : t("profile.follow")}
                           </Text>
                         </TouchableOpacity>
@@ -651,7 +649,7 @@ export default function ProfilePreview({
 
                 {/* Takipçi/Takip Edilen Listesi Modal - Ana modal içinde */}
                 {listModalVisible && (
-                  <View className="absolute inset-0 bg-white/60 justify-center items-center z-50">
+                  <View className="absolute -inset-4 bg-black/60 justify-center items-center z-50">
                     {/* Boş alana tıklayınca kapatma */}
                     <TouchableOpacity
                       className="absolute inset-0"
@@ -660,9 +658,9 @@ export default function ProfilePreview({
                     />
 
                     {/* Modal içeriği */}
-                    <View className="bg-white rounded-xl w-10/12 max-h-2/3 shadow-2xl">
+                    <View className="bg-white rounded-xl w-10/12 max-h-2/3 shadow-2xl border-2 border-green-700">
                       {/* Header */}
-                      <View className="flex-row justify-between items-center p-4 border-b border-gray-200 bg-green-50 rounded-t-xl">
+                      <View className="flex-row justify-between items-center p-4 border-b border-gray-200 bg-green-200 rounded-t-xl">
                         <Text className="text-xl font-bold text-green-700">
                           {activeListType === "followers"
                             ? t("profile.followers")

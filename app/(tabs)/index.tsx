@@ -482,7 +482,14 @@ export default function Index() {
       )}
       {selectedMatch ? (
         <GestureDetector gesture={swipeGesture}>
-          <MatchDetails match={selectedMatch} onClose={handleCloseDetail} />
+          <MatchDetails 
+            match={selectedMatch} 
+            onClose={handleCloseDetail} 
+            onOpenProfilePreview={(userId) => {
+              setViewingUserId(userId);
+              setProfileModalVisible(true);
+            }}
+          />
         </GestureDetector>
       ) : (
         <View className="flex-1">

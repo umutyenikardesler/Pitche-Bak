@@ -9,16 +9,15 @@ import '@/global.css';
 interface MatchDetailsProps {
   match: Match;
   onClose: () => void;
+  onOpenProfilePreview?: (userId: string) => void;
 }
 
-export default function MatchDetails({ match, onClose }: MatchDetailsProps) {
+export default function MatchDetails({ match, onClose, onOpenProfilePreview }: MatchDetailsProps) {
   const router = useRouter();
   const { t } = useLanguage();
-  const featuresArray = match.pitches?.features
-    ? Array.isArray(match.pitches.features)
-      ? match.pitches.features
-      : []
-    : [];
+  const featuresArray: string[] = Array.isArray(match.pitches) 
+    ? match.pitches[0]?.features || []
+    : match.pitches?.features || [];
 
   return (
     <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
@@ -44,7 +43,7 @@ export default function MatchDetails({ match, onClose }: MatchDetailsProps) {
         <View className="flex-row ">
           <View className="w-3/5 text-gray-700 text-md flex-row justify-center items-center pt-1">
             <Ionicons name="location" size={18} color="black" />
-            <Text className="pl-2 font-semibold">{match.pitches?.name ?? 'Bilinmiyor'}</Text>
+            <Text className="pl-2 font-semibold">{(Array.isArray(match.pitches) ? match.pitches[0]?.name : match.pitches?.name) ?? 'Bilinmiyor'}</Text>
           </View>
           <View className="w-2/5 text-gray-700 text-md flex-row justify-center items-center pt-1">
             <Ionicons name="wallet-outline" size={18} color="black" />
@@ -76,8 +75,14 @@ export default function MatchDetails({ match, onClose }: MatchDetailsProps) {
         {match.users && (
           <View className="flex-row max-w-full items-center justify-center mt-2 mb-1">
             <Text className="font-semibold">{t('home.matchCreatedBy')} </Text>
-            <TouchableOpacity onPress={() => router.push({ pathname: "./", params: { userId: match.create_user }})}>
-              <Text className="text-green-600 font-semibold">{match.users?.name} {match.users?.surname}</Text>
+            <TouchableOpacity onPress={() => {
+              if (onOpenProfilePreview) {
+                onOpenProfilePreview(match.create_user);
+              } else {
+                router.push({ pathname: "./", params: { userId: match.create_user }});
+              }
+            }}>
+              <Text className="text-green-600 font-semibold">{(Array.isArray(match.users) ? match.users[0]?.name : match.users?.name) ?? 'Bilinmiyor'} {(Array.isArray(match.users) ? match.users[0]?.surname : match.users?.surname) ?? ''}</Text>
             </TouchableOpacity>
           </View>
         )}
@@ -89,30 +94,33 @@ export default function MatchDetails({ match, onClose }: MatchDetailsProps) {
           <Text className="h-7 text-xl font-bold text-green-700 "> {t('home.pitchSummary')} </Text>
         </View>
 
-        {match.pitches?.latitude && match.pitches?.longitude && (
-          <View className="w-full h-48 rounded-lg overflow-hidden my-2">
-            <MapView
-              style={{ width: "100%", height: "100%" }}
-              initialRegion={{
-                latitude: match.pitches.latitude,
-                longitude: match.pitches.longitude,
-                latitudeDelta: 0.01,
-                longitudeDelta: 0.01,
-              }}
-            >
-              <Marker
-                coordinate={{
-                  latitude: match.pitches.latitude,
-                  longitude: match.pitches.longitude,
+        {(() => {
+          const pitch = Array.isArray(match.pitches) ? match.pitches[0] : match.pitches;
+          return pitch?.latitude && pitch?.longitude ? (
+            <View className="w-full h-48 rounded-lg overflow-hidden my-2">
+              <MapView
+                style={{ width: "100%", height: "100%" }}
+                initialRegion={{
+                  latitude: pitch.latitude,
+                  longitude: pitch.longitude,
+                  latitudeDelta: 0.01,
+                  longitudeDelta: 0.01,
                 }}
-                title={match.pitches.name}
-              />
-            </MapView>
-          </View>
-        )}
+              >
+                <Marker
+                  coordinate={{
+                    latitude: pitch.latitude,
+                    longitude: pitch.longitude,
+                  }}
+                  title={pitch.name ?? 'Bilinmiyor'}
+                />
+              </MapView>
+            </View>
+          ) : null;
+        })()}
 
         <View className="">
-          <Text className="h-7 text-xl font-semibold text-green-700 text-center my-2">{match.pitches?.name}</Text>
+          <Text className="h-7 text-xl font-semibold text-green-700 text-center my-2">{(Array.isArray(match.pitches) ? match.pitches[0]?.name : match.pitches?.name) ?? 'Bilinmiyor'}</Text>
         </View>
 
         <View className="">
@@ -120,7 +128,7 @@ export default function MatchDetails({ match, onClose }: MatchDetailsProps) {
         </View>
         <View className=" text-gray-700 text-md flex-row justify-center items-center pt-1">
           <Ionicons name="location" size={18} color="black" />
-          <Text className="pl-2 font-semibold text-gray-700">{match.pitches?.address}</Text>
+          <Text className="pl-2 font-semibold text-gray-700">{(Array.isArray(match.pitches) ? match.pitches[0]?.address : match.pitches?.address) ?? 'Adres bilgisi yok'}</Text>
         </View>
 
         <View className="">
@@ -128,7 +136,7 @@ export default function MatchDetails({ match, onClose }: MatchDetailsProps) {
         </View>
         <View className=" text-gray-700 text-md flex-row justify-center items-center pt-1">
           <Ionicons name="wallet-outline" size={18} color="green" />
-          <Text className="pl-2 font-semibold text-gray-700">{match.pitches?.price} ₺</Text>
+          <Text className="pl-2 font-semibold text-gray-700">{(Array.isArray(match.pitches) ? match.pitches[0]?.price : match.pitches?.price) ?? 'Fiyat bilgisi yok'} ₺</Text>
         </View>
 
         <View>
