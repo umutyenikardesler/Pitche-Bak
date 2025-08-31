@@ -81,18 +81,18 @@ export default function OtherMatches({ matches, refreshing, onRefresh, onSelectM
       </View>
 
       {matches.length === 0 && !refreshing ? (
-        <View className='flex justify-center items-center py-2'>
+        <View className='flex justify-center items-center py-4'>
           <Text className="text-center font-bold my-4">{t('home.noIncompleteSquadMatches')}</Text>
           <TouchableOpacity
-            className="text-center bg-green-600 text-white font-semibold rounded-md px-1 items-center"
+            className="text-center bg-green-600 text-white font-semibold rounded-md my-3 items-center"
             onPress={onCreateMatch}
           >
             <Text className="w-1/2 text-white font-semibold text-center p-4">{t('home.createMatchNow')}</Text>
           </TouchableOpacity>
         </View>
       ) : matches.length === 0 && refreshing ? (
-        <View className='flex justify-center items-center py-2'>
-          <Text className="text-center font-bold text-gray-600 my-4">{t('home.matchesLoading')}</Text>
+        <View className='flex justify-center items-center py-4'>
+          <Text className="text-center font-bold text-gray-600">{t('home.matchesLoading')}</Text>
         </View>
       ) : (
         <FlatList

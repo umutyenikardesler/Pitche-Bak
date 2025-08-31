@@ -117,20 +117,20 @@ export default function PitchesList({ pitches, selectedPitch, setSelectedPitch, 
                 )}
 
                 <View>
-                  <Text className="text-xl text-green-700 font-semibold text-center mt-4">{selectedPitch.name}</Text>
+                  <Text className="h-7 text-xl text-green-700 font-semibold text-center mt-4">{selectedPitch.name}</Text>
                 </View>
 
                 <View>
-                  <Text className="text-lg font-semibold text-green-700 text-center mt-4">{t('pitches.openAddress')}</Text>
-                  <View className="flex-row justify-center items-center">
+                  <Text className="h-7 text-lg font-semibold text-green-700 text-center mt-4">{t('pitches.openAddress')}</Text>
+                  <View className="flex-row justify-center items-center pt-1">
                     <Ionicons name="location-outline" size={20} color="green" />
                     <Text className="pl-2 text-gray-700 font-semibold">{selectedPitch.address}</Text>
                   </View>
                 </View>
 
                 <View>
-                  <Text className="text-lg font-semibold text-green-700 text-center mt-4">{t('pitches.pitchPrice')}</Text>
-                  <View className="flex-row justify-center items-center">
+                  <Text className="h-7 text-lg font-semibold text-green-700 text-center mt-4">{t('pitches.pitchPrice')}</Text>
+                  <View className="flex-row justify-center items-center pt-1">
                     <Ionicons name="wallet-outline" size={18} color="green" />
                     <Text className="pl-2 text-gray-700 font-semibold">{selectedPitch.price} ₺</Text>
                   </View>
