@@ -517,7 +517,7 @@ export default function ProfilePreview({
       {/* Ana ProfilePreview Modal */}
       <Modal
         visible={isVisible}
-        animationType="slide"
+        animationType="fade"
         transparent={true}
         onRequestClose={handleClose}
       >

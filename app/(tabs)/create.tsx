@@ -23,6 +23,7 @@ interface MissingPositions {
   defans: MissingPosition;
   ortaSaha: MissingPosition;
   forvet: MissingPosition;
+  [key: string]: MissingPosition; // Index signature ekledik
 }
 
 export default function CreateMatch() {
@@ -35,6 +36,7 @@ export default function CreateMatch() {
   const [time, setTime] = useState('1');
   const [price, setPrice] = useState('');
   const [isSquadIncomplete, setIsSquadIncomplete] = useState(false);
+  const [matchFormat, setMatchFormat] = useState('5-5'); // Varsayılan format
   const [missingPositions, setMissingPositions] = useState<MissingPositions>({
     kaleci: { selected: false, count: 1 },
     defans: { selected: false, count: 1 },
@@ -42,7 +44,7 @@ export default function CreateMatch() {
     forvet: { selected: false, count: 1 }
   });
 
-  const [userId, setUserId] = useState(null);
+  const [userId, setUserId] = useState<string | null>(null);
   const router = useRouter();
   const navigation = useNavigation();
 
@@ -183,6 +185,7 @@ export default function CreateMatch() {
               setTime('1');
               setPrice('');
               setIsSquadIncomplete(false);
+              setMatchFormat('5-5');
               setMissingPositions({
                 kaleci: { selected: false, count: 1 },
                 defans: { selected: false, count: 1 },
@@ -193,7 +196,7 @@ export default function CreateMatch() {
               if (Platform.OS === 'web') {
                 window.location.href = '/';
               } else {
-                navigation.navigate("(tabs)", { screen: "index" });
+                router.push("/(tabs)");
               }
             }
           }
@@ -221,6 +224,7 @@ export default function CreateMatch() {
         setTime('1');
         setPrice('');
         setIsSquadIncomplete(false);
+        setMatchFormat('5-5');
         setMissingPositions({
           kaleci: { selected: false, count: 1 },
           defans: { selected: false, count: 1 },
@@ -282,6 +286,8 @@ export default function CreateMatch() {
           setIsSquadIncomplete={setIsSquadIncomplete}
           missingPositions={missingPositions}
           setMissingPositions={setMissingPositions}
+          matchFormat={matchFormat}
+          setMatchFormat={setMatchFormat}
         />
       </View>
 

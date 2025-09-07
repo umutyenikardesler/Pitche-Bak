@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, FlatList, Switch, StyleSheet, Platform } from 'react-native';
 import { supabase } from '@/services/supabase';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -9,6 +9,8 @@ interface SquadSelectorProps {
   setIsSquadIncomplete: (incomplete: boolean) => void;
   missingPositions: any;
   setMissingPositions: (positions: any) => void;
+  matchFormat: string;
+  setMatchFormat: (format: string) => void;
 }
 
 export const SquadSelector: React.FC<SquadSelectorProps> = ({
@@ -16,12 +18,58 @@ export const SquadSelector: React.FC<SquadSelectorProps> = ({
   setIsSquadIncomplete,
   missingPositions,
   setMissingPositions,
+  matchFormat,
+  setMatchFormat,
 }) => {
   const { t } = useLanguage();
+
+  // Maç formatına göre maksimum sayıları belirle
+  const getMaxCountForPosition = (position: string, format: string) => {
+    switch (format) {
+      case '5-5': // 10 kişi
+        switch (position) {
+          case 'kaleci': return 2;
+          case 'defans': return 3;
+          case 'ortaSaha': return 3;
+          case 'forvet': return 2;
+          default: return 1;
+        }
+      case '6-6': // 12 kişi
+        switch (position) {
+          case 'kaleci': return 2;
+          case 'defans': return 4;
+          case 'ortaSaha': return 4;
+          case 'forvet': return 2;
+          default: return 1;
+        }
+      case '7-7': // 14 kişi
+        switch (position) {
+          case 'kaleci': return 2;
+          case 'defans': return 4;
+          case 'ortaSaha': return 4;
+          case 'forvet': return 4;
+          default: return 1;
+        }
+      default:
+        switch (position) {
+          case 'kaleci': return 2;
+          case 'defans': return 3;
+          case 'ortaSaha': return 3;
+          case 'forvet': return 2;
+          default: return 1;
+        }
+    }
+  };
+
+  // Pozisyon seçildiğinde default olarak 1'i seç
   const handlePositionSelection = (position: string) => {
     setMissingPositions((prev: any) => ({
       ...prev,
-      [position]: { ...prev[position], selected: !prev[position].selected },
+      [position]: { 
+        ...prev[position], 
+        selected: !prev[position].selected,
+        count: !prev[position].selected ? 1 : prev[position].count // Seçildiğinde 1'e set et
+      },
     }));
   };
 
@@ -38,6 +86,31 @@ export const SquadSelector: React.FC<SquadSelectorProps> = ({
 
   return (
     <View className="mb-4">
+      {/* Maç Formatı Seçimi */}
+      <View className="mb-4">
+        <Text className="text-green-700 font-semibold mb-2">Maç Kaç Kişi ile Yapılsın? </Text>
+        <View className="flex-row justify-between">
+          {['5-5', '6-6', '7-7'].map((format) => (
+            <TouchableOpacity
+              key={format}
+              className={`flex-1 mx-1 p-3 rounded-lg border ${
+                matchFormat === format
+                  ? 'bg-green-600 border-green-600'
+                  : 'bg-gray-200 border-gray-400'
+              }`}
+              onPress={() => setMatchFormat(format)}
+            >
+              <Text className={`text-center font-semibold ${
+                matchFormat === format ? 'text-white' : 'text-black'
+              }`}>
+                {format}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      </View>
+
+      {/* Kadro Eksik mi Switch */}
       <Text className="text-green-700 font-semibold mb-2">{t('create.squadIncompleteQuestion')}</Text>
       <Switch
         value={isSquadIncomplete}
@@ -75,7 +148,7 @@ export const SquadSelector: React.FC<SquadSelectorProps> = ({
                       <Text className="text-gray-600 mb-2">{t('create.howManyMissingQuestion').replace('{position}', position === 'ortaSaha' ? 'Orta Saha' : position.charAt(0).toUpperCase() + position.slice(1))}</Text>
                       <FlatList
                         horizontal
-                        data={Array.from({ length: position === 'kaleci' ? 2 : 3 }, (_, i) => i + 1)}
+                        data={Array.from({ length: getMaxCountForPosition(position, matchFormat) }, (_, i) => i + 1)}
                         keyExtractor={(item) => item.toString()}
                         renderItem={({ item }) => (
                           <TouchableOpacity
@@ -122,7 +195,7 @@ export const SquadSelector: React.FC<SquadSelectorProps> = ({
                       </Text>
                       <FlatList
                         horizontal
-                        data={Array.from({ length: 3 }, (_, i) => i + 1)}
+                        data={Array.from({ length: getMaxCountForPosition(position, matchFormat) }, (_, i) => i + 1)}
                         keyExtractor={(item) => item.toString()}
                         renderItem={({ item }) => (
                           <TouchableOpacity
