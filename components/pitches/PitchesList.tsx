@@ -49,11 +49,6 @@ export default function PitchesList({ pitches, selectedPitch, setSelectedPitch, 
     return {
       transform: [{ scale: scale.value }],
       backgroundColor,
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 0 },
-      shadowOpacity: 0.6,
-      shadowRadius: 6,
-      elevation: 10,
     };
   });
 
@@ -95,9 +90,21 @@ export default function PitchesList({ pitches, selectedPitch, setSelectedPitch, 
     return (
       <>
         <GestureDetector gesture={swipeGesture}>
-          <View className="flex-1"> {/* Ana container'a flex-1 ekledik */}
-            <ScrollView className="bg-white rounded-lg my-3 mx-4 p-4 shadow-md" contentContainerStyle={{ flexGrow: 1 }}>
-              <View className="flex flex-col flex-1 justify-between items-center">
+          <View className="flex-1">
+            <ScrollView
+              style={{ flex: 1 }}
+              contentContainerStyle={{ 
+                paddingBottom: Platform.OS === 'android' ? 100 : 0,
+                flexGrow: 1
+              }}
+              showsVerticalScrollIndicator={true}
+              nestedScrollEnabled={true}
+              bounces={Platform.OS === 'ios'}
+              scrollEnabled={true}
+              keyboardShouldPersistTaps="handled"
+            >
+              <View className="bg-white rounded-lg my-3 mx-4 p-4 shadow-md">
+                <View className="flex flex-col items-center">
                 <Text className="text-xl font-bold text-green-700 text-center mb-2">{t('pitches.pitchSummary')}</Text>
 
                 {selectedPitch.latitude && selectedPitch.longitude && Platform.OS !== "web" && (
@@ -150,30 +157,17 @@ export default function PitchesList({ pitches, selectedPitch, setSelectedPitch, 
                   </View>
                 </View>
 
-                {/* Geri dön butonunu en alta sabitledik */}
-                <View className="mt-auto mb-2"> {/* mt-auto ile en alta itiyoruz */}
-                  <TouchableOpacity
-                    className="w-1/2 self-center bg-green-700 px-4 py-2 rounded"
-                    onPress={handleCloseDetail}
-                  >
-                    <Text className="text-white font-bold text-center p-1">{t('general.back')}</Text>
+                {/* Geri Dön butonu - HALI SAHA ÖZETİ içinde */}
+                <View className="mt-6 mb-1 w-full">
+                  <TouchableOpacity className="w-full items-center bg-green-700 px-2 py-2 rounded-lg" onPress={handleCloseDetail}>
+                    <Text className="text-white font-bold text-lg">{t('general.back')}</Text>
                   </TouchableOpacity>
                 </View>
+                </View>
               </View>
-
             </ScrollView>
           </View>
         </GestureDetector>
-
-        {/* Maç Oluştur Butonu */}
-        {/* <TouchableOpacity
-          onPress={() => handleSelectPitch(selectedPitch.id)}
-          className="absolute right-6 top-1/2 transform -translate-y-1/2 bg-green-600 px-4 py-3 rounded-full shadow-lg"
-        >
-          <Text className="text-white font-bold text-center leading-tight">
-            Maç{"\n"}Yap
-          </Text>
-        </TouchableOpacity> */}
 
         <Animated.View
           style={[
@@ -184,6 +178,11 @@ export default function PitchesList({ pitches, selectedPitch, setSelectedPitch, 
               top: '47.5%',
               transform: [{ translateY: 0 }],
               borderRadius: 9999,
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: 0.6,
+              shadowRadius: 6,
+              elevation: 10,
             },
           ]}
         >

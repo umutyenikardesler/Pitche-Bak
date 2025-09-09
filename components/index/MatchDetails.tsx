@@ -25,6 +25,7 @@ export default function MatchDetails({ match, onClose, onOpenProfilePreview }: M
   const [shownAcceptedPositions, setShownAcceptedPositions] = useState<Set<string>>(new Set());
   const [isCancellingPosition, setIsCancellingPosition] = useState(false);
   const [cancelledPositions, setCancelledPositions] = useState<Set<string>>(new Set());
+  const [isPitchSummaryExpanded, setIsPitchSummaryExpanded] = useState(false);
   
   const featuresArray: string[] = Array.isArray(match.pitches) 
     ? match.pitches[0]?.features || []
@@ -792,12 +793,12 @@ export default function MatchDetails({ match, onClose, onOpenProfilePreview }: M
       contentContainerStyle={{ flexGrow: 1 }}
     >
       <View className="flex-1 bg-white p-4 rounded-lg m-3 shadow-lg">
-        <View className="flex-row mb-2 justify-center">
-          <Ionicons name="accessibility-outline" size={16} color="green" className="pt-1" />
-          <Text className="text-xl font-bold text-green-700 "> {t('home.matchSummary')} </Text>
+        <View className="flex-row mb-3 justify-center items-center bg-green-100 border-2 border-green-300 rounded-lg py-3 px-2">
+          <Ionicons name="accessibility-outline" size={20} color="green" />
+          <Text className="text-xl font-bold text-green-700 ml-3"> {t('home.matchSummary')} </Text>
         </View>
 
-        <Text className="text-lg text-green-700 font-semibold text-center">{match.title}</Text>
+        <Text className="text-xl text-green-700 font-semibold text-center mt-1 mb-2">{match.title}</Text>
 
         <View className="flex-row ">
           <View className="w-1/2 text-gray-700 text-md flex-row justify-center items-center">
@@ -822,11 +823,11 @@ export default function MatchDetails({ match, onClose, onOpenProfilePreview }: M
         </View>
 
         <View>
-          <Text className="text-lg font-semibold text-green-700 text-center my-2">{t('home.missingSquads')}</Text>
+          <Text className="text-xl font-semibold text-green-700 text-center mt-3 mb-2">{t('home.missingSquads')}</Text>
         </View>
 
         {/* Eksik Kadrolar */}
-        <View className="flex-row max-w-full items-center justify-center">
+        <View className="flex-row max-w-full items-center justify-center flex-wrap">
           {missingGroups?.length > 0 && missingGroups.map((group, index) => {
             const [position, count] = group.split(':');
             const isSent = sentRequests.includes(position);
@@ -836,7 +837,7 @@ export default function MatchDetails({ match, onClose, onOpenProfilePreview }: M
             const isAcceptedPosition = acceptedPosition === position || shownAcceptedPositions.has(position);
             
             return (
-              <View key={index} className="flex-row items-center ml-2">
+              <View key={index} className="flex-row items-center mx-1 mb-2">
                 <TouchableOpacity
                   className={`flex-row items-center border-solid border-2 rounded-full p-1 ${
                     isSent ? 'border-green-500 bg-green-100' : 
@@ -846,13 +847,13 @@ export default function MatchDetails({ match, onClose, onOpenProfilePreview }: M
                   onPress={() => !isOwner && handlePositionRequest(position)}
                   disabled={isOwner || isLoading}
                 >
-                  <View className={`rounded-full p-1 ${position === 'K' ? 'bg-red-500'
+                  <View className={`rounded-full py-1 px-1 mr-0.5 ${position === 'K' ? 'bg-red-500'
                     : position === 'D' ? 'bg-blue-700'
                       : position === 'O' ? 'bg-green-700'
                         : 'bg-yellow-600'}`}>
-                    <Text className="text-white font-bold text-md px-1">{position}</Text>
+                    <Text className="text-white font-bold text-xs px-0.5">{getPositionName(position)}</Text>
                   </View>
-                  <Text className="ml-2 font-semibold pr-1">x {count}</Text>
+                  <Text className="ml-0.5 font-semibold pr-0.5 text-ml">x {count}</Text>
                 </TouchableOpacity>
               </View>
             );
@@ -861,7 +862,7 @@ export default function MatchDetails({ match, onClose, onOpenProfilePreview }: M
 
         {/* Kadro tamamsa göster */}
         {(!missingGroups || missingGroups.length === 0) && (
-          <View className="mt-1 mb-2">
+          <View className="mt-2 mb-2">
             <Animated.Text 
               className="text-white p-2 px-3 bg-green-600 font-bold text-sm rounded-md text-center mx-auto"
               style={{ opacity: fadeAnim }}
@@ -873,8 +874,8 @@ export default function MatchDetails({ match, onClose, onOpenProfilePreview }: M
         
         {/* Kabul Edilen İstek için Başarı Mesajı */}
         {acceptedPosition && (
-          <View className="mt-2 mb-2">
-            <View className="bg-green-200 border border-green-400 rounded-lg p-3 mb-1">
+          <View className="mt-3 mb-1">
+            <View className="bg-green-200 border border-green-400 rounded-lg p-2">
               <Text className="text-green-800 text-center font-bold text-lg">
                 🎉 {getPositionName(acceptedPosition)} olarak maça katılım sağladınız!
               </Text>
@@ -885,9 +886,9 @@ export default function MatchDetails({ match, onClose, onOpenProfilePreview }: M
 
         {/* Gönderilen İstekler için Durum Mesajları */}
         {sentRequests.length > 0 && !acceptedPosition && (
-          <View className="mt-2 mb-2">
+          <View className="mt-2">
             {sentRequests.map((position, index) => (
-              <View key={index} className="bg-green-100 border border-green-300 rounded-lg p-2 mb-1">
+              <View key={index} className="bg-green-100 border border-green-300 rounded-lg p-2">
                 <Text className="text-green-700 text-center font-semibold">
                   {getPositionName(position)} olarak maça katılma istediğin gönderildi.
                 </Text>
@@ -898,7 +899,7 @@ export default function MatchDetails({ match, onClose, onOpenProfilePreview }: M
         {/* Eksik Kadrolar */}
 
         {match.users && (
-          <View className="flex-row max-w-full items-center justify-center mt-2 mb-1">
+          <View className="flex-row max-w-full items-center justify-center my-4">
             <Text className="font-semibold">{t('home.matchCreatedBy')} </Text>
             <TouchableOpacity onPress={() => {
               if (onOpenProfilePreview) {
@@ -907,82 +908,113 @@ export default function MatchDetails({ match, onClose, onOpenProfilePreview }: M
                 router.push({ pathname: "./", params: { userId: match.create_user }});
               }
             }}>
-              <Text className="text-green-600 font-semibold">{(Array.isArray(match.users) ? match.users[0]?.name : match.users?.name) ?? 'Bilinmiyor'} {(Array.isArray(match.users) ? match.users[0]?.surname : match.users?.surname) ?? ''}</Text>
+              <Text className="text-green-700 font-semibold">{(Array.isArray(match.users) ? match.users[0]?.name : match.users?.name) ?? 'Bilinmiyor'} {(Array.isArray(match.users) ? match.users[0]?.surname : match.users?.surname) ?? ''}</Text>
             </TouchableOpacity>
           </View>
         )}
 
-        <View className="h-[1px] bg-gray-600 my-3" />
-
-        <View className="flex-row mb-2 justify-center">
-          <Ionicons name="accessibility-outline" size={16} color="green" className="pt-1" />
-          <Text className="h-7 text-xl font-bold text-green-700 "> {t('home.pitchSummary')} </Text>
+        {/* Maç ayırıcı çizgisi - Futbol teması */}
+        <View className="flex-row items-center justify-center px-1 mt-1 mb-4">
+          <View className="flex-1 h-0.5 bg-green-500"></View>
+          <View className="mx-4 flex-row items-center">
+            <View className="w-2 h-2 bg-green-500 rounded-full mx-1"></View>
+            <View className="w-1 h-1 bg-green-400 rounded-full mx-0.5"></View>
+            <View className="w-2 h-2 bg-green-500 rounded-full mx-1"></View>
+            <View className="w-1 h-1 bg-green-400 rounded-full mx-0.5"></View>
+            <View className="w-2 h-2 bg-green-500 rounded-full mx-1"></View>
+          </View>
+          <View className="flex-1 h-0.5 bg-green-500"></View>
         </View>
 
-        {(() => {
-          const pitch = Array.isArray(match.pitches) ? match.pitches[0] : match.pitches;
-          return pitch?.latitude && pitch?.longitude ? (
-            <View className="w-full h-48 rounded-lg overflow-hidden my-2">
-              <MapView
-                style={{ width: "100%", height: "100%" }}
-                initialRegion={{
-                  latitude: pitch.latitude,
-                  longitude: pitch.longitude,
-                  latitudeDelta: 0.01,
-                  longitudeDelta: 0.01,
-                }}
-              >
-                <Marker
-                  coordinate={{
-                    latitude: pitch.latitude,
-                    longitude: pitch.longitude,
-                  }}
-                  title={pitch.name ?? 'Bilinmiyor'}
-                />
-              </MapView>
+        {/* Halı saha özeti - Dropdown */}
+        <TouchableOpacity 
+          className="flex-row mb-3 justify-center items-center bg-green-100 border-2 border-green-300 rounded-lg py-3 px-2"
+          onPress={() => setIsPitchSummaryExpanded(!isPitchSummaryExpanded)}
+          activeOpacity={0.8}
+        >
+          <Ionicons name="accessibility-outline" size={20} color="green" />
+          <Text className="text-xl font-bold text-green-700 ml-3"> {t('home.pitchSummary')} </Text>
+          <Ionicons 
+            name={isPitchSummaryExpanded ? "chevron-up" : "chevron-down"} 
+            size={24} 
+            color="green" 
+            className="ml-3" 
+          />
+        </TouchableOpacity>
+
+        {/* Dropdown içeriği */}
+        {isPitchSummaryExpanded && (
+          <View>
+            {(() => {
+              const pitch = Array.isArray(match.pitches) ? match.pitches[0] : match.pitches;
+              return pitch?.latitude && pitch?.longitude ? (
+                <View className="w-full h-48 rounded-lg overflow-hidden my-2">
+                  <MapView
+                    style={{ width: "100%", height: "100%" }}
+                    initialRegion={{
+                      latitude: pitch.latitude,
+                      longitude: pitch.longitude,
+                      latitudeDelta: 0.01,
+                      longitudeDelta: 0.01,
+                    }}
+                  >
+                    <Marker
+                      coordinate={{
+                        latitude: pitch.latitude,
+                        longitude: pitch.longitude,
+                      }}
+                      title={pitch.name ?? 'Bilinmiyor'}
+                    />
+                  </MapView>
+                </View>
+              ) : null;
+            })()}
+
+            <View className="">
+              <Text className="h-7 text-xl font-semibold text-green-700 text-center my-2">{(Array.isArray(match.pitches) ? match.pitches[0]?.name : match.pitches?.name) ?? 'Bilinmiyor'}</Text>
             </View>
-          ) : null;
-        })()}
 
-        <View className="">
-          <Text className="h-7 text-xl font-semibold text-green-700 text-center my-2">{(Array.isArray(match.pitches) ? match.pitches[0]?.name : match.pitches?.name) ?? 'Bilinmiyor'}</Text>
-        </View>
-
-        <View className="">
-          <Text className="h-7 text-lg font-semibold text-green-700 text-center my-2">{t('home.openAddress')}</Text>
-        </View>
-        <View className=" text-gray-700 text-md flex-row justify-center items-center pt-1">
-          <Ionicons name="location" size={18} color="black" />
-          <Text className="pl-2 font-semibold text-gray-700">{(Array.isArray(match.pitches) ? match.pitches[0]?.address : match.pitches?.address) ?? 'Adres bilgisi yok'}</Text>
-        </View>
-
-        <View className="">
-          <Text className="h-7 text-lg font-semibold text-green-700 text-center mt-3 my-2">{t('home.pitchPrice')}</Text>
-        </View>
-        <View className=" text-gray-700 text-md flex-row justify-center items-center pt-1">
-          <Ionicons name="wallet-outline" size={18} color="green" />
-          <Text className="pl-2 font-semibold text-gray-700">{(Array.isArray(match.pitches) ? match.pitches[0]?.price : match.pitches?.price) ?? 'Fiyat bilgisi yok'} ₺</Text>
-        </View>
-
-        <View>
-          <Text className="h-7 text-lg font-semibold text-green-700 text-center mt-4">{t('home.pitchFeatures')}</Text>
-        </View>
-        <View className="flex-row flex-wrap justify-center items-center mt-3">
-          {featuresArray.map((feature, index) => (
-            <View key={index} className="w-1/2 mb-1">
-              <View className="flex-row p-2 bg-green-700 rounded mr-1 items-center justify-center">
-                <Ionicons name="checkmark-circle-outline" size={16} color="white" className="" />
-                <Text className="text-white pl-1">{feature}</Text>
-              </View>
+            <View className="">
+              <Text className="h-7 text-lg font-semibold text-green-700 text-center my-2">{t('home.openAddress')}</Text>
             </View>
-          ))}
-        </View>
+            <View className=" text-gray-700 text-md flex-row justify-center items-center pt-1">
+              <Ionicons name="location" size={18} color="black" />
+              <Text className="pl-2 font-semibold text-gray-700">{(Array.isArray(match.pitches) ? match.pitches[0]?.address : match.pitches?.address) ?? 'Adres bilgisi yok'}</Text>
+            </View>
 
-        <View className="flex-1 flex-col-reverse justifyy-end items-center">
-          <TouchableOpacity className="w-1/2 items-center mt-4 bg-green-700 px-4 py-2 rounded " onPress={onClose}>
-            <Text className="text-white font-bold">{t('general.back')}</Text>
+            <View className="">
+              <Text className="h-7 text-lg font-semibold text-green-700 text-center mt-3 my-2">{t('home.pitchPrice')}</Text>
+            </View>
+            <View className=" text-gray-700 text-md flex-row justify-center items-center pt-1">
+              <Ionicons name="wallet-outline" size={18} color="green" />
+              <Text className="pl-2 font-semibold text-gray-700">{(Array.isArray(match.pitches) ? match.pitches[0]?.price : match.pitches?.price) ?? 'Fiyat bilgisi yok'} ₺</Text>
+            </View>
+
+            <View>
+              <Text className="h-7 text-lg font-semibold text-green-700 text-center mt-4">{t('home.pitchFeatures')}</Text>
+            </View>
+            <View className="flex-row flex-wrap justify-center items-center mt-3">
+              {featuresArray.map((feature, index) => (
+                <View key={index} className="w-1/2 mb-1">
+                  <View className="flex-row p-2 bg-green-700 rounded mr-1 items-center justify-center">
+                    <Ionicons name="checkmark-circle-outline" size={16} color="white" className="" />
+                    <Text className="text-white pl-1">{feature}</Text>
+                  </View>
+                </View>
+              ))}
+            </View>
+          </View>
+        )}
+
+        {/* Geri Dön butonu - Sayfanın en altında sabit */}
+        <View className="absolute bottom-0 left-0 right-0 bg-white p-4">
+          <TouchableOpacity className="w-full items-center bg-green-700 p-2 rounded-lg" onPress={onClose}>
+            <Text className="text-white font-bold text-lg">{t('general.back')}</Text>
           </TouchableOpacity>
         </View>
+        
+        {/* ScrollView için alt padding - butonun altında kalmaması için */}
+        <View className="h-20"></View>
       </View>
     </ScrollView>
   );

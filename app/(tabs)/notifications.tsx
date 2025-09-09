@@ -1,4 +1,4 @@
-import { View, Text, FlatList, TouchableOpacity, ActivityIndicator, Image, Modal } from "react-native";
+import { View, Text, FlatList, TouchableOpacity, ActivityIndicator, Image, Modal, ScrollView, RefreshControl } from "react-native";
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/services/supabase";
 import { Ionicons } from "@expo/vector-icons";
@@ -48,6 +48,43 @@ export default function Notifications() {
     const { t } = useLanguage();
     const router = useRouter();
 
+    // Tarih gruplama fonksiyonu
+    const groupNotificationsByDate = (notifications: Notification[]) => {
+        const now = new Date();
+        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const yesterday = new Date(today);
+        yesterday.setDate(yesterday.getDate() - 1);
+        const weekAgo = new Date(today);
+        weekAgo.setDate(weekAgo.getDate() - 7);
+        const monthAgo = new Date(today);
+        monthAgo.setDate(monthAgo.getDate() - 30);
+
+        const groups: { [key: string]: Notification[] } = {
+            'Bugün': [],
+            'Dün': [],
+            'Son 7 Gün': [],
+            'Son 30 Gün': []
+        };
+
+        notifications.forEach(notification => {
+            const notificationDate = new Date(notification.created_at);
+            const notificationDay = new Date(notificationDate.getFullYear(), notificationDate.getMonth(), notificationDate.getDate());
+
+            if (notificationDay.getTime() === today.getTime()) {
+                groups['Bugün'].push(notification);
+            } else if (notificationDay.getTime() === yesterday.getTime()) {
+                groups['Dün'].push(notification);
+            } else if (notificationDate >= weekAgo) {
+                groups['Son 7 Gün'].push(notification);
+            } else if (notificationDate >= monthAgo) {
+                groups['Son 30 Gün'].push(notification);
+            }
+        });
+
+        // Boş grupları kaldır
+        return Object.entries(groups).filter(([_, notifications]) => notifications.length > 0);
+    };
+
     // Modal kapatma fonksiyonu
     const closeProfileModal = useCallback(() => {
         setViewingUserId(null);
@@ -81,13 +118,12 @@ export default function Notifications() {
 
             if (error) throw error;
 
-            // Sadece okunmamış bildirimleri göster
+            // Tüm bildirimleri göster (hem okunmuş hem okunmamış)
             const formattedNotifications = data
-                .filter(notification => !notification.is_read)
                 .map(notification => {
-                    // Maç bilgilerini formatla
+                    // Maç bilgilerini formatla (sadece join_request için)
                     let matchInfo = null;
-                    if (notification.match) {
+                    if (notification.type === 'join_request' && notification.match) {
                         const matchDate = new Date(notification.match.date);
                         const formattedDate = matchDate.toLocaleDateString("tr-TR");
                         const [hours, minutes] = notification.match.time.split(":").map(Number);
@@ -111,6 +147,9 @@ export default function Notifications() {
                     };
                 });
 
+            console.log('Tüm bildirimler:', formattedNotifications);
+            console.log('Takip isteği bildirimleri:', formattedNotifications.filter(n => n.type === 'follow_request'));
+            console.log('Katılım isteği bildirimleri:', formattedNotifications.filter(n => n.type === 'join_request'));
             setNotifications(formattedNotifications);
         } catch (error) {
             console.error(t('notifications.loadingError'), error);
@@ -135,14 +174,19 @@ export default function Notifications() {
 
                 if (updateError) throw updateError;
 
-                // Bildirimi okundu olarak işaretle
+                // Bildirimi okundu olarak işaretle ve kabul mesajı ekle
                 await supabase
                     .from('notifications')
-                    .update({ is_read: true })
+                    .update({ 
+                        is_read: true,
+                        message: 'Takip isteğiniz kabul edildi ✓'
+                    })
                     .eq('id', notification.id);
 
-                // Bildirim listesini güncelle
-                setNotifications(prev => prev.filter(n => n.id !== notification.id));
+                // Bildirim listesini güncelle - sadece is_read durumunu değiştir
+                setNotifications(prev => prev.map(n => 
+                    n.id === notification.id ? { ...n, is_read: true, message: 'Takip isteğiniz kabul edildi ✓' } : n
+                ));
                 refresh();
                 // Kısa başarı uyarısı
                 try { (global as any).toast?.show?.('İstek kabul edildi'); } catch (_) {}
@@ -167,14 +211,19 @@ export default function Notifications() {
 
                 if (deleteError) throw deleteError;
 
-                // Bildirimi sil
+                // Bildirimi okundu olarak işaretle ve red mesajı ekle
                 await supabase
                     .from('notifications')
-                    .delete()
+                    .update({ 
+                        is_read: true,
+                        message: 'Takip isteğiniz reddedildi ✗'
+                    })
                     .eq('id', notification.id);
 
-                // Bildirim listesini güncelle
-                setNotifications(prev => prev.filter(n => n.id !== notification.id));
+                // Bildirim listesini güncelle - sadece is_read durumunu değiştir
+                setNotifications(prev => prev.map(n => 
+                    n.id === notification.id ? { ...n, is_read: true, message: 'Takip isteğiniz reddedildi ✗' } : n
+                ));
                 refresh();
                 // Kısa bilgilendirme
                 try { (global as any).toast?.show?.('İstek reddedildi'); } catch (_) {}
@@ -252,14 +301,19 @@ export default function Notifications() {
                     console.log('[Notifications] Güncelleme doğrulandı:', verifyData?.missing_groups);
                 }
 
-                // Bildirimi okundu olarak işaretle
+                // Bildirimi okundu olarak işaretle ve kabul mesajı ekle
                 await supabase
                     .from('notifications')
-                    .update({ is_read: true })
+                    .update({ 
+                        is_read: true,
+                        message: `${getPositionName(notification.position || '')} mevkisine kabul edildiniz`
+                    })
                     .eq('id', notification.id);
 
-                // Bildirim listesini güncelle
-                setNotifications(prev => prev.filter(n => n.id !== notification.id));
+                // Bildirim listesini güncelle - sadece is_read durumunu değiştir
+                setNotifications(prev => prev.map(n => 
+                    n.id === notification.id ? { ...n, is_read: true, message: `${getPositionName(notification.position || '')} mevkisine kabul edildiniz` } : n
+                ));
                 refresh();
 
                 // MatchDetails ekranını anında tetikle (local event) - küçük gecikme ile
@@ -277,17 +331,19 @@ export default function Notifications() {
                     }
                 }, 500); // 500ms gecikme
             } else {
-                // Katılım isteğini reddet - bildirimi güncelle (silme)
+                // Katılım isteğini reddet - bildirimi okundu olarak işaretle
                 await supabase
                     .from('notifications')
                     .update({ 
                         is_read: true,
-                        message: `${getPositionName(notification.position || '')} pozisyonunda katılım isteği reddedildi`
+                        message: `${getPositionName(notification.position || '')} mevkisine kabul edilmediniz`
                     })
                     .eq('id', notification.id);
 
-                // Bildirim listesini güncelle
-                setNotifications(prev => prev.filter(n => n.id !== notification.id));
+                // Bildirim listesini güncelle - sadece is_read durumunu değiştir
+                setNotifications(prev => prev.map(n => 
+                    n.id === notification.id ? { ...n, is_read: true, message: `${getPositionName(notification.position || '')} mevkisine kabul edilmediniz` } : n
+                ));
                 refresh();
                 
                 // Kısa bilgilendirme
@@ -299,6 +355,8 @@ export default function Notifications() {
     };
 
     const renderNotification = ({ item }: { item: Notification }) => {
+        console.log('Rendering notification:', item.type, item.id, item.sender_name);
+        
         // Tarih ve saat formatlama - Database'deki saati olduğu gibi göster
         const created = new Date(item.created_at);
         const formatted = created.toLocaleString('tr-TR', { 
@@ -311,47 +369,89 @@ export default function Notifications() {
         });
         
         if (item.type === 'follow_request') {
+            console.log('Rendering follow_request notification:', item.id);
             return (
-                <View className="bg-white rounded-lg p-4 mx-4 mt-3 shadow-sm flex-row items-center">
-                    {/* Profil Resmi */}
-                    <View className="mr-3">
-                        <Image
-                            source={item.sender_profile_image ? { uri: item.sender_profile_image } : require('@/assets/images/ball.png')}
-                            style={{ width: 72, height: 72, borderRadius: 36, resizeMode: 'cover' }}
-                        />
-                    </View>
-                {/* Bildirim Metni ve Butonlar */}
-                    <View className="flex-1 p-1">
-                        <Text className="text-gray-700 mb-3">
-                            <Text className="font-bold text-green-700">{item.sender_name} {item.sender_surname}</Text> {t('notifications.sentFollowRequest')}
-                        </Text>
-                        <View className="flex-row justify-between items-end mt-2">
-                            <Text className="text-xs font-bold text-green-700 bg-gray-200 px-2 py-1 rounded">
-                                {formatted}
+                <View className="bg-white rounded-lg mx-4 mt-3 shadow-sm">
+                    {/* Üst satır - Profil Resmi ve Bildirim Metni */}
+                    <View className="flex-row items-center p-4">
+                        {/* Profil Resmi */}
+                        <View className="mr-3">
+                            <Image
+                                source={item.sender_profile_image ? { uri: item.sender_profile_image } : require('@/assets/images/ball.png')}
+                                style={{ width: 72, height: 72, borderRadius: 36, resizeMode: 'cover', opacity: item.is_read ? 0.6 : 1 }}
+                            />
+                        </View>
+                        {/* Bildirim Metni */}
+                        <View className="flex-1 p-1">
+                            <Text className={`mb-3 ${item.is_read ? 'text-gray-500' : 'text-gray-700'}`}>
+                                <Text className={`font-bold ${item.is_read ? 'text-gray-600' : 'text-green-700'}`}>{item.sender_name} {item.sender_surname}</Text> {t('notifications.sentFollowRequest')}
                             </Text>
-                            <View className="flex-row justify-end space-x-2">
-                                <View className="flex-row mr-2">
-                                    <TouchableOpacity
-                                        onPress={() => handleFollowRequest(item, 'reject')}
-                                        className="bg-red-500 font-bold px-2 py-2 rounded"
-                                    >
-                                        <Text className="text-white">{t('general.reject')}</Text>
-                                    </TouchableOpacity>
-                                </View>
-                                <View className="flex-row">
-                                    <TouchableOpacity
-                                        onPress={() => handleFollowRequest(item, 'accept')}
-                                        className="bg-green-700 font-bold px-2 py-2 rounded"
-                                    >
-                                        <Text className="text-white">{t('general.accept')}</Text>
-                                    </TouchableOpacity>
-                                </View>
+                        </View>
+                    </View>
+                    
+                    {/* Alt satır - Tarih/Saat ve Butonlar */}
+                    <View className="px-4 pb-3">
+                        <View className="flex-row justify-between items-center">
+                            <View className="mr-3">
+                                <Text className={`text-xs font-bold px-2 py-1 rounded ${item.is_read ? 'text-gray-500 bg-gray-300' : 'text-green-700 bg-gray-200'}`}>
+                                    {formatted}
+                                </Text>
                             </View>
+                            {!item.is_read && (
+                                <View className="flex-row justify-end space-x-2">
+                                    <View className="flex-row mr-2">
+                                        <TouchableOpacity
+                                            onPress={() => handleFollowRequest(item, 'reject')}
+                                            className="bg-red-500 font-bold px-2 py-2 rounded"
+                                        >
+                                            <Text className="text-white">{t('general.reject')}</Text>
+                                        </TouchableOpacity>
+                                    </View>
+                                    <View className="flex-row">
+                                        <TouchableOpacity
+                                            onPress={() => handleFollowRequest(item, 'accept')}
+                                            className="bg-green-700 font-bold px-2 py-2 rounded"
+                                        >
+                                            <Text className="text-white">{t('general.accept')}</Text>
+                                        </TouchableOpacity>
+                                    </View>
+                                </View>
+                            )}
+                            {item.is_read && (
+                                <View className="mr-3">
+                                    <View className="text-xs font-bold text-gray-500 bg-gray-300 px-2 py-1 rounded text-right flex-row items-center justify-end">
+                                        <Text className="text-gray-500">
+                                            {item.message || 'İşlem Tamamlandı'}
+                                        </Text>
+                                        {item.message?.includes('kabul edildiniz') && (
+                                            <View className="ml-1 w-4 h-4 bg-green-600 rounded-full items-center justify-center">
+                                                <Text className="text-white text-xs font-bold">✓</Text>
+                                            </View>
+                                        )}
+                                        {item.message?.includes('kabul edilmediniz') && (
+                                            <View className="ml-1 w-4 h-4 bg-red-600 rounded-full items-center justify-center">
+                                                <Text className="text-white text-xs font-bold">✗</Text>
+                                            </View>
+                                        )}
+                                        {item.message?.includes('kabul edildi') && (
+                                            <View className="ml-1 w-4 h-4 bg-green-600 rounded-full items-center justify-center">
+                                                <Text className="text-white text-xs font-bold">✓</Text>
+                                            </View>
+                                        )}
+                                        {item.message?.includes('reddedildi') && (
+                                            <View className="ml-1 w-4 h-4 bg-red-600 rounded-full items-center justify-center">
+                                                <Text className="text-white text-xs font-bold">✗</Text>
+                                            </View>
+                                        )}
+                                    </View>
+                                </View>
+                            )}
                         </View>
                     </View>
                 </View>
             );
         } else if (item.type === 'join_request') {
+            console.log('Rendering join_request notification:', item.id);
             // Pozisyon kodlarını tam isimlere çevir
             const getPositionName = (positionCode: string) => {
                 switch (positionCode) {
@@ -369,67 +469,98 @@ export default function Notifications() {
                 'Bilinmiyor';
 
             return (
-                <View className="bg-white rounded-lg p-4 mx-4 mt-3 shadow-sm flex-row items-center">
-                    {/* Profil Resmi */}
-                    <TouchableOpacity 
-                        className="mr-3"
-                        onPress={() => {
-                            setViewingUserId(item.sender_id);
-                            setProfileModalVisible(true);
-                        }}
-                    >
-                        <Image
-                            source={item.sender_profile_image ? { uri: item.sender_profile_image } : require('@/assets/images/ball.png')}
-                            style={{ width: 72, height: 72, borderRadius: 36, resizeMode: 'cover' }}
-                        />
-                    </TouchableOpacity>
-                    {/* Bildirim Metni ve Butonlar */}
-                    <View className="flex-1 p-1 leading-snug">
-                        <View className="leading-snug">
-                            <Text className="text-gray-700 leading-6">
-                                <Text
-                                    className="font-bold text-green-700 leading-6"
-                                    onPress={() => {
-                                        setViewingUserId(item.sender_id);
-                                        setProfileModalVisible(true);
-                                    }}
-                                >
-                                    {item.sender_name} {item.sender_surname}
+                <View className="bg-white rounded-lg mx-4 mt-3 shadow-sm">
+                    {/* Üst satır - Profil Resmi ve Bildirim Metni */}
+                    <View className="flex-row items-center p-4">
+                        {/* Profil Resmi */}
+                        <TouchableOpacity 
+                            className="mr-3"
+                            onPress={() => {
+                                setViewingUserId(item.sender_id);
+                                setProfileModalVisible(true);
+                            }}
+                        >
+                            <Image
+                                source={item.sender_profile_image ? { uri: item.sender_profile_image } : require('@/assets/images/ball.png')}
+                                style={{ width: 72, height: 72, borderRadius: 36, resizeMode: 'cover', opacity: item.is_read ? 0.6 : 1 }}
+                            />
+                        </TouchableOpacity>
+                        {/* Bildirim Metni */}
+                        <View className="flex-1 p-1 leading-snug">
+                            <View className="leading-snug">
+                                <Text className={`leading-6 ${item.is_read ? 'text-gray-500' : 'text-gray-700'}`}>
+                                    <Text
+                                        className={`font-bold leading-6 ${item.is_read ? 'text-gray-600' : 'text-green-700'}`}
+                                        onPress={() => {
+                                            setViewingUserId(item.sender_id);
+                                            setProfileModalVisible(true);
+                                        }}
+                                    >
+                                        {item.sender_name} {item.sender_surname}
+                                    </Text>
+                                    <Text className={`leading-6 ${item.is_read ? 'text-gray-500' : 'text-gray-700'}`}> kullanıcısı senin </Text>
+                                    <Text className={`font-bold leading-6 ${item.is_read ? 'text-gray-600' : 'text-green-700'}`}>{matchInfo}</Text>
+                                    <Text className={`leading-6 ${item.is_read ? 'text-gray-500' : 'text-gray-700'}`}> maçın için </Text>
+                                    <Text className={`font-bold leading-6 ${item.is_read ? 'text-orange-500' : 'text-orange-600'}`}>{getPositionName(item.position || '')}</Text>
+                                    <Text className={`leading-6 ${item.is_read ? 'text-gray-500' : 'text-gray-700'}`}> pozisyonuna katılmak istiyor?</Text>
                                 </Text>
-                                <Text className="text-gray-700 leading-6"> kullanıcısı senin </Text>
-                                <Text className="font-bold text-green-700 leading-6">{matchInfo}</Text>
-                                <Text className="text-gray-700 leading-6"> maçın için </Text>
-                                <Text className="font-bold text-orange-600 leading-6">{getPositionName(item.position || '')}</Text>
-                                <Text className="text-gray-700 leading-6"> pozisyonunda katılmak istiyor?</Text>
-                            </Text>
-                        </View>
-                        <View className="flex-row justify-between items-end mt-2">
-                            <Text className="text-xs font-bold text-green-700 bg-gray-200 px-2 py-1 rounded">
-                                {formatted}
-                            </Text>
-                            <View className="flex-row justify-end space-x-2">
-                                <View className="flex-row mr-2">
-                                    <TouchableOpacity
-                                        onPress={() => handleJoinRequest(item, 'reject')}
-                                        className="bg-red-500 font-bold px-2 py-2 rounded"
-                                    >
-                                        <Text className="text-white">{t('general.reject')}</Text>
-                                    </TouchableOpacity>
-                                </View>
-                                <View className="flex-row">
-                                    <TouchableOpacity
-                                        onPress={() => handleJoinRequest(item, 'accept')}
-                                        className="bg-green-700 font-bold px-2 py-2 rounded"
-                                    >
-                                        <Text className="text-white">{t('general.accept')}</Text>
-                                    </TouchableOpacity>
-                                </View>
                             </View>
+                        </View>
+                    </View>
+                    
+                    {/* Alt satır - Tarih/Saat ve Butonlar */}
+                    <View className="px-4 pb-3">
+                        <View className="flex-row justify-between items-center">
+                            <View className="mr-3">
+                                <Text className={`text-xs font-bold px-2 py-1 rounded ${item.is_read ? 'text-gray-500 bg-gray-300' : 'text-green-700 bg-gray-200'}`}>
+                                    {formatted}
+                                </Text>
+                            </View>
+                            {!item.is_read && (
+                                <View className="flex-row justify-end space-x-2">
+                                    <View className="flex-row mr-2">
+                                        <TouchableOpacity
+                                            onPress={() => handleJoinRequest(item, 'reject')}
+                                            className="bg-red-500 font-bold px-2 py-2 rounded"
+                                        >
+                                            <Text className="text-white">{t('general.reject')}</Text>
+                                        </TouchableOpacity>
+                                    </View>
+                                    <View className="flex-row">
+                                        <TouchableOpacity
+                                            onPress={() => handleJoinRequest(item, 'accept')}
+                                            className="bg-green-700 font-bold px-2 py-2 rounded"
+                                        >
+                                            <Text className="text-white">{t('general.accept')}</Text>
+                                        </TouchableOpacity>
+                                    </View>
+                                </View>
+                            )}
+                            {item.is_read && (
+                                <View className="mr-3">
+                                    <View className="text-xs font-bold text-gray-500 bg-gray-300 px-2 py-1 rounded text-right flex-row items-center justify-end">
+                                        <Text className="text-gray-500">
+                                            {item.message || 'İşlem Tamamlandı'}
+                                        </Text>
+                                        {item.message?.includes('kabul edildiniz') && (
+                                            <View className="ml-1 w-4 h-4 bg-green-600 rounded-full items-center justify-center">
+                                                <Text className="text-white text-xs font-bold">✓</Text>
+                                            </View>
+                                        )}
+                                        {item.message?.includes('kabul edilmediniz') && (
+                                            <View className="ml-1 w-4 h-4 bg-red-600 rounded-full items-center justify-center">
+                                                <Text className="text-white text-xs font-bold">✗</Text>
+                                            </View>
+                                        )}
+                                    </View>
+                                </View>
+                            )}
                         </View>
                     </View>
                 </View>
             );
         }
+        console.log('Unknown notification type, returning null:', item.type, item.id);
         return null;
     };
 
@@ -441,27 +572,59 @@ export default function Notifications() {
         );
     }
 
+    // Gruplu bildirimleri render et
+    const renderGroupedNotifications = () => {
+        const groupedNotifications = groupNotificationsByDate(notifications);
+        console.log('Grouped notifications:', groupedNotifications);
+        
+        if (groupedNotifications.length === 0) {
+            return (
+                <View className="flex-1 justify-center items-center mt-4">
+                    <Text className="text-gray-500">{t('notifications.noNotificationsYet')}</Text>
+                </View>
+            );
+        }
+
+        return (
+            <>
+                {groupedNotifications.map(([groupName, groupNotifications]) => (
+                    <View key={groupName} className="mb-4">
+                        {/* Grup başlığı */}
+                        <View className="px-4 py-2 bg-green-600">
+                            <Text className="text-sm font-bold text-white">{groupName}</Text>
+                        </View>
+                        
+                        {/* Grup bildirimleri */}
+                        {groupNotifications.map((notification) => (
+                            <View key={notification.id}>
+                                {renderNotification({ item: notification })}
+                            </View>
+                        ))}
+                    </View>
+                ))}
+            </>
+        );
+    };
+
     // FlatList'te refreshControl ekle
     return (
         <View className="flex-1 bg-gray-100">
-           
-            <FlatList
-                data={notifications}
-                renderItem={renderNotification}
-                keyExtractor={(item) => item.id}
+            <ScrollView 
+                className="flex-1" 
                 contentContainerStyle={{ paddingBottom: 20 }}
-                ListEmptyComponent={
-                    <View className="flex-1 justify-center items-center mt-4">
-                        <Text className="text-gray-500">{t('notifications.noNotificationsYet')}</Text>
-                    </View>
+                refreshControl={
+                    <RefreshControl
+                        refreshing={refreshing}
+                        onRefresh={() => {
+                            setRefreshing(true);
+                            fetchNotifications();
+                            refresh();
+                        }}
+                    />
                 }
-                refreshing={refreshing}
-                onRefresh={() => {
-                    setRefreshing(true);
-                    fetchNotifications();
-                    refresh();
-                }}
-            />
+            >
+                {renderGroupedNotifications()}
+            </ScrollView>
             
             {/* Profil Modal */}
             {profileModalVisible && (

@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
-import { Text, View, ScrollView, RefreshControl, Alert, TouchableOpacity, Image } from "react-native";
+import { Text, View, ScrollView, RefreshControl, Alert, TouchableOpacity, Image, DeviceEventEmitter } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { supabase } from "@/services/supabase";
@@ -77,6 +77,20 @@ export default function Profile() {
       });
     }
   }, [modalVisible, editModalVisible, settingsModalVisible, listModalVisible]);
+
+  // CustomHeader başlık tıklaması ile modal'ları kapat
+  useEffect(() => {
+    const subscription = DeviceEventEmitter.addListener('closeModals', () => {
+      console.log('closeModals event alındı, profile modal\'ları kapatılıyor');
+      // Tüm modal'ları kapat
+      setModalVisible(false);
+      setEditModalVisible(false);
+      setSettingsModalVisible(false);
+      setListModalVisible(false);
+    });
+
+    return () => subscription.remove();
+  }, []);
 
   const [profileImage, setProfileImage] = useState({ uri: null });
   const [editUserData, setEditUserData] = useState<UserDataType | null>(null);

@@ -4,6 +4,7 @@ import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import CustomHeader from "@/components/CustomHeader";
 import * as Haptics from 'expo-haptics';
 import { useLanguage } from "@/contexts/LanguageContext";
+import { DeviceEventEmitter } from 'react-native';
 
 export default function TabsLayout() {
   const navigation = useNavigation();
@@ -11,6 +12,13 @@ export default function TabsLayout() {
   const { t } = useLanguage();
   const tabPressTimers = useRef<Record<string, NodeJS.Timeout>>({});
   const tabPressCounts = useRef<Record<string, number>>({});
+
+  // CustomHeader başlık tıklaması için fonksiyon
+  const handleTitlePress = () => {
+    console.log('Tab layout CustomHeader başlığına tıklandı');
+    // Modal'ları kapatmak için event gönder
+    DeviceEventEmitter.emit('closeModals');
+  };
 
   useEffect(() => {
     const unsubscribe = navigation.addListener("tabPress", (e) => {
@@ -81,7 +89,7 @@ export default function TabsLayout() {
         name="index"
         options={{
           tabBarLabel: t('home.findMatch'),
-          headerTitle: () => <CustomHeader title={t('home.title')} />,
+          headerTitle: () => <CustomHeader title={t('home.title')} onTitlePress={handleTitlePress} />,
           tabBarIcon: ({ focused, color, size }) => (
             <Ionicons name="search-outline" color={focused ? "green" : "#444444"} size={focused ? 30 : 20} />
           ),
@@ -91,7 +99,7 @@ export default function TabsLayout() {
         name="pitches"
         options={{
           tabBarLabel: t('pitches.title'),
-          headerTitle: () => <CustomHeader title={t('pitches.title')} />,
+          headerTitle: () => <CustomHeader title={t('pitches.title')} onTitlePress={handleTitlePress} />,
           tabBarIcon: ({ focused }) => (
             <Ionicons
               name="navigate-circle-outline"
@@ -105,7 +113,7 @@ export default function TabsLayout() {
         name="create"
         options={{
           tabBarLabel: t('create.title'),
-          headerTitle: () => <CustomHeader title={t('create.title')} />,
+          headerTitle: () => <CustomHeader title={t('create.title')} onTitlePress={handleTitlePress} />,
           tabBarIcon: ({ focused, color }) => (
             <MaterialIcons
               name="add-circle-outline"
@@ -119,7 +127,7 @@ export default function TabsLayout() {
         name="message"
         options={{
           tabBarLabel: t('messages.title'),
-          headerTitle: () => <CustomHeader title={t('messages.title')} />,
+          headerTitle: () => <CustomHeader title={t('messages.title')} onTitlePress={handleTitlePress} />,
           tabBarIcon: ({ focused, color }) => (
             <Ionicons
               name="paper-plane-outline"
@@ -133,7 +141,7 @@ export default function TabsLayout() {
         name="profile"
         options={{
           tabBarLabel: t('profile.title'),
-          headerTitle: () => <CustomHeader title={t('profile.title')} />,
+          headerTitle: () => <CustomHeader title={t('profile.title')} onTitlePress={handleTitlePress} />,
           tabBarIcon: ({ focused, color }) => (
             <Ionicons
               name="person-circle-outline"
@@ -147,7 +155,7 @@ export default function TabsLayout() {
         name="notifications"
         options={{
           tabBarLabel: t('notifications.title'),
-          headerTitle: () => <CustomHeader title={t('notifications.title')} />,
+          headerTitle: () => <CustomHeader title={t('notifications.title')} onTitlePress={handleTitlePress} />,
           href: null,
         }}
       />

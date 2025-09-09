@@ -3,7 +3,7 @@ import { View, TouchableOpacity, Text, Image, Dimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useNotification } from './NotificationContext';
-import { useRouter } from 'expo-router';
+import { useRouter, usePathname } from 'expo-router';
 import { useLanguage } from '@/contexts/LanguageContext';
 
 const screenWidth = Dimensions.get('window').width;
@@ -12,25 +12,41 @@ const screenWidth = Dimensions.get('window').width;
 interface CustomHeaderProps {
   title: string;
   showNotificationIcon?: boolean;
+  onTitlePress?: () => void;
 }
 
-const CustomHeader = ({ title, showNotificationIcon = true }: CustomHeaderProps) => {
+const CustomHeader = ({ title, showNotificationIcon = true, onTitlePress }: CustomHeaderProps) => {
   const router = useRouter();
+  const pathname = usePathname();
   const { count } = useNotification();
   const { t } = useLanguage();
+  
   const handleNotificationsPress = () => {
     router.push('/notifications');
   };
 
+  const handleTitlePress = () => {
+    console.log('CustomHeader başlığına tıklandı:', title);
+    console.log('Mevcut pathname:', pathname);
+    
+    // Eğer özel onTitlePress fonksiyonu varsa onu kullan
+    if (onTitlePress) {
+      onTitlePress();
+    } else {
+      // Varsayılan davranış: Mevcut sayfayı yeniden yükle (sayfanın başına döner)
+      router.replace(pathname as any);
+    }
+  };
+
   return (
-    <View className="flex-row justify-between items-center w-full -mx-0 ">
+    <View className="flex-row justify-between items-center w-full -mx-0">
       {/* Sol: Başlık */}
-      <View>
+      <TouchableOpacity onPress={handleTitlePress} activeOpacity={0.7}>
         <Text className="text-lg font-bold text-green-700">{title}</Text>
-      </View>
+      </TouchableOpacity>
 
       {/* Orta: Logo (mutlak konumda ortalanmış) */}
-      <View style={{
+      <View className='ml-1 mb-1' style={{
           position: 'absolute',
           left: screenWidth / 2 - 85, // yarı genişlik - yarı logo genişliği
         }}

@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback, useMemo } from 'react';
-import { View, Dimensions, Modal, TouchableOpacity } from "react-native";
+import { View, Dimensions, Modal, TouchableOpacity, DeviceEventEmitter } from "react-native";
 import { GestureHandlerRootView, GestureDetector, Gesture } from "react-native-gesture-handler";
 import { runOnJS } from "react-native-reanimated";
 import { useRouter, useFocusEffect, useLocalSearchParams } from "expo-router";
@@ -208,6 +208,27 @@ export default function Index() {
     router.setParams({ userId: undefined });
   }, [router]);
 
+  const handleCloseDetail = () => {
+    setSelectedMatch(null);
+  };
+
+  // CustomHeader başlık tıklaması ile modal'ları kapat
+  useEffect(() => {
+    const subscription = DeviceEventEmitter.addListener('closeModals', () => {
+      console.log('closeModals event alındı, modal\'lar kapatılıyor');
+      // MatchDetails modal'ını kapat
+      if (selectedMatch) {
+        handleCloseDetail();
+      }
+      // Profile modal'ını kapat
+      if (profileModalVisible) {
+        closeProfileModal();
+      }
+    });
+
+    return () => subscription.remove();
+  }, [selectedMatch, profileModalVisible, handleCloseDetail, closeProfileModal]);
+
   const fetchMatches = useCallback(async () => {
     setRefreshing(true);
     // Türkiye saati için düzeltme (UTC+3)
@@ -390,10 +411,6 @@ export default function Index() {
 
   const handleSelectMatch = (match: Match) => {
     setSelectedMatch(match);
-  };
-
-  const handleCloseDetail = () => {
-    setSelectedMatch(null);
   };
 
   const handleCreateMatch = () => {

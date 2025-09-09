@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ActivityIndicator, Alert, Platform, View } from "react-native";
+import { ActivityIndicator, Alert, Platform, View, DeviceEventEmitter } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { supabase } from "@/services/supabase";
 import haversine from "haversine";
@@ -11,13 +11,13 @@ import PitchesList from "@/components/pitches/PitchesList";
 
 export default function Pitches() {
   const { t } = useLanguage();
-  const [pitches, setPitches] = useState([]);
-  const [selectedPitch, setSelectedPitch] = useState(null);
+  const [pitches, setPitches] = useState<any[]>([]);
+  const [selectedPitch, setSelectedPitch] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [location, setLocation] = useState<{ latitude: number; longitude: number } | null>(null);
   const [locationText, setLocationText] = useState("Konum alınıyor...");
-  const [locationPermissionStatus, setLocationPermissionStatus] = useState(null);
+  const [locationPermissionStatus, setLocationPermissionStatus] = useState<string | null>(null);
 
   useEffect(() => {
     fetchPitches();
@@ -55,7 +55,7 @@ export default function Pitches() {
 
     if (userLat && userLon) {
       const sorted = data
-        .map((pitch) => ({
+        .map((pitch: any) => ({
           ...pitch,
           distance: haversine(
             { latitude: userLat, longitude: userLon },
@@ -63,7 +63,7 @@ export default function Pitches() {
             { unit: "km" }
           ),
         }))
-        .sort((a, b) => a.distance - b.distance);
+        .sort((a: any, b: any) => a.distance - b.distance);
       setPitches(sorted);
     } else {
       setPitches(data);
@@ -191,6 +191,23 @@ export default function Pitches() {
     await fetchPitches(location?.latitude, location?.longitude);
   };
 
+  const handleCloseDetail = () => {
+    setSelectedPitch(null);
+  };
+
+  // CustomHeader başlık tıklaması ile modal'ları kapat
+  useEffect(() => {
+    const subscription = DeviceEventEmitter.addListener('closeModals', () => {
+      console.log('closeModals event alındı, pitches modal\'ı kapatılıyor');
+      // Pitches modal'ını kapat
+      if (selectedPitch) {
+        handleCloseDetail();
+      }
+    });
+
+    return () => subscription.remove();
+  }, [selectedPitch]);
+
   if (loading) {
     return <ActivityIndicator size="large" color="green" className="flex-1 justify-center items-center" />;
   }
@@ -203,7 +220,7 @@ export default function Pitches() {
           pitches={pitches}
           selectedPitch={selectedPitch}
           setSelectedPitch={setSelectedPitch}
-          handleCloseDetail={() => setSelectedPitch(null)}
+          handleCloseDetail={handleCloseDetail}
           refreshing={refreshing}
           onRefresh={onRefresh}
         />
