@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback, useMemo } from 'react';
-import { View, Dimensions, Modal, TouchableOpacity, DeviceEventEmitter } from "react-native";
+import { View, Dimensions, Modal, TouchableOpacity, DeviceEventEmitter, Platform } from "react-native";
 import { GestureHandlerRootView, GestureDetector, Gesture } from "react-native-gesture-handler";
 import { runOnJS } from "react-native-reanimated";
 import { useRouter, useFocusEffect, useLocalSearchParams } from "expo-router";
@@ -160,14 +160,18 @@ export default function Index() {
   // Yükseklik hesaplama fonksiyonu
   const calculateHeight = useCallback(() => {
     const calculatedHeight = (() => {
-      if (futureMatches.length === 0) return headerHeight + 90; // Boş durum için ekstra alan
+      if (futureMatches.length === 0) {
+        // Android için daha fazla yükseklik gerekiyor
+        const emptyStateHeight = Platform.OS === 'android' ? 100 : 90;
+        return headerHeight + emptyStateHeight + 16; // Boş durum için başlık + buton + boşluk + mb-8 (32px)
+      }
       if (futureMatches.length === 1) return headerHeight + itemHeight + 22; // 1 maç + padding
       if (futureMatches.length === 2) return headerHeight + (itemHeight * 2) + 25; // 2 maç + padding
       // 3 veya daha fazla maç varsa 2 maç + daha fazla padding + header
       return headerHeight + (itemHeight * 2) + 30; // 80px padding ekledik
     })();
     
-    console.log('Yükseklik hesaplandı:', calculatedHeight, 'Maç sayısı:', futureMatches.length);
+    console.log('Yükseklik hesaplandı:', calculatedHeight, 'Maç sayısı:', futureMatches.length, 'Platform:', Platform.OS);
     setMyMatchesHeight(calculatedHeight);
   }, [futureMatches.length, headerHeight, itemHeight]);
 

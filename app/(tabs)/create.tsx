@@ -292,12 +292,12 @@ export default function CreateMatch() {
       </View>
 
       {/* Maç Oluştur Butonu - En altta */}
-      <View className="mt-8">
+      <View className={`mt-2 ${isSquadIncomplete ? (Platform.OS === 'android' ? 'mb-8' : 'mb-4') : 'mb-0'}`}>
         <TouchableOpacity
           className="bg-green-600 rounded p-3"
           onPress={handleCreateMatch}
         >
-                          <Text className="text-white font-bold text-center">{t('create.createMatch')}</Text>
+            <Text className="text-white font-bold text-center">{t('create.createMatch')}</Text>
         </TouchableOpacity>
       </View>
     </ScrollView>

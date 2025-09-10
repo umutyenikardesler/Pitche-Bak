@@ -790,7 +790,20 @@ export default function MatchDetails({ match, onClose, onOpenProfilePreview }: M
 
   return (
     <ScrollView
-      contentContainerStyle={{ flexGrow: 1 }}
+      contentContainerStyle={{ 
+        flexGrow: 1,
+        paddingBottom: 0
+      }}
+      showsVerticalScrollIndicator={true}
+      nestedScrollEnabled={true}
+      bounces={true}
+      scrollEnabled={true}
+      keyboardShouldPersistTaps="handled"
+      removeClippedSubviews={false}
+      scrollEventThrottle={16}
+      decelerationRate="normal"
+      alwaysBounceVertical={false}
+      overScrollMode="auto"
     >
       <View className="flex-1 bg-white p-4 rounded-lg m-3 shadow-lg">
         <View className="flex-row mb-3 justify-center items-center bg-green-100 border-2 border-green-300 rounded-lg py-3 px-2">
@@ -823,7 +836,12 @@ export default function MatchDetails({ match, onClose, onOpenProfilePreview }: M
         </View>
 
         <View>
-          <Text className="text-xl font-semibold text-green-700 text-center mt-3 mb-2">{t('home.missingSquads')}</Text>
+          <Text className="text-xl font-semibold text-green-700 text-center mt-3">
+            {t('home.missingSquads')}
+          </Text>
+          <Text className="text-base font-semibold text-center mb-2">
+            ( Kaleci: <Text className="text-red-500 font-bold">K</Text>, Defans: <Text className="text-blue-700 font-bold">D</Text>, Orta Saha: <Text className="text-green-700 font-bold">O</Text>, Forvet: <Text className="text-yellow-600 font-bold">F</Text> )
+          </Text>
         </View>
 
         {/* Eksik Kadrolar */}
@@ -839,7 +857,7 @@ export default function MatchDetails({ match, onClose, onOpenProfilePreview }: M
             return (
               <View key={index} className="flex-row items-center mx-1 mb-2">
                 <TouchableOpacity
-                  className={`flex-row items-center border-solid border-2 rounded-full p-1 ${
+                  className={`flex-row items-center border-solid border-2 rounded-full p-1.5 ${
                     isSent ? 'border-green-500 bg-green-100' : 
                     isAcceptedPosition ? 'border-blue-500 bg-blue-100' :
                     (hasAnyRequest || hasAcceptedPosition) ? 'border-gray-300 bg-gray-100' : 'border-gray-500'
@@ -847,13 +865,13 @@ export default function MatchDetails({ match, onClose, onOpenProfilePreview }: M
                   onPress={() => !isOwner && handlePositionRequest(position)}
                   disabled={isOwner || isLoading}
                 >
-                  <View className={`rounded-full py-1 px-1 mr-0.5 ${position === 'K' ? 'bg-red-500'
+                  <View className={`rounded-full py-1.5 px-1.5 ${position === 'K' ? 'bg-red-500'
                     : position === 'D' ? 'bg-blue-700'
                       : position === 'O' ? 'bg-green-700'
                         : 'bg-yellow-600'}`}>
-                    <Text className="text-white font-bold text-xs px-0.5">{getPositionName(position)}</Text>
+                    <Text className="text-white font-bold textlg px-2">{position}</Text>
                   </View>
-                  <Text className="ml-0.5 font-semibold pr-0.5 text-ml">x {count}</Text>
+                  <Text className="ml-1 font-semibold pr-1 text-lg">x {count}</Text>
                 </TouchableOpacity>
               </View>
             );
@@ -944,7 +962,7 @@ export default function MatchDetails({ match, onClose, onOpenProfilePreview }: M
 
         {/* Dropdown içeriği */}
         {isPitchSummaryExpanded && (
-          <View>
+          <View style={{ minHeight: 200 }}>
             {(() => {
               const pitch = Array.isArray(match.pitches) ? match.pitches[0] : match.pitches;
               return pitch?.latitude && pitch?.longitude ? (
@@ -1006,15 +1024,15 @@ export default function MatchDetails({ match, onClose, onOpenProfilePreview }: M
           </View>
         )}
 
-        {/* Geri Dön butonu - Sayfanın en altında sabit */}
-        <View className="absolute bottom-0 left-0 right-0 bg-white p-4">
-          <TouchableOpacity className="w-full items-center bg-green-700 p-2 rounded-lg" onPress={onClose}>
+        {/* ScrollView için alt padding - butonun altında kalmaması için */}
+        <View className="h-20"></View>
+        
+        {/* Geri Dön butonu - ScrollView içinde sabit */}
+        <View className="absolute bottom-0 left-0 right-0 bg-white py-2 mr-8 ml-1">
+          <TouchableOpacity className="w-full items-center bg-green-700 p-3 rounded-lg m-3" onPress={onClose}>
             <Text className="text-white font-bold text-lg">{t('general.back')}</Text>
           </TouchableOpacity>
         </View>
-        
-        {/* ScrollView için alt padding - butonun altında kalmaması için */}
-        <View className="h-20"></View>
       </View>
     </ScrollView>
   );

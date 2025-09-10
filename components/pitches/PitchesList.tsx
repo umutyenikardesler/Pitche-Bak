@@ -1,6 +1,6 @@
 import { FlatList, RefreshControl, ScrollView, Text, TouchableOpacity, View, Platform } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import MapView, { Marker } from "react-native-maps";
+import MapView, { Marker, UrlTile, PROVIDER_GOOGLE } from "react-native-maps";
 import { GestureDetector, Gesture } from "react-native-gesture-handler";
 import { runOnJS } from "react-native-reanimated";
 import { useRouter } from "expo-router"; // Router'ı getir
@@ -78,98 +78,126 @@ export default function PitchesList({ pitches, selectedPitch, setSelectedPitch, 
     });
   };
 
-  const swipeGesture = Gesture.Pan().onUpdate((event) => {
-    if (event.translationX > 100) {
-      runOnJS(handleCloseDetail)();
-    }
-  });
+  const swipeGesture = Gesture.Pan()
+    .activeOffsetX([-40, 40])
+    .failOffsetY([-10, 10])
+    .onUpdate((event) => {
+      if (event.translationX > 100) {
+        runOnJS(handleCloseDetail)();
+      }
+    });
 
   const featuresArray = selectedPitch?.features || [];
 
   if (selectedPitch) {
     return (
       <>
-        <GestureDetector gesture={swipeGesture}>
-          <View className="flex-1">
-            <ScrollView
-              style={{ flex: 1 }}
-              contentContainerStyle={{ 
-                paddingBottom: Platform.OS === 'android' ? 100 : 0,
-                flexGrow: 1
-              }}
-              showsVerticalScrollIndicator={true}
-              nestedScrollEnabled={true}
-              bounces={Platform.OS === 'ios'}
-              scrollEnabled={true}
-              keyboardShouldPersistTaps="handled"
-            >
-              <View className="bg-white rounded-lg my-3 mx-4 p-4 shadow-md">
+        <ScrollView
+            style={{ flex: 1 }}
+            contentContainerStyle={{ 
+              flexGrow: 1,
+              paddingBottom: Platform.OS === 'android' ? 100 : 0
+            }}
+            showsVerticalScrollIndicator={true}
+            nestedScrollEnabled={false}
+            bounces={true}
+            scrollEnabled={true}
+            keyboardShouldPersistTaps="handled"
+            removeClippedSubviews={false}
+            scrollEventThrottle={16}
+            decelerationRate="normal"
+            alwaysBounceVertical={false}
+            overScrollMode="auto"
+          >
+          <GestureDetector gesture={swipeGesture}>
+            <View className="bg-white rounded-lg my-3 mx-4 p-4 shadow-md">
                 <View className="flex flex-col items-center">
-                <Text className="text-xl font-bold text-green-700 text-center mb-2">{t('pitches.pitchSummary')}</Text>
+                  <Text className="text-xl font-bold text-green-700 text-center mb-2">{t('pitches.pitchSummary')}</Text>
 
-                {selectedPitch.latitude && selectedPitch.longitude && Platform.OS !== "web" && (
-                  <View className="w-full h-48 rounded-lg overflow-hidden my-2">
-                    <MapView
-                      style={{ width: "100%", height: "100%" }}
-                      initialRegion={{
-                        latitude: selectedPitch.latitude,
-                        longitude: selectedPitch.longitude,
-                        latitudeDelta: 0.01,
-                        longitudeDelta: 0.01,
-                      }}
-                    >
-                      <Marker coordinate={{ latitude: selectedPitch.latitude, longitude: selectedPitch.longitude }} title={selectedPitch.name} />
-                    </MapView>
+                  {selectedPitch.latitude && selectedPitch.longitude && Platform.OS !== "web" && (
+                    <View className="w-full h-48 rounded-lg overflow-hidden my-2">
+                      <MapView
+                        {...(Platform.OS === 'android' ? { provider: PROVIDER_GOOGLE, liteMode: true } : {})}
+                        style={{ width: "100%", height: "100%" }}
+                        initialRegion={{
+                          latitude: selectedPitch.latitude,
+                          longitude: selectedPitch.longitude,
+                          latitudeDelta: Platform.OS === 'android' ? 0.004 : 0.01,
+                          longitudeDelta: Platform.OS === 'android' ? 0.004 : 0.01,
+                        }}
+                        mapType="standard"
+                        showsUserLocation={false}
+                        showsMyLocationButton={false}
+                        showsCompass={false}
+                        showsScale={false}
+                        showsBuildings={true}
+                        showsTraffic={false}
+                        showsIndoors={true}
+                        loadingEnabled={false}
+                        cacheEnabled={Platform.OS === 'android'}
+                        moveOnMarkerPress={false}
+                        scrollEnabled={false}
+                        zoomEnabled={false}
+                        pitchEnabled={false}
+                        rotateEnabled={false}
+                        toolbarEnabled={false}
+                      >
+                        <Marker 
+                          coordinate={{ latitude: selectedPitch.latitude, longitude: selectedPitch.longitude }} 
+                          title={selectedPitch.name}
+                          pinColor="red"
+                        />
+                      </MapView>
+                    </View>
+                  )}
+
+                  <View>
+                    <Text className="h-7 text-xl text-green-700 font-semibold text-center mt-4">{selectedPitch.name}</Text>
                   </View>
-                )}
 
-                <View>
-                  <Text className="h-7 text-xl text-green-700 font-semibold text-center mt-4">{selectedPitch.name}</Text>
-                </View>
-
-                <View>
-                  <Text className="h-7 text-lg font-semibold text-green-700 text-center mt-4">{t('pitches.openAddress')}</Text>
-                  <View className="flex-row justify-center items-center pt-1">
-                    <Ionicons name="location-outline" size={20} color="green" />
-                    <Text className="pl-2 text-gray-700 font-semibold">{selectedPitch.address}</Text>
+                  <View>
+                    <Text className="h-7 text-lg font-semibold text-green-700 text-center mt-4">{t('pitches.openAddress')}</Text>
+                    <View className="flex-row justify-center items-center pt-1">
+                      <Ionicons name="location-outline" size={20} color="green" />
+                      <Text className="pl-2 text-gray-700 font-semibold">{selectedPitch.address}</Text>
+                    </View>
                   </View>
-                </View>
 
-                <View>
-                  <Text className="h-7 text-lg font-semibold text-green-700 text-center mt-4">{t('pitches.pitchPrice')}</Text>
-                  <View className="flex-row justify-center items-center pt-1">
-                    <Ionicons name="wallet-outline" size={18} color="green" />
-                    <Text className="pl-2 text-gray-700 font-semibold">{selectedPitch.price} ₺</Text>
+                  <View>
+                    <Text className="h-7 text-lg font-semibold text-green-700 text-center mt-4">{t('pitches.pitchPrice')}</Text>
+                    <View className="flex-row justify-center items-center pt-1">
+                      <Ionicons name="wallet-outline" size={18} color="green" />
+                      <Text className="pl-2 text-gray-700 font-semibold">{selectedPitch.price} ₺</Text>
+                    </View>
                   </View>
-                </View>
 
-                <View>
-                  <Text className="text-lg font-semibold text-green-700 text-center mt-3 mb-2">{t('pitches.pitchFeatures')}</Text>
-                  <View className="flex-row flex-wrap justify-center">
-                    {featuresArray.map((feature, index) => (
-                      <View key={index} className={`${featuresArray.length === 1 ? 'w-auto' : 'w-1/2'}  mb-1`} >
-                        <View className="flex-row p-2 bg-green-700 rounded mr-1 items-center justify-center">
-                          <Ionicons name="checkmark-circle-outline" size={16} color="white" />
-                          <Text className="text-white pl-1">{feature}</Text>
+                  <View>
+                    <Text className="text-lg font-semibold text-green-700 text-center mt-3 mb-2">{t('pitches.pitchFeatures')}</Text>
+                    <View className="flex-row flex-wrap justify-center">
+                      {featuresArray.map((feature, index) => (
+                        <View key={index} className={`${featuresArray.length === 1 ? 'w-auto' : 'w-1/2'}  mb-1`} >
+                          <View className="flex-row p-2 bg-green-700 rounded mr-1 items-center justify-center">
+                            <Ionicons name="checkmark-circle-outline" size={16} color="white" />
+                            <Text className="text-white pl-1">{feature}</Text>
+                          </View>
                         </View>
-                      </View>
-                    ))}
+                      ))}
+                    </View>
                   </View>
-                </View>
 
-                {/* Geri Dön butonu - HALI SAHA ÖZETİ içinde */}
-                <View className="mt-6 mb-1 w-full">
-                  <TouchableOpacity className="w-full items-center bg-green-700 px-2 py-2 rounded-lg" onPress={handleCloseDetail}>
-                    <Text className="text-white font-bold text-lg">{t('general.back')}</Text>
-                  </TouchableOpacity>
-                </View>
+                  {/* Geri Dön butonu - HALI SAHA ÖZETİ içinde */}
+                  <View className="mt-6 mb-1 w-full">
+                    <TouchableOpacity className="w-full items-center bg-green-700 px-2 py-2 rounded-lg" onPress={handleCloseDetail}>
+                      <Text className="text-white font-bold text-lg">{t('general.back')}</Text>
+                    </TouchableOpacity>
+                  </View>
                 </View>
               </View>
-            </ScrollView>
-          </View>
-        </GestureDetector>
+            </GestureDetector>
+        </ScrollView>
 
         <Animated.View
+          pointerEvents="box-none"
           style={[
             animatedStyle,
             {

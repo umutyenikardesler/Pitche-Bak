@@ -59,6 +59,10 @@ export default function EditProfileModal({
     onEditUserDataChange({ ...editUserData, [field]: parsedValue });
   };
 
+
+
+
+
   return (
     <Modal
       visible={visible}
@@ -83,53 +87,76 @@ export default function EditProfileModal({
                   {t("profile.completePersonalInfo")}
                 </Text>
 
-                <TextInput
-                  placeholder={t("profile.name")}
-                  value={editUserData?.name || ""}
-                  onChangeText={(text) => handleInputChange("name", text)}
-                  className="border border-gray-300 rounded p-2 mb-2"
-                />
-                <TextInput
-                  placeholder={t("profile.surname")}
-                  value={editUserData?.surname || ""}
-                  onChangeText={(text) => handleInputChange("surname", text)}
-                  className="border border-gray-300 rounded p-2 mb-2"
-                />
-                <TextInput
-                  placeholder={t("profile.age")}
-                  value={editUserData?.age?.toString() || ""}
-                  onChangeText={(text) => handleInputChange("age", text)}
-                  className="border border-gray-300 rounded p-2 mb-2"
-                  keyboardType="numeric"
-                />
-                <TextInput
-                  placeholder={t("profile.height")}
-                  value={editUserData?.height?.toString() || ""}
-                  onChangeText={(text) => handleInputChange("height", text)}
-                  className="border border-gray-300 rounded p-2 mb-2"
-                  keyboardType="numeric"
-                />
-                <TextInput
-                  placeholder={t("profile.weight")}
-                  value={editUserData?.weight?.toString() || ""}
-                  onChangeText={(text) => handleInputChange("weight", text)}
-                  className="border border-gray-300 rounded p-2 mb-2"
-                  keyboardType="numeric"
-                />
-                <TextInput
-                  placeholder={t("profile.description")}
-                  value={editUserData?.description || ""}
-                  onChangeText={(text) => handleInputChange("description", text)}
-                  className="border border-gray-300 rounded p-2 mb-2"
-                  multiline
-                />
+                <View className="flex-row items-center mb-2">
+                  <Text className="text-green-700 font-bold w-20">Ad:</Text>
+                  <TextInput
+                    placeholder={t("profile.name")}
+                    value={editUserData?.name || ""}
+                    onChangeText={(text) => handleInputChange("name", text)}
+                    className="border border-gray-300 rounded p-2 flex-1 ml-2"
+                  />
+                </View>
+                
+                <View className="flex-row items-center mb-2">
+                  <Text className="text-green-700 font-bold w-20">Soyad:</Text>
+                  <TextInput
+                    placeholder={t("profile.surname")}
+                    value={editUserData?.surname || ""}
+                    onChangeText={(text) => handleInputChange("surname", text)}
+                    className="border border-gray-300 rounded p-2 flex-1 ml-2"
+                  />
+                </View>
+                
+                <View className="flex-row items-center mb-2">
+                  <Text className="text-green-700 font-bold w-20">Yaş:</Text>
+                  <TextInput
+                    placeholder={t("profile.age")}
+                    value={editUserData?.age?.toString() || ""}
+                    onChangeText={(text) => handleInputChange("age", text)}
+                    className="border border-gray-300 rounded p-2 flex-1 ml-2"
+                    keyboardType="numeric"
+                  />
+                </View>
+                
+                <View className="flex-row items-center mb-2">
+                  <Text className="text-green-700 font-bold w-20">Boy:</Text>
+                  <TextInput
+                    placeholder={t("profile.height")}
+                    value={editUserData?.height?.toString() || ""}
+                    onChangeText={(text) => handleInputChange("height", text)}
+                    className="border border-gray-300 rounded p-2 flex-1 ml-2"
+                    keyboardType="numeric"
+                  />
+                </View>
+                
+                <View className="flex-row items-center mb-2">
+                  <Text className="text-green-700 font-bold w-20">Kilo (kg):</Text>
+                  <TextInput
+                    placeholder={t("profile.weight")}
+                    value={editUserData?.weight?.toString() || ""}
+                    onChangeText={(text) => handleInputChange("weight", text)}
+                    className="border border-gray-300 rounded p-2 flex-1 ml-2"
+                    keyboardType="numeric"
+                  />
+                </View>
+                
+                <View className="flex-row items-center mb-2">
+                  <Text className="text-green-700 font-bold w-20">Mevki:</Text>
+                  <TextInput
+                    placeholder={t("profile.description")}
+                    value={editUserData?.description || ""}
+                    onChangeText={(text) => handleInputChange("description", text)}
+                    className="border border-gray-300 rounded p-2 flex-1 ml-2"
+                    multiline
+                  />
+                </View>
 
                 <View className="flex-row justify-between mt-3">
                   <TouchableOpacity
                     className="bg-red-500 p-2 rounded-lg"
                     onPress={onClose}
                   >
-                    <Text className="text-white font-semibold">
+                    <Text className="text-white font-semibold text-lg px-8">
                       {t("general.cancel")}
                     </Text>
                   </TouchableOpacity>
@@ -137,7 +164,7 @@ export default function EditProfileModal({
                     className="bg-green-600 p-2 rounded-lg"
                     onPress={onSave}
                   >
-                    <Text className="text-white font-semibold">
+                    <Text className="text-white font-semibold text-lg px-4">
                       {t("general.save")}
                     </Text>
                   </TouchableOpacity>

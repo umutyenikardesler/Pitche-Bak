@@ -44,7 +44,7 @@ const translations = {
     'home.conditionFirst5Complete': 'İlk 5 maçını tamamladın. Spor yapmaya devam ☺️',
     'home.conditionAchieved': 'Gerekli kondisyonu kazandın. Sağlıklı günler 👏',
     'home.matchSummary': 'MAÇ ÖZETİ',
-    'home.missingSquads': 'Eksik Kadrolar',
+    'home.missingSquads': 'Eksik Mevkiler',
     'home.matchCreatedBy': 'Maçı oluşturan:',
     'home.pitchSummary': 'HALI SAHA ÖZETİ',
     'home.openAddress': 'Açık Adres',

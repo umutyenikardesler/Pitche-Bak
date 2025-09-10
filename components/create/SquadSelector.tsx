@@ -85,10 +85,10 @@ export const SquadSelector: React.FC<SquadSelectorProps> = ({
   );
 
   return (
-    <View className="mb-4">
+    <View className="mb-2">
       {/* Maç Formatı Seçimi */}
       <View className="mb-4">
-        <Text className="text-green-700 font-semibold mb-2">Maç Kaç Kişi ile Yapılsın? </Text>
+        <Text className="text-green-700 font-semibold mb-3">Maç Kaç Kişi ile Yapılsın? </Text>
         <View className="flex-row justify-between">
           {['5-5', '6-6', '7-7'].map((format) => (
             <TouchableOpacity
