@@ -1016,7 +1016,7 @@ export default function Profile() {
             }}
           />
         </View>
-        <View className="flex pb-4 mt-auto">
+        <View className="flex pb-4">
           <View className="flex-row mx-4">
             <TouchableOpacity
               onPress={() => {

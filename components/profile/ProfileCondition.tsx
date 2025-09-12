@@ -42,11 +42,11 @@ export default function ProfileCondition({ matchCount = 0 }) {
 
   return (
     <View>
-      <View className="flex-row mt-2 px-3 justify-center items-center">
+      <View className="flex-row mt-2 mb-2 px-3 justify-center items-center">
         <Ionicons name="accessibility" size={16} color="green" className="pl-2" />
-        <Text className="font-bold text-green-700 text-center"> {t('profile.condition')} </Text>
+        <Text className="font-bold text-green-700 text-center "> {t('profile.condition')} </Text>
       </View>
-      <View className="bg-white rounded-lg mx-4 my-3 p-3 shadow-md">
+      <View className="bg-white rounded-lg mx-4 p-3 shadow-md">
         <View className="w-full flex-row items-center mb-2">
           <View className="" style={{ flex: 1, height: 12, backgroundColor: '#e5e7eb', borderRadius: 9999, overflow: 'hidden' }}>
             <View className="" style={{ height: '100%', backgroundColor: '#16a34a', width: `${progress}%` }} />

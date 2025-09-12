@@ -1,19 +1,19 @@
 import { Tabs, useNavigation, useRouter } from "expo-router";
-import { useEffect, useRef } from "react";
+import { useRef } from "react";
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import CustomHeader from "@/components/CustomHeader";
 import * as Haptics from 'expo-haptics';
 import { useLanguage } from "@/contexts/LanguageContext";
-import { DeviceEventEmitter, Platform } from 'react-native';
+import { DeviceEventEmitter, Platform, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function TabsLayout() {
   const navigation = useNavigation();
   const router = useRouter();
   const { t } = useLanguage();
+  const insets = useSafeAreaInsets();
   const tabPressTimers = useRef<Record<string, NodeJS.Timeout>>({});
   const tabPressCounts = useRef<Record<string, number>>({});
-  const insets = useSafeAreaInsets();
 
   // CustomHeader başlık tıklaması için fonksiyon
   const handleTitlePress = () => {
@@ -22,106 +22,88 @@ export default function TabsLayout() {
     DeviceEventEmitter.emit('closeModals');
   };
 
-  // Çift dokunma özelliğini geçici olarak devre dışı bırakıyoruz
-  // useEffect(() => {
-  //   const unsubscribe = navigation.addListener("tabPress" as any, (e) => {
-  //     const state = navigation.getState();
-  //     if (!state || !state.routes || state.index === undefined) return;
-  //     const currentRoute = state.routes[state.index];
-  //     if (!currentRoute) return;
-  //     const currentTab = currentRoute.name;
-  //     const currentPath = currentRoute.path;
-
-  //     // Eğer zaten bir timer varsa temizle
-  //     if (tabPressTimers.current[currentTab]) {
-  //       clearTimeout(tabPressTimers.current[currentTab]);
-  //     }
-
-  //     // Sayımı artır
-  //     tabPressCounts.current[currentTab] = (tabPressCounts.current[currentTab] || 0) + 1;
-
-  //     // Yeni bir timer başlat
-  //     tabPressTimers.current[currentTab] = setTimeout(() => {
-  //       tabPressCounts.current[currentTab] = 0;
-  //     }, 800) as unknown as NodeJS.Timeout; // 800ms içinde ikinci basış algılanmazsa sıfırla
-
-  //     // Eğer ikinci basış ise
-  //     if (tabPressCounts.current[currentTab] === 2) {
-  //       // Titreşim efekti ver
-  //       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-        
-  //       // Ana sayfaya dön
-  //       if (currentTab === "index") {
-  //         // Eğer zaten ana sayfada değilsek veya detay sayfasındaysak
-  //         if (currentPath !== "/" && currentPath !== "/index") {
-  //           router.replace("/");
-  //         }
-  //       } else {
-  //         // Diğer tab'lar için de aynı mantık
-  //         if (currentTab === 'create') {
-  //           router.replace('/(tabs)/create');
-  //         } else if (currentTab === 'pitches') {
-  //           router.replace('/(tabs)/pitches');
-  //         } else if (currentTab === 'message') {
-  //           router.replace('/(tabs)/message');
-  //         } else if (currentTab === 'profile') {
-  //           router.replace('/(tabs)/profile');
-  //         }
-  //       }
-        
-  //       // Sayacı sıfırla
-  //       tabPressCounts.current[currentTab] = 0;
-  //     }
-  //   });
-
-  //   return unsubscribe;
-  // }, [navigation, router]);
+  // Tab bar stilleri
+  const tabBarStyles = StyleSheet.create({
+    tabBar: {
+      backgroundColor: "#ffffff",
+      height: Platform.OS === 'ios' ? 52 + insets.bottom : 120,
+      paddingBottom: Platform.OS === 'ios' ? Math.max(insets.bottom, 8) : 68,
+      paddingTop: 8,
+      elevation: 8,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: -2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 4
+    },
+    tabBarBg: {
+      flex: 1,
+      backgroundColor: '#ffffff'
+    },
+    tabBarTopLine: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      height: 3,
+      backgroundColor: '#16a34a'
+    },
+    tabBarLabel: {
+      fontWeight: "700",
+      fontSize: 10.5,
+      marginTop: 2,
+      letterSpacing: 0.2
+    },
+    tabBarItem: {
+      paddingVertical: 2,
+      paddingHorizontal: 0,
+      minWidth: 0,
+      marginHorizontal: 0
+    }
+  });
 
   return (
-    <Tabs
-      screenOptions={{
-        tabBarStyle: { 
-          backgroundColor: "#ffffff",
-          borderTopWidth: 4,
-          borderTopColor: "#16a34a",
-          minHeight: Platform.OS === 'ios' ? 70 : 50,
-          paddingBottom: Platform.OS === 'ios' ? 0 : 0,
-          paddingTop: 0,
-          elevation: 0,
-          shadowOpacity: 0
-        },
-        tabBarActiveTintColor: "green",
-        tabBarInactiveTintColor: "#444444",
-        tabBarLabelStyle: { fontWeight: "700" },
-        tabBarItemStyle: {
-          paddingVertical: 2
-        },
-        tabBarHideOnKeyboard: false,
-        tabBarAllowFontScaling: false,
-        tabBarPressColor: 'rgba(22, 163, 74, 0.1)',
-        tabBarPressOpacity: 0.7
-      }}
-    >
+    <Tabs>
       <Tabs.Screen
         name="index"
         options={{
+          tabBarActiveTintColor: "#059669",
+          tabBarInactiveTintColor: "#374151",
+          tabBarStyle: tabBarStyles.tabBar,
+          tabBarItemStyle: tabBarStyles.tabBarItem,
+          tabBarBackground: () => (
+            <View style={tabBarStyles.tabBarBg} pointerEvents="none">
+              <View style={tabBarStyles.tabBarTopLine} />
+            </View>
+          ),
           tabBarLabel: t('home.findMatch'),
+          tabBarLabelStyle: [tabBarStyles.tabBarLabel, { marginTop: 4 }],
           headerTitle: () => <CustomHeader title={t('home.title')} onTitlePress={handleTitlePress} />,
           tabBarIcon: ({ focused, color, size }) => (
-            <Ionicons name="search-outline" color={focused ? "green" : "#444444"} size={focused ? 30 : 20} />
+            <Ionicons name="search-outline" color={color as string} size={focused ? 28 : 22} style={{ marginTop: 2 }} />
           ),
         }}
       />
       <Tabs.Screen
         name="pitches"
         options={{
+          tabBarActiveTintColor: "#059669",
+          tabBarInactiveTintColor: "#374151",
+          tabBarStyle: tabBarStyles.tabBar,
+          tabBarItemStyle: tabBarStyles.tabBarItem,
+          tabBarBackground: () => (
+            <View style={tabBarStyles.tabBarBg} pointerEvents="none">
+              <View style={tabBarStyles.tabBarTopLine} />
+            </View>
+          ),
           tabBarLabel: t('pitches.title'),
+          tabBarLabelStyle: [tabBarStyles.tabBarLabel, { marginTop: 4 }],
           headerTitle: () => <CustomHeader title={t('pitches.title')} onTitlePress={handleTitlePress} />,
-          tabBarIcon: ({ focused }) => (
+          tabBarIcon: ({ focused, color }) => (
             <Ionicons
               name="navigate-circle-outline"
-              color={focused ? "green" : "#444444"}
-              size={focused ? 30 : 20}
+              color={color as string}
+              size={focused ? 28 : 22}
+              style={{ marginTop: 2 }}
             />
           ),
         }}
@@ -129,13 +111,24 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="create"
         options={{
+          tabBarActiveTintColor: "#059669",
+          tabBarInactiveTintColor: "#374151",
+          tabBarStyle: tabBarStyles.tabBar,
+          tabBarItemStyle: tabBarStyles.tabBarItem,
+          tabBarBackground: () => (
+            <View style={tabBarStyles.tabBarBg} pointerEvents="none">
+              <View style={tabBarStyles.tabBarTopLine} />
+            </View>
+          ),
           tabBarLabel: t('create.title'),
+          tabBarLabelStyle: [tabBarStyles.tabBarLabel, { marginTop: 4 }],
           headerTitle: () => <CustomHeader title={t('create.title')} onTitlePress={handleTitlePress} />,
           tabBarIcon: ({ focused, color }) => (
             <MaterialIcons
               name="add-circle-outline"
-              color={focused ? "green" : "#444444"}
-              size={focused ? 30 : 20}
+              color={color as string}
+              size={focused ? 28 : 22}
+              style={{ marginTop: 2 }}
             />
           ),
         }}
@@ -143,13 +136,24 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="message"
         options={{
+          tabBarActiveTintColor: "#059669",
+          tabBarInactiveTintColor: "#374151",
+          tabBarStyle: tabBarStyles.tabBar,
+          tabBarItemStyle: tabBarStyles.tabBarItem,
+          tabBarBackground: () => (
+            <View style={tabBarStyles.tabBarBg} pointerEvents="none">
+              <View style={tabBarStyles.tabBarTopLine} />
+            </View>
+          ),
           tabBarLabel: t('messages.title'),
+          tabBarLabelStyle: [tabBarStyles.tabBarLabel, { marginTop: 4 }],
           headerTitle: () => <CustomHeader title={t('messages.title')} onTitlePress={handleTitlePress} />,
           tabBarIcon: ({ focused, color }) => (
             <Ionicons
               name="paper-plane-outline"
-              color={focused ? "green" : "#444444"}
-              size={focused ? 30 : 20}
+              color={color as string}
+              size={focused ? 28 : 22}
+              style={{ marginTop: 2 }}
             />
           ),
         }}
@@ -157,13 +161,24 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="profile"
         options={{
+          tabBarActiveTintColor: "#059669",
+          tabBarInactiveTintColor: "#374151",
+          tabBarStyle: tabBarStyles.tabBar,
+          tabBarItemStyle: tabBarStyles.tabBarItem,
+          tabBarBackground: () => (
+            <View style={tabBarStyles.tabBarBg} pointerEvents="none">
+              <View style={tabBarStyles.tabBarTopLine} />
+            </View>
+          ),
           tabBarLabel: t('profile.title'),
+          tabBarLabelStyle: [tabBarStyles.tabBarLabel, { marginTop: 4 }],
           headerTitle: () => <CustomHeader title={t('profile.title')} onTitlePress={handleTitlePress} />,
           tabBarIcon: ({ focused, color }) => (
             <Ionicons
               name="person-circle-outline"
-              color={focused ? "green" : "#444444"}
-              size={focused ? 30 : 20}
+              color={color as string}
+              size={focused ? 28 : 22}
+              style={{ marginTop: 2 }}
             />
           ),
         }}

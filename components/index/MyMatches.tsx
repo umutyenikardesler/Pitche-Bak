@@ -151,10 +151,11 @@ export default function MyMatches({ matches, refreshing, onRefresh, onSelectMatc
       </View>
 
       {matches.length === 0 && !refreshing ? (
-        <View className='flex justify-center items-center py-4'>
+        <View className='py-4 px-4'>
           <Text className="text-center font-bold">{t('home.noMatchesCreated')}</Text>
           <TouchableOpacity
-            className="text-center bg-green-600 text-white font-semibold rounded-md my-3 mb-4 items-center"
+            className="text-center bg-green-600 text-white font-semibold rounded-md my-3 mb-2 items-center self-center"
+            style={{ width: '50%' }}
             onPress={onCreateMatch}
           >
             <Text className="text-white font-semibold text-center px-4 py-2 mx-2">{t('home.createMatchNow')}</Text>

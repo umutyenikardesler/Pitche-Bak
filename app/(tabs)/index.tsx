@@ -518,7 +518,7 @@ export default function Index() {
 
           {/* MyMatches için dinamik yükseklik */}
           <View 
-            style={{ height: myMatchesHeight }}>
+            style={{ height: futureMatches.length === 0 ? undefined : myMatchesHeight }}>
             <MyMatches
               matches={futureMatches}
               refreshing={refreshing}

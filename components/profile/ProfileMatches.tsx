@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { FlatList, Text, View, RefreshControl, Dimensions } from "react-native";
+import { ScrollView, Text, View, RefreshControl, Dimensions, Platform } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { supabase } from "@/services/supabase";
 import { useFocusEffect } from "@react-navigation/native";
@@ -53,7 +53,7 @@ export default function ProfileMatches({ userData, refreshing = false, onRefresh
       const { data, error } = await supabase
         .from("match")
         .select("*, pitches (name, districts (name))")
-        .eq("create_user", userData.id)
+        .eq("create_user", userData?.id)
         .order("date", { ascending: false })
         .order("time", { ascending: false });
 
@@ -88,11 +88,14 @@ export default function ProfileMatches({ userData, refreshing = false, onRefresh
   };
 
   return (
-    <View className="flex mb-2" style={{ height: Dimensions.get('window').height * 0.38 }}>
+    <View
+      className="flex mb-2"
+      style={{ height: Dimensions.get('window').height * (Platform.OS === 'ios' ? 0.389 : 0.378) }}
+    >
       {/* Maç Listesi ve İçeriği */}
-      <View className="flex-row justify-center items-center my-1 mb-2.5">
-        <Ionicons name="calendar-outline" size={16} color="green" className="pl-2" />
-        <Text className="font-bold text-green-700"> {t('profile.myMatches')} </Text>
+      <View className="flex-row justify-center items-center my-2">
+        <Ionicons name="calendar-outline" size={16} color="green" className="" />
+        <Text className="font-bold text-green-700 mx-1"> {t('profile.myMatches')} </Text>
       </View>
 
       {/* Maç Listesi */}
@@ -100,12 +103,21 @@ export default function ProfileMatches({ userData, refreshing = false, onRefresh
         {loading ? (
           <Text className="text-center mb-4 text-gray-500">{t('general.loading')}</Text>
         ) : matches.length > 0 ? (
-          <FlatList
+          <ScrollView
             className="mb-2 h-auto"
-            data={matches}
-            keyExtractor={(item) => item.id.toString()}
-            renderItem={({ item }) => (
-              <View className="bg-gray-100 rounded-lg p-2 mx-4 mt-1 mb-1 shadow-sm justify-center items-center">
+            style={{ marginBottom: 0 }}
+            nestedScrollEnabled={true}
+            refreshControl={
+              <RefreshControl 
+                refreshing={refreshing} 
+                onRefresh={handleRefresh}
+                colors={["#16a34a"]} // Android için yeşil renk
+                tintColor="#16a34a" // iOS için yeşil renk
+              />
+            }
+          >
+            {matches.map((item) => (
+              <View key={item.id.toString()} className="bg-gray-100 rounded-lg p-2 mx-4 mt-1 mb-1 shadow-sm justify-center items-center">
                 <Text className="text-green-700 font-bold mb-1">{item.title}</Text>
                 <View className="text-gray-700 text-md flex-row items-center">
                   <Ionicons name="calendar-outline" size={18} color="black" />
@@ -124,18 +136,8 @@ export default function ProfileMatches({ userData, refreshing = false, onRefresh
                   <Text className="pl-2 font-bold text-green-700">{item.pitches?.name ?? ""}</Text>
                 </View>
               </View>
-            )}
-            style={{ marginBottom: 0 }}
-            nestedScrollEnabled={true}
-            refreshControl={
-              <RefreshControl 
-                refreshing={refreshing} 
-                onRefresh={handleRefresh}
-                colors={["#16a34a"]} // Android için yeşil renk
-                tintColor="#16a34a" // iOS için yeşil renk
-              />
-            }
-          />
+            ))}
+          </ScrollView>
         ) : (
           <Text className="text-center mb-4 text-gray-500">Henüz maç oluşturmadınız!</Text>
         )}
