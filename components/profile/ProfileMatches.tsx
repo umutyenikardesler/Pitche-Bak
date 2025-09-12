@@ -109,12 +109,18 @@ export default function ProfileMatches({ userData, refreshing = false, onRefresh
                 <Text className="text-green-700 font-bold mb-1">{item.title}</Text>
                 <View className="text-gray-700 text-md flex-row items-center">
                   <Ionicons name="calendar-outline" size={18} color="black" />
-                  <Text className="pl-2 font-semibold">{item.formattedDate} →</Text>
+                  <Text className="pl-2 font-semibold">
+                    {item.formattedDate}
+                    {"  →"}
+                  </Text>
                   <Text className="pl-2 font-bold text-green-600">{item.startFormatted}-{item.endFormatted}</Text>
                 </View>
                 <View className="text-gray-700 text-md flex-row items-center pt-1">
-                  <Ionicons name="location" size={18} color="black" />
-                  <Text className="pl-2 font-semibold">{item.pitches?.districts?.name ?? ""} →</Text>
+                  <Ionicons name="location-outline" size={18} color="black" />
+                  <Text className="pl-2 font-semibold">
+                    {item.pitches?.districts?.name ?? ""}
+                    {"  →"}
+                  </Text>
                   <Text className="pl-2 font-bold text-green-700">{item.pitches?.name ?? ""}</Text>
                 </View>
               </View>

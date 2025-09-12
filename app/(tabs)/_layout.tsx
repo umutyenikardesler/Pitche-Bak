@@ -4,7 +4,8 @@ import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import CustomHeader from "@/components/CustomHeader";
 import * as Haptics from 'expo-haptics';
 import { useLanguage } from "@/contexts/LanguageContext";
-import { DeviceEventEmitter } from 'react-native';
+import { DeviceEventEmitter, Platform } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function TabsLayout() {
   const navigation = useNavigation();
@@ -12,6 +13,7 @@ export default function TabsLayout() {
   const { t } = useLanguage();
   const tabPressTimers = useRef<Record<string, NodeJS.Timeout>>({});
   const tabPressCounts = useRef<Record<string, number>>({});
+  const insets = useSafeAreaInsets();
 
   // CustomHeader başlık tıklaması için fonksiyon
   const handleTitlePress = () => {
@@ -20,57 +22,60 @@ export default function TabsLayout() {
     DeviceEventEmitter.emit('closeModals');
   };
 
-  useEffect(() => {
-    const unsubscribe = navigation.addListener("tabPress", (e) => {
-      const currentRoute = navigation.getState().routes[navigation.getState().index];
-      if (!currentRoute) return;
-      const currentTab = currentRoute.name;
-      const currentPath = currentRoute.path;
+  // Çift dokunma özelliğini geçici olarak devre dışı bırakıyoruz
+  // useEffect(() => {
+  //   const unsubscribe = navigation.addListener("tabPress" as any, (e) => {
+  //     const state = navigation.getState();
+  //     if (!state || !state.routes || state.index === undefined) return;
+  //     const currentRoute = state.routes[state.index];
+  //     if (!currentRoute) return;
+  //     const currentTab = currentRoute.name;
+  //     const currentPath = currentRoute.path;
 
-      // Eğer zaten bir timer varsa temizle
-      if (tabPressTimers.current[currentTab]) {
-        clearTimeout(tabPressTimers.current[currentTab]);
-      }
+  //     // Eğer zaten bir timer varsa temizle
+  //     if (tabPressTimers.current[currentTab]) {
+  //       clearTimeout(tabPressTimers.current[currentTab]);
+  //     }
 
-      // Sayımı artır
-      tabPressCounts.current[currentTab] = (tabPressCounts.current[currentTab] || 0) + 1;
+  //     // Sayımı artır
+  //     tabPressCounts.current[currentTab] = (tabPressCounts.current[currentTab] || 0) + 1;
 
-      // Yeni bir timer başlat
-      tabPressTimers.current[currentTab] = setTimeout(() => {
-        tabPressCounts.current[currentTab] = 0;
-      }, 300) as unknown as NodeJS.Timeout; // 300ms içinde ikinci basış algılanmazsa sıfırla
+  //     // Yeni bir timer başlat
+  //     tabPressTimers.current[currentTab] = setTimeout(() => {
+  //       tabPressCounts.current[currentTab] = 0;
+  //     }, 800) as unknown as NodeJS.Timeout; // 800ms içinde ikinci basış algılanmazsa sıfırla
 
-      // Eğer ikinci basış ise
-      if (tabPressCounts.current[currentTab] === 2) {
-        // Titreşim efekti ver
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+  //     // Eğer ikinci basış ise
+  //     if (tabPressCounts.current[currentTab] === 2) {
+  //       // Titreşim efekti ver
+  //       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
         
-        // Ana sayfaya dön
-        if (currentTab === "index") {
-          // Eğer zaten ana sayfada değilsek veya detay sayfasındaysak
-          if (currentPath !== "/" && currentPath !== "/index") {
-            router.replace("/");
-          }
-        } else {
-          // Diğer tab'lar için de aynı mantık
-          if (currentTab === 'create') {
-            router.replace('/(tabs)/create');
-          } else if (currentTab === 'pitches') {
-            router.replace('/(tabs)/pitches');
-          } else if (currentTab === 'message') {
-            router.replace('/(tabs)/message');
-          } else if (currentTab === 'profile') {
-            router.replace('/(tabs)/profile');
-          }
-        }
+  //       // Ana sayfaya dön
+  //       if (currentTab === "index") {
+  //         // Eğer zaten ana sayfada değilsek veya detay sayfasındaysak
+  //         if (currentPath !== "/" && currentPath !== "/index") {
+  //           router.replace("/");
+  //         }
+  //       } else {
+  //         // Diğer tab'lar için de aynı mantık
+  //         if (currentTab === 'create') {
+  //           router.replace('/(tabs)/create');
+  //         } else if (currentTab === 'pitches') {
+  //           router.replace('/(tabs)/pitches');
+  //         } else if (currentTab === 'message') {
+  //           router.replace('/(tabs)/message');
+  //         } else if (currentTab === 'profile') {
+  //           router.replace('/(tabs)/profile');
+  //         }
+  //       }
         
-        // Sayacı sıfırla
-        tabPressCounts.current[currentTab] = 0;
-      }
-    });
+  //       // Sayacı sıfırla
+  //       tabPressCounts.current[currentTab] = 0;
+  //     }
+  //   });
 
-    return unsubscribe;
-  }, [navigation, router]);
+  //   return unsubscribe;
+  // }, [navigation, router]);
 
   return (
     <Tabs
@@ -78,11 +83,23 @@ export default function TabsLayout() {
         tabBarStyle: { 
           backgroundColor: "#ffffff",
           borderTopWidth: 4,
-          borderTopColor: "#16a34a"
+          borderTopColor: "#16a34a",
+          minHeight: Platform.OS === 'ios' ? 70 : 50,
+          paddingBottom: Platform.OS === 'ios' ? 0 : 0,
+          paddingTop: 0,
+          elevation: 0,
+          shadowOpacity: 0
         },
         tabBarActiveTintColor: "green",
         tabBarInactiveTintColor: "#444444",
         tabBarLabelStyle: { fontWeight: "700" },
+        tabBarItemStyle: {
+          paddingVertical: 2
+        },
+        tabBarHideOnKeyboard: false,
+        tabBarAllowFontScaling: false,
+        tabBarPressColor: 'rgba(22, 163, 74, 0.1)',
+        tabBarPressOpacity: 0.7
       }}
     >
       <Tabs.Screen

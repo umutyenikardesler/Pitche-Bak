@@ -172,7 +172,6 @@ export default function MyMatches({ matches, refreshing, onRefresh, onSelectMatc
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
           style={{ paddingTop: 3, paddingBottom: 5}}
           contentContainerStyle={{ paddingBottom: matches.length > 2 ? 35 : 0 }} // 3+ maç varsa daha fazla padding
-          nestedScrollEnabled={true}
           scrollEnabled={matches.length > 2} // 3 veya daha fazla maç varsa scroll aktif
           showsVerticalScrollIndicator={matches.length > 2} // 3+ maç varsa scroll bar göster
           removeClippedSubviews={true} // Performans için

@@ -70,7 +70,6 @@ export default function UserListModal({
             style={{ maxHeight: 335 }}
             contentContainerStyle={{ paddingBottom: 10 }}
             showsVerticalScrollIndicator
-            nestedScrollEnabled
             bounces={false}
           >
             {currentList.map((u) => (

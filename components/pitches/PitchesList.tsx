@@ -1,6 +1,6 @@
-import { FlatList, RefreshControl, ScrollView, Text, TouchableOpacity, View, Platform } from "react-native";
+import { FlatList, RefreshControl, ScrollView, Text, TouchableOpacity, View, Platform, Linking, Modal } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import MapView, { Marker, UrlTile, PROVIDER_GOOGLE } from "react-native-maps";
+import MapView, { Marker, UrlTile, PROVIDER_GOOGLE, Region } from "react-native-maps";
 import { GestureDetector, Gesture } from "react-native-gesture-handler";
 import { runOnJS } from "react-native-reanimated";
 import { useRouter } from "expo-router"; // Router'ı getir
@@ -11,9 +11,9 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import Animated, { useSharedValue, useAnimatedStyle, withRepeat, withTiming, interpolateColor, Easing } from 'react-native-reanimated';
 import { FontAwesome } from '@expo/vector-icons'; // Top ikonu için
 
-import { useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
-export default function PitchesList({ pitches, selectedPitch, setSelectedPitch, handleCloseDetail, refreshing, onRefresh }) {
+export default function PitchesList({ pitches, selectedPitch, setSelectedPitch, handleCloseDetail, refreshing, onRefresh }: any) {
   const { t } = useLanguage();
 
   const router = useRouter();
@@ -21,6 +21,85 @@ export default function PitchesList({ pitches, selectedPitch, setSelectedPitch, 
   // animasyon değeri
   const scale = useSharedValue(1);
   const bgColor = useSharedValue(0); // 0 → yeşil, 1 → açık yeşil
+
+  const mapRef = useRef<MapView | null>(null);
+  const [currentRegion, setCurrentRegion] = useState<Region | null>(null);
+
+  const [mapChooserVisible, setMapChooserVisible] = useState(false);
+  const [availableMaps, setAvailableMaps] = useState<{ google: boolean; waze: boolean }>({ google: false, waze: false });
+
+  const animateZoom = (factor: number) => {
+    if (!selectedPitch) return;
+    const baseRegion: Region = currentRegion || {
+      latitude: selectedPitch.latitude,
+      longitude: selectedPitch.longitude,
+      latitudeDelta: Platform.OS === 'android' ? 0.001 : 0.002,
+      longitudeDelta: Platform.OS === 'android' ? 0.001 : 0.002,
+    };
+
+    const nextRegion: Region = {
+      latitude: baseRegion.latitude,
+      longitude: baseRegion.longitude,
+      latitudeDelta: Math.max(0.0001, Math.min(0.1, baseRegion.latitudeDelta * factor)),
+      longitudeDelta: Math.max(0.0001, Math.min(0.1, baseRegion.longitudeDelta * factor)),
+    };
+
+    mapRef.current?.animateToRegion(nextRegion, 250);
+  };
+
+  const handleZoomIn = () => animateZoom(0.7);
+  const handleZoomOut = () => animateZoom(1.4);
+
+  const showMapChooser = async () => {
+    try {
+      const [hasGoogle, hasWaze] = await Promise.all([
+        Linking.canOpenURL(Platform.OS === 'ios' ? 'comgooglemaps://' : 'geo:0,0?q='),
+        Linking.canOpenURL('waze://'),
+      ]);
+      setAvailableMaps({ google: !!hasGoogle, waze: !!hasWaze });
+    } catch (e) {
+      setAvailableMaps({ google: false, waze: false });
+    }
+    setMapChooserVisible(true);
+  };
+
+  const openInAppleMaps = () => {
+    if (!selectedPitch) return;
+    const lat = selectedPitch.latitude;
+    const lng = selectedPitch.longitude;
+    const label = encodeURIComponent(selectedPitch.name || 'Konum');
+    const url = `http://maps.apple.com/?ll=${lat},${lng}&q=${label}`;
+    Linking.openURL(url);
+    setMapChooserVisible(false);
+  };
+
+  const openInGoogleMaps = () => {
+    if (!selectedPitch) return;
+    const lat = selectedPitch.latitude;
+    const lng = selectedPitch.longitude;
+    const label = encodeURIComponent(selectedPitch.name || 'Konum');
+    let url = '';
+    if (Platform.OS === 'ios') {
+      url = `comgooglemaps://?q=${lat},${lng}(${label})`;
+    } else {
+      url = `geo:${lat},${lng}?q=${lat},${lng}(${label})`;
+    }
+    Linking.openURL(url).catch(() => {
+      Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${lat},${lng}`);
+    });
+    setMapChooserVisible(false);
+  };
+
+  const openInWaze = () => {
+    if (!selectedPitch) return;
+    const lat = selectedPitch.latitude;
+    const lng = selectedPitch.longitude;
+    const url = `waze://?ll=${lat},${lng}&navigate=yes`;
+    Linking.openURL(url).catch(() => {
+      Linking.openURL(`https://waze.com/ul?ll=${lat},${lng}&navigate=yes`);
+    });
+    setMapChooserVisible(false);
+  };
 
   useEffect(() => {
     scale.value = withRepeat(
@@ -65,12 +144,14 @@ export default function PitchesList({ pitches, selectedPitch, setSelectedPitch, 
       return;
     }
 
+    const districtName = (data as any)?.district?.name ?? '';
+
     router.push({
       pathname: "/create",
       params: {
         pitchId: data.id,
         district: data.district_id,
-        districtName: data.district.name,
+        districtName,
         name: data.name,
         price: data.price,
         shouldSetFields: "true"
@@ -96,92 +177,150 @@ export default function PitchesList({ pitches, selectedPitch, setSelectedPitch, 
             style={{ flex: 1 }}
             contentContainerStyle={{ 
               flexGrow: 1,
-              paddingBottom: Platform.OS === 'android' ? 100 : 0
+              paddingBottom: Platform.OS === 'android' ? 50 : 0
             }}
             showsVerticalScrollIndicator={true}
-            nestedScrollEnabled={false}
             bounces={true}
             scrollEnabled={true}
             keyboardShouldPersistTaps="handled"
             removeClippedSubviews={false}
             scrollEventThrottle={16}
             decelerationRate="normal"
-            alwaysBounceVertical={false}
+            alwaysBounceVertical={true}
             overScrollMode="auto"
           >
           <GestureDetector gesture={swipeGesture}>
-            <View className="bg-white rounded-lg my-3 mx-4 p-4 shadow-md">
-                <View className="flex flex-col items-center">
-                  <Text className="text-xl font-bold text-green-700 text-center mb-2">{t('pitches.pitchSummary')}</Text>
+            <View className="bg-white rounded-lg mx-4 mt-2 p-4 shadow-md mb-4" style={{ minHeight: '97%' }}>
+                <View className="flex flex-col items-center flex-1 justify-between">
+                  <View className="w-full flex-1">
+                    <Text className="text-xl font-bold text-green-700 text-center mb-2">{t('pitches.pitchSummary')}</Text>
 
-                  {selectedPitch.latitude && selectedPitch.longitude && Platform.OS !== "web" && (
-                    <View className="w-full h-48 rounded-lg overflow-hidden my-2">
-                      <MapView
-                        {...(Platform.OS === 'android' ? { provider: PROVIDER_GOOGLE, liteMode: true } : {})}
-                        style={{ width: "100%", height: "100%" }}
+                    {selectedPitch.latitude && selectedPitch.longitude && Platform.OS !== "web" && (
+                      <View className="w-full h-48 rounded-lg overflow-hidden my-2">
+                        <MapView
+                          ref={(ref) => { mapRef.current = ref; }}
+                          provider={PROVIDER_GOOGLE}
+                          style={{ width: "100%", height: "100%" }}
                         initialRegion={{
                           latitude: selectedPitch.latitude,
                           longitude: selectedPitch.longitude,
-                          latitudeDelta: Platform.OS === 'android' ? 0.004 : 0.01,
-                          longitudeDelta: Platform.OS === 'android' ? 0.004 : 0.01,
+                          latitudeDelta: Platform.OS === 'android' ? 0.001 : 0.002,
+                          longitudeDelta: Platform.OS === 'android' ? 0.001 : 0.002,
                         }}
-                        mapType="standard"
-                        showsUserLocation={false}
-                        showsMyLocationButton={false}
-                        showsCompass={false}
-                        showsScale={false}
-                        showsBuildings={true}
-                        showsTraffic={false}
-                        showsIndoors={true}
-                        loadingEnabled={false}
-                        cacheEnabled={Platform.OS === 'android'}
-                        moveOnMarkerPress={false}
-                        scrollEnabled={false}
-                        zoomEnabled={false}
-                        pitchEnabled={false}
-                        rotateEnabled={false}
-                        toolbarEnabled={false}
-                      >
-                        <Marker 
-                          coordinate={{ latitude: selectedPitch.latitude, longitude: selectedPitch.longitude }} 
-                          title={selectedPitch.name}
-                          pinColor="red"
-                        />
-                      </MapView>
-                    </View>
-                  )}
-
-                  <View>
-                    <Text className="h-7 text-xl text-green-700 font-semibold text-center mt-4">{selectedPitch.name}</Text>
-                  </View>
-
-                  <View>
-                    <Text className="h-7 text-lg font-semibold text-green-700 text-center mt-4">{t('pitches.openAddress')}</Text>
-                    <View className="flex-row justify-center items-center pt-1">
-                      <Ionicons name="location-outline" size={20} color="green" />
-                      <Text className="pl-2 text-gray-700 font-semibold">{selectedPitch.address}</Text>
-                    </View>
-                  </View>
-
-                  <View>
-                    <Text className="h-7 text-lg font-semibold text-green-700 text-center mt-4">{t('pitches.pitchPrice')}</Text>
-                    <View className="flex-row justify-center items-center pt-1">
-                      <Ionicons name="wallet-outline" size={18} color="green" />
-                      <Text className="pl-2 text-gray-700 font-semibold">{selectedPitch.price} ₺</Text>
-                    </View>
-                  </View>
-
-                  <View>
-                    <Text className="text-lg font-semibold text-green-700 text-center mt-3 mb-2">{t('pitches.pitchFeatures')}</Text>
-                    <View className="flex-row flex-wrap justify-center">
-                      {featuresArray.map((feature, index) => (
-                        <View key={index} className={`${featuresArray.length === 1 ? 'w-auto' : 'w-1/2'}  mb-1`} >
-                          <View className="flex-row p-2 bg-green-700 rounded mr-1 items-center justify-center">
-                            <Ionicons name="checkmark-circle-outline" size={16} color="white" />
-                            <Text className="text-white pl-1">{feature}</Text>
+                          mapType="standard"
+                          showsUserLocation={false}
+                          showsScale={false}
+                          showsBuildings={true}
+                          showsTraffic={false}
+                          showsIndoors={true}
+                          loadingEnabled={false}
+                          cacheEnabled={false}
+                          moveOnMarkerPress={false}
+                          scrollEnabled={false}
+                          zoomEnabled={true}
+                          pitchEnabled={false}
+                          rotateEnabled={false}
+                          toolbarEnabled={true}
+                          zoomControlEnabled={false}
+                          showsMyLocationButton={false}
+                          showsCompass={false}
+                          minZoomLevel={14}
+                          maxZoomLevel={20}
+                          onRegionChangeComplete={(region) => setCurrentRegion(region)}
+                        >
+                          <Marker 
+                            coordinate={{ latitude: selectedPitch.latitude, longitude: selectedPitch.longitude }} 
+                            title={selectedPitch.name}
+                            pinColor="red"
+                          />
+                        </MapView>
+                        {/* Custom zoom controls - top-left */}
+                        <View style={{ position: 'absolute', left: 8, top: 8 }}>
+                          <View style={{ backgroundColor: 'rgba(255,255,255,0.95)', borderRadius: 8, overflow: 'hidden' }}>
+                            <TouchableOpacity onPress={handleZoomIn} style={{ paddingHorizontal: 10, paddingVertical: 6, alignItems: 'center' }}>
+                              <Text style={{ fontSize: 18, fontWeight: '700', color: '#111' }}>+</Text>
+                            </TouchableOpacity>
+                            <View style={{ height: 1, backgroundColor: '#e5e7eb' }} />
+                            <TouchableOpacity onPress={handleZoomOut} style={{ paddingHorizontal: 10, paddingVertical: 6, alignItems: 'center' }}>
+                              <Text style={{ fontSize: 18, fontWeight: '700', color: '#111' }}>−</Text>
+                            </TouchableOpacity>
                           </View>
                         </View>
-                      ))}
+
+                        {/* Open in maps chooser - bottom-right */}
+                        <View style={{ position: 'absolute', right: 8, bottom: 8 }}>
+                          <TouchableOpacity
+                            onPress={showMapChooser}
+                            style={{ backgroundColor: 'rgba(255,255,255,0.95)', paddingHorizontal: 10, paddingVertical: 8, borderRadius: 9999 }}
+                          >
+                            <Text style={{ fontWeight: '700', color: '#111' }}>Haritalar uygulamasında Aç</Text>
+                          </TouchableOpacity>
+                        </View>
+
+                        {/* Maps chooser modal */}
+                        <Modal
+                          visible={mapChooserVisible}
+                          transparent
+                          animationType="fade"
+                          onRequestClose={() => setMapChooserVisible(false)}
+                        >
+                          <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', alignItems: 'center', justifyContent: 'center' }}>
+                            <View style={{ backgroundColor: 'white', borderRadius: 12, padding: 16, width: 280 }}>
+                              <Text style={{ fontWeight: '700', fontSize: 16, marginBottom: 10, textAlign: 'center' }}>Haritalarda aç</Text>
+                              {Platform.OS === 'ios' ? (
+                                <TouchableOpacity onPress={openInAppleMaps} style={{ paddingVertical: 10 }}>
+                                  <Text style={{ textAlign: 'center', fontWeight: '600' }}>Apple Haritalar</Text>
+                                </TouchableOpacity>
+                              ) : null}
+                              <TouchableOpacity onPress={openInGoogleMaps} style={{ paddingVertical: 10 }}>
+                                <Text style={{ textAlign: 'center', fontWeight: '600' }}>Google Maps</Text>
+                              </TouchableOpacity>
+                              {availableMaps.waze ? (
+                                <TouchableOpacity onPress={openInWaze} style={{ paddingVertical: 10 }}>
+                                  <Text style={{ textAlign: 'center', fontWeight: '600' }}>Waze</Text>
+                                </TouchableOpacity>
+                              ) : null}
+                              <TouchableOpacity onPress={() => setMapChooserVisible(false)} style={{ marginTop: 8, paddingVertical: 8 }}>
+                                <Text style={{ textAlign: 'center', color: '#666' }}>İptal</Text>
+                              </TouchableOpacity>
+                            </View>
+                          </View>
+                        </Modal>
+                      </View>
+                    )}
+
+                    <View>
+                      <Text className="h-7 text-xl text-green-700 font-semibold text-center mt-4">{selectedPitch.name}</Text>
+                    </View>
+
+                    <View>
+                      <Text className="h-7 text-lg font-semibold text-green-700 text-center mt-4">{t('pitches.openAddress')}</Text>
+                      <View className="flex-row justify-center items-center pt-1">
+                        <Ionicons name="location-outline" size={20} color="green" />
+                        <Text className="pl-2 text-gray-700 font-semibold">{selectedPitch.address}</Text>
+                      </View>
+                    </View>
+
+                    <View>
+                      <Text className="h-7 text-lg font-semibold text-green-700 text-center mt-4">{t('pitches.pitchPrice')}</Text>
+                      <View className="flex-row justify-center items-center pt-1">
+                        <Ionicons name="wallet-outline" size={18} color="green" />
+                        <Text className="pl-2 text-gray-700 font-semibold">{selectedPitch.price} ₺</Text>
+                      </View>
+                    </View>
+
+                    <View>
+                      <Text className="text-lg font-semibold text-green-700 text-center mt-3 mb-2">{t('pitches.pitchFeatures')}</Text>
+                      <View className="flex-row flex-wrap justify-center">
+                        {featuresArray.map((feature: string, index: number) => (
+                          <View key={index} className={`${featuresArray.length === 1 ? 'w-auto' : 'w-1/2'}  mb-1`} >
+                            <View className="flex-row p-2 bg-green-700 rounded mr-1 items-center justify-center">
+                              <Ionicons name="checkmark-circle-outline" size={16} color="white" />
+                              <Text className="text-white pl-1">{feature}</Text>
+                            </View>
+                          </View>
+                        ))}
+                      </View>
                     </View>
                   </View>
 

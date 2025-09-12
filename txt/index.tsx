@@ -463,7 +463,6 @@ export default function Index() {
               refreshControl={<RefreshControl refreshing={refreshing} onRefresh={fetchMatches} />}
               style={{ paddingTop: 2, paddingBottom: 3 }}
               className="h-auto max-h-[70%]"
-              nestedScrollEnabled={true}
             />
           )}
         </View>

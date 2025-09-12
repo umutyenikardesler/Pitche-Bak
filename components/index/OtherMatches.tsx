@@ -102,7 +102,6 @@ export default function OtherMatches({ matches, refreshing, onRefresh, onSelectM
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
           style={{ paddingTop: 3, paddingBottom: 5 }}
           contentContainerStyle={{ paddingBottom: matches.length > 2 ? 7 : 0 }}
-          nestedScrollEnabled={true}
           scrollEnabled={true} // OtherMatches her zaman scroll edilebilir olmalı
           showsVerticalScrollIndicator={true}
           extraData={matches}

@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { View, Dimensions, Modal, TouchableOpacity, DeviceEventEmitter, Platform } from "react-native";
-import { GestureHandlerRootView, GestureDetector, Gesture } from "react-native-gesture-handler";
+import { GestureDetector, Gesture } from "react-native-gesture-handler";
 import { runOnJS } from "react-native-reanimated";
 import { useRouter, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { supabase } from '@/services/supabase';
@@ -486,7 +486,7 @@ export default function Index() {
   }, [fetchMatches]);
 
   return (
-    <GestureHandlerRootView className="flex-1">
+    <View className="flex-1">
       {profileModalVisible && (
         <Modal
           visible={profileModalVisible}
@@ -514,7 +514,6 @@ export default function Index() {
         </GestureDetector>
       ) : (
         <View className="flex-1">
-
           <IndexCondition totalMatchCount={totalMatchCount} />
 
           {/* MyMatches için dinamik yükseklik */}
@@ -541,6 +540,6 @@ export default function Index() {
           </View>
         </View>
       )}
-    </GestureHandlerRootView>
+    </View>
   );
 }
