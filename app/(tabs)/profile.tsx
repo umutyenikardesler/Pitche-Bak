@@ -637,7 +637,7 @@ export default function Profile() {
         
         // Dosyayı base64 olarak oku
         const base64 = await FileSystem.readAsStringAsync(uri, {
-          encoding: FileSystem.EncodingType.Base64,
+          encoding: 'base64',
         });
         
         if (!base64 || base64.length === 0) {
