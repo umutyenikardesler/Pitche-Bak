@@ -179,13 +179,13 @@ export default function Notifications() {
                     .from('notifications')
                     .update({ 
                         is_read: true,
-                        message: 'Takip isteğiniz kabul edildi ✓'
+                        message: 'Takip isteğiniz kabul edildi.'
                     })
                     .eq('id', notification.id);
 
                 // Bildirim listesini güncelle - sadece is_read durumunu değiştir
                 setNotifications(prev => prev.map(n => 
-                    n.id === notification.id ? { ...n, is_read: true, message: 'Takip isteğiniz kabul edildi ✓' } : n
+                    n.id === notification.id ? { ...n, is_read: true, message: 'Takip isteğiniz kabul edildi.' } : n
                 ));
                 refresh();
                 // Kısa başarı uyarısı
