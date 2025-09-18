@@ -383,22 +383,28 @@ export default function Notifications() {
                         </View>
                         {/* Bildirim Metni */}
                         <View className="flex-1 p-1">
-                            <Text className={`mb-3 ${item.is_read ? 'text-gray-500' : 'text-gray-700'}`}>
+                            <Text
+                                className={`mb-3 text-sm leading-5 ${item.is_read ? 'text-gray-500' : 'text-gray-700'}`}
+                                style={{ flexShrink: 1, flexWrap: 'wrap' }}
+                                numberOfLines={2}
+                                adjustsFontSizeToFit
+                                minimumFontScale={0.88}
+                            >
                                 <Text className={`font-bold ${item.is_read ? 'text-gray-600' : 'text-green-700'}`}>{item.sender_name} {item.sender_surname}</Text> {t('notifications.sentFollowRequest')}
                             </Text>
                         </View>
                     </View>
                     
                     {/* Alt satır - Tarih/Saat ve Butonlar */}
-                    <View className="px-4 pb-3">
-                        <View className="flex-row justify-between items-center">
-                            <View className="mr-3">
+                    <View className="px-3 pb-3">
+                        <View className="flex-row justify-center items-center">
+                            <View className="mr-2">
                                 <Text className={`text-xs font-bold px-2 py-1 rounded ${item.is_read ? 'text-gray-500 bg-gray-300' : 'text-green-700 bg-gray-200'}`}>
                                     {formatted}
                                 </Text>
                             </View>
                             {!item.is_read && (
-                                <View className="flex-row justify-end space-x-2">
+                                <View className="flex-row justify-center">
                                     <View className="flex-row mr-2">
                                         <TouchableOpacity
                                             onPress={() => handleFollowRequest(item, 'reject')}
@@ -418,13 +424,16 @@ export default function Notifications() {
                                 </View>
                             )}
                             {item.is_read && (
-                                <View className="mr-3">
-                                    <View className="text-xs font-bold text-gray-500 bg-gray-300 px-2 py-1 rounded text-right flex-row items-center justify-end">
-                                        <Text className="text-gray-500">
+                                <View className="mr-2 flex-1" style={{ flexShrink: 1 }}>
+                                    <View className="text-xs font-bold text-gray-500 bg-gray-300 px-1 py-1 rounded text-right flex-row flex-wrap items-center justify-center" style={{ flexShrink: 1 }}>
+                                        <Text
+                                            className="text-gray-500 text-sm leading-5"
+                                            style={{ flexShrink: 1, flexWrap: 'wrap' }}
+                                        >
                                             {item.message || 'İşlem Tamamlandı'}
                                         </Text>
                                         {item.message?.includes('kabul edildiniz') && (
-                                            <View className="ml-1 w-4 h-4 bg-green-600 rounded-full items-center justify-center">
+                                            <View className="ml-0 w-4 h-4 bg-green-600 rounded-full items-center justify-center">
                                                 <Text className="text-white text-xs font-bold">✓</Text>
                                             </View>
                                         )}
@@ -509,7 +518,7 @@ export default function Notifications() {
                     </View>
                     
                     {/* Alt satır - Tarih/Saat ve Butonlar */}
-                    <View className="px-4 pb-3">
+                    <View className="px-3 pb-3">
                         <View className="flex-row justify-between items-center">
                             <View className="mr-3">
                                 <Text className={`text-xs font-bold px-2 py-1 rounded ${item.is_read ? 'text-gray-500 bg-gray-300' : 'text-green-700 bg-gray-200'}`}>
@@ -537,18 +546,21 @@ export default function Notifications() {
                                 </View>
                             )}
                             {item.is_read && (
-                                <View className="mr-3">
-                                    <View className="text-xs font-bold text-gray-500 bg-gray-300 px-2 py-1 rounded text-right flex-row items-center justify-end">
-                                        <Text className="text-gray-500">
+                                <View className="mr-1 flex-1" style={{ flexShrink: 1 }}>
+                                    <View className="text-xs font-bold text-gray-500 bg-gray-300 px-2 py-1 rounded text-right flex-row flex-wrap items-center justify-end" style={{ flexShrink: 1 }}>
+                                        <Text
+                                            className="text-gray-500 text-sm leading-5"
+                                            style={{ flexShrink: 1, flexWrap: 'wrap' }}
+                                        >
                                             {item.message || 'İşlem Tamamlandı'}
                                         </Text>
                                         {item.message?.includes('kabul edildiniz') && (
-                                            <View className="ml-1 w-4 h-4 bg-green-600 rounded-full items-center justify-center">
+                                            <View className="ml-0 w-4 h-4 bg-green-600 rounded-full items-center justify-center">
                                                 <Text className="text-white text-xs font-bold">✓</Text>
                                             </View>
                                         )}
                                         {item.message?.includes('kabul edilmediniz') && (
-                                            <View className="ml-1 w-4 h-4 bg-red-600 rounded-full items-center justify-center">
+                                            <View className="ml-0 w-4 h-4 bg-red-600 rounded-full items-center justify-center">
                                                 <Text className="text-white text-xs font-bold">✗</Text>
                                             </View>
                                         )}

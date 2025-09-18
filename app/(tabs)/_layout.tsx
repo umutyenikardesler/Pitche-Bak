@@ -186,8 +186,26 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="notifications"
         options={{
+          tabBarActiveTintColor: "#059669",
+          tabBarInactiveTintColor: "#374151",
+          tabBarStyle: tabBarStyles.tabBar,
+          tabBarItemStyle: tabBarStyles.tabBarItem,
+          tabBarBackground: () => (
+            <View style={tabBarStyles.tabBarBg} pointerEvents="none">
+              <View style={tabBarStyles.tabBarTopLine} />
+            </View>
+          ),
           tabBarLabel: t('notifications.title'),
+          tabBarLabelStyle: [tabBarStyles.tabBarLabel, { marginTop: 4 }],
           headerTitle: () => <CustomHeader title={t('notifications.title')} onTitlePress={handleTitlePress} />,
+          tabBarIcon: ({ focused, color }) => (
+            <Ionicons
+              name="notifications-outline"
+              color={color as string}
+              size={focused ? 28 : 22}
+              style={{ marginTop: 2 }}
+            />
+          ),
           href: null,
         }}
       />
