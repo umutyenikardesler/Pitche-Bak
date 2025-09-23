@@ -9,6 +9,7 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
+      "bundleIdentifier": "com.tumurelsedrakiney.pitchebak",
       "supportsTablet": true
     },
     "android": {
@@ -44,6 +45,12 @@
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "bcaeff72-7e2a-4511-8ad1-73798a478d1a"
+      }
     }
   }
 }
