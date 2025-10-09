@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ActivityIndicator, Alert, Platform, View, DeviceEventEmitter } from "react-native";
+import { ActivityIndicator, Alert, Platform, View, DeviceEventEmitter, Linking } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { supabase } from "@/services/supabase";
 import haversine from "haversine";
@@ -31,11 +31,30 @@ export default function Pitches() {
         setLocationPermissionStatus("granted");
         getLocation();
       } else {
-        const { status } = await Location.requestForegroundPermissionsAsync();
+        const { status, canAskAgain } = await Location.requestForegroundPermissionsAsync();
         setLocationPermissionStatus(status);
         await AsyncStorage.setItem("locationPermissionStatus", status);
         if (status !== "granted") {
-          Alert.alert(t('pitches.locationPermissionRequired'), t('pitches.locationPermissionMessage'));
+          Alert.alert(
+            t('pitches.locationPermissionRequired'),
+            t('pitches.locationPermissionMessage'),
+            [
+              {
+                text: t('general.cancel'),
+                style: 'cancel'
+              },
+              {
+                text: Platform.OS === 'ios' ? t('general.openSettings') : t('general.givePermission'),
+                onPress: async () => {
+                  if (Platform.OS === 'ios') {
+                    await Linking.openSettings();
+                  } else {
+                    await Location.requestForegroundPermissionsAsync();
+                  }
+                }
+              }
+            ]
+          );
         }
       }
     } catch (error) {
