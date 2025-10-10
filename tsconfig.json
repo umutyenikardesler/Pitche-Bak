@@ -4,7 +4,7 @@
     "jsx": "react-jsx", // veya "react-native"
     "allowJs": true, // Eğer JavaScript dosyaları da kullanıyorsanız
     "skipLibCheck": true,
-    "moduleResolution": "node",
+    "moduleResolution": "bundler",
     "esModuleInterop": true,
     "isolatedModules": true,
     "noEmit": true,

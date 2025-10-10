@@ -4,6 +4,18 @@ import { supabase } from '@/services/supabase';
 import { useLanguage } from '@/contexts/LanguageContext';
 import '@/global.css';
 
+interface District {
+  id: number;
+  name: string;
+}
+
+interface Pitch {
+  id: number;
+  name: string;
+  price: number;
+  district_id: number;
+}
+
 interface LocationSelectorProps {
   selectedDistrict: string;
   setSelectedDistrict: (district: string) => void;
@@ -26,8 +38,8 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
   setDistrictName // Props olarak alın
 }) => {
   const { t } = useLanguage();
-  const [districts, setDistricts] = useState([]);
-  const [pitches, setPitches] = useState([]);
+  const [districts, setDistricts] = useState<District[]>([]);
+  const [pitches, setPitches] = useState<Pitch[]>([]);
   const [showDistrictModal, setShowDistrictModal] = useState(false);
   const [showPitchModal, setShowPitchModal] = useState(false);
 
@@ -88,7 +100,7 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
   const fetchDistricts = async () => {
     const { data, error } = await supabase.from('districts').select('*');
     if (data) {
-      setDistricts(data);
+      setDistricts(data as District[]);
     }
   };
 
@@ -101,7 +113,7 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
     if (error) {
       console.error('Veri çekme hatası:', error);
     } else {
-      setPitches(data);
+      setPitches(data as Pitch[]);
     }
   };
 
@@ -117,14 +129,14 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
     >
       <View className="flex-1 justify-center items-center bg-black/50">
         <View className="w-lg bg-white rounded-lg p-4" style={{ maxHeight: screenHeight * 0.75 }}>
-          <FlatList
+          <FlatList<District>
             data={districts}
             keyExtractor={(item) => item.id.toString()}
             renderItem={({ item }) => (
               <TouchableOpacity
                 className="p-3 border-b border-gray-200"
                 onPress={() => {
-                  setSelectedDistrict(item.id);
+                  setSelectedDistrict(String(item.id));
                   setShowDistrictModal(false);
                   setSelectedPitch(''); // İlçe değişince seçilen sahayı sıfırla
                 }}
@@ -160,14 +172,14 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
             maxHeight: screenHeight * 0.75, overflow: 'hidden' // İçeriğin taşmasını engeller (isteğe bağlı)
           }}
         >
-          <FlatList
+          <FlatList<Pitch>
             data={pitches}
             keyExtractor={(item) => item.id.toString()}
             renderItem={({ item }) => (
               <TouchableOpacity
                 className="p-3 border-b border-gray-200"
                 onPress={() => {
-                  setSelectedPitch(item.id);
+                  setSelectedPitch(String(item.id));
                   setPrice(item.price.toString()); // Fiyatı state'e kaydet
                   setShowPitchModal(false);
                 }}
@@ -213,7 +225,9 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
         }}
       >
         <Text> {/* Text componenti eklendi */}
-                      {selectedPitch ? pitches.find(p => p.id === selectedPitch)?.name : t('create.selectPitchPlaceholder')}
+                      {selectedPitch
+                        ? (pitches.find(p => String(p.id) === selectedPitch)?.name ?? t('create.selectPitchPlaceholder'))
+                        : t('create.selectPitchPlaceholder')}
         </Text>
       </TouchableOpacity>
 
