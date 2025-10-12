@@ -3,7 +3,6 @@ import { View, Text, FlatList, TouchableOpacity, Image, RefreshControl, Dimensio
 import { Ionicons } from "@expo/vector-icons";
 import { Match } from "./types";
 import { useLanguage } from "@/contexts/LanguageContext";
-import '@/global.css';
 
 interface MyMatchesProps {
   matches: Match[];

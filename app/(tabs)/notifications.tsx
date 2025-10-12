@@ -2,7 +2,6 @@ import { View, Text, FlatList, TouchableOpacity, ActivityIndicator, Image, Modal
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/services/supabase";
 import { Ionicons } from "@expo/vector-icons";
-import '@/global.css';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useNotification } from '@/components/NotificationContext';
 import { useLanguage } from '@/contexts/LanguageContext';

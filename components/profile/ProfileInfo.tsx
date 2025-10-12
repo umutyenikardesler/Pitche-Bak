@@ -3,7 +3,6 @@ import { Text, View, Image, TouchableOpacity, Alert } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useFocusEffect } from "@react-navigation/native";
-import '@/global.css';
 
 interface ProfileInfoProps {
   userData: any;
@@ -82,7 +81,8 @@ export default function ProfileInfo({ userData, setModalVisible, setEditModalVis
     //console.log("ProfileInfo userData:", userData); // Log eklendi
 
     return (
-        <View className="flex flex-row p-2 ">  {/* En dış çerçeveye p-2 padding eklendi */}
+        // En dış çerçeveye p-2 padding eklendi
+        <View className="flex flex-row p-2 ">
             <View className="w-1/4 py-3 px-1 relative">
                 <TouchableOpacity onPress={() => {
                     console.log("Profile resmine tıklandı, modal açılıyor...");
@@ -112,7 +112,8 @@ export default function ProfileInfo({ userData, setModalVisible, setEditModalVis
                 </TouchableOpacity>
             </View>
 
-            <View className="w-3/4 px-4">  {/* Diğer bilgilerin olduğu kısım %75 */}
+            {/* Diğer bilgilerin olduğu kısım %75 */}
+            <View className="w-3/4 px-4">
                 <View className="w-full">
                     <Text className="font-semibold text-lg text-green-700 my-1">
                         {userData?.name || t('profile.noName')} {userData?.surname || ""}
