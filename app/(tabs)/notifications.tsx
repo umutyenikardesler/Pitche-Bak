@@ -309,6 +309,21 @@ export default function Notifications() {
                     })
                     .eq('id', notification.id);
 
+                // Gönderen kullanıcıya kabul bildirimi oluştur
+                try {
+                  await supabase.from('notifications').insert({
+                    user_id: notification.sender_id,
+                    sender_id: user.id,
+                    type: 'join_request',
+                    message: `${getPositionName(notification.position || '')} mevkisine kabul edildiniz`,
+                    match_id: notification.match_id,
+                    position: notification.position,
+                    is_read: false,
+                  });
+                } catch (e) {
+                  console.error('[Notifications] Sender accept notification insert error:', e);
+                }
+
                 // Bildirim listesini güncelle - sadece is_read durumunu değiştir
                 setNotifications(prev => prev.map(n => 
                     n.id === notification.id ? { ...n, is_read: true, message: `${getPositionName(notification.position || '')} mevkisine kabul edildiniz` } : n
@@ -569,6 +584,44 @@ export default function Notifications() {
                         </View>
                     </View>
                 </View>
+            );
+        } else if (item.type === 'direct_message') {
+            // Direkt mesaj bildirimi kartı
+            const senderFullName = `${item.sender_name || ''} ${item.sender_surname || ''}`.trim();
+            return (
+                <TouchableOpacity
+                  activeOpacity={0.8}
+                  onPress={() => {
+                    router.push({
+                      pathname: '/message/chat',
+                      params: { to: item.sender_id, matchId: item.match_id, name: senderFullName }
+                    });
+                  }}
+                >
+                  <View className="bg-white rounded-lg mx-4 mt-3 shadow-sm">
+                    <View className="flex-row items-center p-4">
+                      <View className="mr-3">
+                        <Image
+                          source={item.sender_profile_image ? { uri: item.sender_profile_image } : require('@/assets/images/ball.png')}
+                          style={{ width: 56, height: 56, borderRadius: 28, resizeMode: 'cover' }}
+                        />
+                      </View>
+                      <View className="flex-1">
+                        <Text className="text-gray-800" numberOfLines={2}>
+                          <Text className="font-bold text-green-700">{senderFullName}</Text> {t('notifications.sentMessage') || 'size mesaj gönderdi.'}
+                        </Text>
+                        {!!item.message && (
+                          <Text className="text-gray-600 mt-1" numberOfLines={1}>“{item.message}”</Text>
+                        )}
+                      </View>
+                    </View>
+                    <View className="px-4 pb-3">
+                      <View className="flex-row items-center">
+                        <Text className="text-xs font-bold px-2 py-1 rounded text-green-700 bg-gray-200">{formatted}</Text>
+                      </View>
+                    </View>
+                  </View>
+                </TouchableOpacity>
             );
         }
         console.log('Unknown notification type, returning null:', item.type, item.id);

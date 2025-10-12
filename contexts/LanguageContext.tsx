@@ -201,6 +201,7 @@ const translations = {
     'notifications.loadingError': 'Bildirimler yüklenirken hata',
     'notifications.followRequestError': 'Takip isteği işlenirken hata',
     'notifications.sentFollowRequest': 'sana takip isteği gönderdi.',
+    'notifications.sentMessage': 'size mesaj gönderdi.',
     'notifications.noNotificationsYet': 'Henüz bildiriminiz yok',
     
     // Genel
@@ -220,6 +221,7 @@ const translations = {
     'general.notificationCount': 'Bildirim Sayısı',
     'general.reject': 'Reddet',
     'general.accept': 'Kabul Et',
+    'general.sendMessage': 'Mesaj Gönder',
     
     // Dil Ayarları
     'language.settings': 'Dil Ayarları',
@@ -442,6 +444,7 @@ const translations = {
     'notifications.loadingError': 'Error loading notifications',
     'notifications.followRequestError': 'Error processing follow request',
     'notifications.sentFollowRequest': 'sent you a follow request.',
+    'notifications.sentMessage': 'sent you a message.',
     'notifications.noNotificationsYet': 'You have no notifications yet',
     
     // General
@@ -461,6 +464,7 @@ const translations = {
     'general.notificationCount': 'Notification Count',
     'general.reject': 'Reject',
     'general.accept': 'Accept',
+    'general.sendMessage': 'Send Message',
     
     // Language Settings
     'language.settings': 'Language Settings',
