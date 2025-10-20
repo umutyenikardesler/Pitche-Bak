@@ -14,6 +14,7 @@ interface MsgItem {
   recipient_id: string;
   content: string;
   created_at: string;
+  match_id?: string | null;
 }
 
 export default function ChatScreen() {
@@ -26,17 +27,20 @@ export default function ChatScreen() {
   const [messages, setMessages] = useState<MsgItem[]>([]);
   const listRef = useRef<FlatList<MsgItem>>(null);
 
+  const normParam = useCallback((p: any): string | undefined => {
+    const v = Array.isArray(p) ? p[0] : p;
+    if (typeof v !== 'string') return undefined;
+    const s = v.trim();
+    if (!s || s === 'undefined' || s === 'null') return undefined;
+    return s;
+  }, []);
+
+  const { refresh: refreshNotifications } = useNotification();
+
   // Resolve recipient id safely (avoid sending message to self)
   const resolveRecipientId = useCallback(async (currentUserId: string): Promise<string | null> => {
-    const getParam = (p: any): string | undefined => {
-      const v = Array.isArray(p) ? p[0] : p;
-      if (typeof v !== 'string') return undefined;
-      const s = v.trim();
-      if (!s || s === 'undefined' || s === 'null') return undefined;
-      return s;
-    };
-    const toId = getParam(to);
-    const matchIdStr = getParam(matchId);
+    const toId = normParam(to);
+    const matchIdStr = normParam(matchId);
 
     // Öncelik: match sahibi (create_user)
     if (matchIdStr) {
@@ -85,11 +89,7 @@ export default function ChatScreen() {
       console.warn('[Chat] recipient not resolved');
       return;
     }
-    const getParam = (p: any): string | undefined => {
-      const v = Array.isArray(p) ? p[0] : p;
-      return typeof v === 'string' && v && v !== 'undefined' && v !== 'null' ? v : undefined;
-    };
-    const matchIdStr = getParam(matchId);
+    const matchIdStr = normParam(matchId);
 
     let query = supabase
       .from('messages')
@@ -110,16 +110,57 @@ export default function ChatScreen() {
     fetchMessages();
   }, [loadMe, fetchMessages]);
 
-  // Realtime subscription (if enabled for Supabase Realtime on messages)
+  // Chat açılınca ilgili direct_message bildirimlerini okundu yap ve badge sayısını sıfırla
   useEffect(() => {
-    const channel = supabase
-      .channel('messages-realtime')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'messages' }, () => {
-        fetchMessages();
-      })
-      .subscribe();
-    return () => { supabase.removeChannel(channel); };
-  }, [fetchMessages]);
+    let mounted = true;
+    (async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!mounted || !user) return;
+      const recip = await resolveRecipientId(user.id);
+      if (!mounted || !recip) return;
+      const mId = normParam(matchId);
+      let q = supabase.from('notifications')
+        .update({ is_read: true })
+        .eq('type', 'direct_message')
+        .eq('user_id', user.id)
+        .eq('sender_id', recip);
+      if (mId) q = q.eq('match_id', mId);
+      await q;
+      try { refreshNotifications?.(); } catch {}
+    })();
+    return () => { mounted = false; };
+  }, [resolveRecipientId, normParam, matchId]);
+
+  // Realtime subscription: sadece ilgili sohbet (iki kullanıcı + match) insert'lerini dinle
+  useEffect(() => {
+    let mounted = true;
+    let channel: any = null;
+    (async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!mounted || !user) return;
+      const recip = await resolveRecipientId(user.id);
+      if (!mounted || !recip) return;
+      const matchIdStr = normParam(matchId);
+
+      channel = supabase
+        .channel(`msg-${user.id}-${recip}-${matchIdStr || 'any'}`)
+        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, (payload: any) => {
+          const m = payload.new as MsgItem;
+          const participants = (m.sender_id === user.id && m.recipient_id === recip) || (m.sender_id === recip && m.recipient_id === user.id);
+          const sameMatch = matchIdStr ? m.match_id === matchIdStr : true;
+          if (participants && sameMatch) {
+            setMessages(prev => [...prev, m]);
+            setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 30);
+          }
+        })
+        .subscribe();
+    })();
+
+    return () => {
+      mounted = false;
+      if (channel) supabase.removeChannel(channel);
+    };
+  }, [resolveRecipientId, normParam, matchId]);
 
   const sendMessage = useCallback(async () => {
     if (!input.trim() || !to) return;

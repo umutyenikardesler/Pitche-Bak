@@ -52,7 +52,7 @@ export default function Messages() {
           title: n.match.title,
           date: n.match.date,
           time: n.match.time,
-          owner_id: n.match.create_user,
+          owner_id: n.sender?.id || n.match.create_user, // sohbet kişisi: bildirim göndericisi (maç sahibi)
           owner_name: n.sender?.name || '',
           owner_surname: n.sender?.surname || '',
           owner_profile_image: n.sender?.profile_image || null,

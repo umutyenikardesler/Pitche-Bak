@@ -195,6 +195,7 @@ const translations = {
     
     // Mesajlar
     'messages.title': 'Mesajlar',
+    'messages.noAcceptedJoins': 'Henüz katıldığın maç yok',
     
     // Bildirimler
     'notifications.title': 'Bildirimler',
@@ -438,6 +439,7 @@ const translations = {
     
     // Messages
     'messages.title': 'Messages',
+    'messages.noAcceptedJoins': 'No accepted joins yet',
     
     // Notifications
     'notifications.title': 'Notifications',
