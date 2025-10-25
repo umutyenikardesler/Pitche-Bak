@@ -6,6 +6,9 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { useNotification } from '@/components/NotificationContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import ProfilePreview from '@/components/index/ProfilePreview';
+import FollowRequestNotification from '@/components/notifications/FollowRequestNotification';
+import JoinRequestNotification from '@/components/notifications/JoinRequestNotification';
+import DirectMessageNotification from '@/components/notifications/DirectMessageNotification';
 
 interface Notification {
     id: string;
@@ -13,7 +16,7 @@ interface Notification {
     message: string;
     is_read: boolean;
     created_at: string;
-    type: 'follow_request' | 'join_request';
+    type: 'follow_request' | 'join_request' | 'direct_message';
     sender_id: string;
     sender_name: string;
     sender_surname: string;
@@ -62,7 +65,8 @@ export default function Notifications() {
             'Bugün': [],
             'Dün': [],
             'Son 7 Gün': [],
-            'Son 30 Gün': []
+            'Son 30 Gün': [],
+            'Daha Eski': []
         };
 
         notifications.forEach(notification => {
@@ -77,10 +81,12 @@ export default function Notifications() {
                 groups['Son 7 Gün'].push(notification);
             } else if (notificationDate >= monthAgo) {
                 groups['Son 30 Gün'].push(notification);
+            } else {
+                groups['Daha Eski'].push(notification);
             }
         });
 
-        // Boş grupları kaldır
+        // Boş grupları kaldır ve sıralı döndür
         return Object.entries(groups).filter(([_, notifications]) => notifications.length > 0);
     };
 
@@ -113,7 +119,8 @@ export default function Notifications() {
                     )
                 `)
                 .eq('user_id', user.id)
-                .order('created_at', { ascending: false });
+                .order('created_at', { ascending: false })
+                .limit(1000); // Tüm bildirimleri almak için limit artır
 
             if (error) throw error;
 
@@ -149,6 +156,7 @@ export default function Notifications() {
             console.log('Tüm bildirimler:', formattedNotifications);
             console.log('Takip isteği bildirimleri:', formattedNotifications.filter(n => n.type === 'follow_request'));
             console.log('Katılım isteği bildirimleri:', formattedNotifications.filter(n => n.type === 'join_request'));
+            console.log('Mesaj bildirimleri:', formattedNotifications.filter(n => n.type === 'direct_message'));
             setNotifications(formattedNotifications);
         } catch (error) {
             console.error(t('notifications.loadingError'), error);
@@ -162,6 +170,14 @@ export default function Notifications() {
         try {
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) return;
+
+            console.log('[Notifications] handleFollowRequest:', {
+                action,
+                notification_id: notification.id,
+                sender_id: notification.sender_id,
+                current_user_id: user.id,
+                message: notification.message
+            });
 
             if (action === 'accept') {
                 // Takip isteğini kabul et
@@ -178,13 +194,41 @@ export default function Notifications() {
                     .from('notifications')
                     .update({ 
                         is_read: true,
-                        message: 'Takip isteğiniz kabul edildi.'
+                        message: `${notification.sender_name} ${notification.sender_surname} seni takip etmeye başladı.`
                     })
                     .eq('id', notification.id);
 
+                // Gönderen kullanıcıya kabul bildirimi oluştur
+                try {
+                    // Mevcut kullanıcının adını al (kabul eden kişi - Duygu)
+                    const { data: currentUserData } = await supabase
+                        .from('users')
+                        .select('name, surname')
+                        .eq('id', user.id)
+                        .single();
+                    
+                    const senderName = currentUserData ? `${currentUserData.name} ${currentUserData.surname}` : 'Kullanıcı';
+                    
+                    console.log('[Notifications] Gönderen kullanıcıya bildirim:', {
+                        user_id: notification.sender_id, // Umut (bildirimi alacak)
+                        sender_id: user.id, // Duygu (bildirimi gönderen)
+                        message: `${senderName} takip isteğinizi kabul etti.`
+                    });
+                    
+                    await supabase.from('notifications').insert({
+                        user_id: notification.sender_id, // Umut'a gönder
+                        sender_id: user.id, // Duygu'dan geliyor
+                        type: 'follow_request',
+                        message: `${senderName} takip isteğinizi kabul etti.`,
+                        is_read: false,
+                    });
+                } catch (e) {
+                    console.error('[Notifications] Sender accept notification insert error:', e);
+                }
+
                 // Bildirim listesini güncelle - sadece is_read durumunu değiştir
                 setNotifications(prev => prev.map(n => 
-                    n.id === notification.id ? { ...n, is_read: true, message: 'Takip isteğiniz kabul edildi.' } : n
+                    n.id === notification.id ? { ...n, is_read: true, message: `${notification.sender_name} ${notification.sender_surname} seni takip etmeye başladı.` } : n
                 ));
                 refresh();
                 // Kısa başarı uyarısı
@@ -215,13 +259,41 @@ export default function Notifications() {
                     .from('notifications')
                     .update({ 
                         is_read: true,
-                        message: 'Takip isteğiniz reddedildi ✗'
+                        message: 'Takip isteği reddedildi.'
                     })
                     .eq('id', notification.id);
 
+                // Gönderen kullanıcıya red bildirimi oluştur
+                try {
+                    // Mevcut kullanıcının adını al (reddeden kişi - Duygu)
+                    const { data: currentUserData } = await supabase
+                        .from('users')
+                        .select('name, surname')
+                        .eq('id', user.id)
+                        .single();
+                    
+                    const senderName = currentUserData ? `${currentUserData.name} ${currentUserData.surname}` : 'Kullanıcı';
+                    
+                    console.log('[Notifications] Gönderen kullanıcıya red bildirimi:', {
+                        user_id: notification.sender_id, // Umut (bildirimi alacak)
+                        sender_id: user.id, // Duygu (bildirimi gönderen)
+                        message: `${senderName} takip isteğinizi reddetti.`
+                    });
+                    
+                    await supabase.from('notifications').insert({
+                        user_id: notification.sender_id, // Umut'a gönder
+                        sender_id: user.id, // Duygu'dan geliyor
+                        type: 'follow_request',
+                        message: `${senderName} takip isteğinizi reddetti.`,
+                        is_read: false,
+                    });
+                } catch (e) {
+                    console.error('[Notifications] Sender reject notification insert error:', e);
+                }
+
                 // Bildirim listesini güncelle - sadece is_read durumunu değiştir
                 setNotifications(prev => prev.map(n => 
-                    n.id === notification.id ? { ...n, is_read: true, message: 'Takip isteğiniz reddedildi ✗' } : n
+                    n.id === notification.id ? { ...n, is_read: true, message: 'Takip isteği reddedildi.' } : n
                 ));
                 refresh();
                 // Kısa bilgilendirme
@@ -240,6 +312,31 @@ export default function Notifications() {
             case 'O': return 'Orta Saha';
             case 'F': return 'Forvet';
             default: return positionCode;
+        }
+    };
+
+    const handleMarkAsRead = async (notification: Notification) => {
+        try {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) return;
+
+            // Bildirimi okundu olarak işaretle
+            const { error } = await supabase
+                .from('notifications')
+                .update({ is_read: true })
+                .eq('id', notification.id);
+
+            if (error) throw error;
+
+            // Local state'i güncelle
+            setNotifications(prev => prev.map(n => 
+                n.id === notification.id ? { ...n, is_read: true } : n
+            ));
+            
+            // Bildirim sayısını güncelle
+            refresh();
+        } catch (error) {
+            console.error('Bildirimi okundu olarak işaretleme hatası:', error);
         }
     };
 
@@ -300,7 +397,7 @@ export default function Notifications() {
                     console.log('[Notifications] Güncelleme doğrulandı:', verifyData?.missing_groups);
                 }
 
-                // Bildirimi okundu olarak işaretle ve kabul mesajı ekle
+                // Bildirimi okundu olarak işaretle (maç sahibine eski format)
                 await supabase
                     .from('notifications')
                     .update({ 
@@ -311,15 +408,41 @@ export default function Notifications() {
 
                 // Gönderen kullanıcıya kabul bildirimi oluştur
                 try {
-                  await supabase.from('notifications').insert({
-                    user_id: notification.sender_id,
-                    sender_id: user.id,
-                    type: 'join_request',
-                    message: `${getPositionName(notification.position || '')} mevkisine kabul edildiniz`,
-                    match_id: notification.match_id,
-                    position: notification.position,
-                    is_read: false,
-                  });
+                    // Maç sahibinin adını al (kabul eden kişi)
+                    const { data: matchOwnerData } = await supabase
+                        .from('users')
+                        .select('name, surname')
+                        .eq('id', user.id)
+                        .single();
+                    
+                    const ownerName = matchOwnerData ? `${matchOwnerData.name} ${matchOwnerData.surname}` : 'Kullanıcı';
+                    
+                    // Maç bilgilerini mevcut bildirimden al (aynı yapıyı kullan)
+                    let matchInfo = 'bilinmeyen maç';
+                    if (notification.match) {
+                        const matchDate = new Date(notification.match.date);
+                        const formattedDate = matchDate.toLocaleDateString("tr-TR");
+                        const [hours, minutes] = notification.match.time.split(":").map(Number);
+                        const startFormatted = `${hours}:${minutes.toString().padStart(2, '0')}`;
+                        const endFormatted = `${hours + 1}:${minutes.toString().padStart(2, '0')}`;
+                        
+                        const districtName = notification.match.pitches?.districts?.name || 'Bilinmiyor';
+                        const pitchName = notification.match.pitches?.name || 'Bilinmiyor';
+                        
+                        matchInfo = `${formattedDate} ${startFormatted}-${endFormatted} ${districtName} → ${pitchName}`;
+                    }
+                    
+                    const detailedMessage = `${ownerName} kullanıcısının oluşturduğu ${matchInfo} maçı için ${getPositionName(notification.position || '')} mevkisine kabul edildiniz.`;
+                    
+                    await supabase.from('notifications').insert({
+                        user_id: notification.sender_id,
+                        sender_id: user.id,
+                        type: 'join_request',
+                        message: detailedMessage,
+                        match_id: notification.match_id,
+                        position: notification.position,
+                        is_read: false,
+                    });
                 } catch (e) {
                   console.error('[Notifications] Sender accept notification insert error:', e);
                 }
@@ -345,7 +468,7 @@ export default function Notifications() {
                     }
                 }, 500); // 500ms gecikme
             } else {
-                // Katılım isteğini reddet - bildirimi okundu olarak işaretle
+                // Katılım isteğini reddet - bildirimi okundu olarak işaretle (maç sahibine eski format)
                 await supabase
                     .from('notifications')
                     .update({ 
@@ -353,6 +476,47 @@ export default function Notifications() {
                         message: `${getPositionName(notification.position || '')} mevkisine kabul edilmediniz`
                     })
                     .eq('id', notification.id);
+
+                // Gönderen kullanıcıya red bildirimi oluştur
+                try {
+                    // Maç sahibinin adını al (reddeden kişi)
+                    const { data: matchOwnerData } = await supabase
+                        .from('users')
+                        .select('name, surname')
+                        .eq('id', user.id)
+                        .single();
+                    
+                    const ownerName = matchOwnerData ? `${matchOwnerData.name} ${matchOwnerData.surname}` : 'Kullanıcı';
+                    
+                    // Maç bilgilerini mevcut bildirimden al (aynı yapıyı kullan)
+                    let matchInfo = 'bilinmeyen maç';
+                    if (notification.match) {
+                        const matchDate = new Date(notification.match.date);
+                        const formattedDate = matchDate.toLocaleDateString("tr-TR");
+                        const [hours, minutes] = notification.match.time.split(":").map(Number);
+                        const startFormatted = `${hours}:${minutes.toString().padStart(2, '0')}`;
+                        const endFormatted = `${hours + 1}:${minutes.toString().padStart(2, '0')}`;
+                        
+                        const districtName = notification.match.pitches?.districts?.name || 'Bilinmiyor';
+                        const pitchName = notification.match.pitches?.name || 'Bilinmiyor';
+                        
+                        matchInfo = `${formattedDate} ${startFormatted}-${endFormatted} ${districtName} → ${pitchName}`;
+                    }
+                    
+                    const detailedMessage = `${ownerName} kullanıcısının oluşturduğu ${matchInfo} maçı için ${getPositionName(notification.position || '')} mevkisine kabul edilmediniz.`;
+                    
+                    await supabase.from('notifications').insert({
+                        user_id: notification.sender_id,
+                        sender_id: user.id,
+                        type: 'join_request',
+                        message: detailedMessage,
+                        match_id: notification.match_id,
+                        position: notification.position,
+                        is_read: false,
+                    });
+                } catch (e) {
+                  console.error('[Notifications] Sender reject notification insert error:', e);
+                }
 
                 // Bildirim listesini güncelle - sadece is_read durumunu değiştir
                 setNotifications(prev => prev.map(n => 
@@ -371,259 +535,38 @@ export default function Notifications() {
     const renderNotification = ({ item }: { item: Notification }) => {
         console.log('Rendering notification:', item.type, item.id, item.sender_name);
         
-        // Tarih ve saat formatlama - Database'deki saati olduğu gibi göster
-        const created = new Date(item.created_at);
-        const formatted = created.toLocaleString('tr-TR', { 
-            year: 'numeric',
-            month: '2-digit', 
-            day: '2-digit',
-            hour: '2-digit',
-            minute: '2-digit',
-            timeZone: 'UTC' // UTC olarak göster, otomatik çevirme yapma
-        });
-        
         if (item.type === 'follow_request') {
-            console.log('Rendering follow_request notification:', item.id);
             return (
-                <View className="bg-white rounded-lg mx-4 mt-3 shadow-sm">
-                    {/* Üst satır - Profil Resmi ve Bildirim Metni */}
-                    <View className="flex-row items-center p-4">
-                        {/* Profil Resmi */}
-                        <View className="mr-3">
-                            <Image
-                                source={item.sender_profile_image ? { uri: item.sender_profile_image } : require('@/assets/images/ball.png')}
-                                style={{ width: 72, height: 72, borderRadius: 36, resizeMode: 'cover', opacity: item.is_read ? 0.6 : 1 }}
-                            />
-                        </View>
-                        {/* Bildirim Metni */}
-                        <View className="flex-1 p-1">
-                            <Text
-                                className={`mb-3 text-sm leading-5 ${item.is_read ? 'text-gray-500' : 'text-gray-700'}`}
-                                style={{ flexShrink: 1, flexWrap: 'wrap' }}
-                                numberOfLines={2}
-                                adjustsFontSizeToFit
-                                minimumFontScale={0.88}
-                            >
-                                <Text className={`font-bold ${item.is_read ? 'text-gray-600' : 'text-green-700'}`}>{item.sender_name} {item.sender_surname}</Text> {t('notifications.sentFollowRequest')}
-                            </Text>
-                        </View>
-                    </View>
-                    
-                    {/* Alt satır - Tarih/Saat ve Butonlar */}
-                    <View className="px-3 pb-3">
-                        <View className="flex-row justify-center items-center">
-                            <View className="mr-2">
-                                <Text className={`text-xs font-bold px-2 py-1 rounded ${item.is_read ? 'text-gray-500 bg-gray-300' : 'text-green-700 bg-gray-200'}`}>
-                                    {formatted}
-                                </Text>
-                            </View>
-                            {!item.is_read && (
-                                <View className="flex-row justify-center">
-                                    <View className="flex-row mr-2">
-                                        <TouchableOpacity
-                                            onPress={() => handleFollowRequest(item, 'reject')}
-                                            className="bg-red-500 font-bold px-2 py-2 rounded"
-                                        >
-                                            <Text className="text-white">{t('general.reject')}</Text>
-                                        </TouchableOpacity>
-                                    </View>
-                                    <View className="flex-row">
-                                        <TouchableOpacity
-                                            onPress={() => handleFollowRequest(item, 'accept')}
-                                            className="bg-green-700 font-bold px-2 py-2 rounded"
-                                        >
-                                            <Text className="text-white">{t('general.accept')}</Text>
-                                        </TouchableOpacity>
-                                    </View>
-                                </View>
-                            )}
-                            {item.is_read && (
-                                <View className="mr-2 flex-1" style={{ flexShrink: 1 }}>
-                                    <View className="text-xs font-bold text-gray-500 bg-gray-300 px-1 py-1 rounded text-right flex-row flex-wrap items-center justify-center" style={{ flexShrink: 1 }}>
-                                        <Text
-                                            className="text-gray-500 text-sm leading-5"
-                                            style={{ flexShrink: 1, flexWrap: 'wrap' }}
-                                        >
-                                            {item.message || 'İşlem Tamamlandı'}
-                                        </Text>
-                                        {item.message?.includes('kabul edildiniz') && (
-                                            <View className="ml-0 w-4 h-4 bg-green-600 rounded-full items-center justify-center">
-                                                <Text className="text-white text-xs font-bold">✓</Text>
-                                            </View>
-                                        )}
-                                        {item.message?.includes('kabul edilmediniz') && (
-                                            <View className="ml-1 w-4 h-4 bg-red-600 rounded-full items-center justify-center">
-                                                <Text className="text-white text-xs font-bold">✗</Text>
-                                            </View>
-                                        )}
-                                        {item.message?.includes('kabul edildi') && (
-                                            <View className="ml-1 w-4 h-4 bg-green-600 rounded-full items-center justify-center">
-                                                <Text className="text-white text-xs font-bold">✓</Text>
-                                            </View>
-                                        )}
-                                        {item.message?.includes('reddedildi') && (
-                                            <View className="ml-1 w-4 h-4 bg-red-600 rounded-full items-center justify-center">
-                                                <Text className="text-white text-xs font-bold">✗</Text>
-                                            </View>
-                                        )}
-                                    </View>
-                                </View>
-                            )}
-                        </View>
-                    </View>
-                </View>
+                <FollowRequestNotification
+                    item={item}
+                    onAccept={(item) => handleFollowRequest(item, 'accept')}
+                    onReject={(item) => handleFollowRequest(item, 'reject')}
+                    onProfilePress={(userId) => {
+                        setViewingUserId(userId);
+                        setProfileModalVisible(true);
+                    }}
+                    onMarkAsRead={handleMarkAsRead}
+                />
             );
         } else if (item.type === 'join_request') {
-            console.log('Rendering join_request notification:', item.id);
-            // Pozisyon kodlarını tam isimlere çevir
-            const getPositionName = (positionCode: string) => {
-                switch (positionCode) {
-                    case 'K': return 'Kaleci';
-                    case 'D': return 'Defans';
-                    case 'O': return 'Orta Saha';
-                    case 'F': return 'Forvet';
-                    default: return positionCode;
-                }
-            };
-
-            // Maç bilgilerini hazırla
-            const matchInfo = item.match ? 
-                `${item.match.formattedDate} ${item.match.startFormatted}-${item.match.endFormatted}, ${item.match.pitches?.districts?.name || 'Bilinmiyor'} → ${item.match.pitches?.name || 'Bilinmiyor'}` :
-                'Bilinmiyor';
-
             return (
-                <View className="bg-white rounded-lg mx-4 mt-3 shadow-sm">
-                    {/* Üst satır - Profil Resmi ve Bildirim Metni */}
-                    <View className="flex-row items-center p-4">
-                        {/* Profil Resmi */}
-                        <TouchableOpacity 
-                            className="mr-3"
-                            onPress={() => {
-                                setViewingUserId(item.sender_id);
-                                setProfileModalVisible(true);
-                            }}
-                        >
-                            <Image
-                                source={item.sender_profile_image ? { uri: item.sender_profile_image } : require('@/assets/images/ball.png')}
-                                style={{ width: 72, height: 72, borderRadius: 36, resizeMode: 'cover', opacity: item.is_read ? 0.6 : 1 }}
-                            />
-                        </TouchableOpacity>
-                        {/* Bildirim Metni */}
-                        <View className="flex-1 p-1 leading-snug">
-                            <View className="leading-snug">
-                                <Text className={`leading-6 ${item.is_read ? 'text-gray-500' : 'text-gray-700'}`}>
-                                    <Text
-                                        className={`font-bold leading-6 ${item.is_read ? 'text-gray-600' : 'text-green-700'}`}
-                                        onPress={() => {
-                                            setViewingUserId(item.sender_id);
-                                            setProfileModalVisible(true);
-                                        }}
-                                    >
-                                        {item.sender_name} {item.sender_surname}
-                                    </Text>
-                                    <Text className={`leading-6 ${item.is_read ? 'text-gray-500' : 'text-gray-700'}`}> kullanıcısı senin </Text>
-                                    <Text className={`font-bold leading-6 ${item.is_read ? 'text-gray-600' : 'text-green-700'}`}>{matchInfo}</Text>
-                                    <Text className={`leading-6 ${item.is_read ? 'text-gray-500' : 'text-gray-700'}`}> maçın için </Text>
-                                    <Text className={`font-bold leading-6 ${item.is_read ? 'text-orange-500' : 'text-orange-600'}`}>{getPositionName(item.position || '')}</Text>
-                                    <Text className={`leading-6 ${item.is_read ? 'text-gray-500' : 'text-gray-700'}`}> pozisyonuna katılmak istiyor?</Text>
-                                </Text>
-                            </View>
-                        </View>
-                    </View>
-                    
-                    {/* Alt satır - Tarih/Saat ve Butonlar */}
-                    <View className="px-3 pb-3">
-                        <View className="flex-row justify-between items-center">
-                            <View className="mr-3">
-                                <Text className={`text-xs font-bold px-2 py-1 rounded ${item.is_read ? 'text-gray-500 bg-gray-300' : 'text-green-700 bg-gray-200'}`}>
-                                    {formatted}
-                                </Text>
-                            </View>
-                            {!item.is_read && (
-                                <View className="flex-row justify-end space-x-2">
-                                    <View className="flex-row mr-2">
-                                        <TouchableOpacity
-                                            onPress={() => handleJoinRequest(item, 'reject')}
-                                            className="bg-red-500 font-bold px-2 py-2 rounded"
-                                        >
-                                            <Text className="text-white">{t('general.reject')}</Text>
-                                        </TouchableOpacity>
-                                    </View>
-                                    <View className="flex-row">
-                                        <TouchableOpacity
-                                            onPress={() => handleJoinRequest(item, 'accept')}
-                                            className="bg-green-700 font-bold px-2 py-2 rounded"
-                                        >
-                                            <Text className="text-white">{t('general.accept')}</Text>
-                                        </TouchableOpacity>
-                                    </View>
-                                </View>
-                            )}
-                            {item.is_read && (
-                                <View className="mr-1 flex-1" style={{ flexShrink: 1 }}>
-                                    <View className="text-xs font-bold text-gray-500 bg-gray-300 px-2 py-1 rounded text-right flex-row flex-wrap items-center justify-end" style={{ flexShrink: 1 }}>
-                                        <Text
-                                            className="text-gray-500 text-sm leading-5"
-                                            style={{ flexShrink: 1, flexWrap: 'wrap' }}
-                                        >
-                                            {item.message || 'İşlem Tamamlandı'}
-                                        </Text>
-                                        {item.message?.includes('kabul edildiniz') && (
-                                            <View className="ml-0 w-4 h-4 bg-green-600 rounded-full items-center justify-center">
-                                                <Text className="text-white text-xs font-bold">✓</Text>
-                                            </View>
-                                        )}
-                                        {item.message?.includes('kabul edilmediniz') && (
-                                            <View className="ml-0 w-4 h-4 bg-red-600 rounded-full items-center justify-center">
-                                                <Text className="text-white text-xs font-bold">✗</Text>
-                                            </View>
-                                        )}
-                                    </View>
-                                </View>
-                            )}
-                        </View>
-                    </View>
-                </View>
+                <JoinRequestNotification
+                    item={item}
+                    onAccept={(item) => handleJoinRequest(item, 'accept')}
+                    onReject={(item) => handleJoinRequest(item, 'reject')}
+                    onProfilePress={(userId) => {
+                        setViewingUserId(userId);
+                        setProfileModalVisible(true);
+                    }}
+                    onMarkAsRead={handleMarkAsRead}
+                />
             );
         } else if (item.type === 'direct_message') {
-            // Direkt mesaj bildirimi kartı
-            const senderFullName = `${item.sender_name || ''} ${item.sender_surname || ''}`.trim();
             return (
-                <TouchableOpacity
-                  activeOpacity={0.8}
-                  onPress={() => {
-                    router.push({
-                      pathname: '/message/chat',
-                      params: { to: item.sender_id, matchId: item.match_id, name: senderFullName }
-                    });
-                  }}
-                >
-                  <View className="bg-white rounded-lg mx-4 mt-3 shadow-sm">
-                    <View className="flex-row items-center p-4">
-                      <View className="mr-3">
-                        <Image
-                          source={item.sender_profile_image ? { uri: item.sender_profile_image } : require('@/assets/images/ball.png')}
-                          style={{ width: 56, height: 56, borderRadius: 28, resizeMode: 'cover' }}
-                        />
-                      </View>
-                      <View className="flex-1">
-                        <Text className="text-gray-800" numberOfLines={2}>
-                          <Text className="font-bold text-green-700">{senderFullName}</Text> {t('notifications.sentMessage') || 'size mesaj gönderdi.'}
-                        </Text>
-                        {!!item.message && (
-                          <Text className="text-gray-600 mt-1" numberOfLines={1}>“{item.message}”</Text>
-                        )}
-                      </View>
-                    </View>
-                    <View className="px-4 pb-3">
-                      <View className="flex-row items-center">
-                        <Text className="text-xs font-bold px-2 py-1 rounded text-green-700 bg-gray-200">{formatted}</Text>
-                      </View>
-                    </View>
-                  </View>
-                </TouchableOpacity>
+                <DirectMessageNotification item={item} />
             );
         }
+        
         console.log('Unknown notification type, returning null:', item.type, item.id);
         return null;
     };
