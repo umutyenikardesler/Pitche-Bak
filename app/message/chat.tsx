@@ -40,31 +40,12 @@ export default function ChatScreen() {
   // Resolve recipient id safely (avoid sending message to self)
   const resolveRecipientId = useCallback(async (currentUserId: string): Promise<string | null> => {
     const toId = normParam(to);
-    const matchIdStr = normParam(matchId);
-
-    // Öncelik: match sahibi (create_user)
-    if (matchIdStr) {
-      const { data } = await supabase
-        .from('match')
-        .select('create_user')
-        .eq('id', matchIdStr)
-        .single();
-      const ownerId = data?.create_user as string | undefined;
-      if (ownerId && ownerId !== currentUserId) return ownerId;
-
-      // Eğer owner mevcut kullanıcıysa, bu kez notification'lardan owner'ı bulmayı dene
-      const { data: notif } = await supabase
-        .from('notifications')
-        .select('sender_id')
-        .eq('match_id', matchIdStr)
-        .eq('type', 'join_request')
-        .limit(1)
-        .maybeSingle();
-      const notifSender = notif?.sender_id as string | undefined;
-      if (notifSender && notifSender !== currentUserId) return notifSender;
+    
+    // En basit ve doğru çözüm: route ile gelen to parametresini kullan
+    // Messages sayfasından gelen to parametresi zaten doğru recipient ID'sini içeriyor
+    if (toId && toId !== currentUserId) {
+      return toId;
     }
-    // Aksi halde route ile gelen to'yu kullan
-    if (toId && toId !== currentUserId) return toId;
 
     // Fallback: Eğer geçmiş mesajlar varsa karşı tarafı son mesajdan çıkar
     if (messages.length > 0) {
@@ -74,7 +55,7 @@ export default function ChatScreen() {
     }
 
     return null;
-  }, [to, matchId]);
+  }, [to, messages]);
 
   const loadMe = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -89,19 +70,15 @@ export default function ChatScreen() {
       console.warn('[Chat] recipient not resolved');
       return;
     }
-    const matchIdStr = normParam(matchId);
 
-    let query = supabase
+    // Her kullanıcı ile olan sohbet ayrı olmalı - sadece kullanıcı ID'lerine göre filtrele
+    // match_id'yi filtreleme kriteri olarak kullanma, çünkü her sohbet ayrı olmalı
+    const { data, error } = await supabase
       .from('messages')
-      .select('id, sender_id, recipient_id, content, created_at')
+      .select('id, sender_id, recipient_id, content, created_at, match_id')
       .or(`and(sender_id.eq.${user.id},recipient_id.eq.${recip}),and(sender_id.eq.${recip},recipient_id.eq.${user.id})`)
       .order('created_at', { ascending: true });
 
-    if (matchIdStr) {
-      query = query.eq('match_id', matchIdStr);
-    }
-
-    const { data, error } = await query;
     if (!error) setMessages((data as MsgItem[]) || []);
   }, [resolveRecipientId]);
 
@@ -143,12 +120,13 @@ export default function ChatScreen() {
       const matchIdStr = normParam(matchId);
 
       channel = supabase
-        .channel(`msg-${user.id}-${recip}-${matchIdStr || 'any'}`)
+        .channel(`msg-${user.id}-${recip}`)
         .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, (payload: any) => {
           const m = payload.new as MsgItem;
           const participants = (m.sender_id === user.id && m.recipient_id === recip) || (m.sender_id === recip && m.recipient_id === user.id);
-          const sameMatch = matchIdStr ? m.match_id === matchIdStr : true;
-          if (participants && sameMatch) {
+          
+          // Sadece bu iki kullanıcı arasındaki mesajları al (match_id'ye bakmadan)
+          if (participants) {
             setMessages(prev => [...prev, m]);
             setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 30);
           }
