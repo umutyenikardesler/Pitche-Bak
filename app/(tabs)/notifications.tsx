@@ -477,6 +477,9 @@ export default function Notifications() {
                     })
                     .eq('id', notification.id);
 
+                // Kısa mesaj formatı: "Göndermiş olduğunuz Kaleci pozisyona kabul edilmediniz"
+                const shortMessage = `Göndermiş olduğunuz ${getPositionName(notification.position || '')} pozisyona kabul edilmediniz.`;
+                
                 // Gönderen kullanıcıya red bildirimi oluştur
                 try {
                     // Maç sahibinin adını al (reddeden kişi)
@@ -509,7 +512,7 @@ export default function Notifications() {
                         user_id: notification.sender_id,
                         sender_id: user.id,
                         type: 'join_request',
-                        message: detailedMessage,
+                        message: shortMessage,
                         match_id: notification.match_id,
                         position: notification.position,
                         is_read: false,
@@ -523,6 +526,22 @@ export default function Notifications() {
                     n.id === notification.id ? { ...n, is_read: true, message: `${getPositionName(notification.position || '')} mevkisine kabul edilmediniz` } : n
                 ));
                 refresh();
+                
+                // MatchDetails ekranını anında tetikle (local event) - red bildirimi için
+                setTimeout(() => {
+                    try {
+                        const { DeviceEventEmitter } = require('react-native');
+                        const eventName = `match-rejected-${notification.match_id}`;
+                        console.log(`[Notifications] (join_request reject) Event emit ediliyor: ${eventName}`);
+                        DeviceEventEmitter.emit(eventName, {
+                            rejectedPosition: notification.position,
+                            rejectedMessage: shortMessage
+                        });
+                        console.log(`[Notifications] (join_request reject) Event başarıyla emit edildi: ${eventName}`);
+                    } catch (error) {
+                        console.error('[Notifications] (join_request reject) Event emit hatası:', error);
+                    }
+                }, 500);
                 
                 // Kısa bilgilendirme
                 try { (global as any).toast?.show?.('İstek reddedildi'); } catch (_) {}

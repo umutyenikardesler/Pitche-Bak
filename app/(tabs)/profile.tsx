@@ -489,30 +489,31 @@ export default function Profile() {
     }
   };
 
+  // Takip sayılarını çek
+  const fetchFollowCounts = async (userId: string) => {
+    try {
+      const { data: followers, error: followerError } = await supabase
+        .from("follow_requests")
+        .select("id")
+        .eq("following_id", userId)
+        .eq("status", "accepted");
+
+      const { data: following, error: followingError } = await supabase
+        .from("follow_requests")
+        .select("id")
+        .eq("follower_id", userId)
+        .eq("status", "accepted");
+
+      if (!followerError) setFollowerCount(followers.length);
+      if (!followingError) setFollowingCount(following.length);
+    } catch (error) {
+      console.error("Takip verileri çekilirken hata:", error);
+    }
+  };
+
   // Kullanıcı verisini çek
   const fetchUserData = async (): Promise<void> => {
     console.log("fetchUserData çağrıldı"); // Log eklendi
-
-    const fetchFollowCounts = async (userId: string) => {
-      try {
-        const { data: followers, error: followerError } = await supabase
-          .from("follow_requests")
-          .select("id")
-          .eq("following_id", userId)
-          .eq("status", "accepted");
-
-        const { data: following, error: followingError } = await supabase
-          .from("follow_requests")
-          .select("id")
-          .eq("follower_id", userId)
-          .eq("status", "accepted");
-
-        if (!followerError) setFollowerCount(followers.length);
-        if (!followingError) setFollowingCount(following.length);
-      } catch (error) {
-        console.error("Takip verileri çekilirken hata:", error);
-      }
-    };
 
     let userIdToFetch: string | null = null;
     
@@ -1066,6 +1067,23 @@ export default function Profile() {
           activeListType={activeListType}
           followersList={followersList}
           followingList={followingList}
+          onUnfollow={async (userId: string) => {
+            // Listeden kaldır ve yeniden çek
+            if (userId) {
+              const authUserId = (await supabase.auth.getUser()).data?.user?.id || null;
+              const paramUserIdRaw = searchParams.userId;
+              const paramUserId = Array.isArray(paramUserIdRaw) 
+                ? paramUserIdRaw[0] 
+                : paramUserIdRaw;
+              const userIdToFetch: string | null = paramUserId || authUserId || null;
+              
+              if (userIdToFetch) {
+                await fetchFollowingList(userIdToFetch);
+                // Takip sayısını da güncelle
+                await fetchFollowCounts(userIdToFetch);
+              }
+            }
+          }}
         />
 
         {/* 🔹 AYARLAR MODALI */}

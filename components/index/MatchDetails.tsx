@@ -26,6 +26,7 @@ export default function MatchDetails({ match, onClose, onOpenProfilePreview }: M
   const [isCancellingPosition, setIsCancellingPosition] = useState(false);
   const [cancelledPositions, setCancelledPositions] = useState<Set<string>>(new Set());
   const [isPitchSummaryExpanded, setIsPitchSummaryExpanded] = useState(false);
+  const [rejectedPosition, setRejectedPosition] = useState<{ position: string; message: string } | null>(null); // Sadece son red edilen pozisyon
   
   const featuresArray: string[] = Array.isArray(match.pitches) 
     ? match.pitches[0]?.features || []
@@ -33,10 +34,14 @@ export default function MatchDetails({ match, onClose, onOpenProfilePreview }: M
 
   // Eksik kadroları izlemek için yerel state (realtime güncellemeleri için)
   const [missingGroups, setMissingGroups] = useState<string[]>(Array.isArray(match.missing_groups) ? match.missing_groups : []);
+  // Tamamlanan pozisyonları takip et (count 0 olan pozisyonlar)
+  const [completedPositions, setCompletedPositions] = useState<Set<string>>(new Set());
 
   // match değişirse state'i senkronize et
   useEffect(() => {
     setMissingGroups(Array.isArray(match.missing_groups) ? match.missing_groups : []);
+    // Tamamlanan pozisyonları sıfırla (yeni maç için)
+    setCompletedPositions(new Set());
   }, [match.id]);
 
   // Soluk gitgel animasyonu
@@ -91,55 +96,84 @@ export default function MatchDetails({ match, onClose, onOpenProfilePreview }: M
             
             // Pozisyon sayısı azalan pozisyonları bul (kabul edilme)
             const decreasedPositions: string[] = [];
+            const newlyCompletedPositions: string[] = [];
+            
             oldGroups.forEach((oldGroup: string) => {
               const [position, oldCount] = oldGroup.split(':');
               const newGroup = newGroups.find(g => g.startsWith(position + ':'));
               if (newGroup) {
                 const [, newCount] = newGroup.split(':');
-                if (parseInt(newCount) < parseInt(oldCount)) {
+                const newCountNum = parseInt(newCount);
+                const oldCountNum = parseInt(oldCount);
+                
+                if (newCountNum < oldCountNum) {
                   decreasedPositions.push(position);
+                  // Eğer pozisyon 0'a düştüyse tamamlanan pozisyonlara ekle
+                  if (newCountNum === 0) {
+                    newlyCompletedPositions.push(position);
+                  }
                 }
               } else {
                 // Pozisyon tamamen kaybolmuş (0'a düşmüş)
                 decreasedPositions.push(position);
+                newlyCompletedPositions.push(position);
               }
             });
             
+            // Tamamlanan pozisyonları state'e ekle
+            if (newlyCompletedPositions.length > 0) {
+              setCompletedPositions(prev => {
+                const newSet = new Set(prev);
+                newlyCompletedPositions.forEach(pos => newSet.add(pos));
+                return newSet;
+              });
+            }
+            
             console.log(`[MatchDetails] Realtime azalan pozisyonlar (Kabul):`, decreasedPositions);
+            console.log(`[MatchDetails] Realtime tamamlanan pozisyonlar:`, newlyCompletedPositions);
             
             // Eğer pozisyon sayısı azaldıysa başarı mesajını göster
+            // ANCAK sadece kullanıcının isteği GERÇEKTEN kabul edildiyse göster
             if (decreasedPositions.length > 0) {
               // currentUserId'yi al
               const { data: { user } } = await supabase.auth.getUser();
               const currentUserIdFromAuth = user?.id || null;
               
               if (currentUserIdFromAuth && currentUserIdFromAuth !== match.create_user) {
-                // Database'den sentRequests'i kontrol et
-                const { data: currentSentData } = await supabase
+                // ÖNEMLİ: Sadece "kabul edildiniz" mesajı olan bildirimleri kontrol et
+                // Red edildiğinde missing_groups değişmez, ama başka nedenlerle değişebilir
+                const { data: acceptedNotificationsData } = await supabase
                   .from('notifications')
-                  .select('position, is_read')
+                  .select('position, message')
                   .eq('type', 'join_request')
-                  .eq('sender_id', currentUserIdFromAuth)
+                  .eq('user_id', currentUserIdFromAuth) // Bildirim alan kişi (istek gönderen)
                   .eq('match_id', match.id)
+                  .like('message', '%kabul edildiniz%') // Sadece kabul mesajları
                   .order('created_at', { ascending: false })
-                  .limit(5);
+                  .limit(10);
                 
-                const allSentPositions = (currentSentData || [])
+                const acceptedPositionsFromNotifications = (acceptedNotificationsData || [])
                   .map((row: any) => row.position)
-                  .filter((p: any) => typeof p === 'string');
+                  .filter((p: any) => typeof p === 'string' && p);
                 
-                console.log(`[MatchDetails] Realtime: Kullanıcının tüm sent positions: ${allSentPositions.join(', ')}`);
+                console.log(`[MatchDetails] Realtime: Kabul edilen pozisyonlar (bildirimlerden): ${acceptedPositionsFromNotifications.join(', ')}`);
+                console.log(`[MatchDetails] Realtime: Azalan pozisyonlar: ${decreasedPositions.join(', ')}`);
                 
-                const acceptedPositions = decreasedPositions.filter(pos => allSentPositions.includes(pos));
+                // Sadece hem azalan hem de kabul bildirimi olan pozisyonları göster
+                const trulyAcceptedPositions = decreasedPositions.filter(pos => 
+                  acceptedPositionsFromNotifications.includes(pos)
+                );
                 
-                if (acceptedPositions.length > 0) {
-                  const acceptedPositionToShow = acceptedPositions[0];
+                if (trulyAcceptedPositions.length > 0) {
+                  const acceptedPositionToShow = trulyAcceptedPositions[0];
                   if (!shownAcceptedPositions.has(acceptedPositionToShow)) {
-                    console.log(`[MatchDetails] Realtime başarı mesajı gösterilecek: ${acceptedPositionToShow}`);
+                    console.log(`[MatchDetails] Realtime başarı mesajı gösterilecek (kabul edildi): ${acceptedPositionToShow}`);
                     setAcceptedPosition(acceptedPositionToShow);
                     setShownAcceptedPositions(prev => new Set([...prev, acceptedPositionToShow]));
                     setSentRequests(prev => prev.filter(p => p !== acceptedPositionToShow));
                   }
+                } else {
+                  console.log(`[MatchDetails] Realtime: Pozisyon azaldı ama kabul bildirimi yok, mesaj gösterilmeyecek`);
                 }
               }
             }
@@ -338,6 +372,78 @@ export default function MatchDetails({ match, onClose, onOpenProfilePreview }: M
     };
   }, [match.id]);
 
+  // Red bildirimi için event listener
+  useEffect(() => {
+    const eventName = `match-rejected-${match.id}`;
+    console.log(`[MatchDetails] Red event listener kuruldu: ${eventName}`);
+    const sub = DeviceEventEmitter.addListener(eventName, (data) => {
+      console.log(`[MatchDetails] Red event tetiklendi: ${eventName}`, data);
+      
+      if (data && data.rejectedPosition && data.rejectedMessage) {
+        console.log(`[MatchDetails] Red edilen pozisyon: ${data.rejectedPosition}, Mesaj: ${data.rejectedMessage}`);
+        // Sadece son red edilen pozisyonu state'e ekle
+        setRejectedPosition({
+          position: data.rejectedPosition,
+          message: data.rejectedMessage
+        });
+        // Gönderilen isteklerden red edileni kaldır
+        setSentRequests(prev => prev.filter(p => p !== data.rejectedPosition));
+      }
+    });
+    return () => {
+      console.log(`[MatchDetails] Red event listener kaldırıldı: ${eventName}`);
+      sub.remove();
+    };
+  }, [match.id]);
+
+  // Notifications tablosunu realtime ile dinle (red bildirimleri için)
+  useEffect(() => {
+    let mounted = true;
+    let channel: any = null;
+    
+    (async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!mounted || !user) return;
+
+      channel = supabase
+        .channel(`notifications-reject-${match.id}-${user.id}`)
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'notifications',
+            filter: `user_id=eq.${user.id} AND match_id=eq.${match.id} AND type=eq.join_request`,
+          },
+          async (payload: any) => {
+            if (!mounted) return;
+            const newNotification = payload.new;
+            console.log(`[MatchDetails] Yeni bildirim geldi:`, newNotification);
+            
+            // Eğer mesaj "kabul edilmediniz" içeriyorsa red bildirimi
+            if (newNotification.message && newNotification.message.includes('kabul edilmediniz')) {
+              console.log(`[MatchDetails] Red bildirimi tespit edildi:`, newNotification);
+              // Sadece son red edilen pozisyonu state'e ekle
+              setRejectedPosition({
+                position: newNotification.position,
+                message: newNotification.message
+              });
+              // Gönderilen isteklerden red edileni kaldır
+              setSentRequests(prev => prev.filter(p => p !== newNotification.position));
+            }
+          }
+        )
+        .subscribe();
+    })();
+
+    return () => {
+      mounted = false;
+      if (channel) {
+        try { supabase.removeChannel(channel); } catch (_) {}
+      }
+    };
+  }, [match.id, currentUserId]);
+
   // Realtime fallback - her 3 saniyede bir kontrol et
   useEffect(() => {
     const interval = setInterval(async () => {
@@ -368,7 +474,7 @@ export default function MatchDetails({ match, onClose, onOpenProfilePreview }: M
       console.log(`[MatchDetails] fetchSentRequests çağrıldı - User: ${currentUserIdFromAuth}, Match: ${match.id}`);
       const { data, error } = await supabase
         .from('notifications')
-        .select('position, is_read')
+        .select('position, is_read, created_at')
         .eq('type', 'join_request')
         .eq('sender_id', currentUserIdFromAuth)
         .eq('match_id', match.id)
@@ -381,16 +487,28 @@ export default function MatchDetails({ match, onClose, onOpenProfilePreview }: M
       
       console.log(`[MatchDetails] Database'den gelen notifications:`, data);
       
-      // Sadece okunmamış (pending) istekleri göster
-      const pendingPositions = (data || [])
+      // Sadece en son okunmamış (pending) isteği göster
+      const pendingNotifications = (data || [])
         .filter((row: any) => row.is_read === false)
-        .map((row: any) => row.position)
-        .filter((p: any) => typeof p === 'string');
-        
-      console.log(`[MatchDetails] fetchSentRequests sonucu (pending):`, pendingPositions);
-      console.log(`[MatchDetails] sentRequests state'i güncelleniyor:`, Array.from(new Set(pendingPositions)));
+        .sort((a: any, b: any) => {
+          // created_at'e göre sırala (en yeni en üstte)
+          const dateA = new Date(a.created_at || 0).getTime();
+          const dateB = new Date(b.created_at || 0).getTime();
+          return dateB - dateA;
+        });
       
-      setSentRequests(Array.from(new Set(pendingPositions)));
+      // Sadece en son gönderilen isteği al
+      const lastPendingPosition = pendingNotifications.length > 0 
+        ? pendingNotifications[0].position 
+        : null;
+        
+      console.log(`[MatchDetails] fetchSentRequests sonucu (son pending):`, lastPendingPosition);
+      
+      if (lastPendingPosition && typeof lastPendingPosition === 'string') {
+        setSentRequests([lastPendingPosition]);
+      } else {
+        setSentRequests([]);
+      }
     } catch (error) {
       console.error(`[MatchDetails] fetchSentRequests catch hatası:`, error);
     }
@@ -490,6 +608,48 @@ export default function MatchDetails({ match, onClose, onOpenProfilePreview }: M
     run();
   }, [fetchSentRequests]);
 
+  // Red bildirimini yükle (sayfa ilk açıldığında) - sadece en son red edilen
+  const loadRejectedPosition = useCallback(async () => {
+    if (!currentUserId) return;
+    try {
+      console.log(`[MatchDetails] loadRejectedPosition çağrıldı - User: ${currentUserId}, Match: ${match.id}`);
+      
+      // Sadece en son red bildirimini al
+      const { data: rejectedNotification, error } = await supabase
+        .from('notifications')
+        .select('position, message, created_at')
+        .eq('type', 'join_request')
+        .eq('user_id', currentUserId) // Bildirim alan kişi (istek gönderen)
+        .eq('match_id', match.id)
+        .like('message', '%kabul edilmediniz%') // Red mesajları
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      
+      if (error) {
+        console.error(`[MatchDetails] loadRejectedPosition hatası:`, error);
+        return;
+      }
+      
+      console.log(`[MatchDetails] En son red bildirimi yüklendi:`, rejectedNotification);
+      
+      if (rejectedNotification && rejectedNotification.position && rejectedNotification.message) {
+        setRejectedPosition({
+          position: rejectedNotification.position,
+          message: rejectedNotification.message
+        });
+        console.log(`[MatchDetails] RejectedPosition state'i güncellendi:`, rejectedNotification.position);
+        
+        // Eğer red edilen pozisyon sentRequests'te varsa kaldır
+        setSentRequests(prev => prev.filter(p => p !== rejectedNotification.position));
+      } else {
+        setRejectedPosition(null);
+      }
+    } catch (error) {
+      console.error(`[MatchDetails] loadRejectedPosition catch hatası:`, error);
+    }
+  }, [currentUserId, match.id]);
+
   // Component mount olduğunda sentRequests'i güncelle ve kabul edilen pozisyonları yükle
   useEffect(() => {
     if (currentUserId) {
@@ -497,8 +657,9 @@ export default function MatchDetails({ match, onClose, onOpenProfilePreview }: M
       setCancelledPositions(new Set());
       fetchSentRequests();
       loadAcceptedPositions();
+      loadRejectedPosition();
     }
-  }, [currentUserId, match.id, fetchSentRequests, loadAcceptedPositions]);
+  }, [currentUserId, match.id, fetchSentRequests, loadAcceptedPositions, loadRejectedPosition]);
 
   // Interval kaldırıldı - sadece başlangıçta fetchSentRequests çağrılacak
 
@@ -549,9 +710,9 @@ export default function MatchDetails({ match, onClose, onOpenProfilePreview }: M
       return;
     }
 
-    // Başka bir pozisyon için istek gönderilmişse veya kabul edilmişse uyar
-    if (sentRequests.length > 0 || acceptedPosition || shownAcceptedPositions.size > 0) {
-      Alert.alert("Bilgi", "Bu maça zaten katılım sağladınız veya katılım isteği gönderdiniz.");
+    // Başka bir pozisyon için istek gönderilmişse, kabul edilmişse veya red edilmişse uyar
+    if (sentRequests.length > 0 || acceptedPosition || shownAcceptedPositions.size > 0 || rejectedPosition) {
+      Alert.alert("Bilgi", "Bu maça zaten katılım sağladınız veya katılım isteği gönderdiniz. Sadece 1 pozisyon için istek gönderebilirsiniz.");
       return;
     }
 
@@ -576,24 +737,48 @@ export default function MatchDetails({ match, onClose, onOpenProfilePreview }: M
       console.log(`[MatchDetails] currentUserIdFromAuth: ${currentUserIdFromAuth}`);
       console.log(`[MatchDetails] match.create_user: ${match.create_user}`);
       
-      // Sunucuda da mükerrer kontrolü yap
-      const { data: existing } = await supabase
+      // Sunucuda da mükerrer kontrolü yap - Herhangi bir pozisyon için istek var mı kontrol et
+      // (pending, accepted veya rejected - hepsi)
+      const { data: existingRequests, error: existingError } = await supabase
         .from('notifications')
-        .select('id')
+        .select('id, position, is_read, message')
         .eq('type', 'join_request')
         .eq('sender_id', currentUserIdFromAuth)
-        .eq('match_id', match.id)
-        .limit(1)
-        .maybeSingle();
+        .eq('match_id', match.id);
       
-      console.log(`[MatchDetails] Mevcut istek kontrolü:`, existing);
+      console.log(`[MatchDetails] Mevcut istekler kontrolü:`, existingRequests);
       
-      if (existing) {
-        console.log(`[MatchDetails] Zaten mevcut istek var: ${existing.id}`);
-        setSentRequests((prev) => prev.length ? prev : [position]);
-        Alert.alert("Bilgi", `${getPositionName(position)} olarak katılım isteğin zaten gönderilmiş.`);
-        setIsLoading(false);
-        return;
+      if (existingError) {
+        console.error(`[MatchDetails] Mevcut istekler kontrol hatası:`, existingError);
+      }
+      
+      if (existingRequests && existingRequests.length > 0) {
+        console.log(`[MatchDetails] Zaten mevcut istek var: ${existingRequests.length} istek`);
+        // Hangi durumda olduğunu kontrol et
+        const pendingRequests = existingRequests.filter((req: any) => !req.is_read);
+        const acceptedRequests = existingRequests.filter((req: any) => req.is_read && req.message && req.message.includes('kabul edildiniz'));
+        const rejectedRequests = existingRequests.filter((req: any) => req.is_read && req.message && req.message.includes('kabul edilmediniz'));
+        
+        if (pendingRequests.length > 0) {
+          const pendingPosition = pendingRequests[0].position;
+          Alert.alert("Bilgi", `${getPositionName(pendingPosition)} olarak katılım isteğin zaten gönderilmiş. Sadece 1 pozisyon için istek gönderebilirsiniz.`);
+          setIsLoading(false);
+          return;
+        }
+        
+        if (acceptedRequests.length > 0) {
+          const acceptedPos = acceptedRequests[0].position;
+          Alert.alert("Bilgi", `${getPositionName(acceptedPos)} olarak maça katılım sağladınız. Sadece 1 pozisyon için istek gönderebilirsiniz.`);
+          setIsLoading(false);
+          return;
+        }
+        
+        if (rejectedRequests.length > 0) {
+          const rejectedPos = rejectedRequests[0].position;
+          Alert.alert("Bilgi", `${getPositionName(rejectedPos)} pozisyonu için daha önce istek gönderdiniz. Sadece 1 pozisyon için istek gönderebilirsiniz.`);
+          setIsLoading(false);
+          return;
+        }
       }
 
       // Bildirim oluştur
@@ -876,6 +1061,25 @@ export default function MatchDetails({ match, onClose, onOpenProfilePreview }: M
               </View>
             );
           })}
+          
+          {/* Tamamlanan Pozisyonlar (yeşil dolgu ile) */}
+          {Array.from(completedPositions).map((position, index) => {
+            return (
+              <View key={`completed-${position}-${index}`} className="flex-row items-center mx-1 mb-2">
+                <View
+                  className="flex-row items-center border-solid border-2 border-green-600 bg-green-100 rounded-full p-1.5"
+                >
+                  <View className={`rounded-full py-1.5 px-1.5 ${position === 'K' ? 'bg-red-500'
+                    : position === 'D' ? 'bg-blue-700'
+                      : position === 'O' ? 'bg-green-700'
+                        : 'bg-yellow-600'}`}>
+                    <Text className="text-white font-bold textlg px-2">{position}</Text>
+                  </View>
+                  <Text className="ml-1 font-semibold pr-1 text-lg text-green-700">x 0</Text>
+                </View>
+              </View>
+            );
+          })}
         </View>
 
         {/* Kadro tamamsa göster */}
@@ -902,16 +1106,25 @@ export default function MatchDetails({ match, onClose, onOpenProfilePreview }: M
         )}
         
 
-        {/* Gönderilen İstekler için Durum Mesajları */}
-        {sentRequests.length > 0 && !acceptedPosition && (
+        {/* Gönderilen İstek için Durum Mesajı (sadece en son) */}
+        {sentRequests.length > 0 && !acceptedPosition && !rejectedPosition && (
           <View className="mt-2">
-            {sentRequests.map((position, index) => (
-              <View key={index} className="bg-green-100 border border-green-300 rounded-lg p-2">
-                <Text className="text-green-700 text-center font-semibold">
-                  {getPositionName(position)} olarak maça katılma istediğin gönderildi.
-                </Text>
-              </View>
-            ))}
+            <View className="bg-green-100 border border-green-300 rounded-lg p-2">
+              <Text className="text-green-700 text-center font-semibold">
+                {getPositionName(sentRequests[0])} olarak maça katılma istediğin gönderildi.
+              </Text>
+            </View>
+          </View>
+        )}
+
+        {/* Red Edilen İstek için Durum Mesajı (sadece en son) */}
+        {rejectedPosition && (
+          <View className="mt-2">
+            <View className="bg-red-100 border border-red-300 rounded-lg p-2 mb-2">
+              <Text className="text-red-700 text-center font-semibold">
+                {rejectedPosition.message}
+              </Text>
+            </View>
           </View>
         )}
         {/* Eksik Kadrolar */}

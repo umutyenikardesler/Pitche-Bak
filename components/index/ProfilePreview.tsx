@@ -529,14 +529,14 @@ export default function ProfilePreview({
             activeOpacity={1}
           />
           
-          <View className="bg-white rounded-2xl w-11/12 h-3/4 overflow-hidden">
+          <View className="rounded-2xl w-11/12 h-3/4 overflow-hidden">
             <ScrollView
               className="flex-1"
               scrollEnabled={!listModalVisible}
               nestedScrollEnabled={true}
             >
               <View className="pt-8">
-                <View className="flex flex-row bg-white rounded-lg shadow-lg px-4 mb-2">
+                <View className="flex flex-row bg-white rounded-lg shadow-lg px-4 py-2 mb-2">
                   {/* Profil Resmi */}
                   <View className="w-1/4 py-2">
                     <TouchableOpacity
@@ -556,7 +556,7 @@ export default function ProfilePreview({
                   </View>
 
                   {/* Bilgiler */}
-                  <View className="w-3/4 pl-4">
+                  <View className="w-3/4 pl-6">
                     <Text className="font-semibold text-lg text-green-700 my-1">
                       {userData?.name || t("profile.noName")}{" "}
                       {userData?.surname || ""}
