@@ -14,9 +14,10 @@ interface DirectMessageNotificationProps {
         match_id?: string;
         is_read: boolean;
     };
+    onMarkAsRead?: (item: any) => void;
 }
 
-export default function DirectMessageNotification({ item }: DirectMessageNotificationProps) {
+export default function DirectMessageNotification({ item, onMarkAsRead }: DirectMessageNotificationProps) {
     const { t } = useLanguage();
     const router = useRouter();
     
@@ -37,6 +38,10 @@ export default function DirectMessageNotification({ item }: DirectMessageNotific
         <TouchableOpacity
             activeOpacity={0.8}
             onPress={() => {
+                // Bildirimi okundu olarak işaretle
+                if (!item.is_read) {
+                    onMarkAsRead?.(item);
+                }
                 router.push({
                     pathname: '/message/chat',
                     params: { to: item.sender_id, matchId: item.match_id, name: senderFullName }

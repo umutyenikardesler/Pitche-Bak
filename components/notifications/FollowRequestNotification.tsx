@@ -38,7 +38,7 @@ export default function FollowRequestNotification({ item, onAccept, onReject, on
             className="bg-white rounded-lg mx-4 mt-3 shadow-sm"
             onPress={() => {
                 // Sadece sonuç bildirimlerine tıklandığında okundu olarak işaretle
-                if (item.message && (item.message.includes('kabul edildi') || item.message.includes('reddedildi') || item.message.includes('takip isteğinizi') || item.message.includes('seni takip etmeye başladı'))) {
+                if (item.message && (item.message.includes('kabul edildi') || item.message.includes('reddedildi') || item.message.includes('reddetti') || item.message.includes('reddettiniz') || item.message.includes('takip isteğinizi') || item.message.includes('seni takip etmeye başladı'))) {
                     onMarkAsRead?.(item);
                 }
             }}
@@ -55,7 +55,7 @@ export default function FollowRequestNotification({ item, onAccept, onReject, on
                 </View>
                 {/* Bildirim Metni */}
                 <View className="flex-1 p-1">
-                    {item.message && (item.message.includes('kabul edildi') || item.message.includes('reddedildi') || item.message.includes('takip isteğinizi') || item.message.includes('seni takip etmeye başladı')) ? (
+                    {item.message && (item.message.includes('kabul edildi') || item.message.includes('reddedildi') || item.message.includes('reddetti') || item.message.includes('reddettiniz') || item.message.includes('takip isteğinizi') || item.message.includes('seni takip etmeye başladı')) ? (
                         // Sonuç bildirimi (kabul/red) - mesajı parse et ve kullanıcı adını linkli yap
                         <Text
                             className={`text-sm leading-5 ${item.is_read ? 'text-gray-500' : 'text-gray-700'}`}
@@ -78,6 +78,44 @@ export default function FollowRequestNotification({ item, onAccept, onReject, on
                                                 {name}
                                             </Text>
                                             <Text className={`${item.is_read ? 'text-gray-500' : 'text-gray-700'}`}> {restOfMessage}</Text>
+                                        </>
+                                    );
+                                } else if (item.message?.includes('takip isteğinizi reddetti')) {
+                                    // İstek gönderen kullanıcıya: "Duygu Zengin takip isteğinizi reddetti."
+                                    const parts = item.message.split(' ');
+                                    const name = parts[0] + ' ' + parts[1]; // İsim ve soyisim
+                                    const beforeReddetti = parts.slice(2, parts.length - 1).join(' '); // "takip isteğinizi"
+                                    const reddetti = parts[parts.length - 1]; // "reddetti."
+                                    
+                                    return (
+                                        <>
+                                            <Text 
+                                                className={`font-bold ${item.is_read ? 'text-gray-600' : 'text-green-700'}`}
+                                                onPress={() => onProfilePress?.(item.sender_id)}
+                                            >
+                                                {name}
+                                            </Text>
+                                            <Text className={`${item.is_read ? 'text-gray-500' : 'text-gray-700'}`}> {beforeReddetti} </Text>
+                                            <Text className={`font-bold ${item.is_read ? 'text-red-500' : 'text-red-600'}`}>{reddetti}</Text>
+                                        </>
+                                    );
+                                } else if (item.message?.includes('kullanıcısının takip isteğini reddettiniz')) {
+                                    // İstek gelen kişiye: "Umut Yılmaz kullanıcısının takip isteğini reddettiniz."
+                                    const parts = item.message.split(' ');
+                                    const name = parts[0] + ' ' + parts[1]; // İsim ve soyisim
+                                    const beforeReddettiniz = parts.slice(2, parts.length - 1).join(' '); // "kullanıcısının takip isteğini"
+                                    const reddettiniz = parts[parts.length - 1]; // "reddettiniz."
+                                    
+                                    return (
+                                        <>
+                                            <Text 
+                                                className={`font-bold ${item.is_read ? 'text-gray-600' : 'text-green-700'}`}
+                                                onPress={() => onProfilePress?.(item.sender_id)}
+                                            >
+                                                {name}
+                                            </Text>
+                                            <Text className={`${item.is_read ? 'text-gray-500' : 'text-gray-700'}`}> {beforeReddettiniz} </Text>
+                                            <Text className={`font-bold ${item.is_read ? 'text-red-500' : 'text-red-600'}`}>{reddettiniz}</Text>
                                         </>
                                     );
                                 } else {
@@ -123,7 +161,7 @@ export default function FollowRequestNotification({ item, onAccept, onReject, on
             
             {/* Alt satır - Tarih/Saat ve Butonlar */}
             <View className="px-3 pb-3">
-                {item.message && (item.message.includes('kabul edildi') || item.message.includes('reddedildi') || item.message.includes('takip isteğinizi') || item.message.includes('seni takip etmeye başladı')) ? (
+                {item.message && (item.message.includes('kabul edildi') || item.message.includes('reddedildi') || item.message.includes('reddetti') || item.message.includes('reddettiniz') || item.message.includes('takip isteğinizi') || item.message.includes('seni takip etmeye başladı')) ? (
                     // Sonuç bildirimi - sadece tarih göster
                     <View className="flex-row justify-start items-center">
                         <Text className={`text-xs font-bold px-2 py-1 rounded ${item.is_read ? 'text-gray-500 bg-gray-300' : 'text-green-700 bg-gray-200'}`}>

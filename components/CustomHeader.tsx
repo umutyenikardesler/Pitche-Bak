@@ -22,8 +22,15 @@ const CustomHeader = ({ title, showNotificationIcon = true, onTitlePress }: Cust
   const { t } = useLanguage();
   
   const handleNotificationsPress = () => {
+    // Eğer zaten notifications sayfasındaysak, hiçbir şey yapma
+    if (pathname === '/(tabs)/notifications' || pathname === '/notifications') {
+      return;
+    }
     router.push('/notifications');
   };
+  
+  // Bildirimler sayfasındayken opacity değişmesin
+  const isOnNotificationsPage = pathname === '/(tabs)/notifications' || pathname === '/notifications';
 
   const handleTitlePress = () => {
     console.log('CustomHeader başlığına tıklandı:', title);
@@ -63,6 +70,8 @@ const CustomHeader = ({ title, showNotificationIcon = true, onTitlePress }: Cust
           <TouchableOpacity 
             onPress={handleNotificationsPress} 
             style={{ position: 'relative' }}
+            activeOpacity={isOnNotificationsPage ? 1 : 0.7}
+            disabled={isOnNotificationsPage}
             accessibilityLabel={t('general.notifications')}
             accessibilityHint={t('general.notificationCount')}
           >

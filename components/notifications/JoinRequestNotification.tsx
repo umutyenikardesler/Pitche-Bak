@@ -65,7 +65,7 @@ export default function JoinRequestNotification({ item, onAccept, onReject, onPr
             className="bg-white rounded-lg mx-4 mt-3 shadow-sm"
             onPress={() => {
                 // Sadece geri bildirim mesajlarına tıklandığında okundu olarak işaretle
-                if (item.message && (item.message.includes('kullanıcısının oluşturduğu') || item.message.includes('kabul edildiniz') || item.message.includes('kabul edilmediniz'))) {
+                if (item.message && (item.message.includes('kullanıcısının oluşturduğu') || item.message.includes('kabul edildiniz') || item.message.includes('kabul edilmediniz') || item.message.includes('reddedildi'))) {
                     onMarkAsRead?.(item);
                 }
             }}
@@ -85,7 +85,57 @@ export default function JoinRequestNotification({ item, onAccept, onReject, onPr
                 </TouchableOpacity>
                 {/* Bildirim Metni */}
                 <View className="flex-1 p-1 leading-snug">
-                    {item.message && (item.message.includes('kullanıcısının oluşturduğu')) ? (
+                    {item.message && (item.message.includes('reddedildi')) ? (
+                        // Red bildirimi - detaylı mesaj formatı
+                        <Text className={`leading-6 ${item.is_read ? 'text-gray-500' : 'text-gray-700'}`}>
+                            {(() => {
+                                // Mesajı parse et: "Duygu Zengin kullanıcısının oluşturmuş olduğu 25.10.2025 14:00-15:00, Kadıköy → Fenerbahçe maçı için Defans pozisyonuna katılma isteğiniz reddedildi."
+                                // "maçı için" ile ayır
+                                const messageParts = item.message.split(' maçı için ');
+                                const beforeMatch = messageParts[0]; // "Duygu Zengin kullanıcısının oluşturmuş olduğu 25.10.2025 14:00-15:00, Kadıköy → Fenerbahçe"
+                                const afterMatch = messageParts[1]; // "Defans pozisyonuna katılma isteğiniz reddedildi."
+                                
+                                // beforeMatch'i parse et - virgül ile ayır
+                                const beforeMatchParts = beforeMatch.split(', ');
+                                const firstPart = beforeMatchParts[0]; // "Duygu Zengin kullanıcısının oluşturmuş olduğu 25.10.2025 14:00-15:00"
+                                const locationInfo = beforeMatchParts[1] || ''; // "Kadıköy → Fenerbahçe"
+                                
+                                // firstPart'i parse et
+                                const firstPartWords = firstPart.split(' ');
+                                const name = firstPartWords[0] + ' ' + firstPartWords[1]; // "Duygu Zengin"
+                                const userPart = firstPartWords.slice(2, 5).join(' '); // "kullanıcısının oluşturmuş olduğu"
+                                const dateTime = firstPartWords.slice(5).join(' '); // "25.10.2025 14:00-15:00"
+                                
+                                // afterMatch'i parse et
+                                const afterMatchParts = afterMatch.split(' pozisyonuna ');
+                                const position = afterMatchParts[0]; // "Defans"
+                                const reddedildi = afterMatchParts[1]; // "katılma isteğiniz reddedildi."
+                                
+                                return (
+                                    <>
+                                        <Text 
+                                            className={`font-bold ${item.is_read ? 'text-gray-600' : 'text-green-700'}`}
+                                            onPress={() => onProfilePress(item.sender_id)}
+                                        >
+                                            {name}
+                                        </Text>
+                                        <Text className={`${item.is_read ? 'text-gray-500' : 'text-gray-700'}`}> {userPart} </Text>
+                                        <Text className={`font-bold ${item.is_read ? 'text-gray-600' : 'text-green-700'}`}>{dateTime}</Text>
+                                        {locationInfo && (
+                                            <>
+                                                <Text className={`${item.is_read ? 'text-gray-500' : 'text-gray-700'}`}>, </Text>
+                                                <Text className={`font-bold ${item.is_read ? 'text-gray-600' : 'text-green-700'}`}>{locationInfo}</Text>
+                                            </>
+                                        )}
+                                        <Text className={`${item.is_read ? 'text-gray-500' : 'text-gray-700'}`}> maçı için </Text>
+                                        <Text className={`font-bold ${item.is_read ? 'text-orange-500' : 'text-orange-600'}`}>{position}</Text>
+                                        <Text className={`${item.is_read ? 'text-gray-500' : 'text-gray-700'}`}> pozisyonuna </Text>
+                                        <Text className={`font-bold ${item.is_read ? 'text-red-500' : 'text-red-600'}`}>{reddedildi}</Text>
+                                    </>
+                                );
+                            })()}
+                        </Text>
+                    ) : item.message && (item.message.includes('kullanıcısının oluşturduğu')) ? (
                         // Detaylı sonuç bildirimi - mesajı parse et ve kullanıcı adını linkli yap
                         <Text className={`leading-6 ${item.is_read ? 'text-gray-500' : 'text-gray-700'}`}>
                             {(() => {
@@ -174,15 +224,31 @@ export default function JoinRequestNotification({ item, onAccept, onReject, onPr
             
             {/* Alt satır - Tarih/Saat ve Butonlar */}
             <View className="px-3 pb-3">
-                {item.message && (item.message.includes('kullanıcısının oluşturduğu')) ? (
+                {item.message && (item.message.includes('reddedildi')) ? (
+                    // Red bildirimi - tarih + bilgilendirme mesajı
+                    <View className="flex-row justify-between items-center mr-2">
+                        <Text className={`text-xs font-bold px-2 py-1 rounded ${item.is_read ? 'text-gray-500 bg-gray-300' : 'text-green-700 bg-gray-200'}`}>
+                            {formatted}
+                        </Text>
+                        <Text className="text-gray-600 text-xs ml-2 flex-1">Sonraki maçlar için tekrar istek gönderebilirsiniz.</Text>
+                    </View>
+                ) : item.message && (item.message.includes('kullanıcısının oluşturduğu')) ? (
                     // Detaylı sonuç bildirimi - sadece tarih göster
                     <View className="flex-row justify-start items-center">
                         <Text className={`text-xs font-bold px-2 py-1 rounded ${item.is_read ? 'text-gray-500 bg-gray-300' : 'text-green-700 bg-gray-200'}`}>
                             {formatted}
                         </Text>
                     </View>
+                ) : item.message && (item.message.includes('Göndermiş olduğunuz')) ? (
+                    // İstek gönderen kullanıcıya gönderilen red mesajı - mesajı olduğu gibi göster
+                    <View className="flex-row justify-between items-center mr-2">
+                        <Text className={`text-xs font-bold px-2 py-1 rounded ${item.is_read ? 'text-gray-500 bg-gray-300' : 'text-green-700 bg-gray-200'}`}>
+                            {formatted}
+                        </Text>
+                        <Text className="text-red-600 font-bold ml-2 flex-1">{item.message}</Text>
+                    </View>
                 ) : item.message && (item.message.includes('kabul edildiniz') || item.message.includes('kabul edilmediniz')) ? (
-                    // Kısa sonuç bildirimi - tarih + kırmızı mesaj
+                    // Kısa sonuç bildirimi - tarih + kırmızı mesaj (maç sahibi için)
                     <View className="flex-row justify-between items-center mr-2">
                         <Text className={`text-xs font-bold px-2 py-1 rounded ${item.is_read ? 'text-gray-500 bg-gray-300' : 'text-green-700 bg-gray-200'}`}>
                             {formatted}

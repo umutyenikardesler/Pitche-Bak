@@ -73,15 +73,24 @@ export default function Notifications() {
             const notificationDate = new Date(notification.created_at);
             const notificationDay = new Date(notificationDate.getFullYear(), notificationDate.getMonth(), notificationDate.getDate());
 
+            // Bugün kontrolü - tam tarih eşleşmesi
             if (notificationDay.getTime() === today.getTime()) {
                 groups['Bugün'].push(notification);
-            } else if (notificationDay.getTime() === yesterday.getTime()) {
+            } 
+            // Dün kontrolü - tam tarih eşleşmesi
+            else if (notificationDay.getTime() === yesterday.getTime()) {
                 groups['Dün'].push(notification);
-            } else if (notificationDate >= weekAgo) {
+            } 
+            // Son 7 Gün kontrolü - dünden önce ama bugünden 7 gün öncesine kadar
+            else if (notificationDay.getTime() >= weekAgo.getTime() && notificationDay.getTime() < yesterday.getTime()) {
                 groups['Son 7 Gün'].push(notification);
-            } else if (notificationDate >= monthAgo) {
+            }
+            // Son 30 Gün kontrolü - 7 günden önce ama 30 gün içinde
+            else if (notificationDay.getTime() >= monthAgo.getTime() && notificationDay.getTime() < weekAgo.getTime()) {
                 groups['Son 30 Gün'].push(notification);
-            } else {
+            } 
+            // Daha eski
+            else {
                 groups['Daha Eski'].push(notification);
             }
         });
@@ -96,14 +105,7 @@ export default function Notifications() {
         setProfileModalVisible(false);
     }, []);
 
-    useFocusEffect(
-      useCallback(() => {
-        fetchNotifications();
-        refresh();
-      }, [])
-    );
-
-    const fetchNotifications = async () => {
+    const fetchNotifications = useCallback(async () => {
         try {
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) return;
@@ -164,7 +166,79 @@ export default function Notifications() {
             setLoading(false);
             setRefreshing(false);
         }
-    };
+    }, [t]);
+
+    useFocusEffect(
+      useCallback(() => {
+        fetchNotifications();
+        refresh();
+      }, [fetchNotifications, refresh])
+    );
+
+    // Real-time subscription: Yeni bildirimler geldiğinde otomatik güncelle
+    useEffect(() => {
+        let mounted = true;
+        let channel: any = null;
+
+        (async () => {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!mounted || !user) return;
+
+            console.log('[Notifications] Real-time subscription başlatılıyor...');
+
+            channel = supabase
+                .channel(`notifications-${user.id}`)
+                .on(
+                    'postgres_changes',
+                    {
+                        event: 'INSERT',
+                        schema: 'public',
+                        table: 'notifications',
+                        filter: `user_id=eq.${user.id}`
+                    },
+                    async (payload: any) => {
+                        console.log('[Notifications] Yeni bildirim geldi (real-time):', payload.new);
+                        
+                        if (mounted) {
+                            // Yeni bildirim geldiğinde listeyi güncelle
+                            await fetchNotifications();
+                            // Bildirim sayısını güncelle
+                            refresh();
+                        }
+                    }
+                )
+                .on(
+                    'postgres_changes',
+                    {
+                        event: 'UPDATE',
+                        schema: 'public',
+                        table: 'notifications',
+                        filter: `user_id=eq.${user.id}`
+                    },
+                    async (payload: any) => {
+                        console.log('[Notifications] Bildirim güncellendi (real-time):', payload.new);
+                        
+                        if (mounted) {
+                            // Bildirim güncellendiğinde (örneğin is_read değişti) listeyi güncelle
+                            await fetchNotifications();
+                            refresh();
+                        }
+                    }
+                )
+                .subscribe((status) => {
+                    console.log('[Notifications] Subscription durumu:', status);
+                });
+
+        })();
+
+        return () => {
+            mounted = false;
+            if (channel) {
+                console.log('[Notifications] Real-time subscription kapatılıyor...');
+                supabase.removeChannel(channel);
+            }
+        };
+    }, [fetchNotifications, refresh]);
 
     const handleFollowRequest = async (notification: Notification, action: 'accept' | 'reject') => {
         try {
@@ -181,11 +255,13 @@ export default function Notifications() {
 
             if (action === 'accept') {
                 // Takip isteğini kabul et
+                // Bildirim: user_id = istek alan (kabul eden), sender_id = istek gönderen (takip etmek isteyen)
+                // follow_requests: follower_id = takip etmek isteyen (sender_id), following_id = takip edilmek istenen (user_id)
                 const { error: updateError } = await supabase
                     .from('follow_requests')
                     .update({ status: 'accepted' })
                     .eq('follower_id', notification.sender_id)
-                    .eq('following_id', user.id);
+                    .eq('following_id', notification.user_id);
 
                 if (updateError) throw updateError;
 
@@ -246,20 +322,70 @@ export default function Notifications() {
                 }
             } else {
                 // Takip isteğini reddet
-                const { error: deleteError } = await supabase
+                // Bildirim: user_id = istek alan (reddeden), sender_id = istek gönderen (takip etmek isteyen)
+                // follow_requests: follower_id = takip etmek isteyen (sender_id), following_id = takip edilmek istenen (user_id)
+                console.log('[Notifications] Reddetme işlemi başlıyor:', {
+                    follower_id: notification.sender_id, // İstek gönderen
+                    following_id: notification.user_id,   // İstek alan (reddeden)
+                    notification_user_id: notification.user_id,
+                    current_user_id: user.id,
+                    notification_id: notification.id
+                });
+
+                // Önce mevcut kaydı kontrol et
+                const { data: existingRequest, error: checkError } = await supabase
+                    .from('follow_requests')
+                    .select('*')
+                    .eq('follower_id', notification.sender_id)
+                    .eq('following_id', notification.user_id)
+                    .maybeSingle();
+
+                console.log('[Notifications] Mevcut takip isteği:', existingRequest, 'Error:', checkError);
+
+                if (!existingRequest) {
+                    console.warn('[Notifications] UYARI: Silinecek kayıt bulunamadı!');
+                }
+
+                // Takip isteğini sil
+                const { data: deleteData, error: deleteError } = await supabase
                     .from('follow_requests')
                     .delete()
                     .eq('follower_id', notification.sender_id)
-                    .eq('following_id', user.id);
+                    .eq('following_id', notification.user_id)
+                    .select();
 
-                if (deleteError) throw deleteError;
+                console.log('[Notifications] Silme işlemi sonucu:', deleteData, 'Error:', deleteError);
+
+                if (deleteError) {
+                    console.error('[Notifications] Silme hatası:', deleteError);
+                    throw deleteError;
+                }
+
+                if (!deleteData || deleteData.length === 0) {
+                    console.warn('[Notifications] UYARI: Silme işlemi hiçbir kayıt silmedi!');
+                }
+
+                // Silme işleminin başarılı olduğunu doğrula
+                const { data: verifyData, error: verifyError } = await supabase
+                    .from('follow_requests')
+                    .select('*')
+                    .eq('follower_id', notification.sender_id)
+                    .eq('following_id', notification.user_id)
+                    .maybeSingle();
+
+                console.log('[Notifications] Doğrulama sonucu:', verifyData, 'Error:', verifyError);
+                if (verifyData) {
+                    console.warn('[Notifications] UYARI: Kayıt hala mevcut! Silme işlemi başarısız olabilir.');
+                } else {
+                    console.log('[Notifications] Başarılı: Kayıt silindi.');
+                }
 
                 // Bildirimi okundu olarak işaretle ve red mesajı ekle
                 await supabase
                     .from('notifications')
                     .update({ 
                         is_read: true,
-                        message: 'Takip isteği reddedildi.'
+                        message: `${notification.sender_name} ${notification.sender_surname} kullanıcısının takip isteğini reddettiniz.`
                     })
                     .eq('id', notification.id);
 
@@ -293,7 +419,7 @@ export default function Notifications() {
 
                 // Bildirim listesini güncelle - sadece is_read durumunu değiştir
                 setNotifications(prev => prev.map(n => 
-                    n.id === notification.id ? { ...n, is_read: true, message: 'Takip isteği reddedildi.' } : n
+                    n.id === notification.id ? { ...n, is_read: true, message: `${notification.sender_name} ${notification.sender_surname} kullanıcısının takip isteğini reddettiniz.` } : n
                 ));
                 refresh();
                 // Kısa bilgilendirme
@@ -477,10 +603,8 @@ export default function Notifications() {
                     })
                     .eq('id', notification.id);
 
-                // Kısa mesaj formatı: "Göndermiş olduğunuz Kaleci pozisyona kabul edilmediniz"
-                const shortMessage = `Göndermiş olduğunuz ${getPositionName(notification.position || '')} pozisyona kabul edilmediniz.`;
-                
                 // Gönderen kullanıcıya red bildirimi oluştur
+                let senderMessage = '';
                 try {
                     // Maç sahibinin adını al (reddeden kişi)
                     const { data: matchOwnerData } = await supabase
@@ -491,28 +615,30 @@ export default function Notifications() {
                     
                     const ownerName = matchOwnerData ? `${matchOwnerData.name} ${matchOwnerData.surname}` : 'Kullanıcı';
                     
-                    // Maç bilgilerini mevcut bildirimden al (aynı yapıyı kullan)
-                    let matchInfo = 'bilinmeyen maç';
+                    // Maç bilgilerini mevcut bildirimden al
+                    let matchDateStr = '';
+                    let matchTimeStr = '';
+                    let districtName = 'Bilinmiyor';
+                    let pitchName = 'Bilinmiyor';
+                    
                     if (notification.match) {
                         const matchDate = new Date(notification.match.date);
-                        const formattedDate = matchDate.toLocaleDateString("tr-TR");
+                        matchDateStr = matchDate.toLocaleDateString("tr-TR");
                         const [hours, minutes] = notification.match.time.split(":").map(Number);
-                        const startFormatted = `${hours}:${minutes.toString().padStart(2, '0')}`;
-                        const endFormatted = `${hours + 1}:${minutes.toString().padStart(2, '0')}`;
+                        matchTimeStr = `${hours}:${minutes.toString().padStart(2, '0')}-${hours + 1}:${minutes.toString().padStart(2, '0')}`;
                         
-                        const districtName = notification.match.pitches?.districts?.name || 'Bilinmiyor';
-                        const pitchName = notification.match.pitches?.name || 'Bilinmiyor';
-                        
-                        matchInfo = `${formattedDate} ${startFormatted}-${endFormatted} ${districtName} → ${pitchName}`;
+                        districtName = notification.match.pitches?.districts?.name || 'Bilinmiyor';
+                        pitchName = notification.match.pitches?.name || 'Bilinmiyor';
                     }
                     
-                    const detailedMessage = `${ownerName} kullanıcısının oluşturduğu ${matchInfo} maçı için ${getPositionName(notification.position || '')} mevkisine kabul edilmediniz.`;
+                    // İstek gönderen kullanıcıya gönderilecek detaylı red mesajı
+                    senderMessage = `${ownerName} kullanıcısının oluşturmuş olduğu ${matchDateStr} ${matchTimeStr}, ${districtName} → ${pitchName} maçı için ${getPositionName(notification.position || '')} pozisyonuna katılma isteğiniz reddedildi.`;
                     
                     await supabase.from('notifications').insert({
                         user_id: notification.sender_id,
                         sender_id: user.id,
                         type: 'join_request',
-                        message: shortMessage,
+                        message: senderMessage,
                         match_id: notification.match_id,
                         position: notification.position,
                         is_read: false,
@@ -535,7 +661,7 @@ export default function Notifications() {
                         console.log(`[Notifications] (join_request reject) Event emit ediliyor: ${eventName}`);
                         DeviceEventEmitter.emit(eventName, {
                             rejectedPosition: notification.position,
-                            rejectedMessage: shortMessage
+                            rejectedMessage: senderMessage
                         });
                         console.log(`[Notifications] (join_request reject) Event başarıyla emit edildi: ${eventName}`);
                     } catch (error) {
@@ -582,7 +708,7 @@ export default function Notifications() {
             );
         } else if (item.type === 'direct_message') {
             return (
-                <DirectMessageNotification item={item} />
+                <DirectMessageNotification item={item} onMarkAsRead={handleMarkAsRead} />
             );
         }
         

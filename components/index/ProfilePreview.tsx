@@ -58,6 +58,7 @@ export default function ProfilePreview({
     "pending" | "accepted" | null
   >(null);
   const [isFollowedByProfileUser, setIsFollowedByProfileUser] = useState(false);
+  const [wasRejected, setWasRejected] = useState(false); // Reddedilen istek kontrolü
 
   // Yeni state'ler ekleyelim
   const [matchCount, setMatchCount] = useState(0);
@@ -271,6 +272,24 @@ export default function ProfilePreview({
         setIsFollowing(!!followData);
         setFollowStatus(followData?.status || null);
         setIsFollowedByProfileUser(!!reverseFollowData);
+        
+        // Reddedilen istek kontrolü - notifications tablosundan kontrol et
+        if (!followData) {
+          const { data: rejectedNotification, error: rejectedError } = await supabase
+            .from("notifications")
+            .select("id, message")
+            .eq("user_id", user.id)
+            .eq("sender_id", userId)
+            .eq("type", "follow_request")
+            .like("message", "%takip isteğinizi reddetti%")
+            .order("created_at", { ascending: false })
+            .limit(1)
+            .maybeSingle();
+          
+          setWasRejected(!!rejectedNotification && !rejectedError);
+        } else {
+          setWasRejected(false);
+        }
       }
 
       setUserData(data);
@@ -292,8 +311,74 @@ export default function ProfilePreview({
       setLoading(true);
       return;
     }
-    fetchData();
-  }, [userId, fetchData]);
+    // Modal açıldığında veya userId değiştiğinde verileri yenile
+    if (isVisible) {
+      fetchData();
+    }
+  }, [userId, isVisible, fetchData]);
+
+  // Real-time subscription: follow_requests tablosundaki değişiklikleri dinle
+  useEffect(() => {
+    if (!isVisible || !userId) return;
+
+    let mounted = true;
+    let channel: any = null;
+
+    (async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!mounted || !user) return;
+
+      channel = supabase
+        .channel(`follow-requests-${user.id}-${userId}`)
+        .on(
+          'postgres_changes',
+          {
+            event: 'DELETE',
+            schema: 'public',
+            table: 'follow_requests',
+            filter: `follower_id=eq.${user.id} AND following_id=eq.${userId}`
+          },
+          () => {
+            // Takip isteği silindiğinde verileri yenile
+            if (mounted) fetchData();
+          }
+        )
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'follow_requests',
+            filter: `follower_id=eq.${user.id} AND following_id=eq.${userId}`
+          },
+          () => {
+            // Yeni takip isteği oluşturulduğunda verileri yenile
+            if (mounted) fetchData();
+          }
+        )
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'follow_requests',
+            filter: `follower_id=eq.${user.id} AND following_id=eq.${userId}`
+          },
+          () => {
+            // Takip isteği güncellendiğinde verileri yenile
+            if (mounted) fetchData();
+          }
+        )
+        .subscribe();
+    })();
+
+    return () => {
+      mounted = false;
+      if (channel) {
+        supabase.removeChannel(channel);
+      }
+    };
+  }, [isVisible, userId, fetchData]);
 
   const handleClose = () => {
     // Önce state'leri sıfırla
@@ -301,6 +386,7 @@ export default function ProfilePreview({
     setLoading(true);
     setIsFollowing(false);
     setFollowStatus(null);
+    setWasRejected(false);
     setMatchCount(0);
     setFollowerCount(0);
     setFollowingCount(0);
@@ -402,6 +488,7 @@ export default function ProfilePreview({
 
       setIsFollowing(true);
       setFollowStatus("pending");
+      setWasRejected(false); // Yeni istek gönderildiğinde reddedilme durumunu sıfırla
       Alert.alert(t("general.success"), t("profile.followRequestSentSuccess"));
       fetchData();
     } catch (error) {
@@ -534,8 +621,18 @@ export default function ProfilePreview({
               className="flex-1"
               scrollEnabled={!listModalVisible}
               nestedScrollEnabled={true}
+              contentContainerStyle={{ flexGrow: 1, minHeight: '100%' }}
             >
-              <View className="pt-8">
+              <TouchableOpacity 
+                activeOpacity={1}
+                onPress={handleClose}
+                style={{ flex: 1 }}
+              >
+                <View className="pt-8" style={{ flex: 1 }}>
+                <TouchableOpacity 
+                  activeOpacity={1}
+                  onPress={(e) => e.stopPropagation()}
+                >
                 <View className="flex flex-row bg-white rounded-lg shadow-lg px-4 py-2 mb-2">
                   {/* Profil Resmi */}
                   <View className="w-1/4 py-2">
@@ -620,6 +717,8 @@ export default function ProfilePreview({
                           <Text className="font-bold text-white text-center">
                             {isFollowing
                               ? t("profilePreview.followRequestPending")
+                              : wasRejected
+                              ? "Takip Et"
                               : t("profile.follow")}
                           </Text>
                         </TouchableOpacity>
@@ -646,9 +745,12 @@ export default function ProfilePreview({
                     {userData && <ProfileMatches userData={userData} />}
                   </View>
                 )}
-
-                {/* Takipçi/Takip Edilen Listesi Modal - Ana modal içinde */}
-                {listModalVisible && (
+                </TouchableOpacity>
+                </View>
+              </TouchableOpacity>
+              
+              {/* Takipçi/Takip Edilen Listesi Modal - Ana modal içinde */}
+              {listModalVisible && (
                   <View className="absolute -inset-4 bg-black/60 justify-center items-center z-50">
                     {/* Boş alana tıklayınca kapatma */}
                     <TouchableOpacity
@@ -746,7 +848,6 @@ export default function ProfilePreview({
                     </View>
                   </View>
                 )}
-              </View>
             </ScrollView>
           </View>
         </View>
