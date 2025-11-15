@@ -254,10 +254,10 @@ export default function JoinRequestNotification({ item, onAccept, onReject, onPr
                             {formatted}
                         </Text>
                         {item.message?.includes('kabul edildiniz') && (
-                            <Text className="text-green-600 font-bold ml-2"> Maça katılma isteğini kabul ettiniz.</Text>
+                            <Text className="text-green-600 font-semibold text-sm ml-2 flex-1"> Maça katılma isteğini kabul ettiniz.</Text>
                         )}
                         {item.message?.includes('kabul edilmediniz') && (
-                            <Text className="text-red-600 font-bold ml-2"> Maça katılma isteğini kabul etmediniz.</Text>
+                            <Text className="text-red-600 font-semibold text-sm ml-2 flex-1"> Maça katılma isteğini kabul etmediniz.</Text>
                         )}
                     </View>
                 ) : (
