@@ -10,7 +10,7 @@ export const useNotifications = () => {
     const [notifications, setNotifications] = useState<Notification[]>([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
-    const { refresh } = useNotification();
+    const { refresh, clearBadge } = useNotification();
     const { t } = useLanguage();
 
     const fetchNotifications = useCallback(async () => {
@@ -29,6 +29,8 @@ export const useNotifications = () => {
                     )
                 `)
                 .eq('user_id', user.id)
+                // Mesaj bildirimlerini (direct_message) bildirim sayfasından çıkar
+                .neq('type', 'direct_message')
                 .order('created_at', { ascending: false })
                 .limit(1000);
 
@@ -72,9 +74,11 @@ export const useNotifications = () => {
 
     useFocusEffect(
         useCallback(() => {
+            // Bildirim sayfasına her girişte verileri çek
             fetchNotifications();
-            refresh();
-        }, [fetchNotifications, refresh])
+            // Kalp ikonundaki badge'i bu anda sıfırla
+            clearBadge();
+        }, [fetchNotifications]) // clearBadge bilinçli olarak dependency'e eklenmedi (loop'u önlemek için)
     );
 
     // Real-time subscription

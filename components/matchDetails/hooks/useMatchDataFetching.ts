@@ -130,6 +130,13 @@ export const useMatchDataFetching = ({
           
           console.log(`[MatchDetails] Database'den gelen notifications:`, currentSentData);
           
+          // Bu kullanıcı bu maç için hiç katılım isteği göndermediyse
+          // kişisel kabul/red durumu göstermiyoruz
+          if (!currentSentData || currentSentData.length === 0) {
+            console.log('[MatchDetails] Kullanıcının bu maç için gönderilmiş katılım isteği yok, durum mesajı gösterilmeyecek.');
+            return;
+          }
+          
           // Azalan pozisyonlardan kullanıcının gönderdiği istekleri bul
           const allSentPositions = (currentSentData || [])
             .map((row: any) => row.position)
@@ -339,6 +346,12 @@ export const useMatchDataFetching = ({
   // Red bildirimini yükle (sayfa ilk açıldığında) - en son red edilen
   const loadRejectedPosition = useCallback(async () => {
     if (!currentUserId) return;
+    // Maçı oluşturan kullanıcı için red / durum mesajı göstermiyoruz.
+    // Bu mesajlar sadece maça katılmak için pozisyon isteği GÖNDEREN kullanıcıya özel.
+    if (currentUserId === match.create_user) {
+      setRejectedPosition(null);
+      return;
+    }
     try {
       console.log(`[MatchDetails] loadRejectedPosition çağrıldı - User: ${currentUserId}, Match: ${match.id}`);
       

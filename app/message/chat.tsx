@@ -35,7 +35,7 @@ export default function ChatScreen() {
     return s;
   }, []);
 
-  const { refresh: refreshNotifications } = useNotification();
+  const { refresh: refreshNotifications, clearMessageBadge } = useNotification();
 
   // Resolve recipient id safely (avoid sending message to self)
   const resolveRecipientId = useCallback(async (currentUserId: string): Promise<string | null> => {
@@ -103,7 +103,12 @@ export default function ChatScreen() {
         .eq('sender_id', recip);
       if (mId) q = q.eq('match_id', mId);
       await q;
-      try { refreshNotifications?.(); } catch {}
+      try { 
+        // Bildirim context'inde direct_message unread sayısını yeniden hesapla
+        refreshNotifications?.(); 
+        // Ve mesaj ikonundaki badge'i anında temizle
+        clearMessageBadge?.();
+      } catch {}
     })();
     return () => { mounted = false; };
   }, [resolveRecipientId, normParam, matchId]);
@@ -141,28 +146,42 @@ export default function ChatScreen() {
   }, [resolveRecipientId, normParam, matchId]);
 
   const sendMessage = useCallback(async () => {
-    if (!input.trim() || !to) return;
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-    // TR (UTC+3) saatine göre created_at oluştur
-    const trNowISO = new Date(Date.now() + 3 * 60 * 60 * 1000).toISOString();
-    const recip = await resolveRecipientId(user.id);
-    if (!recip) return;
+    // Boş mesajı gönderme
+    if (!input.trim()) return;
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
 
-    const payload: any = {
-      sender_id: user.id,
-      recipient_id: recip,
-      content: input.trim(),
-      created_at: trNowISO,
-    };
-    const getParam2 = (p: any): string | undefined => {
-      const v = Array.isArray(p) ? p[0] : p;
-      return typeof v === 'string' && v && v !== 'undefined' && v !== 'null' ? v : undefined;
-    };
-    const matchIdStr = getParam2(matchId);
-    if (matchIdStr) payload.match_id = matchIdStr;
-    const { error } = await supabase.from('messages').insert(payload);
-    if (!error) {
+      // Hedef kullanıcıyı çöz
+      const recip = await resolveRecipientId(user.id);
+      if (!recip) {
+        console.warn('[Chat] sendMessage: recipient could not be resolved');
+        return;
+      }
+
+      // TR (UTC+3) saatine göre created_at oluştur
+      const trNowISO = new Date(Date.now() + 3 * 60 * 60 * 1000).toISOString();
+
+      const payload: any = {
+        sender_id: user.id,
+        recipient_id: recip,
+        content: input.trim(),
+        created_at: trNowISO,
+      };
+
+      const getParam2 = (p: any): string | undefined => {
+        const v = Array.isArray(p) ? p[0] : p;
+        return typeof v === 'string' && v && v !== 'undefined' && v !== 'null' ? v : undefined;
+      };
+      const matchIdStr = getParam2(matchId);
+      if (matchIdStr) payload.match_id = matchIdStr;
+
+      const { error } = await supabase.from('messages').insert(payload);
+      if (error) {
+        console.error('[Chat] sendMessage insert error:', error);
+        return;
+      }
+
       // Karşı tarafa bildirim gönder (direct_message)
       try {
         await supabase.from('notifications').insert({
@@ -173,12 +192,17 @@ export default function ChatScreen() {
           match_id: matchIdStr || null,
           is_read: false,
         });
-      } catch {}
+      } catch (e) {
+        console.error('[Chat] sendMessage direct_message notification insert error:', e);
+      }
+
       setInput('');
       fetchMessages();
       setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 50);
+    } catch (e) {
+      console.error('[Chat] sendMessage unexpected error:', e);
     }
-  }, [input, to, matchId, fetchMessages]);
+  }, [input, matchId, fetchMessages, resolveRecipientId]);
 
   const renderItem = ({ item }: { item: MsgItem }) => {
     const mine = item.sender_id === me;

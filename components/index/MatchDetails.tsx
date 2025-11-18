@@ -197,6 +197,8 @@ export default function MatchDetails({ match, onClose, onOpenProfilePreview }: M
           rejectedPosition={rejectedPosition}
           missingGroups={missingGroups}
           fadeAnim={fadeAnim}
+          currentUserId={currentUserId}
+          matchCreateUser={match.create_user}
         />
         {/* Eksik Kadrolar */}
 

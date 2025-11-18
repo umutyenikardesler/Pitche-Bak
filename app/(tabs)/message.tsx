@@ -35,10 +35,10 @@ export default function Messages() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      // Hem katılım kabul edilmiş bildirimlerden hem de kendi oluşturduğu maçlardan sohbetleri topla
-      
-      // 1. Katılım kabul edilmiş bildirimlerden (maça katılan kişi olarak)
-      const { data: joinedData, error: joinedError } = await supabase
+      // Katılım kabul edilmiş join_request bildirimlerinden sohbetleri topla
+      // Hem maça katılan kişi (user_id = current) hem de maç sahibi (user_id = current)
+      // için partner her zaman sender_id'deki kullanıcıdır.
+      const { data: allData, error } = await supabase
         .from('notifications')
         .select(`
           id,
@@ -49,61 +49,28 @@ export default function Messages() {
         `)
         .eq('user_id', user.id)
         .eq('type', 'join_request')
-        .like('message', '%kabul edildi%')
+        .like('message', '%kabul edildiniz%')
         .order('created_at', { ascending: false });
 
-      if (joinedError) throw joinedError;
+      if (error) throw error;
 
-      // 2. Kendi oluşturduğu maçlardan katılım kabul edilmiş bildirimlerden (maç sahibi olarak)
-      const { data: ownedData, error: ownedError } = await supabase
-        .from('notifications')
-        .select(`
-          id,
-          match_id,
-          created_at,
-          sender:users!notifications_sender_id_fkey(id, name, surname, profile_image),
-          match:match!notifications_match_id_fkey(id, title, date, time, create_user, pitches(name, districts(name)))
-        `)
-        .eq('sender_id', user.id)
-        .eq('type', 'join_request')
-        .like('message', '%kabul edildi%')
-        .order('created_at', { ascending: false });
-
-      if (ownedError) throw ownedError;
-
-      // Her iki veriyi birleştir
-      const allData = [...(joinedData || []), ...(ownedData || [])];
-
-      const summaries: JoinedMatchSummary[] = allData
-        .filter((n: any) => n.match && n.match.create_user)
-        .map((n: any) => {
-          // Eğer bildirim kendi oluşturduğu maçtan geliyorsa, bildirim alan kişi sohbet partneri
-          // Eğer bildirim başkasının maçından geliyorsa, bildirim gönderen kişi sohbet partneri
-          const isOwnMatch = n.match.create_user === user.id;
-          
-          return {
-            id: n.match.id,
-            title: n.match.title,
-            date: n.match.date,
-            time: n.match.time,
-            owner_id: isOwnMatch ? n.user_id : n.sender?.id, // sohbet partneri
-            owner_name: isOwnMatch ? 
-              (n.sender?.name || '') : // Kendi maçımda katılan kişi
-              (n.sender?.name || ''), // Başkasının maçında maç sahibi
-            owner_surname: isOwnMatch ? 
-              (n.sender?.surname || '') : // Kendi maçımda katılan kişi
-              (n.sender?.surname || ''), // Başkasının maçında maç sahibi
-            owner_profile_image: isOwnMatch ? 
-              (n.sender?.profile_image || null) : // Kendi maçımda katılan kişi
-              (n.sender?.profile_image || null), // Başkasının maçında maç sahibi
-            pitches: n.match?.pitches || null,
-          };
-        });
+      const summaries: JoinedMatchSummary[] = (allData || [])
+        .filter((n: any) => n.match && n.sender && n.sender.id && n.sender.id !== user.id)
+        .map((n: any) => ({
+          id: n.match.id,
+          title: n.match.title,
+          date: n.match.date,
+          time: n.match.time,
+          owner_id: n.sender.id, // sohbet partneri (her zaman diğer kullanıcı)
+          owner_name: n.sender.name || '',
+          owner_surname: n.sender.surname || '',
+          owner_profile_image: n.sender.profile_image || null,
+          pitches: n.match?.pitches || null,
+        }));
 
       // Duplicate'leri kaldır ve kendi kendimle olan sohbetleri filtrele
       const uniqueSummaries = summaries.filter((summary, index, self) => 
-        index === self.findIndex(s => s.id === summary.id && s.owner_id === summary.owner_id) &&
-        summary.owner_id !== user.id // Kendi kendimle olan sohbetleri filtrele
+        index === self.findIndex(s => s.id === summary.id && s.owner_id === summary.owner_id)
       );
 
       setItems(uniqueSummaries);

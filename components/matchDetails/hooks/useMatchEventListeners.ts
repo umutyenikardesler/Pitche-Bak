@@ -36,6 +36,13 @@ export const useMatchEventListeners = ({
       return;
     }
 
+    // Maçı oluşturan kullanıcı veya henüz oturumu belli olmayan kullanıcı için
+    // bu event dinleyicisi kişisel durum mesajı açısından anlamsız;
+    // sadece katılım isteği GÖNDEREN kullanıcılar için gerekli.
+    if (!currentUserId || currentUserId === match.create_user) {
+      return;
+    }
+
     console.log(`[MatchDetails] MatchStatusEventBus dinleyicisi kuruluyor: matchId=${match.id}`);
 
     const unsubscribe = subscribeMatchStatus(match.id, async (data) => {
@@ -43,11 +50,11 @@ export const useMatchEventListeners = ({
 
       // Kabul edilen pozisyon
       if (data.acceptedPosition) {
+        // Kimin kabul edildiğine karar verme işini fetchMissing'e bırakıyoruz.
+        // fetchMissing, sadece bu maça gerçekten katılım isteği göndermiş olan
+        // kullanıcılar için acceptedPosition state'ini güncelliyor.
         await fetchMissingRef.current();
-        setAcceptedPosition(data.acceptedPosition);
-        setSentRequests((prev) => prev.filter((p) => p !== data.acceptedPosition));
-        setShownAcceptedPositions((prev) => new Set([...prev, data.acceptedPosition!]));
-        console.log(`[MatchDetails] MatchStatusEventBus - acceptedPosition güncellendi: ${data.acceptedPosition}`);
+        console.log(`[MatchDetails] MatchStatusEventBus - acceptedPosition event alındı: ${data.acceptedPosition}`);
       }
 
       // Red edilen pozisyon

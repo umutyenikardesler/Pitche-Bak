@@ -18,7 +18,7 @@ interface CustomHeaderProps {
 const CustomHeader = ({ title, showNotificationIcon = true, onTitlePress }: CustomHeaderProps) => {
   const router = useRouter();
   const pathname = usePathname();
-  const { count } = useNotification();
+  const { badgeCount } = useNotification();
   const { t } = useLanguage();
   
   const handleNotificationsPress = () => {
@@ -76,7 +76,7 @@ const CustomHeader = ({ title, showNotificationIcon = true, onTitlePress }: Cust
             accessibilityHint={t('general.notificationCount')}
           >
             <Ionicons name="heart-outline" size={24} color="green" />
-            {count > 0 && (
+            {badgeCount > 0 && (
               <View style={{
                 position: 'absolute',
                 top: -6,
@@ -92,9 +92,9 @@ const CustomHeader = ({ title, showNotificationIcon = true, onTitlePress }: Cust
               }}>
                 <Text 
                   style={{ color: 'white', fontSize: 12, fontWeight: 'bold' }}
-                  accessibilityLabel={`${t('general.notificationCount')}: ${count}`}
+                  accessibilityLabel={`${t('general.notificationCount')}: ${badgeCount}`}
                 >
-                  {count}
+                  {badgeCount}
                 </Text>
               </View>
             )}

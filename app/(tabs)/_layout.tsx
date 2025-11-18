@@ -4,6 +4,7 @@ import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import CustomHeader from "@/components/CustomHeader";
 import * as Haptics from 'expo-haptics';
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useNotification } from "@/components/NotificationContext";
 import { DeviceEventEmitter, Platform, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -60,6 +61,42 @@ export default function TabsLayout() {
       marginHorizontal: 0
     }
   });
+
+  // Mesaj sekmesi için badge'li ikon
+  const MessagesTabIcon = ({ focused, color }: { focused: boolean; color: string }) => {
+    const { messageCount } = useNotification();
+
+    return (
+      <View style={{ position: 'relative' }}>
+        <Ionicons
+          name="paper-plane-outline"
+          color={color}
+          size={focused ? 28 : 22}
+          style={{ marginTop: 2 }}
+        />
+        {messageCount > 0 && (
+          <View
+            style={{
+              position: 'absolute',
+              top: -4,
+              right: -10,
+              backgroundColor: 'red',
+              borderRadius: 10,
+              minWidth: 18,
+              height: 18,
+              justifyContent: 'center',
+              alignItems: 'center',
+              paddingHorizontal: 4,
+            }}
+          >
+            <Text style={{ color: 'white', fontSize: 11, fontWeight: 'bold' }}>
+              {messageCount}
+            </Text>
+          </View>
+        )}
+      </View>
+    );
+  };
 
   return (
     <Tabs>
@@ -149,12 +186,7 @@ export default function TabsLayout() {
           tabBarLabelStyle: [tabBarStyles.tabBarLabel, { marginTop: 4 }],
           headerTitle: () => <CustomHeader title={t('messages.title')} onTitlePress={handleTitlePress} />,
           tabBarIcon: ({ focused, color }) => (
-            <Ionicons
-              name="paper-plane-outline"
-              color={color as string}
-              size={focused ? 28 : 22}
-              style={{ marginTop: 2 }}
-            />
+            <MessagesTabIcon focused={focused} color={color as string} />
           ),
         }}
       />

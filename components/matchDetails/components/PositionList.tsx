@@ -34,9 +34,11 @@ export default function PositionList({
     <View className="flex-row max-w-full items-center justify-center flex-wrap">
       {/* Eksik Pozisyonlar */}
       {missingGroups?.length > 0 && missingGroups.map((group, index) => {
-        const [position, count] = group.split(':');
-        const isSent = sentRequests.includes(position);
-        const isAcceptedPosition = acceptedPosition === position || shownAcceptedPositions.has(position);
+     const [position, count] = group.split(':');
+      // Maçı oluşturan kullanıcı için herhangi bir "seçili" / "kabul edildi" renklendirmesi göstermiyoruz.
+      // Bu vurgular sadece pozisyon isteği GÖNDEREN kullanıcıya özel.
+      const isSent = !isOwner && sentRequests.includes(position);
+      const isAcceptedPosition = !isOwner && (acceptedPosition === position || shownAcceptedPositions.has(position));
         
         return (
           <View key={index} className="flex-row items-center mx-1 mb-2">
