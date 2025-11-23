@@ -24,7 +24,12 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
 
   const fetchCount = async () => {
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return setCount(0);
+    if (!user) {
+      setCount(0);
+      setMessageCount(0);
+      return;
+    }
+
     // Genel bildirimler (direct_message HARİÇ)
     const { count: notifCount } = await supabase
       .from('notifications')
@@ -38,15 +43,28 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
     // Eğer unread sayısı azaldıysa, clearedBaseCount'u de aşağı çek
     setClearedBaseCount((prev) => Math.min(prev, newCount));
 
-    // Mesaj bildirimlerini (direct_message) ayrıca say
-    const { count: dmCount } = await supabase
+    // Mesaj bildirimlerini (direct_message) sohbet bazında say
+    // Aynı kişiden/sohbetten gelen birden fazla mesajı 1 sohbet olarak say
+    const { data: dmRows, error: dmError } = await supabase
       .from('notifications')
-      .select('*', { count: 'exact', head: true })
+      .select('sender_id, match_id')
       .eq('user_id', user.id)
       .eq('is_read', false)
       .eq('type', 'direct_message');
 
-    setMessageCount(dmCount || 0);
+    if (dmError || !dmRows) {
+      setMessageCount(0);
+      return;
+    }
+
+    const convoKeys = new Set<string>();
+    dmRows.forEach((row: any) => {
+      if (!row.sender_id) return;
+      const key = `${row.sender_id}-${row.match_id || 'null'}`;
+      convoKeys.add(key);
+    });
+
+    setMessageCount(convoKeys.size);
   };
 
   // Kalp ikonundaki badge'i, bildirim sayfasına girildiği anda sıfırla.

@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
-import { View, Text, FlatList, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, FlatList, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, InteractionManager } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { supabase } from '@/services/supabase';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -79,9 +79,17 @@ export default function ChatScreen() {
       .or(`and(sender_id.eq.${user.id},recipient_id.eq.${recip}),and(sender_id.eq.${recip},recipient_id.eq.${user.id})`)
       .order('created_at', { ascending: true });
 
-    if (!error) setMessages((data as MsgItem[]) || []);
+    if (!error) {
+      const rows = (data as MsgItem[]) || [];
+      setMessages(rows);
+      // Mesajlar yüklendikten hemen sonra listeyi en alta kaydır
+      setTimeout(() => {
+        listRef.current?.scrollToEnd({ animated: false });
+      }, 50);
+    }
   }, [resolveRecipientId]);
 
+  // İlk açılışta mevcut mesajları yükle
   useEffect(() => {
     loadMe();
     fetchMessages();

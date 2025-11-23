@@ -4,6 +4,8 @@ import { GestureDetector, Gesture } from "react-native-gesture-handler";
 import { runOnJS } from "react-native-reanimated";
 import { useRouter, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { supabase } from '@/services/supabase';
+import haversine from 'haversine';
+import * as Location from 'expo-location';
 import '@/global.css';
 
 import IndexCondition from '@/components/index/IndexCondition';
@@ -264,6 +266,20 @@ export default function Index() {
     console.log('Şu anki saat:', currentHours + ':' + currentMinutes);
     console.log('Şu anki zaman (dakika):', currentHours * 60 + currentMinutes);
 
+    // Kullanıcının konumunu al (varsa) - en yakın maçları hesaplamak için
+    let userLat: number | null = null;
+    let userLon: number | null = null;
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status === 'granted') {
+        const { coords } = await Location.getCurrentPositionAsync({});
+        userLat = coords.latitude;
+        userLon = coords.longitude;
+      }
+    } catch (e) {
+      console.log('Konum alınamadı veya izin verilmedi:', e);
+    }
+
     const { data: authData, error: authError } = await supabase.auth.getUser();
     if (authError || !authData.user.id) {
       console.error("Kullanıcı kimlik doğrulama hatası:", authError);
@@ -394,7 +410,7 @@ export default function Index() {
         return matchEndTimeInMinutes > currentTimeInMinutes;
       });
 
-      // Diğer maçlar için de profil resimlerini güncelle
+      // Diğer maçlar için de profil resimlerini güncelle + mesafeyi hesapla
       const updatedOtherMatches = await Promise.all(
         filteredOtherMatches?.map(async (item) => {
           let updatedProfileImage = null;
@@ -405,6 +421,19 @@ export default function Index() {
           } else if (item.users && typeof item.users === 'object' && 'id' in item.users) {
             updatedProfileImage = await fetchLatestProfileImage((item.users as any).id);
           }
+
+          // Maç sahasına olan mesafeyi hesapla (varsa)
+          let distance: number | undefined = undefined;
+          if (userLat != null && userLon != null) {
+            const pitch = Array.isArray(item.pitches) ? item.pitches[0] : item.pitches;
+            if (pitch?.latitude && pitch?.longitude) {
+              distance = haversine(
+                { latitude: userLat, longitude: userLon },
+                { latitude: pitch.latitude, longitude: pitch.longitude },
+                { unit: 'km' }
+              );
+            }
+          }
           
           return {
             ...item,
@@ -414,11 +443,29 @@ export default function Index() {
             formattedDate: new Date(item.date).toLocaleDateString("tr-TR"),
             startFormatted: `${item.time.split(":")[0]}:${item.time.split(":")[1]}`,
             endFormatted: `${parseInt(item.time.split(":")[0], 10) + 1}:${item.time.split(":")[1]}`,
+            distance,
           };
         }) || []
       );
 
-      setOtherMatches(updatedOtherMatches);
+      // Önce mesafeye, sonra tarih ve saate göre sırala
+      const sortedOtherMatches = [...updatedOtherMatches].sort((a, b) => {
+        const da = a.distance ?? Number.MAX_SAFE_INTEGER;
+        const db = b.distance ?? Number.MAX_SAFE_INTEGER;
+        if (Math.abs(da - db) > 0.0001) {
+          return da - db;
+        }
+
+        const dateA = new Date(a.date).getTime();
+        const dateB = new Date(b.date).getTime();
+        if (dateA !== dateB) {
+          return dateA - dateB;
+        }
+
+        return a.time.localeCompare(b.time);
+      });
+
+      setOtherMatches(sortedOtherMatches);
     }
 
     setRefreshing(false);

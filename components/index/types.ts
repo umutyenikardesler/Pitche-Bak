@@ -33,6 +33,7 @@ export interface User {
     formattedDate?: string;
     startFormatted?: string;
     endFormatted?: string;
+    distance?: number;
     pitches: Pitch | Pitch[];
     users: User | User[];
   }

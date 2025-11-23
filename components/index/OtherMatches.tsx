@@ -1,4 +1,5 @@
 import { View, Text, FlatList, TouchableOpacity, Image, RefreshControl } from "react-native";
+import { useEffect, useState } from "react";
 import { Ionicons } from "@expo/vector-icons";
 import { Match } from "./types";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -21,6 +22,12 @@ const formatTitle = (text: string) => {
 export default function OtherMatches({ matches, refreshing, onRefresh, onSelectMatch, onCreateMatch
 }: OtherMatchesProps) {
   const { t } = useLanguage();
+  const [visibleCount, setVisibleCount] = useState(5);
+
+  // Maç listesi değiştiğinde görünür sayıyı resetle
+  useEffect(() => {
+    setVisibleCount(5);
+  }, [matches.length]);
   const renderMatch = ({ item }: { item: Match }) => (
     <TouchableOpacity onPress={() => onSelectMatch(item)}>
      <View className="bg-white rounded-lg mx-4 mt-1 p-1 shadow-lg">
@@ -96,7 +103,7 @@ export default function OtherMatches({ matches, refreshing, onRefresh, onSelectM
         </View>
       ) : (
         <FlatList
-          data={matches}
+          data={matches.slice(0, visibleCount)}
           keyExtractor={(item) => item.id.toString()}
           renderItem={renderMatch}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
@@ -104,10 +111,25 @@ export default function OtherMatches({ matches, refreshing, onRefresh, onSelectM
           contentContainerStyle={{ paddingBottom: matches.length > 2 ? 7 : 0 }}
           scrollEnabled={true} // OtherMatches her zaman scroll edilebilir olmalı
           showsVerticalScrollIndicator={true}
-          extraData={matches}
+          extraData={{ matches, visibleCount }}
           removeClippedSubviews={true} // Performans için
           maxToRenderPerBatch={5} // Performans için
           windowSize={5} // Performans için
+          ListFooterComponent={
+            matches.length > visibleCount ? (
+              <View className="items-center my-3">
+                <TouchableOpacity
+                  onPress={() => setVisibleCount((prev: number) => prev + 5)}
+                  className="px-4 py-2 rounded-md"
+                  style={{ backgroundColor: '#e5e7eb' }}
+                >
+                  <Text className="text-green-700 font-semibold">
+                    Daha fazla görüntüle
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            ) : null
+          }
         />
       )}
     </View>
