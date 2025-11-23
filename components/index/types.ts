@@ -14,6 +14,7 @@ export interface User {
     name: string;
     address: string;
     price: string;
+  phone?: string;
     features: string[];
     district_id: string;
     latitude?: number;

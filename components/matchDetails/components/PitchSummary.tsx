@@ -1,6 +1,6 @@
 // Halı saha özeti componenti
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity } from 'react-native';
+import { View, Text, TouchableOpacity, Linking } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import MapView, { Marker } from 'react-native-maps';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -22,6 +22,8 @@ export default function PitchSummary({ match }: PitchSummaryProps) {
   const pitchName = pitch?.name ?? 'Bilinmiyor';
   const pitchAddress = pitch?.address ?? 'Adres bilgisi yok';
   const pitchPrice = pitch?.price ?? 'Fiyat bilgisi yok';
+  const pitchPhone = pitch?.phone ?? '';
+  const hasPhone = !!pitchPhone;
 
   return (
     <>
@@ -77,12 +79,47 @@ export default function PitchSummary({ match }: PitchSummaryProps) {
             <Text className="pl-2 font-semibold text-gray-700">{pitchAddress}</Text>
           </View>
 
-          <View className="">
-            <Text className="h-7 text-lg font-semibold text-green-700 text-center mt-3 my-2">{t('home.pitchPrice')}</Text>
-          </View>
-          <View className="text-gray-700 text-md flex-row justify-center items-center pt-1">
-            <Ionicons name="wallet-outline" size={18} color="green" />
-            <Text className="pl-2 font-semibold text-gray-700">{pitchPrice} ₺</Text>
+          {/* Telefon ve Ücret yan yana */}
+          <View className="flex-row mt-3">
+            {/* Sol: Halı Saha Telefonu */}
+            <View className="w-1/2 pr-1">
+              <Text className="h-7 text-lg font-semibold text-green-700 text-center my-2">
+                Halı Saha Telefonu
+              </Text>
+              {hasPhone ? (
+                <TouchableOpacity
+                  onPress={() => Linking.openURL(`tel:${pitchPhone}`)}
+                  activeOpacity={0.7}
+                >
+                  <View className="text-gray-700 text-md flex-row justify-center items-center pt-1">
+                    <Ionicons name="call-outline" size={18} color="green" />
+                    <Text className="pl-2 font-semibold text-gray-900">
+                      {pitchPhone}
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+              ) : (
+                <View className="text-gray-700 text-md flex-row justify-center items-center pt-1">
+                  <Ionicons name="call-outline" size={18} color="green" />
+                  <Text className="pl-2 font-semibold text-gray-700">
+                    Telefon bilgisi yok
+                  </Text>
+                </View>
+              )}
+            </View>
+
+            {/* Sağ: Saha Ücreti */}
+            <View className="w-1/2 pl-1">
+              <Text className="h-7 text-lg font-semibold text-green-700 text-center my-2">
+                {t('home.pitchPrice')}
+              </Text>
+              <View className="text-gray-700 text-md flex-row justify-center items-center pt-1">
+                <Ionicons name="wallet-outline" size={18} color="green" />
+                <Text className="pl-2 font-semibold text-gray-700">
+                  {pitchPrice} ₺
+                </Text>
+              </View>
+            </View>
           </View>
 
           <View>

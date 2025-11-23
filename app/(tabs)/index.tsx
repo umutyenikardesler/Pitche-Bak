@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback, useMemo } from 'react';
-import { View, Dimensions, Modal, TouchableOpacity, DeviceEventEmitter, Platform } from "react-native";
+import { View, Dimensions, Modal, TouchableOpacity, DeviceEventEmitter, Platform, Animated } from "react-native";
 import { GestureDetector, Gesture } from "react-native-gesture-handler";
 import { runOnJS } from "react-native-reanimated";
 import { useRouter, useFocusEffect, useLocalSearchParams } from "expo-router";
@@ -21,6 +21,9 @@ export default function Index() {
   const [totalMatchCount, setTotalMatchCount] = useState(0);
   const [myMatchesHeight, setMyMatchesHeight] = useState(0); // Yüksekliği state olarak tut
   const router = useRouter();
+  const screenWidth = Dimensions.get('window').width;
+  // Detay ekranı için yatay animasyon değeri (0: ekranda, +width: sağa çıkmış)
+  const [detailTranslateX] = useState(new Animated.Value(0));
 
   // En son profil resmini çek
   const fetchLatestProfileImage = async (userId: string) => {
@@ -213,7 +216,16 @@ export default function Index() {
   }, [router]);
 
   const handleCloseDetail = () => {
-    setSelectedMatch(null);
+    // Maç detayını daha belirgin bir animasyonla sağa kaydırarak kapat
+    Animated.timing(detailTranslateX, {
+      toValue: screenWidth,
+      duration: 350, // biraz daha yavaş ve fark edilir
+      useNativeDriver: true,
+    }).start(() => {
+      setSelectedMatch(null);
+      // Sonraki açılış için konumu sıfırla
+      detailTranslateX.setValue(0);
+    });
   };
 
   // CustomHeader başlık tıklaması ile modal'ları kapat
@@ -276,7 +288,7 @@ export default function Index() {
       .from("match")
       .select(`
         id, title, time, date, prices, missing_groups, create_user,
-        pitches (name, address, price, features, district_id, latitude, longitude, districts (name)),
+        pitches (name, address, price, phone, features, district_id, latitude, longitude, districts (name)),
         users (id, name, surname, profile_image)
       `)
       .eq("create_user", loggedUserId)
@@ -351,7 +363,7 @@ export default function Index() {
       .from("match")
       .select(`
         id, title, time, date, prices, missing_groups, create_user,
-        pitches (name, price, address, features, district_id, latitude, longitude, districts (name)),
+        pitches (name, price, phone, address, features, district_id, latitude, longitude, districts (name)),
         users (id, name, surname, profile_image)
       `)
       .neq("create_user", loggedUserId)
@@ -414,6 +426,8 @@ export default function Index() {
 
 
   const handleSelectMatch = (match: Match) => {
+    // Maç detayını anında aç (eski davranış), animasyonu sadece kapanışta kullanıyoruz.
+    detailTranslateX.setValue(0);
     setSelectedMatch(match);
   };
 
@@ -421,11 +435,17 @@ export default function Index() {
     router.push("/create");
   };
 
-  const swipeGesture = Gesture.Pan().onUpdate((event) => {
-    if (event.translationX > 100) {
-      runOnJS(handleCloseDetail)();
-    }
-  });
+  // Detay ekranı için soldan sağa swipe-back
+  // Android'de dikey scroll'u engellememesi için sadece yatay harekette aktif olacak şekilde sınırla
+  const swipeGesture = Gesture.Pan()
+    .activeOffsetX(20) // en az 20px yatay hareket olmalı
+    .failOffsetY([-10, 10]) // dikeyde ±10px'den fazla hareket olursa gesture iptal (içerideki ScrollView'a geçer)
+    .onEnd((event) => {
+      if (event.translationX > 100 && Math.abs(event.translationY) < 80) {
+        // Eşik aşıldığında maçı animasyonla kapat
+        runOnJS(handleCloseDetail)();
+      }
+    });
 
   useEffect(() => {
     // Component mount olduğunda yükseklikleri ayarla
@@ -503,14 +523,16 @@ export default function Index() {
       )}
       {selectedMatch ? (
         <GestureDetector gesture={swipeGesture}>
-          <MatchDetails 
-            match={selectedMatch} 
-            onClose={handleCloseDetail} 
-            onOpenProfilePreview={(userId) => {
-              setViewingUserId(userId);
-              setProfileModalVisible(true);
-            }}
-          />
+          <Animated.View style={{ flex: 1, transform: [{ translateX: detailTranslateX }] }}>
+            <MatchDetails 
+              match={selectedMatch} 
+              onClose={handleCloseDetail} 
+              onOpenProfilePreview={(userId) => {
+                setViewingUserId(userId);
+                setProfileModalVisible(true);
+              }}
+            />
+          </Animated.View>
         </GestureDetector>
       ) : (
         <View className="flex-1">

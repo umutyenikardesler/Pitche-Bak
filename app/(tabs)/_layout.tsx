@@ -119,6 +119,13 @@ export default function TabsLayout() {
             <Ionicons name="search-outline" color={color as string} size={focused ? 28 : 22} style={{ marginTop: 2 }} />
           ),
         }}
+        listeners={{
+          tabPress: (e) => {
+            // Index tab'ına basıldığında (özellikle MatchDetails açıkken)
+            // açık olan modal/detayları kapatmak için event gönder.
+            DeviceEventEmitter.emit('closeModals');
+          },
+        }}
       />
       <Tabs.Screen
         name="pitches"
@@ -143,6 +150,12 @@ export default function TabsLayout() {
               style={{ marginTop: 2 }}
             />
           ),
+        }}
+        listeners={{
+          tabPress: () => {
+            // Sahalar tabına basıldığında saha detayını kapat
+            DeviceEventEmitter.emit('closePitchDetail');
+          },
         }}
       />
       <Tabs.Screen

@@ -1,7 +1,9 @@
 import { useEffect, useState, useCallback } from "react";
-import { View, Text, FlatList, TouchableOpacity, Image, ActivityIndicator, RefreshControl } from "react-native";
+import { View, Text, FlatList, TouchableOpacity, Image, ActivityIndicator, RefreshControl, Animated, Dimensions } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
+import { GestureDetector, Gesture } from "react-native-gesture-handler";
+import { runOnJS } from "react-native-reanimated";
 import { supabase } from "@/services/supabase";
 import { useLanguage } from "@/contexts/LanguageContext";
 
@@ -23,6 +25,9 @@ export default function Messages() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [items, setItems] = useState<JoinedMatchSummary[]>([]);
+  const screenWidth = Dimensions.get('window').width;
+  // Mesajlar ekranı için yatay animasyon (0: ekranda, +width: sağa kaymış)
+  const [translateX] = useState(new Animated.Value(0));
 
   const fetchJoinedMatches = useCallback(async (isRefresh = false) => {
     try {
@@ -91,6 +96,25 @@ export default function Messages() {
     fetchJoinedMatches(true);
   }, [fetchJoinedMatches]);
 
+  // Soldan sağa kaydırarak index sayfasına dön (animasyonlu)
+  const handleSwipeBack = useCallback(() => {
+    Animated.timing(translateX, {
+      toValue: screenWidth,
+      duration: 350, // daha yavaş ve belirgin
+      useNativeDriver: true,
+    }).start(() => {
+      router.push("/");
+      // Sonraki giriş için pozisyonu sıfırla
+      translateX.setValue(0);
+    });
+  }, [router, screenWidth, translateX]);
+
+  const swipeGesture = Gesture.Pan().onEnd((event) => {
+    if (event.translationX > 80) {
+      runOnJS(handleSwipeBack)();
+    }
+  });
+
   const renderItem = ({ item }: { item: JoinedMatchSummary }) => {
     // Format date and times similar to MyMatches
     const formattedDate = new Date(item.date).toLocaleDateString("tr-TR");
@@ -144,36 +168,46 @@ export default function Messages() {
     );
   };
 
+  let content: JSX.Element;
+
   if (loading) {
-    return (
+    content = (
       <View className="flex-1 justify-center items-center">
         <ActivityIndicator size="large" color="#16a34a" />
       </View>
     );
-  }
-
-  if (!items.length) {
-    return (
+  } else if (!items.length) {
+    content = (
       <View className="flex-1 justify-center items-center">
-        <Text className="text-gray-600">{t('messages.noAcceptedJoins') || 'Henüz katıldığın maç yok'}</Text>
+        <Text className="text-gray-600">
+          {t('messages.noAcceptedJoins') || 'Henüz katıldığın maç yok'}
+        </Text>
       </View>
+    );
+  } else {
+    content = (
+      <FlatList
+        data={items}
+        keyExtractor={(it) => it.id}
+        renderItem={renderItem}
+        contentContainerStyle={{ paddingBottom: 16, paddingTop: 8 }}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={['#16a34a']}
+            tintColor="#16a34a"
+          />
+        }
+      />
     );
   }
 
   return (
-    <FlatList
-      data={items}
-      keyExtractor={(it) => it.id}
-      renderItem={renderItem}
-      contentContainerStyle={{ paddingBottom: 16, paddingTop: 8 }}
-      refreshControl={
-        <RefreshControl
-          refreshing={refreshing}
-          onRefresh={onRefresh}
-          colors={['#16a34a']}
-          tintColor="#16a34a"
-        />
-      }
-    />
+    <GestureDetector gesture={swipeGesture}>
+      <Animated.View style={{ flex: 1, transform: [{ translateX }] }}>
+        {content}
+      </Animated.View>
+    </GestureDetector>
   );
 }

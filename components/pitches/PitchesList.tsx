@@ -159,38 +159,44 @@ export default function PitchesList({ pitches, selectedPitch, setSelectedPitch, 
     });
   };
 
+  // Detay ekranı için soldan sağa swipe-back (tüm ekranı kapsasın)
+  // Android'de dikey scroll'u engellememesi için sadece yatay harekette aktif olacak şekilde sınırla
   const swipeGesture = Gesture.Pan()
-    .activeOffsetX([-40, 40])
-    .failOffsetY([-10, 10])
-    .onUpdate((event) => {
-      if (event.translationX > 100) {
+    .activeOffsetX(20) // en az 20px yatay hareket olmalı
+    .failOffsetY([-10, 10]) // dikeyde ±10px'den fazla hareket olursa gesture iptal (ScrollView'a geçer)
+    .onEnd((event) => {
+      // Yeterince sağa sürüklenmişse ve dikey hareket çok değilse geri dön
+      if (event.translationX > 80 && Math.abs(event.translationY) < 80) {
         runOnJS(handleCloseDetail)();
       }
     });
 
   const featuresArray = selectedPitch?.features || [];
+  const pitchPhone = selectedPitch?.phone || '';
+  const hasPhone = !!pitchPhone;
 
   if (selectedPitch) {
     return (
-      <>
-        <ScrollView
-            style={{ flex: 1 }}
-            contentContainerStyle={{ 
-              flexGrow: 1,
-              paddingBottom: Platform.OS === 'android' ? 50 : 0
-            }}
-            showsVerticalScrollIndicator={true}
-            bounces={true}
-            scrollEnabled={true}
-            keyboardShouldPersistTaps="handled"
-            removeClippedSubviews={false}
-            scrollEventThrottle={16}
-            decelerationRate="normal"
-            alwaysBounceVertical={true}
-            overScrollMode="auto"
-          >
-          <GestureDetector gesture={swipeGesture}>
-            <View className="bg-white rounded-lg mx-4 mt-2 p-4 shadow-md mb-4" style={{ minHeight: '97%' }}>
+      <GestureDetector gesture={swipeGesture}>
+        <View style={{ flex: 1 }}>
+          <>
+            <ScrollView
+              style={{ flex: 1 }}
+              contentContainerStyle={{
+                flexGrow: 1,
+                paddingBottom: Platform.OS === 'android' ? 50 : 0,
+              }}
+              showsVerticalScrollIndicator={true}
+              bounces={true}
+              scrollEnabled={true}
+              keyboardShouldPersistTaps="handled"
+              removeClippedSubviews={false}
+              scrollEventThrottle={16}
+              decelerationRate="normal"
+              alwaysBounceVertical={true}
+              overScrollMode="auto"
+            >
+              <View className="bg-white rounded-lg mx-4 mt-2 p-4 shadow-md mb-4" style={{ minHeight: '97%' }}>
                 <View className="flex flex-col items-center flex-1 justify-between">
                   <View className="w-full flex-1">
                     <Text className="text-xl font-bold text-green-700 text-center mb-2">{t('pitches.pitchSummary')}</Text>
@@ -201,12 +207,12 @@ export default function PitchesList({ pitches, selectedPitch, setSelectedPitch, 
                           ref={(ref) => { mapRef.current = ref; }}
                           provider={PROVIDER_GOOGLE}
                           style={{ width: "100%", height: "100%" }}
-                        initialRegion={{
-                          latitude: selectedPitch.latitude,
-                          longitude: selectedPitch.longitude,
-                          latitudeDelta: Platform.OS === 'android' ? 0.001 : 0.002,
-                          longitudeDelta: Platform.OS === 'android' ? 0.001 : 0.002,
-                        }}
+                          initialRegion={{
+                            latitude: selectedPitch.latitude,
+                            longitude: selectedPitch.longitude,
+                            latitudeDelta: Platform.OS === 'android' ? 0.001 : 0.002,
+                            longitudeDelta: Platform.OS === 'android' ? 0.001 : 0.002,
+                          }}
                           mapType="standard"
                           showsUserLocation={false}
                           showsScale={false}
@@ -228,8 +234,8 @@ export default function PitchesList({ pitches, selectedPitch, setSelectedPitch, 
                           maxZoomLevel={20}
                           onRegionChangeComplete={(region) => setCurrentRegion(region)}
                         >
-                          <Marker 
-                            coordinate={{ latitude: selectedPitch.latitude, longitude: selectedPitch.longitude }} 
+                          <Marker
+                            coordinate={{ latitude: selectedPitch.latitude, longitude: selectedPitch.longitude }}
                             title={selectedPitch.name}
                             pinColor="red"
                           />
@@ -301,11 +307,46 @@ export default function PitchesList({ pitches, selectedPitch, setSelectedPitch, 
                       </View>
                     </View>
 
-                    <View>
-                      <Text className="h-7 text-lg font-semibold text-green-700 text-center mt-4">{t('pitches.pitchPrice')}</Text>
-                      <View className="flex-row justify-center items-center pt-1">
-                        <Ionicons name="wallet-outline" size={18} color="green" />
-                        <Text className="pl-2 text-gray-700 font-semibold">{selectedPitch.price} ₺</Text>
+                    {/* Telefon ve Ücret yan yana */}
+                    <View className="flex-row mt-3">
+                      {/* Sol: Halı Saha Telefonu */}
+                      <View className="w-1/2 pr-1">
+                        <Text className="h-7 text-lg font-semibold text-green-700 text-center my-2">
+                          Halı Saha Telefonu
+                        </Text>
+                        {hasPhone ? (
+                          <TouchableOpacity
+                            onPress={() => Linking.openURL(`tel:${pitchPhone}`)}
+                            activeOpacity={0.7}
+                          >
+                            <View className="flex-row justify-center items-center pt-1">
+                              <Ionicons name="call-outline" size={18} color="green" />
+                              <Text className="pl-2 text-gray-900 font-semibold">
+                                {pitchPhone}
+                              </Text>
+                            </View>
+                          </TouchableOpacity>
+                        ) : (
+                          <View className="flex-row justify-center items-center pt-1">
+                            <Ionicons name="call-outline" size={18} color="green" />
+                            <Text className="pl-2 text-gray-700 font-semibold">
+                              Telefon bilgisi yok
+                            </Text>
+                          </View>
+                        )}
+                      </View>
+
+                      {/* Sağ: Saha Ücreti */}
+                      <View className="w-1/2 pl-1">
+                        <Text className="h-7 text-lg font-semibold text-green-700 text-center my-2">
+                          {t('pitches.pitchPrice')}
+                        </Text>
+                        <View className="flex-row justify-center items-center pt-1">
+                          <Ionicons name="wallet-outline" size={18} color="green" />
+                          <Text className="pl-2 text-gray-700 font-semibold">
+                            {selectedPitch.price} ₺
+                          </Text>
+                        </View>
                       </View>
                     </View>
 
@@ -313,7 +354,7 @@ export default function PitchesList({ pitches, selectedPitch, setSelectedPitch, 
                       <Text className="text-lg font-semibold text-green-700 text-center mt-3 mb-2">{t('pitches.pitchFeatures')}</Text>
                       <View className="flex-row flex-wrap justify-center">
                         {featuresArray.map((feature: string, index: number) => (
-                          <View key={index} className={`${featuresArray.length === 1 ? 'w-auto' : 'w-1/2'}  mb-1`} >
+                          <View key={index} className={`${featuresArray.length === 1 ? 'w-auto' : 'w-1/2'}  mb-1`}>
                             <View className="flex-row p-2 bg-green-700 rounded mr-1 items-center justify-center">
                               <Ionicons name="checkmark-circle-outline" size={16} color="white" />
                               <Text className="text-white pl-1">{feature}</Text>
@@ -332,55 +373,42 @@ export default function PitchesList({ pitches, selectedPitch, setSelectedPitch, 
                   </View>
                 </View>
               </View>
-            </GestureDetector>
-        </ScrollView>
-
-        <Animated.View
-          pointerEvents="box-none"
-          style={[
-            animatedStyle,
-            {
-              position: 'absolute',
-              right: 24,
-              top: '47.5%',
-              transform: [{ translateY: 0 }],
-              borderRadius: 9999,
-              shadowColor: '#000',
-              shadowOffset: { width: 0, height: 2 },
-              shadowOpacity: 0.6,
-              shadowRadius: 6,
-              elevation: 10,
-            },
-          ]}
-        >
-          <TouchableOpacity
-            onPress={() => handleSelectPitch(selectedPitch.id)}
-            className="flex-row"
-            style={{
-              paddingHorizontal: 12,
-              paddingVertical: 12,
-              borderRadius: 9999,
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <FontAwesome name="soccer-ball-o" size={24} color="#fff" />
-            {/* <Text
-              style={{
-                color: 'white',
-                fontWeight: 'bold',
-                textAlign: 'center',
-                marginTop: 0,
-                lineHeight: 20,
-                marginLeft: 0,
-              }}
+            </ScrollView>
+            <Animated.View
+              pointerEvents="box-none"
+              style={[
+                animatedStyle,
+                {
+                  position: 'absolute',
+                  right: 24,
+                  top: '47.5%',
+                  transform: [{ translateY: 0 }],
+                  borderRadius: 9999,
+                  shadowColor: '#000',
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowOpacity: 0.6,
+                  shadowRadius: 6,
+                  elevation: 10,
+                },
+              ]}
             >
-              Maç{"\n"}Yap
-            </Text> */}
-          </TouchableOpacity>
-        </Animated.View>
-
-      </>
+              <TouchableOpacity
+                onPress={() => handleSelectPitch(selectedPitch.id)}
+                className="flex-row"
+                style={{
+                  paddingHorizontal: 12,
+                  paddingVertical: 12,
+                  borderRadius: 9999,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <FontAwesome name="soccer-ball-o" size={24} color="#fff" />
+              </TouchableOpacity>
+            </Animated.View>
+          </>
+        </View>
+      </GestureDetector>
     );
   }
 

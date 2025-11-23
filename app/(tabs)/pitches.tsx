@@ -214,17 +214,26 @@ export default function Pitches() {
     setSelectedPitch(null);
   };
 
-  // CustomHeader başlık tıklaması ile modal'ları kapat
+  // CustomHeader başlık tıklaması veya tab'a basılması ile modal'ları/detayı kapat
   useEffect(() => {
-    const subscription = DeviceEventEmitter.addListener('closeModals', () => {
+    const closeModalsSub = DeviceEventEmitter.addListener('closeModals', () => {
       console.log('closeModals event alındı, pitches modal\'ı kapatılıyor');
-      // Pitches modal'ını kapat
       if (selectedPitch) {
         handleCloseDetail();
       }
     });
 
-    return () => subscription.remove();
+    const closePitchDetailSub = DeviceEventEmitter.addListener('closePitchDetail', () => {
+      console.log('closePitchDetail event alındı, saha detayı kapatılıyor');
+      if (selectedPitch) {
+        handleCloseDetail();
+      }
+    });
+
+    return () => {
+      closeModalsSub.remove();
+      closePitchDetailSub.remove();
+    };
   }, [selectedPitch]);
 
   if (loading) {
