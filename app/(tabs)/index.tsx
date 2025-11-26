@@ -323,15 +323,15 @@ export default function Index() {
         // Eğer maç bugünden önceki bir tarihte ise kesinlikle gösterme
         if (matchDateStr < today) return false;
 
-        // Bugünkü maçlar için saat kontrolü
+        // Bugünkü maçlar için saat kontrolü: KENDİ MAÇLARIN İÇİN
+        // Maç tamamen bitmediyse göster (bitiş saatine kadar listede kalsın)
         const [matchHours, matchMinutes] = item.time.split(":").map(Number);
         const matchEndHour = matchHours + 1;
-        
-        // Şu anki zamanı dakika cinsinden hesapla
+
         const currentTimeInMinutes = currentHours * 60 + currentMinutes;
         const matchEndTimeInMinutes = matchEndHour * 60 + matchMinutes;
-        
-        // Maç bitiş saati şu anki saatten sonra olmalı
+
+        // Maçın bitiş saati şu anki saatten SONRA olmalı
         return matchEndTimeInMinutes > currentTimeInMinutes;
       });
 
@@ -398,16 +398,14 @@ export default function Index() {
         // Eğer maç bugünden önceki bir tarihte ise kesinlikle gösterme
         if (matchDateStr < today) return false;
 
-        // Bugünkü maçlar için saat kontrolü
+        // Bugünkü maçlar için saat kontrolü: sadece HENÜZ BAŞLAMAMIŞ maçları göster
         const [matchHours, matchMinutes] = item.time.split(":").map(Number);
-        const matchEndHour = matchHours + 1;
-        
-        // Şu anki zamanı dakika cinsinden hesapla
+
         const currentTimeInMinutes = currentHours * 60 + currentMinutes;
-        const matchEndTimeInMinutes = matchEndHour * 60 + matchMinutes;
-        
-        // Maç bitiş saati şu anki saatten sonra olmalı
-        return matchEndTimeInMinutes > currentTimeInMinutes;
+        const matchStartTimeInMinutes = matchHours * 60 + matchMinutes;
+
+        // Maçın başlangıç saati şu anki saatten SONRA olmalı
+        return matchStartTimeInMinutes > currentTimeInMinutes;
       });
 
       // Diğer maçlar için de profil resimlerini güncelle + mesafeyi hesapla

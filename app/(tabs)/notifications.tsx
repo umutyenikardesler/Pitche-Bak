@@ -4,6 +4,8 @@ import ProfilePreview from '@/components/index/ProfilePreview';
 import { useNotifications } from '@/components/notifications/useNotifications';
 import { useNotificationHandlers } from '@/components/notifications/useNotificationHandlers';
 import NotificationList from '@/components/notifications/NotificationList';
+import { useNotification } from '@/components/NotificationContext';
+import { useFocusEffect } from 'expo-router';
 
 export default function Notifications() {
     const [profileModalVisible, setProfileModalVisible] = useState(false);
@@ -17,6 +19,17 @@ export default function Notifications() {
         groupNotificationsByDate,
         handleRefresh,
     } = useNotifications();
+
+    const { clearBadge, refresh } = useNotification();
+
+    // Bildirim sayfasına her odaklanıldığında kalp ikonundaki badge'i sıfırla
+    useFocusEffect(
+        useCallback(() => {
+            clearBadge();
+            // İsteğe bağlı: badge ve genel sayaçları anında senkronize et
+            refresh();
+        }, [clearBadge, refresh])
+    );
 
     const {
         handleMarkAsRead,

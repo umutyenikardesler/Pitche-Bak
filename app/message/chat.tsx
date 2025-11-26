@@ -190,20 +190,6 @@ export default function ChatScreen() {
         return;
       }
 
-      // Karşı tarafa bildirim gönder (direct_message)
-      try {
-        await supabase.from('notifications').insert({
-          user_id: recip,
-          sender_id: user.id,
-          type: 'direct_message',
-          message: input.trim().slice(0, 180),
-          match_id: matchIdStr || null,
-          is_read: false,
-        });
-      } catch (e) {
-        console.error('[Chat] sendMessage direct_message notification insert error:', e);
-      }
-
       setInput('');
       fetchMessages();
       setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 50);

@@ -14,6 +14,7 @@ interface UseMatchDataFetchingProps {
   setShownAcceptedPositions: (positions: Set<string> | ((prev: Set<string>) => Set<string>)) => void;
   setSentRequests: (requests: string[] | ((prev: string[]) => string[])) => void;
   setRejectedPosition: (position: { position: string; message: string } | null) => void;
+  setCompletedPositions: (positions: Set<string> | ((prev: Set<string>) => Set<string>)) => void;
 }
 
 export const useMatchDataFetching = ({
@@ -27,6 +28,7 @@ export const useMatchDataFetching = ({
   setShownAcceptedPositions,
   setSentRequests,
   setRejectedPosition,
+  setCompletedPositions,
 }: UseMatchDataFetchingProps) => {
   // Güncel state değerlerini ref ile tut (closure problemi için)
   const missingGroupsRef = useRef(missingGroups);
@@ -64,20 +66,30 @@ export const useMatchDataFetching = ({
         const oldGroups = missingGroupsRef.current;
         const newGroups = data.missing_groups;
         
-        // Pozisyon sayısı azalan pozisyonları bul
+        // Pozisyon sayısı azalan ve/veya tamamen dolan pozisyonları bul
         const decreasedPositions: string[] = [];
+        const newlyCompletedPositions: string[] = [];
+
         oldGroups.forEach(oldGroup => {
-          const [position, oldCount] = oldGroup.split(':');
+          const [position, oldCountStr] = oldGroup.split(':');
+          const oldCount = parseInt(oldCountStr, 10);
           const newGroup = newGroups.find(g => g.startsWith(position + ':'));
+
           if (newGroup) {
-            // Pozisyon hala var, sayısını kontrol et
-            const [, newCount] = newGroup.split(':');
-            if (parseInt(newCount) < parseInt(oldCount)) {
+            const [, newCountStr] = newGroup.split(':');
+            const newCount = parseInt(newCountStr, 10);
+
+            if (newCount < oldCount) {
               decreasedPositions.push(position);
             }
+            // Güvenlik için, eğer yeni değer 0 ise "Doldu" olarak işaretle
+            if (newCount === 0) {
+              newlyCompletedPositions.push(position);
+            }
           } else {
-            // Pozisyon tamamen kaybolmuş (sayı 0'a düşmüş)
+            // Pozisyon tamamen kaybolmuş (sayı 0'a düşmüş) → Doldu
             decreasedPositions.push(position);
+            newlyCompletedPositions.push(position);
           }
         });
         
@@ -102,6 +114,22 @@ export const useMatchDataFetching = ({
           // Sadece değişiklik varsa güncelle (gereksiz re-render'ı önlemek için)
           if (JSON.stringify(oldGroups) !== JSON.stringify(newGroups)) {
             setMissingGroups(newGroups);
+          }
+        }
+
+        // Eğer tamamen dolan pozisyonlar varsa, bunları completedPositions set'ine ekle
+        // Ancak iptal edilmiş (cancelledPositions) pozisyonları hariç tut
+        if (newlyCompletedPositions.length > 0) {
+          const effectiveCompleted = newlyCompletedPositions.filter(
+            (pos) => !cancelledPositionsRef.current.has(pos)
+          );
+
+          if (effectiveCompleted.length > 0) {
+            setCompletedPositions((prev) => {
+              const next = new Set(prev);
+              effectiveCompleted.forEach((pos) => next.add(pos));
+              return next;
+            });
           }
         }
         

@@ -20,6 +20,7 @@ interface UseMatchPositionHandlersProps {
   setMissingGroups: (groups: string[]) => void;
   setCancelledPositions: (positions: Set<string> | ((prev: Set<string>) => Set<string>)) => void;
   setIsCancellingPosition: (cancelling: boolean) => void;
+  setCompletedPositions: (positions: Set<string> | ((prev: Set<string>) => Set<string>)) => void;
   fetchSentRequests: () => Promise<void>;
 }
 
@@ -38,6 +39,7 @@ export const useMatchPositionHandlers = ({
   setMissingGroups,
   setCancelledPositions,
   setIsCancellingPosition,
+  setCompletedPositions,
   fetchSentRequests,
 }: UseMatchPositionHandlersProps) => {
   // Katılım isteği gönder
@@ -172,38 +174,95 @@ export const useMatchPositionHandlers = ({
   const cancelAcceptedPosition = useCallback(async (position: string) => {
     setIsLoading(true);
     try {
-      console.log(`[MatchDetails] Kabul edilen pozisyon iptal ediliyor: ${position} - Maç ID: ${match.id}`);
-      
-      // Önce local state'i güncelle
-      const updatedGroups: string[] = [...missingGroups];
-      
-      const existingGroupIndex = updatedGroups.findIndex(g => g.startsWith(position + ':'));
+      console.log(`[MatchDetails] cancelAcceptedPosition START - pozisyon: ${position} - matchId: ${match.id}`);
+
+      // 1) ÖNCE LOCAL STATE'İ GÜNCELLE (kullanıcı D x 1'i hemen görsün)
+      const localGroups: string[] = [...missingGroups];
+      const localIndex = localGroups.findIndex((g) => g.startsWith(position + ':'));
+      if (localIndex !== -1) {
+        const [pos, count] = localGroups[localIndex].split(':');
+        const newCount = parseInt(count, 10) + 1;
+        localGroups[localIndex] = `${pos}:${newCount}`;
+      } else {
+        localGroups.push(`${position}:1`);
+      }
+      setMissingGroups(localGroups);
+      setAcceptedPosition(null);
+      setShownAcceptedPositions((prev) => {
+        const newSet = new Set(prev);
+        newSet.delete(position);
+        return newSet;
+      });
+      setCompletedPositions((prev) => {
+        const next = new Set(prev);
+        next.delete(position);
+        return next;
+      });
+      setCancelledPositions((prev) => new Set([...prev, position]));
+      setIsCancellingPosition(true);
+
+      // En güncel missing_groups'u direkt DB'den al ve güncelle
+      const { data: matchRow, error: matchError } = await supabase
+        .from('match')
+        .select('missing_groups')
+        .eq('id', match.id)
+        .single();
+
+      if (matchError) {
+        console.error('[MatchDetails] cancelAcceptedPosition match fetch error:', matchError);
+        throw matchError;
+      }
+
+      const currentGroups: string[] = Array.isArray(matchRow?.missing_groups)
+        ? matchRow!.missing_groups
+        : [];
+
+      console.log('[MatchDetails] cancelAcceptedPosition - currentGroups (DBden gelen missing_groups):', currentGroups);
+
+      const updatedGroups: string[] = [...currentGroups];
+      const existingGroupIndex = updatedGroups.findIndex((g) => g.startsWith(position + ':'));
+
       if (existingGroupIndex !== -1) {
         const [pos, count] = updatedGroups[existingGroupIndex].split(':');
         const newCount = parseInt(count, 10) + 1;
         updatedGroups[existingGroupIndex] = `${pos}:${newCount}`;
       } else {
+        // Hiç yoksa tekrar 1 eksik olarak ekle
         updatedGroups.push(`${position}:1`);
       }
 
-      setMissingGroups(updatedGroups);
-      setAcceptedPosition(null);
-      setShownAcceptedPositions(prev => {
-        const newSet = new Set(prev);
-        newSet.delete(position);
-        return newSet;
-      });
-      setCancelledPositions(prev => new Set([...prev, position]));
-      setIsCancellingPosition(true);
-      
-      const { error: updateMatchError } = await supabase
+      console.log('[MatchDetails] cancelAcceptedPosition - updatedGroups (DBye yazılacak missing_groups):', updatedGroups);
+
+      // 2) DB'yi sync etmeye çalış (RLS izin veriyorsa)
+      console.log('[MatchDetails] cancelAcceptedPosition - match tablosu update ediliyor...');
+      const { data: updatedMatchRows, error: updateMatchError } = await supabase
         .from('match')
         .update({ missing_groups: updatedGroups })
         .eq('id', match.id);
 
       if (updateMatchError) {
-        console.error('[MatchDetails] Match update hatası:', updateMatchError);
+        console.error('[MatchDetails] cancelAcceptedPosition - match update hatası (muhtemel RLS):', updateMatchError);
         throw updateMatchError;
+      }
+
+      console.log('[MatchDetails] cancelAcceptedPosition - match update SUCCESS, dönen satırlar:', updatedMatchRows);
+
+      // Güncellemeden sonra, gerçekten DB'de ne olduğunu tekrar oku ve hem logla hem state'e yaz
+      const { data: verifyRow, error: verifyError } = await supabase
+        .from('match')
+        .select('missing_groups')
+        .eq('id', match.id)
+        .single();
+
+      if (verifyError) {
+        console.error('[MatchDetails] cancelAcceptedPosition - verify select hatası:', verifyError);
+      } else {
+        console.log(
+          '[MatchDetails] cancelAcceptedPosition - verify missing_groups (DB gerçekte ne durumda):',
+          verifyRow?.missing_groups
+        );
+        // UI şu an local state üzerinden zaten doğru durumda; 
+        // DB senkronu sadece logluyoruz, state'i zorla geri almıyoruz.
       }
 
       const { data: { user } } = await supabase.auth.getUser();
@@ -215,6 +274,7 @@ export const useMatchPositionHandlers = ({
         return;
       }
 
+      console.log('[MatchDetails] cancelAcceptedPosition - notifications join_request delete çağrılıyor, sender_id:', currentUserIdFromAuth);
       const { error: deleteError } = await supabase
         .from('notifications')
         .delete()
@@ -224,7 +284,7 @@ export const useMatchPositionHandlers = ({
         .eq('position', position);
 
       if (deleteError) {
-        console.error('[MatchDetails] Kabul edilen pozisyon silme hatası:', deleteError);
+        console.error('[MatchDetails] cancelAcceptedPosition - notifications delete hatası:', deleteError);
         throw deleteError;
       }
 
@@ -239,13 +299,13 @@ export const useMatchPositionHandlers = ({
       }, 15000);
 
     } catch (error) {
-      console.error('[MatchDetails] Kabul edilen pozisyon iptal etme hatası:', error);
+      console.error('[MatchDetails] cancelAcceptedPosition CATCH - hata:', error);
       Alert.alert("Hata", "Pozisyon iptal edilemedi. Lütfen tekrar deneyin.");
       setIsCancellingPosition(false);
     } finally {
       setIsLoading(false);
     }
-  }, [match.id, missingGroups, setIsLoading, setMissingGroups, setAcceptedPosition, setShownAcceptedPositions, setCancelledPositions, setIsCancellingPosition]);
+  }, [match.id, missingGroups, setIsLoading, setMissingGroups, setAcceptedPosition, setShownAcceptedPositions, setCompletedPositions, setCancelledPositions, setIsCancellingPosition]);
 
   // Katılım isteği gönder veya iptal et
   const handlePositionRequest = useCallback(async (position: string) => {

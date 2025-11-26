@@ -10,7 +10,7 @@ export const useNotifications = () => {
     const [notifications, setNotifications] = useState<Notification[]>([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
-    const { refresh, clearBadge } = useNotification();
+    const { refresh } = useNotification();
     const { t } = useLanguage();
 
     const fetchNotifications = useCallback(async () => {
@@ -37,7 +37,7 @@ export const useNotifications = () => {
             if (error) throw error;
 
             const formattedNotifications = data
-                .map(notification => {
+                .map((notification: any) => {
                     let matchInfo = null;
                     if (notification.type === 'join_request' && notification.match) {
                         const matchDate = new Date(notification.match.date);
@@ -61,8 +61,9 @@ export const useNotifications = () => {
                         sender_profile_image: notification.sender?.profile_image || undefined,
                         match: matchInfo
                     };
-                });
+                }) as Notification[];
 
+            // Sunucudan gelen anlık listeyi direkt state'e yaz (DB'de silinen bildirimler de UI'dan kalksın)
             setNotifications(formattedNotifications);
         } catch (error) {
             console.error(t('notifications.loadingError'), error);
@@ -76,9 +77,7 @@ export const useNotifications = () => {
         useCallback(() => {
             // Bildirim sayfasına her girişte verileri çek
             fetchNotifications();
-            // Kalp ikonundaki badge'i bu anda sıfırla
-            clearBadge();
-        }, [fetchNotifications]) // clearBadge bilinçli olarak dependency'e eklenmedi (loop'u önlemek için)
+        }, [fetchNotifications])
     );
 
     // Real-time subscription
@@ -134,68 +133,60 @@ export const useNotifications = () => {
         };
     }, [fetchNotifications, refresh]);
 
-    const groupNotificationsByDate = useCallback((notifications: Notification[]): NotificationGroup[] => {
-        // Şu anki tarihi al (Türkiye saati - UTC+3)
-        const now = new Date();
-        // Türkiye saati için bugünün tarihini hesapla
-        // getTimezoneOffset() dakika cinsinden döner, negatif değer UTC'den ileri demektir
-        // Türkiye UTC+3, bu yüzden offset -180 dakika (3 saat geri)
-        const turkeyOffset = -180 * 60 * 1000; // -180 dakika = UTC+3
-        const turkeyNow = new Date(now.getTime() - (now.getTimezoneOffset() * 60 * 1000) - turkeyOffset);
-        
-        const today = new Date(turkeyNow.getFullYear(), turkeyNow.getMonth(), turkeyNow.getDate());
-        const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-        
-        const yesterday = new Date(today);
-        yesterday.setDate(yesterday.getDate() - 1);
-        const yesterdayStr = `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, '0')}-${String(yesterday.getDate()).padStart(2, '0')}`;
-        
-        const weekAgo = new Date(today);
-        weekAgo.setDate(weekAgo.getDate() - 7);
-        const monthAgo = new Date(today);
-        monthAgo.setDate(monthAgo.getDate() - 30);
+    const groupNotificationsByDate = useCallback(
+        (notifications: Notification[]): NotificationGroup[] => {
+            // Cihazın yerel saatine göre bugünün başlangıcı
+            const now = new Date();
+            const startOfToday = new Date(
+                now.getFullYear(),
+                now.getMonth(),
+                now.getDate()
+            );
+            const oneDayMs = 24 * 60 * 60 * 1000;
 
-        const groups: { [key: string]: Notification[] } = {
-            'Bugün': [],
-            'Dün': [],
-            'Son 7 Gün': [],
-            'Son 30 Gün': [],
-            'Daha Eski': []
-        };
+            const groups: { [key: string]: Notification[] } = {
+                'Bugün': [],
+                'Dün': [],
+                'Son 1 Hafta': [],
+                'Son 30 Gün': [],
+                'Daha Eski': [],
+            };
 
-        notifications.forEach(notification => {
-            // created_at değerini parse et (database'den gelen ISO string - UTC+3 olarak kaydedilmiş)
-            const notificationDate = new Date(notification.created_at);
-            // Türkiye saatine göre tarih string'ini oluştur
-            const notificationWithOffset = new Date(notificationDate.getTime() - (notificationDate.getTimezoneOffset() * 60 * 1000) - turkeyOffset);
-            const notificationDayStr = `${notificationWithOffset.getFullYear()}-${String(notificationWithOffset.getMonth() + 1).padStart(2, '0')}-${String(notificationWithOffset.getDate()).padStart(2, '0')}`;
-            
-            const notificationDay = new Date(notificationWithOffset.getFullYear(), notificationWithOffset.getMonth(), notificationWithOffset.getDate());
+            notifications.forEach((notification) => {
+                const created = new Date(notification.created_at);
+                const startOfCreated = new Date(
+                    created.getFullYear(),
+                    created.getMonth(),
+                    created.getDate()
+                );
 
-            // Bugün kontrolü - string karşılaştırması
-            if (notificationDayStr === todayStr) {
-                groups['Bugün'].push(notification);
-            } 
-            // Dün kontrolü - string karşılaştırması
-            else if (notificationDayStr === yesterdayStr) {
-                groups['Dün'].push(notification);
-            } 
-            // Son 7 Gün kontrolü - dünden önce ama bugünden 7 gün öncesine kadar
-            else if (notificationDay.getTime() >= weekAgo.getTime() && notificationDay.getTime() < yesterday.getTime()) {
-                groups['Son 7 Gün'].push(notification);
-            }
-            // Son 30 Gün kontrolü - 7 günden önce ama 30 gün içinde
-            else if (notificationDay.getTime() >= monthAgo.getTime() && notificationDay.getTime() < weekAgo.getTime()) {
-                groups['Son 30 Gün'].push(notification);
-            } 
-            // Daha eski
-            else {
-                groups['Daha Eski'].push(notification);
-            }
-        });
+                const diffMs = startOfToday.getTime() - startOfCreated.getTime();
+                // Eğer created_at, cihaz saatine göre gelecekte görünüyorsa (timezone farkı vb.),
+                // negatif gün farkını 0'a sabitleyip "Bugün" grubuna alalım.
+                let diffDays = Math.floor(diffMs / oneDayMs);
+                if (diffDays < 0) diffDays = 0;
 
-        return Object.entries(groups).filter(([_, notifications]) => notifications.length > 0);
-    }, []);
+                if (diffDays === 0) {
+                    groups['Bugün'].push(notification);
+                } else if (diffDays === 1) {
+                    groups['Dün'].push(notification);
+                } else if (diffDays > 1 && diffDays <= 7) {
+                    // Son 1 Hafta: 2–7 gün önce
+                    groups['Son 1 Hafta'].push(notification);
+                } else if (diffDays > 7 && diffDays <= 30) {
+                    // Son 30 Gün: 8–30 gün önce
+                    groups['Son 30 Gün'].push(notification);
+                } else if (diffDays > 30) {
+                    groups['Daha Eski'].push(notification);
+                }
+            });
+
+            return Object.entries(groups).filter(
+                ([, groupItems]) => groupItems.length > 0
+            ) as NotificationGroup[];
+        },
+        []
+    );
 
     const handleRefresh = useCallback(() => {
         setRefreshing(true);

@@ -3,6 +3,7 @@ import { Match } from "./types";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useEffect } from "react";
 import '@/global.css';
+import { supabase } from '@/services/supabase';
 import MatchHeader from '@/components/matchDetails/components/MatchHeader';
 import MatchInfo from '@/components/matchDetails/components/MatchInfo';
 import PositionList from '@/components/matchDetails/components/PositionList';
@@ -62,6 +63,7 @@ export default function MatchDetails({ match, onClose, onOpenProfilePreview }: M
     setShownAcceptedPositions,
     setSentRequests,
     setRejectedPosition,
+    setCompletedPositions,
   });
 
   // Realtime subscriptions
@@ -106,6 +108,7 @@ export default function MatchDetails({ match, onClose, onOpenProfilePreview }: M
     setMissingGroups,
     setCancelledPositions,
     setIsCancellingPosition,
+    setCompletedPositions,
     fetchSentRequests,
   });
 
@@ -128,6 +131,104 @@ export default function MatchDetails({ match, onClose, onOpenProfilePreview }: M
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentUserId, match.id]);
+
+  // İlk açılışta (ve kullanıcı değiştiğinde) "Dolu" pozisyonlarını DB'den yükle
+  // Senaryo: Maçtaki eksik pozisyon 1 iken kabul edilmiş ve missing_groups'tan düşmüşse,
+  // match detayına sonradan girildiğinde de örn. "F Dolu" şeklinde görünmesi için.
+  useEffect(() => {
+    if (!currentUserId) return;
+
+    let cancelled = false;
+
+    (async () => {
+      try {
+        // Güncel missing_groups'u al
+        const { data: matchRow, error: matchError } = await supabase
+          .from('match')
+          .select('missing_groups')
+          .eq('id', match.id)
+          .single();
+
+        if (matchError) {
+          console.error('[MatchDetails] completedPositions match fetch error:', matchError);
+          return;
+        }
+
+        const missingArr: string[] = Array.isArray(matchRow?.missing_groups)
+          ? matchRow!.missing_groups
+          : [];
+        const missingPositions = new Set(
+          missingArr.map((g) => String(g).split(':')[0])
+        );
+
+        // Bu kullanıcı için, bu maça ait "kabul edildiniz" join_request bildirimlerini al
+        const { data: notifRows, error: notifError } = await supabase
+          .from('notifications')
+          .select('position')
+          .eq('type', 'join_request')
+          .eq('match_id', match.id)
+          .eq('user_id', currentUserId)
+          .ilike('message', '%kabul edildiniz%');
+
+        if (notifError) {
+          console.error('[MatchDetails] completedPositions notifications fetch error:', notifError);
+          return;
+        }
+
+        // Kullanıcının bu maça gönderdiği (ve halen DB'de duran) istekleri al
+        // Not: İptal edilen pozisyonların ilgili notification kaydı (sender_id = currentUserId) siliniyor,
+        // bu yüzden burada olmayan pozisyonları "Dolu" kabul ETMEYECEĞİZ.
+        const { data: requestRows, error: requestError } = await supabase
+          .from('notifications')
+          .select('position')
+          .eq('type', 'join_request')
+          .eq('match_id', match.id)
+          .eq('sender_id', currentUserId);
+
+        if (requestError) {
+          console.error('[MatchDetails] completedPositions requests fetch error:', requestError);
+          return;
+        }
+
+        const positionsWithRequest = new Set<string>();
+        (requestRows || []).forEach((row: any) => {
+          if (typeof row.position === 'string' && row.position) {
+            positionsWithRequest.add(row.position);
+          }
+        });
+
+        const completedFromDb = new Set<string>();
+        (notifRows || []).forEach((row: any) => {
+          const pos = row.position;
+          // Sadece:
+          // 1) Bu kullanıcı için "kabul edildiniz" bildirimi olan,
+          // 2) Halen DB'de bu kullanıcıya ait join_request kaydı bulunan (iptal edilmemiş),
+          // 3) Ve missing_groups'ta eksik olarak görünmeyen (gerçekten dolu olan)
+          // pozisyonları "Dolu" olarak işaretle.
+          if (
+            typeof pos === 'string' &&
+            pos &&
+            positionsWithRequest.has(pos) &&
+            !missingPositions.has(pos)
+          ) {
+            completedFromDb.add(pos);
+          }
+        });
+
+        if (cancelled || completedFromDb.size === 0) return;
+
+        // Bu noktada, sadece gerçekten geçerli olan "Dolu" pozisyonları biliyoruz.
+        // Önceki state'i taşımak yerine, tamamını bu set ile SIFIRDAN kur.
+        setCompletedPositions(new Set(completedFromDb));
+      } catch (e) {
+        console.error('[MatchDetails] completedPositions load error:', e);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [currentUserId, match.id, setCompletedPositions]);
 
   // Red durumunu periyodik olarak kontrol et (realtime kaçarsa fallback)
   useEffect(() => {
