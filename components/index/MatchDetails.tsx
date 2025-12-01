@@ -1,7 +1,7 @@
 import { View, Text, ScrollView, TouchableOpacity } from "react-native";
 import { Match } from "./types";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import '@/global.css';
 import { supabase } from '@/services/supabase';
 import MatchHeader from '@/components/matchDetails/components/MatchHeader';
@@ -11,6 +11,7 @@ import StatusMessages from '@/components/matchDetails/components/StatusMessages'
 import PitchSummary from '@/components/matchDetails/components/PitchSummary';
 import MatchCreator from '@/components/matchDetails/components/MatchCreator';
 import Divider from '@/components/matchDetails/components/Divider';
+import EditPositionsModal from '@/components/matchDetails/components/EditPositionsModal';
 import { useMatchDetailsState } from '@/components/matchDetails/hooks/useMatchDetailsState';
 import { useMatchDataFetching } from '@/components/matchDetails/hooks/useMatchDataFetching';
 import { useMatchRealtime } from '@/components/matchDetails/hooks/useMatchRealtime';
@@ -25,6 +26,7 @@ interface MatchDetailsProps {
 
 export default function MatchDetails({ match, onClose, onOpenProfilePreview }: MatchDetailsProps) {
   const { t } = useLanguage();
+  const [editPositionsModalVisible, setEditPositionsModalVisible] = useState(false);
   
   // State yönetimi
   const state = useMatchDetailsState(match);
@@ -309,8 +311,19 @@ export default function MatchDetails({ match, onClose, onOpenProfilePreview }: M
             userSurname={(Array.isArray(match.users) ? match.users[0]?.surname : match.users?.surname) ?? ''}
             userId={match.create_user}
             onOpenProfilePreview={onOpenProfilePreview}
+            onEditPositions={() => setEditPositionsModalVisible(true)}
+            canEditPositions={currentUserId === match.create_user}
           />
         )}
+
+        <EditPositionsModal
+          visible={editPositionsModalVisible}
+          onClose={() => setEditPositionsModalVisible(false)}
+          match={match}
+          onSuccess={() => {
+            fetchMissing();
+          }}
+        />
 
         <Divider />
 

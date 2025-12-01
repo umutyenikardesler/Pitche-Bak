@@ -68,10 +68,21 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
   };
 
   // Kalp ikonundaki badge'i, bildirim sayfasına girildiği anda sıfırla.
-  // Bildirim satırlarının is_read durumunu değiştirmez; sadece
-  // o andaki unread sayısını referans olarak alır.
-  const clearBadge = () => {
-    setClearedBaseCount(count);
+  // Tüm okunmamış bildirimleri (direct_message hariç) DB'de okundu olarak işaretle.
+  const clearBadge = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    // Tüm okunmamış bildirimleri (direct_message hariç) okundu olarak işaretle
+    await supabase
+      .from('notifications')
+      .update({ is_read: true })
+      .eq('user_id', user.id)
+      .eq('is_read', false)
+      .neq('type', 'direct_message');
+
+    // Sayaçları güncelle
+    await fetchCount();
   };
 
   // Mesaj sekmesi ikonundaki badge'i (direct_message sayacını) manuel temizle.

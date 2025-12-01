@@ -23,12 +23,11 @@ export default function Notifications() {
     const { clearBadge, refresh } = useNotification();
 
     // Bildirim sayfasına her odaklanıldığında kalp ikonundaki badge'i sıfırla
+    // clearBadge() artık DB'deki bildirimleri okundu olarak işaretliyor
     useFocusEffect(
         useCallback(() => {
-            clearBadge();
-            // İsteğe bağlı: badge ve genel sayaçları anında senkronize et
-            refresh();
-        }, [clearBadge, refresh])
+            clearBadge(); // async fonksiyon, kendi içinde fetchCount() çağırıyor
+        }, [clearBadge])
     );
 
     const {

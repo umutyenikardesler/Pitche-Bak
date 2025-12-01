@@ -303,7 +303,7 @@ export default function Index() {
     const { data: matchData, error: matchError } = await supabase
       .from("match")
       .select(`
-        id, title, time, date, prices, missing_groups, create_user,
+        id, title, time, date, prices, missing_groups, create_user, match_format,
         pitches (name, address, price, phone, features, district_id, latitude, longitude, districts (name)),
         users (id, name, surname, profile_image)
       `)
@@ -378,7 +378,7 @@ export default function Index() {
     const { data: otherMatchData, error: otherMatchError } = await supabase
       .from("match")
       .select(`
-        id, title, time, date, prices, missing_groups, create_user,
+        id, title, time, date, prices, missing_groups, create_user, match_format,
         pitches (name, price, phone, address, features, district_id, latitude, longitude, districts (name)),
         users (id, name, surname, profile_image)
       `)

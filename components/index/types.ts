@@ -30,6 +30,7 @@ export interface User {
     prices: string;
     missing_groups: string[];
     create_user: string;
+    match_format?: string; // '5-5', '6-6', '7-7'
     formattedDate?: string;
     startFormatted?: string;
     endFormatted?: string;

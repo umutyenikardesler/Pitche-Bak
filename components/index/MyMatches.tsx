@@ -1,5 +1,6 @@
-import { useState, useEffect } from "react";
-import { View, Text, FlatList, TouchableOpacity, Image, RefreshControl, Dimensions, Animated } from "react-native";
+import { useEffect } from "react";
+import { View, Text, FlatList, TouchableOpacity, Image, RefreshControl } from "react-native";
+import Animated, { useSharedValue, useAnimatedStyle, withRepeat, withTiming, Easing } from "react-native-reanimated";
 import { Ionicons } from "@expo/vector-icons";
 import { Match } from "./types";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -20,28 +21,25 @@ const formatTitle = (text: string) => {
 
 export default function MyMatches({ matches, refreshing, onRefresh, onSelectMatch, onCreateMatch }: MyMatchesProps) {
   const { t } = useLanguage();
-  // Animasyon için opacity state'i
-  const [fadeAnim] = useState(new Animated.Value(1));
+  
+  // react-native-reanimated ile yumuşak yanıp sönme animasyonu
+  const opacity = useSharedValue(1);
 
-  // Soluk gitgel animasyonu
   useEffect(() => {
-    const fadeInOut = () => {
-      Animated.sequence([
-        Animated.timing(fadeAnim, {
-          toValue: 0.3,
-          duration: 1000,
-          useNativeDriver: true,
-        }),
-        Animated.timing(fadeAnim, {
-          toValue: 1,
-          duration: 1000,
-          useNativeDriver: true,
-        }),
-      ]).start(() => fadeInOut()); // Sonsuz döngü
-    };
+    opacity.value = withRepeat(
+      withTiming(0.5, {
+        duration: 1000,
+        easing: Easing.inOut(Easing.ease),
+      }),
+      -1, // Sonsuz döngü
+      true // Reverse (geriye doğru da animasyon yap)
+    );
+  }, []);
 
-    fadeInOut();
-  }, [fadeAnim]);
+  // Animated style'ı component seviyesinde tanımla
+  const animatedStyle = useAnimatedStyle(() => ({
+    opacity: opacity.value,
+  }));
 
   // Maçın şu anda oynanıp oynanmadığını kontrol eden fonksiyon
   const isMatchCurrentlyPlaying = (match: Match) => {
@@ -54,12 +52,8 @@ export default function MyMatches({ matches, refreshing, onRefresh, onSelectMatc
     const currentHours = turkeyNow.getHours();
     const currentMinutes = turkeyNow.getMinutes();
     
-    // Debug bilgisi
-    console.log(`[isMatchCurrentlyPlaying] Maç: ${match.date} ${match.time}, Bugün: ${today}, Şu an: ${currentHours}:${currentMinutes}`);
-    
     // Eğer maç bugünkü değilse false
     if (match.date !== today) {
-      console.log(`[isMatchCurrentlyPlaying] Maç bugünkü değil: ${match.date} !== ${today}`);
       return false;
     }
     
@@ -71,11 +65,8 @@ export default function MyMatches({ matches, refreshing, onRefresh, onSelectMatc
     const matchEndTime = matchEndHour * 60 + matchMinutes;
     const currentTime = currentHours * 60 + currentMinutes;
     
-    const isPlaying = currentTime >= matchStartTime && currentTime < matchEndTime;
-    console.log(`[isMatchCurrentlyPlaying] Maç: ${matchHours}:${matchMinutes}-${matchEndHour}:${matchMinutes}, Şu an: ${currentTime}, Başlangıç: ${matchStartTime}, Bitiş: ${matchEndTime}, Oynanıyor: ${isPlaying}`);
-    
     // Maç başladı ve henüz bitmedi
-    return isPlaying;
+    return currentTime >= matchStartTime && currentTime < matchEndTime;
   };
 
   const renderMatch = ({ item }: { item: Match }) => (
@@ -96,14 +87,14 @@ export default function MyMatches({ matches, refreshing, onRefresh, onSelectMatc
           </View>
           {/* Maç Bilgileri */}
           <View className="w-4/6 flex justify-center -mt-2 -ml-4">
-            <View className="flex-row items-center justify-between">
-              <Text className="text-lg text-green-700 font-semibold">
+            <View className="flex-row items-center">
+              <Text className="text-lg text-green-700 font-semibold flex-1">
                 {formatTitle(item.title)}
               </Text>
               {isMatchCurrentlyPlaying(item) && (
                 <Animated.Text 
-                  className="text-white p-1 px-2 bg-green-600 font-bold text-sm rounded-md"
-                  style={{ opacity: fadeAnim }}
+                  className="text-white py-0.5 px-1.5 bg-green-600 font-bold text-sm rounded-md ml-auto"
+                  style={animatedStyle}
                 >
                   {t('home.matchPlaying')} ⚽
                 </Animated.Text>

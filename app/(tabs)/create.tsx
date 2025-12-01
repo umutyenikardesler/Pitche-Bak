@@ -4,6 +4,7 @@ import { View, Text, TextInput, ScrollView, TouchableOpacity, Alert, KeyboardAvo
 import { MatchDetailsForm } from '@/components/create/MatchDetailsForm';
 import { LocationSelector } from '@/components/create/LocationSelector';
 import { SquadSelector } from '@/components/create/SquadSelector';
+import ReservationWarningModal from '@/components/create/ReservationWarningModal';
 
 import { supabase } from '@/services/supabase';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -45,6 +46,7 @@ export default function CreateMatch() {
   });
 
   const [userId, setUserId] = useState<string | null>(null);
+  const [reservationModalVisible, setReservationModalVisible] = useState(true);
   const router = useRouter();
   const navigation = useNavigation();
 
@@ -114,6 +116,7 @@ export default function CreateMatch() {
             date: formattedDate, // Türkiye saati ile formatlanmış tarih
             prices: price,
             missing_groups: missingGroups,
+            match_format: matchFormat, // Maç formatını kaydet
             create_user: userId, // Kullanıcının ID'si burada ekleniyor
           },
         ]);
@@ -246,10 +249,16 @@ export default function CreateMatch() {
   };
 
   return (
-    <ScrollView 
-      className="bg-white rounded-lg my-3 mx-4 p-4 shadow-md"
-      contentContainerStyle={{ flexGrow: 1, justifyContent: 'space-between' }}
-    >
+    <>
+      <ReservationWarningModal
+        visible={reservationModalVisible}
+        onClose={() => setReservationModalVisible(false)}
+      />
+
+      <ScrollView 
+        className="bg-white rounded-lg my-3 mx-4 p-4 shadow-md"
+        contentContainerStyle={{ flexGrow: 1, justifyContent: 'space-between' }}
+      >
       <View>
         <View className="mb-4">
                           <Text className="text-green-700 font-semibold mb-2">{t('create.matchTitle')}</Text>
@@ -301,5 +310,6 @@ export default function CreateMatch() {
         </TouchableOpacity>
       </View>
     </ScrollView>
+    </>
   );
 }
