@@ -275,17 +275,32 @@ export const useMatchPositionHandlers = ({
       }
 
       console.log('[MatchDetails] cancelAcceptedPosition - notifications join_request delete çağrılıyor, sender_id:', currentUserIdFromAuth);
-      const { error: deleteError } = await supabase
+      
+      // Bu maç için kullanıcının gönderdiği TÜM eski bildirimleri sil (hem user_id hem sender_id olarak)
+      // Bu sayede yeni pozisyon için istek gönderildiğinde eski bildirimler görünmez
+      const { error: deleteError1 } = await supabase
         .from('notifications')
         .delete()
         .eq('type', 'join_request')
         .eq('sender_id', currentUserIdFromAuth)
-        .eq('match_id', match.id)
-        .eq('position', position);
+        .eq('match_id', match.id);
 
-      if (deleteError) {
-        console.error('[MatchDetails] cancelAcceptedPosition - notifications delete hatası:', deleteError);
-        throw deleteError;
+      if (deleteError1) {
+        console.error('[MatchDetails] cancelAcceptedPosition - notifications delete (sender) hatası:', deleteError1);
+        throw deleteError1;
+      }
+      
+      // Ayrıca bu kullanıcıya gönderilen kabul/red bildirimlerini de sil
+      const { error: deleteError2 } = await supabase
+        .from('notifications')
+        .delete()
+        .eq('type', 'join_request')
+        .eq('user_id', currentUserIdFromAuth)
+        .eq('match_id', match.id);
+
+      if (deleteError2) {
+        console.error('[MatchDetails] cancelAcceptedPosition - notifications delete (user) hatası:', deleteError2);
+        // Bu kritik değil, devam et
       }
 
       Alert.alert(

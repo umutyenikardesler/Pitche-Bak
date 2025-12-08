@@ -1,7 +1,9 @@
 // MatchDetails data fetching hook'u
 import { useCallback, useRef, useEffect } from 'react';
+import { Alert } from 'react-native';
 import { supabase } from '@/services/supabase';
 import { Match } from '@/components/index/types';
+import { getPositionName } from '../utils/getPositionName';
 
 interface UseMatchDataFetchingProps {
   match: Match;
@@ -187,16 +189,31 @@ export const useMatchDataFetching = ({
             }
             
             console.log(`[MatchDetails] Başarı mesajı gösterilecek pozisyon: ${acceptedPositionToShow}`);
-            setAcceptedPosition(acceptedPositionToShow);
-            // Gösterilen pozisyonları kaydet
-            setShownAcceptedPositions(prev => new Set([...prev, acceptedPositionToShow]));
+            const positionName = getPositionName(acceptedPositionToShow);
             
-            // sentRequests'i güncelle - kabul edilen pozisyonu kaldır
-            setSentRequests(prev => {
-              const filtered = prev.filter(p => p !== acceptedPositionToShow);
-              console.log(`[MatchDetails] sentRequests güncelleniyor: ${prev} -> ${filtered}`);
-              return filtered;
-            });
+            // Önce popup göster
+            Alert.alert(
+              "Başarılı",
+              `🎉 ${positionName} olarak maça katılım sağladınız!`,
+              [
+                {
+                  text: "Tamam",
+                  onPress: () => {
+                    // Popup kapatıldıktan sonra state güncelle
+                    setAcceptedPosition(acceptedPositionToShow);
+                    // Gösterilen pozisyonları kaydet
+                    setShownAcceptedPositions(prev => new Set([...prev, acceptedPositionToShow]));
+                    
+                    // sentRequests'i güncelle - kabul edilen pozisyonu kaldır
+                    setSentRequests(prev => {
+                      const filtered = prev.filter(p => p !== acceptedPositionToShow);
+                      console.log(`[MatchDetails] sentRequests güncelleniyor: ${prev} -> ${filtered}`);
+                      return filtered;
+                    });
+                  }
+                }
+              ]
+            );
           } else {
             // Eğer acceptedPositions boşsa ama decreasedPositions varsa, 
             // bu pozisyonu zaten kabul edilmiş olarak işaretle
@@ -205,8 +222,23 @@ export const useMatchDataFetching = ({
             
             if (!shownAcceptedPositionsRef.current.has(acceptedPositionToShow)) {
               console.log(`[MatchDetails] Pozisyon ${acceptedPositionToShow} kabul edilmiş olarak işaretleniyor`);
-              setAcceptedPosition(acceptedPositionToShow);
-              setShownAcceptedPositions(prev => new Set([...prev, acceptedPositionToShow]));
+              const positionName = getPositionName(acceptedPositionToShow);
+              
+              // Önce popup göster
+              Alert.alert(
+                "Başarılı",
+                `🎉 ${positionName} olarak maça katılım sağladınız!`,
+                [
+                  {
+                    text: "Tamam",
+                    onPress: () => {
+                      // Popup kapatıldıktan sonra state güncelle
+                      setAcceptedPosition(acceptedPositionToShow);
+                      setShownAcceptedPositions(prev => new Set([...prev, acceptedPositionToShow]));
+                    }
+                  }
+                ]
+              );
             }
           }
         }
@@ -386,7 +418,7 @@ export const useMatchDataFetching = ({
       // Sadece en son red bildirimini al (hem "kabul edilmediniz" hem de "reddedildi" içeren mesajlar)
       const { data: rejectedNotification, error } = await supabase
         .from('notifications')
-        .select('position, message, created_at, is_read')
+        .select('id, position, message, created_at, is_read')
         .eq('type', 'join_request')
         .eq('user_id', currentUserId) // Bildirim alan kişi (istek gönderen)
         .eq('match_id', match.id)
@@ -402,16 +434,45 @@ export const useMatchDataFetching = ({
       
       console.log(`[MatchDetails] En son red bildirimi yüklendi:`, rejectedNotification);
       
-      // Red bildirimi varsa, is_read durumuna bakmadan son red durumunu göster
+      // Red bildirimi varsa
       if (rejectedNotification && rejectedNotification.position && rejectedNotification.message) {
-        setRejectedPosition({
-          position: rejectedNotification.position,
-          message: rejectedNotification.message
-        });
-        console.log(`[MatchDetails] RejectedPosition state'i güncellendi:`, rejectedNotification.position);
+        const rejectedPos = rejectedNotification.position;
+        const positionName = getPositionName(rejectedPos);
+        const rejectedMessage = `${positionName} pozisyonu için maça kabul edilmediniz.`;
         
-        // Eğer red edilen pozisyon sentRequests'te varsa kaldır
-        setSentRequests(prev => prev.filter(p => p !== rejectedNotification.position));
+        // Eğer bildirim henüz okunmamışsa (yeni red) popup göster
+        if (rejectedNotification.is_read === false) {
+          // Bildirimi okundu olarak işaretle (döngüyü önlemek için)
+          await supabase
+            .from('notifications')
+            .update({ is_read: true })
+            .eq('id', rejectedNotification.id);
+          
+          Alert.alert(
+            "Reddedildi",
+            rejectedMessage,
+            [
+              {
+                text: "Tamam",
+                onPress: () => {
+                  setRejectedPosition({
+                    position: rejectedPos,
+                    message: rejectedMessage
+                  });
+                  setSentRequests(prev => prev.filter(p => p !== rejectedPos));
+                }
+              }
+            ]
+          );
+        } else {
+          // Zaten okunmuş - popup olmadan state güncelle
+          setRejectedPosition({
+            position: rejectedPos,
+            message: rejectedMessage
+          });
+          setSentRequests(prev => prev.filter(p => p !== rejectedPos));
+        }
+        console.log(`[MatchDetails] RejectedPosition state'i güncellendi:`, rejectedPos);
       } else {
         setRejectedPosition(null);
         console.log(`[MatchDetails] Red bildirimi bulunamadı:`, rejectedNotification);

@@ -1,19 +1,25 @@
-import { useState, useEffect } from "react";
-import { View, Text, TextInput, TouchableOpacity, Alert, ScrollView, KeyboardAvoidingView, Platform, TouchableWithoutFeedback, Keyboard } from "react-native";
+import { useRef, useState } from "react";
+import { View, Text, TextInput, TouchableOpacity, Alert, KeyboardAvoidingView, Platform, Pressable, ActivityIndicator, ScrollView, Keyboard } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { supabase } from "@/services/supabase";
 import * as Linking from "expo-linking";
-import AsyncStorage from "@react-native-async-storage/async-storage"; // Kullanıcı ID'sini saklamak için eklendi
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { Ionicons } from "@expo/vector-icons";
 
 export default function AuthScreen() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [isLogin, setIsLogin] = useState(true); // Giriş / Kayıt değişimi
+  const [isLogin, setIsLogin] = useState(true);
+  const [showPassword, setShowPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  
+  const passwordInputRef = useRef<TextInput>(null);
 
   // İngilizce hata mesajlarını Türkçeye çeviren fonksiyon
-  const translateError = (errorMessage) => {
-    const translations = {
+  const translateError = (errorMessage: string): string => {
+    const translations: Record<string, string> = {
       "Password should be at least 6 characters": "Şifre en az 6 karakter olmalıdır.",
       "Email format is invalid": "Geçersiz e-posta formatı.",
       "User already registered": "Bu e-posta ile kayıtlı bir kullanıcı zaten var.",
@@ -43,7 +49,16 @@ export default function AuthScreen() {
   //   };
   // }, []);
 
+  // Başarılı giriş sonrası geçiş
+  const navigateTo = (destination: string) => {
+    console.log("navigateTo çağrıldı:", destination);
+    setIsLoading(false);
+    router.replace(destination as any);
+  };
+
   const handleAuth = async () => {
+    Keyboard.dismiss();
+    
     if (!email.trim() || !password.trim()) {
       return Alert.alert("Hata", "Lütfen tüm alanları doldurun.");
     }
@@ -57,6 +72,8 @@ export default function AuthScreen() {
       return Alert.alert("Hata", "Şifre en az 6 karakter olmalıdır.");
     }
 
+    setIsLoading(true);
+
     try {
       let data, error;
 
@@ -67,7 +84,7 @@ export default function AuthScreen() {
         ({ data, error } = await supabase.auth.signUp({
           email,
           password,
-          options: { redirectTo: redirectUrl },
+          options: { emailRedirectTo: redirectUrl },
         }));
 
         if (!error && data?.user) {
@@ -93,10 +110,10 @@ export default function AuthScreen() {
 
       if (error) throw error;
 
-      Alert.alert("Başarılı", isLogin ? "Giriş başarılı 🎉" : "Kayıt başarılı, e-postanızı doğrulamanız gerekmektedir. E-postanızı kontrol ederek mail adresinizi doğrulayınız!");
-
+      console.log("Auth başarılı, isLogin:", isLogin, "data:", data);
+      
       if (isLogin && data?.user) {
-
+        console.log("Login başarılı, user:", data.user.id);
         // Kullanıcı ID'sini AsyncStorage içine kaydet
         await AsyncStorage.setItem("userId", data.user.id);
 
@@ -109,7 +126,7 @@ export default function AuthScreen() {
 
         if (userError) {
           console.error("Kullanıcı bilgileri alınırken hata oluştu:", userError.message);
-          router.replace("/(tabs)/profile"); // Hata olursa sadece profile yönlendir
+          navigateTo("/(tabs)/profile");
           return;
         }
 
@@ -117,74 +134,178 @@ export default function AuthScreen() {
           !userInfo?.height || !userInfo?.weight || !userInfo?.description;
 
         if (hasMissingFields) {
-          router.replace("/(tabs)/profile?firstLogin=true");
+          navigateTo("/(tabs)/profile?firstLogin=true");
         } else {
-          router.replace("/(tabs)/profile");
+          navigateTo("/(tabs)/profile");
         }
+      } else {
+        // Kayıt başarılı
+        setIsLoading(false);
+        Alert.alert("Başarılı", "Kayıt başarılı! E-postanızı doğrulamanız gerekmektedir. E-postanızı kontrol ederek mail adresinizi doğrulayınız!");
       }
-    } catch (error) {
-      Alert.alert("Hata", translateError(error.message));
+    } catch (error: any) {
+      setIsLoading(false);
+      Alert.alert("Hata", translateError(error?.message || "Bilinmeyen hata"));
     }
   };
 
   return (
-    <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-      <View className="flex-1 justify-center items-center bg-gray-100 px-6">
-        <KeyboardAvoidingView
-          behavior={Platform.OS === "ios" ? "padding" : "height"}
-          className="w-full"
+    <SafeAreaView className="flex-1 bg-gray-100" edges={['top']}>
+      <KeyboardAvoidingView 
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      >
+        {/* Arka plan içeriği - ScrollView içinde */}
+        <ScrollView
+          contentContainerStyle={{ flexGrow: 1 }}
+          keyboardShouldPersistTaps="handled"
+          bounces={false}
+          scrollEnabled={false}
         >
-          <ScrollView
-            contentContainerStyle={{ justifyContent: "center", alignItems: "center", padding:25 }}
-            keyboardShouldPersistTaps="handled"
+          {/* Header */}
+          <View 
+            className="bg-green-700 pb-4 px-4"
+            style={{ paddingTop: 20 }}
           >
-            <View className="w-full bg-white p-6 rounded-lg shadow-lg">
-              <Text className="text-2xl font-bold text-center text-green-700 mb-4">
-                {isLogin ? "Giriş Yap" : "Kayıt Ol"}
-              </Text>
+            <Text className="text-white text-xl font-bold text-center">⚽ SAHAYA BAK</Text>
+          </View>
+          
+          {/* Fake arka plan içeriği */}
+          <View className="flex-1 px-4 pt-4">
+            {/* Fake kondisyon kartı */}
+            <View className="bg-white rounded-xl p-4 shadow-sm opacity-60 mb-4">
+              <View className="flex-row justify-between items-center">
+                <View className="flex-row items-center">
+                  <View className="w-10 h-10 bg-gray-200 rounded-full" />
+                  <View className="ml-3">
+                    <View className="w-24 h-3 bg-gray-200 rounded mb-1" />
+                    <View className="w-16 h-2 bg-gray-200 rounded" />
+                  </View>
+                </View>
+                <View className="w-12 h-12 bg-gray-200 rounded-full" />
+              </View>
+            </View>
+            
+            {/* Fake maç kartları */}
+            {[1, 2].map((i) => (
+              <View key={i} className="bg-white rounded-xl p-4 shadow-sm opacity-40 mb-2">
+                <View className="flex-row justify-between">
+                  <View className="flex-row items-center">
+                    <View className="w-10 h-10 bg-gray-200 rounded-full" />
+                    <View className="ml-3">
+                      <View className="w-24 h-3 bg-gray-200 rounded mb-2" />
+                      <View className="w-16 h-2 bg-gray-200 rounded" />
+                    </View>
+                  </View>
+                </View>
+              </View>
+            ))}
+          </View>
+        </ScrollView>
+
+        {/* Giriş Formu - ScrollView dışında, altta sabit */}
+        <View 
+          className="bg-white rounded-t-3xl px-6 pt-6 shadow-2xl"
+          style={{ paddingBottom: Platform.OS === 'ios' ? 40 : 50 }}
+        >
+              {/* Drag indicator */}
+              <View className="w-12 h-1 bg-gray-300 rounded-full self-center mb-4" />
+              
+              {/* Logo ve Başlık */}
+              <View className="items-center mb-6">
+                <View className="w-16 h-16 bg-green-700 rounded-full items-center justify-center mb-3">
+                  <Ionicons name="football" size={36} color="white" />
+                </View>
+                <Text className="text-2xl font-bold text-gray-800">
+                  {isLogin ? "Hoş Geldin!" : "Aramıza Katıl!"}
+                </Text>
+                <Text className="text-gray-500 mt-1">
+                  {isLogin ? "Sahaya çıkmak için giriş yap" : "Yeni bir hesap oluştur"}
+                </Text>
+              </View>
 
               {/* E-Posta Girişi */}
-              <View className="mb-3">
-                <Text className="text-gray-700 font-semibold mb-1">E-Posta</Text>
-                <TextInput
-                  className="border border-gray-300 rounded p-2"
-                  placeholder="E-posta adresiniz"
-                  keyboardType="email-address"
-                  value={email}
-                  onChangeText={setEmail}
-                />
+              <View className="mb-4">
+                <View className="flex-row items-center bg-gray-100 rounded-xl px-4 py-3">
+                  <Ionicons name="mail-outline" size={20} color="#6B7280" />
+                  <TextInput
+                    className="flex-1 ml-3 text-gray-800"
+                    placeholder="E-posta adresin"
+                    placeholderTextColor="#9CA3AF"
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    textContentType="emailAddress"
+                    autoComplete="email"
+                    value={email}
+                    onChangeText={setEmail}
+                    returnKeyType="next"
+                    blurOnSubmit={false}
+                    onSubmitEditing={() => passwordInputRef.current?.focus()}
+                  />
+                </View>
               </View>
 
               {/* Şifre Girişi */}
-              <View className="mb-3">
-                <Text className="text-gray-700 font-semibold mb-1">Şifre</Text>
-                <TextInput
-                  className="border border-gray-300 rounded p-2"
-                  placeholder="Şifreniz"
-                  secureTextEntry
-                  value={password}
-                  onChangeText={setPassword}
-                />
+              <View className="mb-6">
+                <View className="flex-row items-center bg-gray-100 rounded-xl px-4 py-3">
+                  <Ionicons name="lock-closed-outline" size={20} color="#6B7280" />
+                  <TextInput
+                    ref={passwordInputRef}
+                    className="flex-1 ml-3 text-gray-800"
+                    placeholder="Şifren"
+                    placeholderTextColor="#9CA3AF"
+                    secureTextEntry={!showPassword}
+                    textContentType="password"
+                    autoComplete="password"
+                    autoCorrect={false}
+                    value={password}
+                    onChangeText={setPassword}
+                    returnKeyType="done"
+                    blurOnSubmit={false}
+                    onSubmitEditing={handleAuth}
+                  />
+                  <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+                    <Ionicons 
+                      name={showPassword ? "eye-outline" : "eye-off-outline"} 
+                      size={20} 
+                      color="#6B7280" 
+                    />
+                  </TouchableOpacity>
+                </View>
               </View>
 
               {/* Giriş / Kayıt Butonu */}
-              <TouchableOpacity className="bg-green-700 p-3 rounded-lg" onPress={handleAuth}>
-                <Text className="text-white font-bold text-center">
-                  {isLogin ? "Giriş Yap" : "Kayıt Ol"}
-                </Text>
-              </TouchableOpacity>
+              <Pressable 
+                className="bg-green-700 py-4 rounded-xl flex-row items-center justify-center"
+                onPress={handleAuth}
+                disabled={isLoading}
+                style={({ pressed }) => pressed && { opacity: 0.8 }}
+              >
+                {isLoading ? (
+                  <ActivityIndicator color="white" />
+                ) : (
+                  <>
+                    <Text className="text-white font-bold text-lg">
+                      {isLogin ? "Giriş Yap" : "Kayıt Ol"}
+                    </Text>
+                    <Ionicons name="arrow-forward" size={20} color="white" style={{ marginLeft: 8 }} />
+                  </>
+                )}
+              </Pressable>
 
               {/* Kayıt / Giriş arasında geçiş */}
-              <TouchableOpacity className="mt-4" onPress={() => setIsLogin(!isLogin)}>
-                <Text className="text-center text-blue-500">
-                  {isLogin ? "Hesabın yok mu? Kayıt ol" : "Zaten hesabın var mı? Giriş yap"}
+              <TouchableOpacity className="mt-5" onPress={() => setIsLogin(!isLogin)}>
+                <Text className="text-center text-gray-600">
+                  {isLogin ? (
+                    <>Hesabın yok mu? <Text className="text-green-700 font-semibold">Kayıt ol</Text></>
+                  ) : (
+                    <>Zaten hesabın var mı? <Text className="text-green-700 font-semibold">Giriş yap</Text></>
+                  )}
                 </Text>
               </TouchableOpacity>
-            </View>
-          </ScrollView>
-        </KeyboardAvoidingView >
-      </View>
-    </TouchableWithoutFeedback>
-
+          </View>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
-};
+}

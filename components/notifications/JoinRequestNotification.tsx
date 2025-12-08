@@ -263,12 +263,11 @@ export default function JoinRequestNotification({ item, onAccept, onReject, onPr
                 ) : (
                     // Normal katılım isteği - tarih + butonlar
                     <View className="flex-row justify-between items-center">
-                    <View className="mr-3">
-                        <Text className={`text-xs font-bold px-2 py-1 rounded ${item.is_read ? 'text-gray-500 bg-gray-300' : 'text-green-700 bg-gray-200'}`}>
-                            {formatted}
-                        </Text>
-                    </View>
-                    {!item.is_read && (
+                        <View className="mr-3">
+                            <Text className="text-xs font-bold px-2 py-1 rounded text-green-700 bg-gray-200">
+                                {formatted}
+                            </Text>
+                        </View>
                         <View className="flex-row justify-end space-x-2">
                             <View className="flex-row mr-2">
                                 <TouchableOpacity
@@ -287,29 +286,6 @@ export default function JoinRequestNotification({ item, onAccept, onReject, onPr
                                 </TouchableOpacity>
                             </View>
                         </View>
-                    )}
-                    {item.is_read && (
-                        <View className="mr-1 flex-1" style={{ flexShrink: 1 }}>
-                            <View className="text-xs font-bold text-gray-500 bg-gray-300 px-2 py-1 rounded text-right flex-row flex-wrap items-center justify-end" style={{ flexShrink: 1 }}>
-                                <Text
-                                    className="text-gray-500 text-sm leading-5"
-                                    style={{ flexShrink: 1, flexWrap: 'wrap' }}
-                                >
-                                    {item.message || 'İşlem Tamamlandı'}
-                                </Text>
-                                {item.message?.includes('kabul edildiniz') && (
-                                    <View className="ml-0 w-4 h-4 bg-green-600 rounded-full items-center justify-center">
-                                        <Text className="text-white text-xs font-bold">✓</Text>
-                                    </View>
-                                )}
-                                {item.message?.includes('kabul edilmediniz') && (
-                                    <View className="ml-0 w-4 h-4 bg-red-600 rounded-full items-center justify-center">
-                                        <Text className="text-white text-xs font-bold">✗</Text>
-                                    </View>
-                                )}
-                            </View>
-                        </View>
-                    )}
                     </View>
                 )}
             </View>

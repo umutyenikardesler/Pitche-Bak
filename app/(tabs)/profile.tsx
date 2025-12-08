@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
-import { Text, View, ScrollView, RefreshControl, Alert, TouchableOpacity, Image, DeviceEventEmitter } from "react-native";
+import { Text, View, ScrollView, RefreshControl, Alert, TouchableOpacity, Image, DeviceEventEmitter, Modal } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { supabase } from "@/services/supabase";
@@ -55,6 +55,7 @@ export default function Profile() {
   const [modalVisible, setModalVisible] = useState(false);
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [settingsModalVisible, setSettingsModalVisible] = useState(false);
+  const [logoutModalVisible, setLogoutModalVisible] = useState(false);
   
   // Modal state'ini debug et
   useEffect(() => {
@@ -824,7 +825,12 @@ export default function Profile() {
 
 
 
-  const handleLogout = async (): Promise<void> => {
+  const handleLogout = (): void => {
+    setLogoutModalVisible(true);
+  };
+
+  const confirmLogout = async (): Promise<void> => {
+    setLogoutModalVisible(false);
     const { error } = await supabase.auth.signOut();
     if (error) {
       Alert.alert("Çıkış Yapılamadı", "Bir hata oluştu.");
@@ -1092,6 +1098,37 @@ export default function Profile() {
           onClose={() => setSettingsModalVisible(false)}
         />
 
+        {/* 🔹 ÇIKIŞ ONAY MODALI */}
+        <Modal
+          visible={logoutModalVisible}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setLogoutModalVisible(false)}
+        >
+          <View className="flex-1 justify-center items-center" style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}>
+            <View className="bg-white rounded-xl p-6 mx-8 w-80">
+              <Text className="text-xl font-bold text-center text-gray-800 mb-6">
+                Çıkmak istediğinize emin misiniz?
+              </Text>
+              <View className="flex-row justify-between">
+                <TouchableOpacity
+                  onPress={() => setLogoutModalVisible(false)}
+                  className="flex-1 mr-2 py-3 rounded-lg"
+                  style={{ backgroundColor: '#F97316' }}
+                >
+                  <Text className="text-white font-bold text-center">İptal Et</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={confirmLogout}
+                  className="flex-1 ml-2 py-3 rounded-lg"
+                  style={{ backgroundColor: '#EF4444' }}
+                >
+                  <Text className="text-white font-bold text-center">Çıkış Yap</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
 
       </View>
     </ScrollView>

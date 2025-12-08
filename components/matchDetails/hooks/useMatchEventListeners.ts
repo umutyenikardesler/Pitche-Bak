@@ -1,5 +1,6 @@
 // MatchDetails event listeners hook'u
 import { useEffect, useRef } from 'react';
+import { Alert } from 'react-native';
 import { Match } from '@/components/index/types';
 import { getPositionName } from '../utils/getPositionName';
 import { subscribeMatchStatus } from '../matchStatusEventBus';
@@ -50,30 +51,47 @@ export const useMatchEventListeners = ({
 
       // Kabul edilen pozisyon
       if (data.acceptedPosition) {
-        // Kimin kabul edildiğine karar verme işini fetchMissing'e bırakıyoruz.
-        // fetchMissing, sadece bu maça gerçekten katılım isteği göndermiş olan
-        // kullanıcılar için acceptedPosition state'ini güncelliyor.
-        await fetchMissingRef.current();
-        console.log(`[MatchDetails] MatchStatusEventBus - acceptedPosition event alındı: ${data.acceptedPosition}`);
+        const positionName = getPositionName(data.acceptedPosition);
+        
+        // Önce pop-up göster
+        Alert.alert(
+          "Başarılı",
+          `${positionName} olarak maça katılım sağladınız.`,
+          [
+            {
+              text: "Tamam",
+              onPress: async () => {
+                // Pop-up kapatıldıktan sonra state'i güncelle
+                // Kimin kabul edildiğine karar verme işini fetchMissing'e bırakıyoruz.
+                // fetchMissing, sadece bu maça gerçekten katılım isteği göndermiş olan
+                // kullanıcılar için acceptedPosition state'ini güncelliyor.
+                await fetchMissingRef.current();
+                console.log(`[MatchDetails] MatchStatusEventBus - acceptedPosition event alındı: ${data.acceptedPosition}`);
+              }
+            }
+          ]
+        );
       }
 
       // Red edilen pozisyon
       if (data.rejectedPosition) {
-        console.log(`[MatchDetails] MatchStatusEventBus - rejectedPosition işleniyor: ${data.rejectedPosition}`);
-        setAcceptedPosition(null);
-        setShownAcceptedPositions((prev) => {
-          const newSet = new Set(prev);
-          newSet.delete(data.rejectedPosition!);
-          return newSet;
-        });
-
-        const rejectedMessage = `${getPositionName(data.rejectedPosition)} pozisyonu için maça kabul edilmediniz.`;
-        setRejectedPosition({
-          position: data.rejectedPosition,
-          message: rejectedMessage,
-        });
-        setSentRequests((prev) => prev.filter((p) => p !== data.rejectedPosition));
-        console.log(`[MatchDetails] MatchStatusEventBus - rejectedPosition state güncellendi: ${data.rejectedPosition}`);
+        const positionName = getPositionName(data.rejectedPosition);
+        
+        // Pop-up göster (kabul gibi basit)
+        Alert.alert(
+          "Reddedildi",
+          `${positionName} pozisyonu için maça kabul edilmediniz.`,
+          [
+            {
+              text: "Tamam",
+              onPress: async () => {
+                // Pop-up kapatıldıktan sonra state'i güncelle
+                await fetchMissingRef.current();
+                console.log(`[MatchDetails] MatchStatusEventBus - rejectedPosition event alındı: ${data.rejectedPosition}`);
+              }
+            }
+          ]
+        );
       }
     });
 

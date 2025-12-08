@@ -1,7 +1,9 @@
 // MatchDetails realtime subscriptions hook'u
 import { useEffect, useRef } from 'react';
+import { Alert } from 'react-native';
 import { supabase } from '@/services/supabase';
 import { Match } from '@/components/index/types';
+import { getPositionName } from '../utils/getPositionName';
 
 interface UseMatchRealtimeProps {
   match: Match;
@@ -140,9 +142,24 @@ export const useMatchRealtime = ({
                   const acceptedPositionToShow = trulyAcceptedPositions[0];
                   if (!shownAcceptedPositions.has(acceptedPositionToShow)) {
                     console.log(`[MatchDetails] Realtime başarı mesajı gösterilecek (kabul edildi): ${acceptedPositionToShow}`);
-                    setAcceptedPosition(acceptedPositionToShow);
-                    setShownAcceptedPositions(prev => new Set([...prev, acceptedPositionToShow]));
-                    setSentRequests(prev => prev.filter(p => p !== acceptedPositionToShow));
+                    const positionName = getPositionName(acceptedPositionToShow);
+                    
+                    // Önce popup göster
+                    Alert.alert(
+                      "Başarılı",
+                      `🎉 ${positionName} olarak maça katılım sağladınız!`,
+                      [
+                        {
+                          text: "Tamam",
+                          onPress: () => {
+                            // Popup kapatıldıktan sonra state güncelle
+                            setAcceptedPosition(acceptedPositionToShow);
+                            setShownAcceptedPositions(prev => new Set([...prev, acceptedPositionToShow]));
+                            setSentRequests(prev => prev.filter(p => p !== acceptedPositionToShow));
+                          }
+                        }
+                      ]
+                    );
                   }
                 } else {
                   console.log(`[MatchDetails] Realtime: Pozisyon azaldı ama kabul bildirimi yok, mesaj gösterilmeyecek`);
@@ -206,39 +223,14 @@ export const useMatchRealtime = ({
               return;
             }
 
-            // Red mesajı mı?
+            // Red mesajı mı? - Popup EventBus'ta gösteriliyor, burada sadece state güncelle
             if (
               newNotification.message &&
               (newNotification.message.includes('kabul edilmediniz') ||
                 newNotification.message.includes('reddedildi'))
             ) {
-              console.log(`[MatchDetails] Red bildirimi tespit edildi:`, newNotification);
-
-              // acceptedPosition'ı temizle
-              setAcceptedPosition(null);
-              setShownAcceptedPositions((prev) => {
-                const newSet = new Set(prev);
-                if (newNotification.position) {
-                  newSet.delete(newNotification.position);
-                }
-                return newSet;
-              });
-
-              // Red mesajını state'e yaz
-              if (newNotification.position && newNotification.message) {
-                setRejectedPosition({
-                  position: newNotification.position,
-                  message: newNotification.message,
-                });
-                console.log(
-                  `[MatchDetails] Realtime: RejectedPosition state'i güncellendi: ${newNotification.position}`
-                );
-              }
-
-              // Gönderilen isteklerden red edileni kaldır
-              setSentRequests((prev) => prev.filter((p) => p !== newNotification.position));
-
-              // missing_groups'u tazele (güvenlik için)
+              console.log(`[MatchDetails] Red bildirimi tespit edildi (realtime):`, newNotification);
+              // State güncellemesi fetchMissing ile yapılıyor
               await fetchMissingRef.current();
             }
           }
