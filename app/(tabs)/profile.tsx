@@ -1114,14 +1114,14 @@ export default function Profile() {
                 <TouchableOpacity
                   onPress={() => setLogoutModalVisible(false)}
                   className="flex-1 mr-2 py-3 rounded-lg"
-                  style={{ backgroundColor: '#F97316' }}
+                  style={{ backgroundColor: '#aaa' }}
                 >
                   <Text className="text-white font-bold text-center">İptal Et</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   onPress={confirmLogout}
                   className="flex-1 ml-2 py-3 rounded-lg"
-                  style={{ backgroundColor: '#EF4444' }}
+                  style={{ backgroundColor: 'green' }}
                 >
                   <Text className="text-white font-bold text-center">Çıkış Yap</Text>
                 </TouchableOpacity>

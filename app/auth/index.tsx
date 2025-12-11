@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
 import { View, Text, TextInput, TouchableOpacity, Alert, KeyboardAvoidingView, Platform, Pressable, ActivityIndicator, ScrollView, Keyboard } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
@@ -6,6 +6,7 @@ import { supabase } from "@/services/supabase";
 import * as Linking from "expo-linking";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Ionicons } from "@expo/vector-icons";
+import Animated, { useSharedValue, useAnimatedStyle, withRepeat, withTiming, Easing } from "react-native-reanimated";
 
 export default function AuthScreen() {
   const router = useRouter();
@@ -14,8 +15,59 @@ export default function AuthScreen() {
   const [isLogin, setIsLogin] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
+  const [keyboardWasOpened, setKeyboardWasOpened] = useState(false); // Klavye bir kere açıldı mı?
   
   const passwordInputRef = useRef<TextInput>(null);
+
+  // Sistem fontunu kullan (her 2 platform için)
+  const fontFamily = 'sans-serif';
+
+  // Animasyon için harfleri ayır
+  const text = "SAHAYABAK";
+  const letters = text.split("");
+  
+  // Yanıp sönme animasyonu (react-native-reanimated)
+  const opacity = useSharedValue(1);
+
+  useEffect(() => {
+    opacity.value = withRepeat(
+      withTiming(0.5, {
+        duration: 1000,
+        easing: Easing.inOut(Easing.ease),
+      }),
+      -1, // Sonsuz döngü
+      true // Reverse (geriye doğru da animasyon yap)
+    );
+  }, []);
+
+  // Animated style'ı component seviyesinde tanımla
+  const animatedStyle = useAnimatedStyle(() => ({
+    opacity: opacity.value,
+  }));
+
+  // Klavye durumunu dinle (Android için)
+  useEffect(() => {
+    const keyboardDidShowListener = Keyboard.addListener("keyboardDidShow", () => {
+      setKeyboardVisible(true);
+      setKeyboardWasOpened(true); // Klavye açıldı, flag'i set et
+    });
+    const keyboardDidHideListener = Keyboard.addListener("keyboardDidHide", () => {
+      // Android'de footer butonlarıyla klavye kapatıldığında da tetiklenmesi için kısa bir gecikme
+      if (Platform.OS === 'android') {
+        setTimeout(() => {
+          setKeyboardVisible(false);
+        }, 150);
+      } else {
+        setKeyboardVisible(false);
+      }
+    });
+
+    return () => {
+      keyboardDidShowListener.remove();
+      keyboardDidHideListener.remove();
+    };
+  }, []);
 
   // İngilizce hata mesajlarını Türkçeye çeviren fonksiyon
   const translateError = (errorMessage: string): string => {
@@ -33,21 +85,7 @@ export default function AuthScreen() {
     return translations[errorMessage] || `Hata: ${errorMessage}`;
   };
 
-  // const [keyboardVisible, setKeyboardVisible] = useState(false);
-
-  // useEffect(() => {
-  //   const keyboardDidShowListener = Keyboard.addListener("keyboardDidShow", () => {
-  //     setKeyboardVisible(true);
-  //   });
-  //   const keyboardDidHideListener = Keyboard.addListener("keyboardDidHide", () => {
-  //     setKeyboardVisible(false);
-  //   });
-
-  //   return () => {
-  //     keyboardDidShowListener.remove();
-  //     keyboardDidHideListener.remove();
-  //   };
-  // }, []);
+ 
 
   // Başarılı giriş sonrası geçiş
   const navigateTo = (destination: string) => {
@@ -164,16 +202,136 @@ export default function AuthScreen() {
         >
           {/* Header */}
           <View 
-            className="bg-green-700 pb-4 px-4"
-            style={{ paddingTop: 20 }}
-          >
-            <Text className="text-white text-xl font-bold text-center">⚽ SAHAYA BAK</Text>
+            className="bg-green-700 pb-4 px-4 pt-4">
+            <View className="flex-row items-center justify-center" style={{ height: 30 }}>
+              {letters.map((letter, index) => (
+                <Animated.View
+                  key={index}
+                  style={[
+                    animatedStyle,
+                    {
+                      marginHorizontal: 2,
+                      position: 'relative',
+                    }
+                  ]}
+                >
+                  {/* Siyah outline için arka plan katmanları - 8 yöne (ince kenarlık) */}
+                  <Text
+                    style={{
+                      position: 'absolute',
+                      left: -2,
+                      top: 0,
+                      fontSize: 20,
+                      color: 'black',
+                      fontFamily: fontFamily,
+                    }}
+                  >
+                    {letter}
+                  </Text>
+                  <Text
+                    style={{
+                      position: 'absolute',
+                      left: 2,
+                      top: 0,
+                      fontSize: 20,
+                      color: 'black',
+                      fontFamily: fontFamily,
+                    }}
+                  >
+                    {letter}
+                  </Text>
+                  <Text
+                    style={{
+                      position: 'absolute',
+                      left: 0,
+                      top: -2,
+                      fontSize: 20,
+                      color: 'black',
+                      fontFamily: fontFamily,
+                    }}
+                  >
+                    {letter}
+                  </Text>
+                  <Text
+                    style={{
+                      position: 'absolute',
+                      left: 0,
+                      top: 2,
+                      fontSize: 20,
+                      color: 'black',
+                      fontFamily: fontFamily,
+                    }}
+                  >
+                    {letter}
+                  </Text>
+                  {/* Köşeler */}
+                  <Text
+                    style={{
+                      position: 'absolute',
+                      left: -1,
+                      top: -1,
+                      fontSize: 20,
+                      color: 'black',
+                      fontFamily: fontFamily,
+                    }}
+                  >
+                    {letter}
+                  </Text>
+                  <Text
+                    style={{
+                      position: 'absolute',
+                      left: 1,
+                      top: -1,
+                      fontSize: 20,
+                      color: 'black',
+                      fontFamily: fontFamily,
+                    }}
+                  >
+                    {letter}
+                  </Text>
+                  <Text
+                    style={{
+                      position: 'absolute',
+                      left: -1,
+                      top: 1,
+                      fontSize: 20,
+                      color: 'black',
+                      fontFamily: fontFamily,
+                    }}
+                  >
+                    {letter}
+                  </Text>
+                  <Text
+                    style={{
+                      position: 'absolute',
+                      left: 1,
+                      top: 1,
+                      fontSize: 20,
+                      color: 'black',
+                      fontFamily: fontFamily,
+                    }}
+                  >
+                    {letter}
+                  </Text>
+                  {/* Ana beyaz metin */}
+                  <Text
+                    style={{
+                      fontSize: 20,
+                      color: 'white',
+                      fontFamily: fontFamily,
+                    }}
+                  >
+                    {letter}
+                  </Text>
+                </Animated.View>
+              ))}
+            </View>
           </View>
           
           {/* Fake arka plan içeriği */}
           <View className="flex-1 px-4 pt-4">
             {/* Fake kondisyon kartı */}
-            <View className="bg-white rounded-xl p-4 shadow-sm opacity-60 mb-4">
+            <View className="bg-white rounded-xl p-4 shadow-sm opacity-75 mb-4">
               <View className="flex-row justify-between items-center">
                 <View className="flex-row items-center">
                   <View className="w-10 h-10 bg-gray-200 rounded-full" />
@@ -188,7 +346,7 @@ export default function AuthScreen() {
             
             {/* Fake maç kartları */}
             {[1, 2].map((i) => (
-              <View key={i} className="bg-white rounded-xl p-4 shadow-sm opacity-40 mb-2">
+              <View key={i} className="bg-white rounded-xl p-4 shadow-sm opacity-75 mb-2">
                 <View className="flex-row justify-between">
                   <View className="flex-row items-center">
                     <View className="w-10 h-10 bg-gray-200 rounded-full" />
@@ -206,7 +364,11 @@ export default function AuthScreen() {
         {/* Giriş Formu - ScrollView dışında, altta sabit */}
         <View 
           className="bg-white rounded-t-3xl px-6 pt-6 shadow-2xl"
-          style={{ paddingBottom: Platform.OS === 'ios' ? 40 : 50 }}
+          style={{ 
+            paddingBottom: Platform.OS === 'ios' 
+              ? 20 
+              : (keyboardVisible ? 20 : (keyboardWasOpened ? 20 : 50))
+          }}
         >
               {/* Drag indicator */}
               <View className="w-12 h-1 bg-gray-300 rounded-full self-center mb-4" />
@@ -242,6 +404,15 @@ export default function AuthScreen() {
                     returnKeyType="next"
                     blurOnSubmit={false}
                     onSubmitEditing={() => passwordInputRef.current?.focus()}
+                    onBlur={() => {
+                      // Android'de input focus kaybettiğinde klavye durumunu kontrol et
+                      if (Platform.OS === 'android') {
+                        setTimeout(() => {
+                          Keyboard.dismiss();
+                          setKeyboardVisible(false);
+                        }, 100);
+                      }
+                    }}
                   />
                 </View>
               </View>
@@ -264,6 +435,15 @@ export default function AuthScreen() {
                     returnKeyType="done"
                     blurOnSubmit={false}
                     onSubmitEditing={handleAuth}
+                    onBlur={() => {
+                      // Android'de input focus kaybettiğinde klavye durumunu kontrol et
+                      if (Platform.OS === 'android') {
+                        setTimeout(() => {
+                          Keyboard.dismiss();
+                          setKeyboardVisible(false);
+                        }, 100);
+                      }
+                    }}
                   />
                   <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
                     <Ionicons 
@@ -304,7 +484,7 @@ export default function AuthScreen() {
                   )}
                 </Text>
               </TouchableOpacity>
-          </View>
+        </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
