@@ -10,7 +10,7 @@ export default function ProfileCondition({ matchCount = 0 }) {
   const fontSize = screenWidth > 430 ? 12 : screenWidth > 320 ? 11.5 : 10;
 
   // Kondisyon seviyesini hesaplayan fonksiyon
-  const calculateCondition = (matchCount) => {
+  const calculateCondition = (matchCount: number) => {
     if (matchCount < 3) return 0;
     if (matchCount === 3) return 60;
     if (matchCount === 4) return 80;
@@ -25,10 +25,11 @@ export default function ProfileCondition({ matchCount = 0 }) {
   let conditionMessageColor = "#16a34a";
 
   if (matchCount === 0) {
-    conditionMessage = t('general.loading');
-    conditionMessageColor = "gray";
+    conditionMessage = "3 maç yapana kadar kondisyon kazanamazsın";
+    conditionMessageColor = "red";
   } else if (matchCount < 3) {
-    conditionMessage = t('profile.conditionNeed3Matches');
+    const remainingMatches = 3 - matchCount;
+    conditionMessage = `${remainingMatches} maç daha yapmalısın (3 maç yapana kadar kondisyon kazanamazsın)`;
     conditionMessageColor = "red";
   } else if (matchCount === 3) {
     conditionMessage = t('profile.conditionNextMatch80');

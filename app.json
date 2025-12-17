@@ -4,7 +4,7 @@
     "slug": "Pitche-Bak",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
+    "icon": "./assets/images/app.png",
     "scheme": "myapp",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
@@ -22,7 +22,7 @@
         }
       },
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/adaptive-icon.png",
+        "foregroundImage": "./assets/images/app.png",
         "backgroundColor": "#ffffff"
       },
       "package": "com.tumurelsedrakiney.pitchebak"
@@ -38,7 +38,7 @@
         "expo-splash-screen",
         {
           "image": "./assets/images/splash-icon.png",
-          "imageWidth": 200,
+          "imageWidth": 150,
           "resizeMode": "contain",
           "backgroundColor": "#ffffff"
         }

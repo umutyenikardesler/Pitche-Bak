@@ -125,7 +125,53 @@ export default function AuthScreen() {
           options: { emailRedirectTo: redirectUrl },
         }));
 
+        // Kayıt başarılı olduysa users tablosuna eklemeyi dene
+        // (Trigger varsa otomatik oluşur, yoksa ilk girişte oluşturulacak)
         if (!error && data?.user) {
+          console.log("Kayıt başarılı, users tablosuna ekleme deneniyor...");
+          const { error: insertError } = await supabase.from("users").insert([
+            {
+              id: data.user.id,
+              email: data.user.email,
+              name: "Yeni Kullanıcı",
+              surname: "",
+              age: null,
+              height: null,
+              weight: null,
+              description: "",
+              created_at: new Date(),
+            },
+          ]);
+
+          if (insertError) {
+            console.log("Kayıt sırasında users tablosuna eklenemedi (normal, ilk girişte oluşturulacak):", insertError.message);
+            // Hata normal, çünkü kullanıcı henüz authenticated değil
+            // İlk girişte otomatik oluşturulacak
+          } else {
+            console.log("Kullanıcı kaydı başarıyla oluşturuldu!");
+          }
+        }
+      }
+
+      if (error) throw error;
+
+      console.log("Auth başarılı, isLogin:", isLogin, "data:", data);
+      
+      if (isLogin && data?.user) {
+        console.log("Login başarılı, user:", data.user.id);
+        // Kullanıcı ID'sini AsyncStorage içine kaydet
+        await AsyncStorage.setItem("userId", data.user.id);
+
+        // Kullanıcının bilgilerini çek
+        const { data: userInfo, error: userError } = await supabase
+          .from("users")
+          .select("name, surname, age, height, weight, description")
+          .eq("id", data.user.id)
+          .single();
+
+        // Eğer kullanıcı kaydı yoksa oluştur
+        if (userError && userError.code === 'PGRST116') {
+          console.log("Kullanıcı kaydı bulunamadı, oluşturuluyor...");
           const { error: insertError } = await supabase.from("users").insert([
             {
               id: data.user.id,
@@ -142,29 +188,20 @@ export default function AuthScreen() {
 
           if (insertError) {
             console.error("Kullanıcı bilgileri eklenirken hata oluştu:", insertError.message);
+            Alert.alert("Hata", "Kullanıcı kaydı oluşturulamadı. Lütfen tekrar deneyin.");
+            setIsLoading(false);
+            return;
           }
+
+          // Yeni oluşturulan kullanıcıyı firstLogin ile yönlendir
+          navigateTo("/(tabs)/profile?firstLogin=true");
+          return;
         }
-      }
-
-      if (error) throw error;
-
-      console.log("Auth başarılı, isLogin:", isLogin, "data:", data);
-      
-      if (isLogin && data?.user) {
-        console.log("Login başarılı, user:", data.user.id);
-        // Kullanıcı ID'sini AsyncStorage içine kaydet
-        await AsyncStorage.setItem("userId", data.user.id);
-
-        // Kullanıcının bilgilerini çek ve eksik olup olmadığını kontrol et
-        const { data: userInfo, error: userError } = await supabase
-          .from("users")
-          .select("name, surname, age, height, weight, description")
-          .eq("id", data.user.id)
-          .single();
 
         if (userError) {
           console.error("Kullanıcı bilgileri alınırken hata oluştu:", userError.message);
-          navigateTo("/(tabs)/profile");
+          // Kullanıcı bilgileri alınamadıysa da firstLogin ile yönlendir
+          navigateTo("/(tabs)/profile?firstLogin=true");
           return;
         }
 

@@ -94,6 +94,7 @@ export default function Profile() {
 
   const [profileImage, setProfileImage] = useState({ uri: null });
   const [editUserData, setEditUserData] = useState<UserDataType | null>(null);
+  const [isFirstLogin, setIsFirstLogin] = useState(false);
 
   const openEditModal = () => {
     console.log("openEditModal çağrıldı!");
@@ -114,6 +115,22 @@ export default function Profile() {
 
   const closeEditModal = () => {
     console.log("closeEditModal çağrıldı");
+    
+    // Eğer firstLogin ise ve bilgiler eksikse modalı kapatmaya izin verme
+    if (isFirstLogin) {
+      const hasMissingFields = !editUserData?.name || !editUserData?.surname || 
+        !editUserData?.age || !editUserData?.height || 
+        !editUserData?.weight || !editUserData?.description;
+      
+      if (hasMissingFields) {
+        Alert.alert(
+          "Bilgileri Tamamlayın",
+          "Lütfen tüm profil bilgilerinizi doldurun. Bilgilerinizi tamamlamadan çıkamazsınız."
+        );
+        return;
+      }
+    }
+    
     setEditModalVisible(false);
     
     // State temizleme için gecikme
@@ -149,6 +166,40 @@ export default function Profile() {
       await migrateAllUsersImagesToNewFormat();
     }, 5000); // 5 saniye sonra çalıştır
   }, []); // Sadece bir kez çalışsın
+
+  // firstLogin parametresini kontrol et ve modalı aç
+  useEffect(() => {
+    const firstLoginParam = searchParams.firstLogin;
+    const firstLoginValue = Array.isArray(firstLoginParam) 
+      ? firstLoginParam[0] 
+      : firstLoginParam;
+    const isFirstLoginParam = firstLoginValue === 'true';
+    
+    // URL parametresine göre isFirstLogin state'ini güncelle
+    // Eğer URL'de firstLogin yoksa veya false ise, isFirstLogin false olmalı
+    setIsFirstLogin(isFirstLoginParam);
+    
+    if (isFirstLoginParam) {
+      console.log("firstLogin parametresi tespit edildi, modal açılacak");
+      
+      // Kullanıcı verileri yüklendikten sonra modalı aç
+      if (userData) {
+        const hasMissingFields = !userData.name || !userData.surname || 
+          !userData.age || !userData.height || 
+          !userData.weight || !userData.description;
+        
+        if (hasMissingFields) {
+          // Kısa bir gecikme ile modalı aç
+          setTimeout(() => {
+            openEditModal();
+          }, 500);
+        }
+      }
+    } else {
+      // URL'de firstLogin yoksa, isFirstLogin false olmalı
+      setIsFirstLogin(false);
+    }
+  }, [searchParams.firstLogin, userData]);
 
   // Profile sayfasına her dönüşte kullanıcı verilerini yenile
   useFocusEffect(
@@ -794,6 +845,14 @@ export default function Profile() {
 
   const handleSave = async () => {
     if (!editUserData) return;
+    
+    // Tüm alanların dolu olduğunu kontrol et
+    if (!editUserData.name || !editUserData.surname || !editUserData.age || 
+        !editUserData.height || !editUserData.weight || !editUserData.description) {
+      Alert.alert("Hata", "Lütfen tüm alanları doldurun.");
+      return;
+    }
+    
     const { error } = await supabase
       .from("users")
       .update({
@@ -817,15 +876,48 @@ export default function Profile() {
         description: editUserData.description,
       } : null);
       
+      // Eğer firstLogin ise, flag'i temizle ve URL'den parametreyi kaldır
+      const wasFirstLogin = isFirstLogin;
+      if (isFirstLogin) {
+        setIsFirstLogin(false);
+        // URL'den firstLogin parametresini kaldır
+        router.replace("/(tabs)/profile");
+      }
+      
       setEditModalVisible(false);
       setEditUserData(null);
       console.log("Profil bilgileri güncellendi, maç listesi yenilenmedi");
+      
+      if (wasFirstLogin) {
+        Alert.alert("Başarılı", "Profil bilgileriniz başarıyla kaydedildi!");
+      }
+    } else {
+      Alert.alert("Hata", "Profil bilgileri kaydedilirken bir hata oluştu.");
     }
   };
 
 
 
   const handleLogout = (): void => {
+    // Eğer firstLogin ise ve bilgiler eksikse çıkış yapmayı engelle
+    if (isFirstLogin) {
+      const hasMissingFields = !userData?.name || !userData?.surname || 
+        !userData?.age || !userData?.height || 
+        !userData?.weight || !userData?.description;
+      
+      if (hasMissingFields) {
+        Alert.alert(
+          "Bilgileri Tamamlayın",
+          "Lütfen önce profil bilgilerinizi tamamlayın. Bilgilerinizi tamamlamadan çıkamazsınız."
+        );
+        // Modalı aç
+        if (userData) {
+          openEditModal();
+        }
+        return;
+      }
+    }
+    
     setLogoutModalVisible(true);
   };
 
@@ -1064,6 +1156,7 @@ export default function Profile() {
           editUserData={editUserData}
           onSave={handleSave}
           onEditUserDataChange={setEditUserData}
+          isFirstLogin={isFirstLogin}
         />
 
         {/* 🔹 TAKİPÇİ VE TAKİP EDİLEN LİSTESİ MODALI */}

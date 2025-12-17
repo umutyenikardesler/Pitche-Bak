@@ -28,6 +28,7 @@ interface EditProfileModalProps {
   editUserData: UserDataType | null;
   onSave: () => void;
   onEditUserDataChange: (data: UserDataType) => void;
+  isFirstLogin?: boolean;
 }
 
 export default function EditProfileModal({
@@ -36,6 +37,7 @@ export default function EditProfileModal({
   editUserData,
   onSave,
   onEditUserDataChange,
+  isFirstLogin = false,
 }: EditProfileModalProps) {
   const { t } = useLanguage();
 
@@ -63,13 +65,19 @@ export default function EditProfileModal({
 
 
 
+  // İlk girişte tüm alanların dolu olup olmadığını kontrol et
+  const isFormComplete = editUserData?.name && editUserData?.surname && 
+    editUserData?.age && editUserData?.height && 
+    editUserData?.weight && editUserData?.description;
+
   return (
     <Modal
       visible={visible}
       transparent={true}
       animationType="fade"
+      onRequestClose={isFirstLogin && !isFormComplete ? undefined : onClose}
     >
-      <TouchableWithoutFeedback onPress={onClose}>
+      <TouchableWithoutFeedback onPress={isFirstLogin && !isFormComplete ? undefined : onClose}>
         <View className="flex-1 justify-center items-center bg-black/50">
           <KeyboardAvoidingView
             behavior={Platform.OS === "ios" ? "padding" : "height"}
@@ -152,19 +160,21 @@ export default function EditProfileModal({
                 </View>
 
                 <View className="flex-row justify-between mt-3">
+                  {!isFirstLogin && (
+                    <TouchableOpacity
+                      className="bg-red-500 p-2 rounded-lg"
+                      onPress={onClose}
+                    >
+                      <Text className="text-white font-semibold text-lg px-8">
+                        {t("general.cancel")}
+                      </Text>
+                    </TouchableOpacity>
+                  )}
                   <TouchableOpacity
-                    className="bg-red-500 p-2 rounded-lg"
-                    onPress={onClose}
-                  >
-                    <Text className="text-white font-semibold text-lg px-8">
-                      {t("general.cancel")}
-                    </Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    className="bg-green-600 p-2 rounded-lg"
+                    className={`${isFirstLogin ? 'flex-1' : ''} bg-green-600 p-2 rounded-lg`}
                     onPress={onSave}
                   >
-                    <Text className="text-white font-semibold text-lg px-4">
+                    <Text className="text-white font-semibold text-lg text-center px-4">
                       {t("general.save")}
                     </Text>
                   </TouchableOpacity>
