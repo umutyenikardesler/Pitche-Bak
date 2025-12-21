@@ -1,79 +1,92 @@
 import { useEffect, useState } from "react";
-import { useRouter } from "expo-router";
-import { View, ActivityIndicator } from "react-native";
-import { supabase } from '@/services/supabase';
-import * as SplashScreen from 'expo-splash-screen';
+import { Redirect } from "expo-router";
+import { View, ActivityIndicator, Text } from "react-native";
+import * as SplashScreen from "expo-splash-screen";
+import { supabase } from "@/services/supabase";
 
-// Splash screen'i açık tut
-SplashScreen.preventAutoHideAsync();
+// Splash screen'i başlangıçta tut
+SplashScreen.preventAutoHideAsync().catch(() => {});
 
 export default function Index() {
-  const router = useRouter();
-  const [loading, setLoading] = useState(true);
+  const [target, setTarget] = useState<string | null>(null);
+  const [debugInfo, setDebugInfo] = useState<string>("Başlatılıyor...");
 
   useEffect(() => {
+    let isMounted = true;
+
     const checkAuth = async () => {
       try {
-        console.log("Auth kontrolü başlatılıyor...");
+        if (isMounted) setDebugInfo("Supabase bağlantısı kontrol ediliyor...");
         
-        // Supabase session kontrolü yap
-        const { data: { session }, error } = await supabase.auth.getSession();
+        // Timeout ile supabase çağrısı
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error("Timeout")), 3000)
+        );
         
-        if (error) {
-          console.error("Session hatası:", error);
-        }
+        const sessionPromise = supabase.auth.getSession();
         
-        console.log("Session kontrolü tamamlandı, session:", session ? "var" : "yok");
+        const result = await Promise.race([sessionPromise, timeoutPromise]) as any;
         
-        // Splash screen'i önce kapat
-        try {
-          await SplashScreen.hideAsync();
-          console.log("Splash screen kapatıldı");
-        } catch (e) {
-          console.error("Splash screen kapatma hatası:", e);
-        }
+        if (!isMounted) return;
         
-        // Kısa bir gecikme ile yönlendirme yap (router'ın hazır olması için)
-        setTimeout(() => {
-          if (session && session.user) {
-            console.log("Kullanıcı oturum açmış, ana sayfaya yönlendiriliyor...");
-            router.replace("/(tabs)/index" as any);
-          } else {
-            console.log("Kullanıcı oturum açmamış, auth sayfasına yönlendiriliyor...");
-            router.replace("/auth" as any);
-          }
-          setLoading(false);
-        }, 100);
+        const session = result?.data?.session;
+        setDebugInfo(session ? "Oturum bulundu, yönlendiriliyor..." : "Oturum yok, giriş sayfasına...");
+        setTarget(session?.user ? "/(tabs)" : "/auth");
       } catch (error) {
-        console.error("Auth kontrolü hatası:", error);
-        // Hata durumunda splash screen'i kapat ve auth sayfasına yönlendir
-        try {
-          await SplashScreen.hideAsync();
-        } catch (e) {
-          console.error("Splash screen kapatma hatası:", e);
-        }
-        setTimeout(() => {
-          router.replace("/auth" as any);
-          setLoading(false);
-        }, 100);
+        if (!isMounted) return;
+        const errorMsg = error instanceof Error ? error.message : "Bilinmeyen hata";
+        setDebugInfo(`Hata: ${errorMsg} - Giriş sayfasına yönlendiriliyor...`);
+        // Hata olsa bile auth sayfasına yönlendir
+        setTarget("/auth");
+      } finally {
+        // Splash screen'i gizle
+        SplashScreen.hideAsync().catch(() => {});
       }
     };
 
-    // Kısa bir gecikme ile auth kontrolü yap (splash screen görünsün)
-    const timer = setTimeout(() => {
+    // 2 saniye sonra hala target yoksa zorla auth'a gönder
+    const fallbackTimer = setTimeout(() => {
+      if (isMounted && !target) {
+        setDebugInfo("Fallback: Giriş sayfasına yönlendiriliyor...");
+        setTarget("/auth");
+        SplashScreen.hideAsync().catch(() => {});
+      }
+    }, 2000);
+
+    // Küçük bir gecikme ile başlat (React render'ın tamamlanması için)
+    setTimeout(() => {
       checkAuth();
-    }, 500);
+    }, 100);
 
-    return () => clearTimeout(timer);
-  }, [router]);
+    return () => {
+      isMounted = false;
+      clearTimeout(fallbackTimer);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  if (loading) {
-    return (
-      <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "#ffffff" }}>
-        <ActivityIndicator size="large" color="#16a34a" />
-      </View>
-    );
+  if (target) {
+    return <Redirect href={target as any} />;
   }
 
-  return null; // Eğer yönlendirme oluyorsa, bu ekran hiç gösterilmeyecek
+  // Buraya düşersek: route daha belirlenmedi, ekranda debug göster
+  return (
+    <View
+      style={{
+        flex: 1,
+        justifyContent: "center",
+        alignItems: "center",
+        backgroundColor: "#16a34a",
+        paddingHorizontal: 16,
+      }}
+    >
+      <ActivityIndicator size="large" color="#ffffff" />
+      <Text style={{ marginTop: 12, color: "#ffffff", fontWeight: "600", fontSize: 18 }}>
+        Pitche-Bak
+      </Text>
+      <Text style={{ marginTop: 8, color: "#ffffff", textAlign: "center", fontSize: 12 }}>
+        {debugInfo}
+      </Text>
+    </View>
+  );
 }
