@@ -23,12 +23,13 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
   const [messageCount, setMessageCount] = useState(0); // direct_message unread
 
   const fetchCount = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      setCount(0);
-      setMessageCount(0);
-      return;
-    }
+    try {
+      const { data: { user }, error } = await supabase.auth.getUser();
+      if (error || !user) {
+        setCount(0);
+        setMessageCount(0);
+        return;
+      }
 
     // Genel bildirimler (direct_message HARİÇ)
     const { count: notifCount } = await supabase
@@ -65,6 +66,12 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
     });
 
     setMessageCount(convoKeys.size);
+    } catch (error) {
+      // Başlangıçta hata olursa sessizce geç
+      console.log('NotificationProvider fetchCount error:', error);
+      setCount(0);
+      setMessageCount(0);
+    }
   };
 
   // Kalp ikonundaki badge'i, bildirim sayfasına girildiği anda sıfırla.

@@ -522,7 +522,8 @@ export const LanguageProvider: React.FC<{ children: ReactNode }> = ({ children }
         setCurrentLanguage(savedLanguage as Language);
       }
     } catch (error) {
-      console.error('Dil yüklenirken hata:', error);
+      // Sessizce varsayılan dilde kal
+      console.log('Dil yüklenirken hata (varsayılan kullanılacak):', error);
     }
   };
 

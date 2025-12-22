@@ -9,10 +9,11 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "bundleIdentifier": "com.tumurelsedrakiney.pitchebak",
+      "bundleIdentifier": "com.tumurelsedrakiney.PitcheBak",
       "supportsTablet": true,
       "infoPlist": {
-        "NSLocationWhenInUseUsageDescription": "Yakınınızdaki sahaları göstermek ve konuma göre sıralamak için konumunuza ihtiyaç var."
+        "NSLocationWhenInUseUsageDescription": "Yakınınızdaki sahaları göstermek ve konuma göre sıralamak için konumunuza ihtiyaç var.",
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {

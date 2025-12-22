@@ -13,10 +13,7 @@
       "android": {
         "buildType": "apk"
       },
-      "developmentClient": false,
-      "env": {
-        "NODE_ENV": "production"
-      }
+      "developmentClient": false
     },
     "production": {
       "autoIncrement": true
