@@ -1,3 +1,4 @@
+import '@/global.css';
 import { Stack } from "expo-router";
 import { LogBox } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -16,12 +17,7 @@ export default function RootLayout() {
       <NotificationProvider>
         <GestureHandlerRootView style={{ flex: 1 }}>
           <SafeAreaProvider>
-            <Stack>
-              <Stack.Screen name="index" options={{ headerShown: false }} />
-              <Stack.Screen name="auth/index" options={{ headerShown: false }} />
-              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-              <Stack.Screen name="+not-found" options={{}} />
-            </Stack>
+            <Stack screenOptions={{ headerShown: false }} />
           </SafeAreaProvider>
         </GestureHandlerRootView>
       </NotificationProvider>

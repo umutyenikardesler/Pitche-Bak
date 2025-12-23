@@ -1,0 +1,636 @@
+﻿--------- beginning of main
+12-23 20:44:42.296 E/CamX    ( 1118): [ERROR][NCS    ] camxncsservice.cpp:1007 EnqueueJob() Can not enqueue jobs when thread is stopped
+12-23 20:44:42.496 E/CamX    ( 1118): [ERROR][NCS    ] camxncsservice.cpp:1007 EnqueueJob() Can not enqueue jobs when thread is stopped
+12-23 20:44:42.696 E/CamX    ( 1118): [ERROR][NCS    ] camxncsservice.cpp:1007 EnqueueJob() Can not enqueue jobs when thread is stopped
+12-23 20:44:42.896 E/CamX    ( 1118): [ERROR][NCS    ] camxncsservice.cpp:1007 EnqueueJob() Can not enqueue jobs when thread is stopped
+12-23 20:44:43.096 E/CamX    ( 1118): [ERROR][NCS    ] camxncsservice.cpp:1007 EnqueueJob() Can not enqueue jobs when thread is stopped
+12-23 20:44:43.296 E/CamX    ( 1118): [ERROR][NCS    ] camxncsservice.cpp:1007 EnqueueJob() Can not enqueue jobs when thread is stopped
+12-23 20:44:43.496 E/CamX    ( 1118): [ERROR][NCS    ] camxncsservice.cpp:1007 EnqueueJob() Can not enqueue jobs when thread is stopped
+12-23 20:44:43.696 E/CamX    ( 1118): [ERROR][NCS    ] camxncsservice.cpp:1007 EnqueueJob() Can not enqueue jobs when thread is stopped
+12-23 20:44:43.896 E/CamX    ( 1118): [ERROR][NCS    ] camxncsservice.cpp:1007 EnqueueJob() Can not enqueue jobs when thread is stopped
+12-23 20:44:44.096 E/CamX    ( 1118): [ERROR][NCS    ] camxncsservice.cpp:1007 EnqueueJob() Can not enqueue jobs when thread is stopped
+12-23 20:44:44.296 E/CamX    ( 1118): [ERROR][NCS    ] camxncsservice.cpp:1007 EnqueueJob() Can not enqueue jobs when thread is stopped
+12-23 20:44:44.496 E/CamX    ( 1118): [ERROR][NCS    ] camxncsservice.cpp:1007 EnqueueJob() Can not enqueue jobs when thread is stopped
+12-23 20:44:44.696 E/CamX    ( 1118): [ERROR][NCS    ] camxncsservice.cpp:1007 EnqueueJob() Can not enqueue jobs when thread is stopped
+--------- beginning of system
+12-23 20:44:44.795 E/ProcessManager( 1966): error write exception log
+12-23 20:44:44.829 E/ActivityManagerWrapper( 3614): get all recent tasks force including 2
+12-23 20:44:44.832 E/ActivityManagerWrapper( 3614): getRecentTasks: size=4
+12-23 20:44:44.832 E/ActivityManagerWrapper( 3614): getRecentTasks: mainTaskId=83   userId=0   windowMode=1   baseIntent=Intent { act=android.intent.action.MAIN flag=268435456 cmp=ComponentInfo{com.tumurelsedrakiney.pitchebak/com.tumurelsedrakiney.pitchebak.MainActivity} }
+12-23 20:44:44.832 E/ActivityManagerWrapper( 3614): getRecentTasks: mainTaskId=81   userId=0   windowMode=1   baseIntent=Intent { act=android.intent.action.VIEW flag=302579713 cmp=ComponentInfo{com.google.android.packageinstaller/com.android.packageinstaller.DeleteStagedFileOnResult} }
+12-23 20:44:44.832 E/ActivityManagerWrapper( 3614): getRecentTasks: mainTaskId=79   userId=0   windowMode=1   baseIntent=Intent { act=android.intent.action.MAIN flag=270532608 cmp=ComponentInfo{com.google.android.apps.docs/com.google.android.apps.docs.app.NewMainProxyActivity} }
+12-23 20:44:44.833 E/ActivityManagerWrapper( 3614): getRecentTasks: mainTaskId=78   userId=0   windowMode=1   baseIntent=Intent { act=android.intent.action.MAIN flag=270532608 cmp=ComponentInfo{com.mi.android.globalFileexplorer/com.android.fileexplorer.FileExplorerTabActivity} }
+12-23 20:44:44.834 E/RegisteredServicesCache( 5404): Next Tag=services
+12-23 20:44:44.834 E/RegisteredServicesCache( 5404): installedServices no uidString 
+12-23 20:44:44.834 E/RegisteredServicesCache( 5404): installedServices contains uidString : 10143
+12-23 20:44:44.834 E/RegisteredServicesCache( 5404): installedServices contains uidString : 10143
+12-23 20:44:44.835 E/RegisteredServicesCache( 5404): 1invalidateCache:WriteServiceStateToFile
+12-23 20:44:44.835 E/RegisteredServicesCache( 5404):  Writing service state Data Always
+12-23 20:44:44.835 E/RegisteredServicesCache( 5404): component namecom.google.android.gms/com.google.android.gms.nearby.mediums.nearfieldcommunication.NfcAdvertisingService
+12-23 20:44:44.835 E/RegisteredServicesCache( 5404): component namecom.google.android.gms/com.google.android.gms.pay.hce.service.PayHceService
+12-23 20:44:44.835 E/RegisteredServicesCache( 5404): component namecom.google.android.gms/com.google.android.gms.dck.service.DckNfcApduService
+12-23 20:44:44.896 E/CamX    ( 1118): [ERROR][NCS    ] camxncsservice.cpp:1007 EnqueueJob() Can not enqueue jobs when thread is stopped
+12-23 20:44:44.942 E/MI-SF   ( 1412): Force skip idle timer[false]
+12-23 20:44:45.098 E/CamX    ( 1118): [ERROR][NCS    ] camxncsservice.cpp:1007 EnqueueJob() Can not enqueue jobs when thread is stopped
+12-23 20:44:45.298 E/CamX    ( 1118): [ERROR][NCS    ] camxncsservice.cpp:1007 EnqueueJob() Can not enqueue jobs when thread is stopped
+12-23 20:44:45.498 E/CamX    ( 1118): [ERROR][NCS    ] camxncsservice.cpp:1007 EnqueueJob() Can not enqueue jobs when thread is stopped
+12-23 20:44:45.698 E/CamX    ( 1118): [ERROR][NCS    ] camxncsservice.cpp:1007 EnqueueJob() Can not enqueue jobs when thread is stopped
+12-23 20:44:45.899 E/CamX    ( 1118): [ERROR][NCS    ] camxncsservice.cpp:1007 EnqueueJob() Can not enqueue jobs when thread is stopped
+12-23 20:44:46.098 E/CamX    ( 1118): [ERROR][NCS    ] camxncsservice.cpp:1007 EnqueueJob() Can not enqueue jobs when thread is stopped
+12-23 20:44:46.296 E/CamX    ( 1118): [ERROR][NCS    ] camxncsservice.cpp:1007 EnqueueJob() Can not enqueue jobs when thread is stopped
+12-23 20:44:46.497 E/CamX    ( 1118): [ERROR][NCS    ] camxncsservice.cpp:1007 EnqueueJob() Can not enqueue jobs when thread is stopped
+12-23 20:44:46.698 E/CamX    ( 1118): [ERROR][NCS    ] camxncsservice.cpp:1007 EnqueueJob() Can not enqueue jobs when thread is stopped
+12-23 20:44:46.810 E/CamX    ( 1118): [ERROR][NCS    ] camxncsintfqsee.cpp:2555 FillSensorData() Invalid sensor index -1
+12-23 20:44:46.810 E/CamX    ( 1118): [ERROR][NCS    ] camxncsintfqsee.cpp:2340 SensorCallback() Invalid sensor index -1
+12-23 20:44:46.999 E/CamX    ( 1118): [ERROR][NCS    ] camxncsservice.cpp:1007 EnqueueJob() Can not enqueue jobs when thread is stopped
+12-23 20:44:47.201 E/CamX    ( 1118): [ERROR][NCS    ] camxncsservice.cpp:1007 EnqueueJob() Can not enqueue jobs when thread is stopped
+12-23 20:44:47.398 E/CamX    ( 1118): [ERROR][NCS    ] camxncsservice.cpp:1007 EnqueueJob() Can not enqueue jobs when thread is stopped
+12-23 20:44:47.598 E/CamX    ( 1118): [ERROR][NCS    ] camxncsservice.cpp:1007 EnqueueJob() Can not enqueue jobs when thread is stopped
+12-23 20:44:47.798 E/CamX    ( 1118): [ERROR][NCS    ] camxncsservice.cpp:1007 EnqueueJob() Can not enqueue jobs when thread is stopped
+12-23 20:44:47.999 E/CamX    ( 1118): [ERROR][NCS    ] camxncsservice.cpp:1007 EnqueueJob() Can not enqueue jobs when thread is stopped
+12-23 20:44:48.065 E/NativeTurboSchedManagerJni( 1966): open /dev/metis failed!
+12-23 20:44:48.066 E/vendor.qti.hardware.perf@2.2-service( 1194): Unknown params
+12-23 20:44:48.066 E/vendor.qti.hardware.perf@2.2-service( 1194): Unknown params
+12-23 20:44:48.067 E/vendor.qti.hardware.perf@2.2-service( 1194): Unknown params
+12-23 20:44:48.067 E/vendor.qti.hardware.perf@2.2-service( 1194): Unknown params
+12-23 20:44:48.067 E/ANDR-PERF-JNI( 1966): com_qualcomm_qtiperformance_native_perf_io_prefetch_start
+12-23 20:44:48.067 E/ANDR-PERF-LM( 1194): MetaMeter: handleAsync() 166: AdaptLaunch Invalid Async
+12-23 20:44:48.068 E/ANDR-PERF-LM( 1194): MetaMeter: handleAsync() 166: AdaptLaunch Invalid Async
+12-23 20:44:48.071 E/ANDR-IOP( 1189): io prefetch is disabled
+12-23 20:44:48.071 E/vendor.qti.hardware.perf@2.2-service( 1194): Unknown params
+12-23 20:44:48.075 E/vendor.qti.hardware.perf@2.2-service( 1194): Unknown params
+12-23 20:44:48.075 E/vendor.qti.hardware.perf@2.2-service( 1194): Unknown params
+12-23 20:44:48.075 E/NativeTurboSchedManagerJni( 4132): open /dev/metis failed!
+12-23 20:44:48.075 E/NativeTurboSchedManagerJni( 4132): open /dev/metis failed!
+12-23 20:44:48.077 E/NativeTurboSchedManagerJni( 4132): open /dev/metis failed!
+12-23 20:44:48.077 E/NativeTurboSchedManagerJni( 4132): open /dev/metis failed!
+12-23 20:44:48.078 E/NativeTurboSchedManagerJni( 4132): open /dev/metis failed!
+12-23 20:44:48.081 E/vendor.qti.hardware.perf@2.2-service( 1194): Unknown params
+12-23 20:44:48.091 E/vendor.qti.hardware.perf@2.2-service( 1194): Unknown params
+12-23 20:44:48.091 E/ANDR-PERF-LM( 1194): MetaMeter: handleAsync() 166: AdaptLaunch Invalid Async
+12-23 20:44:48.091 E/ActivityManagerWrapper( 3614): get all recent tasks force including 2
+12-23 20:44:48.092 E/Zygote  ( 3659): process_name_ptr:3659 com.tumurelsedrakiney.pitchebak
+12-23 20:44:48.092 E/vendor.qti.hardware.perf@2.2-service( 1194): Unknown params
+12-23 20:44:48.093 E/ActivityManagerWrapper( 3614): getRecentTasks: size=4
+12-23 20:44:48.093 E/ActivityManagerWrapper( 3614): getRecentTasks: mainTaskId=84   userId=0   windowMode=1   baseIntent=Intent { act=android.intent.action.MAIN flag=270532608 cmp=ComponentInfo{com.tumurelsedrakiney.pitchebak/com.tumurelsedrakiney.pitchebak.MainActivity} }
+12-23 20:44:48.093 E/ActivityManagerWrapper( 3614): getRecentTasks: mainTaskId=81   userId=0   windowMode=1   baseIntent=Intent { act=android.intent.action.VIEW flag=302579713 cmp=ComponentInfo{com.google.android.packageinstaller/com.android.packageinstaller.DeleteStagedFileOnResult} }
+12-23 20:44:48.093 E/ActivityManagerWrapper( 3614): getRecentTasks: mainTaskId=79   userId=0   windowMode=1   baseIntent=Intent { act=android.intent.action.MAIN flag=270532608 cmp=ComponentInfo{com.google.android.apps.docs/com.google.android.apps.docs.app.NewMainProxyActivity} }
+12-23 20:44:48.093 E/ActivityManagerWrapper( 3614): getRecentTasks: mainTaskId=78   userId=0   windowMode=1   baseIntent=Intent { act=android.intent.action.MAIN flag=270532608 cmp=ComponentInfo{com.mi.android.globalFileexplorer/com.android.fileexplorer.FileExplorerTabActivity} }
+12-23 20:44:48.099 E/kiney.pitchebak( 3659): Not starting debugger since process cannot load the jdwp agent.
+12-23 20:44:48.105 E/vendor.qti.hardware.perf@2.2-service( 1194): Unknown params
+12-23 20:44:48.106 E/vendor.qti.hardware.perf@2.2-service( 1194): Unknown params
+12-23 20:44:48.106 E/ANDR-PERF-LM( 1194): MetaMeter: handleAsync() 166: AdaptLaunch Invalid Async
+12-23 20:44:48.110 E/OpenGLRenderer( 4132): Unable to match the desired swap behavior.
+12-23 20:44:48.113 E/ActivityManagerWrapper( 3614): get all recent tasks force including 2
+12-23 20:44:48.116 E/ActivityManagerWrapper( 3614): getRecentTasks: size=4
+12-23 20:44:48.116 E/ActivityManagerWrapper( 3614): getRecentTasks: mainTaskId=84   userId=0   windowMode=1   baseIntent=Intent { act=android.intent.action.MAIN flag=270532608 cmp=ComponentInfo{com.tumurelsedrakiney.pitchebak/com.tumurelsedrakiney.pitchebak.MainActivity} }
+12-23 20:44:48.116 E/ActivityManagerWrapper( 3614): getRecentTasks: mainTaskId=81   userId=0   windowMode=1   baseIntent=Intent { act=android.intent.action.VIEW flag=302579713 cmp=ComponentInfo{com.google.android.packageinstaller/com.android.packageinstaller.DeleteStagedFileOnResult} }
+12-23 20:44:48.117 E/ActivityManagerWrapper( 3614): getRecentTasks: mainTaskId=79   userId=0   windowMode=1   baseIntent=Intent { act=android.intent.action.MAIN flag=270532608 cmp=ComponentInfo{com.google.android.apps.docs/com.google.android.apps.docs.app.NewMainProxyActivity} }
+12-23 20:44:48.117 E/ActivityManagerWrapper( 3614): getRecentTasks: mainTaskId=78   userId=0   windowMode=1   baseIntent=Intent { act=android.intent.action.MAIN flag=270532608 cmp=ComponentInfo{com.mi.android.globalFileexplorer/com.android.fileexplorer.FileExplorerTabActivity} }
+12-23 20:44:48.119 E/vendor.qti.hardware.perf@2.2-service( 1194): Unknown params
+12-23 20:44:48.128 E/NativeTurboSchedManagerJni( 1966): open /dev/metis failed!
+12-23 20:44:48.128 E/NativeTurboSchedManagerJni( 1966): open /dev/metis failed!
+12-23 20:44:48.133 E/NativeTurboSchedManagerJni( 1966): open /dev/metis failed!
+12-23 20:44:48.134 E/NativeTurboSchedManagerJni( 4132): open /dev/metis failed!
+12-23 20:44:48.137 E/NativeTurboSchedManagerJni( 4132): open /dev/metis failed!
+12-23 20:44:48.137 E/onWindowDecorRectChanged( 4132): start size:1
+12-23 20:44:48.137 E/onWindowDecorRectChanged( 4132): windowDecorRects: Rect(454, 12 - 625, 113)
+12-23 20:44:48.180 E/SDM     ( 1181): HWCSession::GetClientTargetProperty: GetClinetTargetProperty interface enter
+12-23 20:44:48.187 E/ActivityManagerWrapper( 3614): get all recent tasks force including 84
+12-23 20:44:48.189 E/kiney.pitchebak( 3659): Invalid resource ID 0x00000000.
+12-23 20:44:48.189 E/ActivityManagerWrapper( 3614): getRecentTasks: size=4
+12-23 20:44:48.189 E/ActivityManagerWrapper( 3614): getRecentTasks: mainTaskId=84   userId=0   windowMode=1   baseIntent=Intent { act=android.intent.action.MAIN flag=270532608 cmp=ComponentInfo{com.tumurelsedrakiney.pitchebak/com.tumurelsedrakiney.pitchebak.MainActivity} }
+12-23 20:44:48.189 E/ActivityManagerWrapper( 3614): getRecentTasks: mainTaskId=81   userId=0   windowMode=1   baseIntent=Intent { act=android.intent.action.VIEW flag=302579713 cmp=ComponentInfo{com.google.android.packageinstaller/com.android.packageinstaller.DeleteStagedFileOnResult} }
+12-23 20:44:48.189 E/ActivityManagerWrapper( 3614): getRecentTasks: mainTaskId=79   userId=0   windowMode=1   baseIntent=Intent { act=android.intent.action.MAIN flag=270532608 cmp=ComponentInfo{com.google.android.apps.docs/com.google.android.apps.docs.app.NewMainProxyActivity} }
+12-23 20:44:48.189 E/ActivityManagerWrapper( 3614): getRecentTasks: mainTaskId=78   userId=0   windowMode=1   baseIntent=Intent { act=android.intent.action.MAIN flag=270532608 cmp=ComponentInfo{com.mi.android.globalFileexplorer/com.android.fileexplorer.FileExplorerTabActivity} }
+12-23 20:44:48.191 E/ActivityManagerWrapper( 3614): get all recent tasks force including 84
+12-23 20:44:48.192 E/ActivityManagerWrapper( 3614): getRecentTasks: size=4
+12-23 20:44:48.192 E/ActivityManagerWrapper( 3614): getRecentTasks: mainTaskId=84   userId=0   windowMode=1   baseIntent=Intent { act=android.intent.action.MAIN flag=270532608 cmp=ComponentInfo{com.tumurelsedrakiney.pitchebak/com.tumurelsedrakiney.pitchebak.MainActivity} }
+12-23 20:44:48.192 E/ActivityManagerWrapper( 3614): getRecentTasks: mainTaskId=81   userId=0   windowMode=1   baseIntent=Intent { act=android.intent.action.VIEW flag=302579713 cmp=ComponentInfo{com.google.android.packageinstaller/com.android.packageinstaller.DeleteStagedFileOnResult} }
+12-23 20:44:48.192 E/ActivityManagerWrapper( 3614): getRecentTasks: mainTaskId=79   userId=0   windowMode=1   baseIntent=Intent { act=android.intent.action.MAIN flag=270532608 cmp=ComponentInfo{com.google.android.apps.docs/com.google.android.apps.docs.app.NewMainProxyActivity} }
+12-23 20:44:48.192 E/ActivityManagerWrapper( 3614): getRecentTasks: mainTaskId=78   userId=0   windowMode=1   baseIntent=Intent { act=android.intent.action.MAIN flag=270532608 cmp=ComponentInfo{com.mi.android.globalFileexplorer/com.android.fileexplorer.FileExplorerTabActivity} }
+12-23 20:44:48.197 E/SDM     ( 1181): HWCSession::GetClientTargetProperty: GetClinetTargetProperty interface enter
+12-23 20:44:48.198 E/CamX    ( 1118): [ERROR][NCS    ] camxncsservice.cpp:1007 EnqueueJob() Can not enqueue jobs when thread is stopped
+12-23 20:44:48.207 E/FramePredict( 3659): registerContentObserver fail
+12-23 20:44:48.213 E/SDM     ( 1181): HWCSession::GetClientTargetProperty: GetClinetTargetProperty interface enter
+12-23 20:44:48.231 E/SDM     ( 1181): HWCSession::GetClientTargetProperty: GetClinetTargetProperty interface enter
+12-23 20:44:48.243 E/OpenGLRenderer( 3659): Unable to match the desired swap behavior.
+12-23 20:44:48.247 E/SDM     ( 1181): HWCSession::GetClientTargetProperty: GetClinetTargetProperty interface enter
+12-23 20:44:48.263 E/SDM     ( 1181): HWCSession::GetClientTargetProperty: GetClinetTargetProperty interface enter
+12-23 20:44:48.273 E/vendor.qti.hardware.perf@2.2-service( 1194): Unknown params
+12-23 20:44:48.280 E/SDM     ( 1181): HWCSession::GetClientTargetProperty: GetClinetTargetProperty interface enter
+12-23 20:44:48.297 E/SDM     ( 1181): HWCSession::GetClientTargetProperty: GetClinetTargetProperty interface enter
+12-23 20:44:48.297 I/ReactNativeJS( 3659): Running "main"
+12-23 20:44:48.297 W/ReactNativeJS( 3659): SafeAreaView has been deprecated and will be removed in a future release. Please use 'react-native-safe-area-context' instead. See https://github.com/th3rdwave/react-native-safe-area-context
+12-23 20:44:48.313 E/SDM     ( 1181): HWCSession::GetClientTargetProperty: GetClinetTargetProperty interface enter
+12-23 20:44:48.330 E/SDM     ( 1181): HWCSession::GetClientTargetProperty: GetClinetTargetProperty interface enter
+12-23 20:44:48.346 E/SDM     ( 1181): HWCSession::GetClientTargetProperty: GetClinetTargetProperty interface enter
+12-23 20:44:48.363 E/SDM     ( 1181): HWCSession::GetClientTargetProperty: GetClinetTargetProperty interface enter
+12-23 20:44:48.379 E/SDM     ( 1181): HWCSession::GetClientTargetProperty: GetClinetTargetProperty interface enter
+12-23 20:44:48.396 E/SDM     ( 1181): HWCSession::GetClientTargetProperty: GetClinetTargetProperty interface enter
+12-23 20:44:48.398 E/CamX    ( 1118): [ERROR][NCS    ] camxncsservice.cpp:1007 EnqueueJob() Can not enqueue jobs when thread is stopped
+12-23 20:44:48.403 I/ReactNative( 3659): [GESTURE HANDLER] Initialize gesture handler for root view com.facebook.react.runtime.ReactSurfaceView{9ca67 V.E...... ......ID 0,0-1080,2400 #1}
+12-23 20:44:48.413 E/SDM     ( 1181): HWCSession::GetClientTargetProperty: GetClinetTargetProperty interface enter
+12-23 20:44:48.429 E/SDM     ( 1181): HWCSession::GetClientTargetProperty: GetClinetTargetProperty interface enter
+12-23 20:44:48.446 E/SDM     ( 1181): HWCSession::GetClientTargetProperty: GetClinetTargetProperty interface enter
+12-23 20:44:48.448 E/LB      ( 3659): fail to open node: No such file or directory
+12-23 20:44:48.449 E/NativeTurboSchedManagerJni( 1966): open /dev/metis failed!
+12-23 20:44:48.449 E/NativeTurboSchedManagerJni( 1966): open /dev/metis failed!
+12-23 20:44:48.460 E/vendor.qti.hardware.perf@2.2-service( 1194): Unknown params
+12-23 20:44:48.463 E/vendor.qti.hardware.perf@2.2-service( 1194): Unknown params
+12-23 20:44:48.463 E/SDM     ( 1181): HWCSession::GetClientTargetProperty: GetClinetTargetProperty interface enter
+12-23 20:44:48.479 E/SDM     ( 1181): HWCSession::GetClientTargetProperty: GetClinetTargetProperty interface enter
+12-23 20:44:48.496 E/SDM     ( 1181): HWCSession::GetClientTargetProperty: GetClinetTargetProperty interface enter
+12-23 20:44:48.513 E/SDM     ( 1181): HWCSession::GetClientTargetProperty: GetClinetTargetProperty interface enter
+12-23 20:44:48.529 E/SDM     ( 1181): HWCSession::GetClientTargetProperty: GetClinetTargetProperty interface enter
+12-23 20:44:48.546 E/SDM     ( 1181): HWCSession::GetClientTargetProperty: GetClinetTargetProperty interface enter
+12-23 20:44:48.562 E/SDM     ( 1181): HWCSession::GetClientTargetProperty: GetClinetTargetProperty interface enter
+12-23 20:44:48.579 E/SDM     ( 1181): HWCSession::GetClientTargetProperty: GetClinetTargetProperty interface enter
+12-23 20:44:48.595 E/SDM     ( 1181): HWCSession::GetClientTargetProperty: GetClinetTargetProperty interface enter
+12-23 20:44:48.598 E/CamX    ( 1118): [ERROR][NCS    ] camxncsservice.cpp:1007 EnqueueJob() Can not enqueue jobs when thread is stopped
+12-23 20:44:48.612 E/SDM     ( 1181): HWCSession::GetClientTargetProperty: GetClinetTargetProperty interface enter
+12-23 20:44:48.629 E/SDM     ( 1181): HWCSession::GetClientTargetProperty: GetClinetTargetProperty interface enter
+12-23 20:44:48.645 E/SDM     ( 1181): HWCSession::GetClientTargetProperty: GetClinetTargetProperty interface enter
+12-23 20:44:48.661 E/SurfaceComposerClient( 4132): SurfaceComposerClient::Transaction::setAlpha: invalid alpha 1.000001, clamping
+12-23 20:44:48.662 E/SDM     ( 1181): HWCSession::GetClientTargetProperty: GetClinetTargetProperty interface enter
+12-23 20:44:48.677 E/SurfaceComposerClient( 4132): SurfaceComposerClient::Transaction::setAlpha: invalid alpha 1.000041, clamping
+12-23 20:44:48.678 E/SDM     ( 1181): HWCSession::GetClientTargetProperty: GetClinetTargetProperty interface enter
+12-23 20:44:48.694 E/SurfaceComposerClient( 4132): SurfaceComposerClient::Transaction::setAlpha: invalid alpha 1.000062, clamping
+12-23 20:44:48.695 E/SDM     ( 1181): HWCSession::GetClientTargetProperty: GetClinetTargetProperty interface enter
+12-23 20:44:48.711 E/SurfaceComposerClient( 4132): SurfaceComposerClient::Transaction::setAlpha: invalid alpha 1.000064, clamping
+12-23 20:44:48.711 E/SurfaceComposerClient( 4132): SurfaceComposerClient::Transaction::setAlpha: invalid alpha 1.000064, clamping
+12-23 20:44:48.711 E/SDM     ( 1181): HWCSession::GetClientTargetProperty: GetClinetTargetProperty interface enter
+12-23 20:44:48.743 E/Launcher.application( 3614): setClickAppWaitForCallback = false
+12-23 20:44:48.798 E/CamX    ( 1118): [ERROR][NCS    ] camxncsservice.cpp:1007 EnqueueJob() Can not enqueue jobs when thread is stopped
+12-23 20:44:48.855 E/CamX    ( 1118): [ERROR][NCS    ] camxncsintfqsee.cpp:2555 FillSensorData() Invalid sensor index -1
+12-23 20:44:48.998 E/CamX    ( 1118): [ERROR][NCS    ] camxncsservice.cpp:1007 EnqueueJob() Can not enqueue jobs when thread is stopped
+12-23 20:44:49.015 E/CamX    ( 1118): [ERROR][NCS    ] camxncsintfqsee.cpp:2555 FillSensorData() Invalid sensor index -1
+12-23 20:44:49.016 E/CamX    ( 1118): [ERROR][NCS    ] camxncsintfqsee.cpp:2340 SensorCallback() Invalid sensor index -1
+12-23 20:44:49.027 E/CamX    ( 1118): [ERROR][NCS    ] camxncsintfqsee.cpp:2555 FillSensorData() Invalid sensor index -1
+12-23 20:44:49.027 E/CamX    ( 1118): [ERROR][NCS    ] camxncsintfqsee.cpp:2340 SensorCallback() Invalid sensor index -1
+12-23 20:44:49.034 E/CamX    ( 1118): [ERROR][NCS    ] camxncsintfqsee.cpp:2555 FillSensorData() Invalid sensor index -1
+12-23 20:44:49.040 E/CamX    ( 1118): [ERROR][NCS    ] camxncsintfqsee.cpp:2340 SensorCallback() Invalid sensor index -1
+12-23 20:44:49.227 E/CamX    ( 1118): [ERROR][NCS    ] camxncsservice.cpp:1007 EnqueueJob() Can not enqueue jobs when thread is stopped
+12-23 20:44:49.428 E/CamX    ( 1118): [ERROR][NCS    ] camxncsservice.cpp:1007 EnqueueJob() Can not enqueue jobs when thread is stopped
+12-23 20:44:49.627 E/CamX    ( 1118): [ERROR][NCS    ] camxncsservice.cpp:1007 EnqueueJob() Can not enqueue jobs when thread is stopped
+12-23 20:44:49.827 E/CamX    ( 1118): [ERROR][NCS    ] camxncsservice.cpp:1007 EnqueueJob() Can not enqueue jobs when thread is stopped
+12-23 20:44:50.028 E/CamX    ( 1118): [ERROR][NCS    ] camxncsservice.cpp:1007 EnqueueJob() Can not enqueue jobs when thread is stopped
+12-23 20:44:50.228 E/CamX    ( 1118): [ERROR][NCS    ] camxncsservice.cpp:1007 EnqueueJob() Can not enqueue jobs when thread is stopped
+12-23 20:44:50.391 E/SDM     ( 1181): HWCSession::GetClientTargetProperty: GetClinetTargetProperty interface enter
+12-23 20:44:50.397 E/MI-SF   ( 1412): surfaceflinger setAffinity failed, error=22
+12-23 20:44:50.397 E/MI-SF   ( 1412): surfaceflinger setAffinity failed.
+12-23 20:44:50.397 E/MI-SF   ( 1412): surfaceflinger setAffinity failed, error=22
+12-23 20:44:50.397 E/MI-SF   ( 1412): surfaceflinger setreAffinity failed.
+12-23 20:44:50.428 E/CamX    ( 1118): [ERROR][NCS    ] camxncsservice.cpp:1007 EnqueueJob() Can not enqueue jobs when thread is stopped
+12-23 20:44:50.540 E/SDM     ( 1181): HWCSession::GetClientTargetProperty: GetClinetTargetProperty interface enter
+12-23 20:44:50.546 E/MI-SF   ( 1412): surfaceflinger setAffinity failed, error=22
+12-23 20:44:50.546 E/MI-SF   ( 1412): surfaceflinger setAffinity failed.
+12-23 20:44:50.546 E/MI-SF   ( 1412): surfaceflinger setAffinity failed, error=22
+12-23 20:44:50.546 E/MI-SF   ( 1412): surfaceflinger setreAffinity failed.
+12-23 20:44:50.558 E/CamX    ( 1118): [ERROR][NCS    ] camxncsintfqsee.cpp:2555 FillSensorData() Invalid sensor index -1
+12-23 20:44:50.559 E/CamX    ( 1118): [ERROR][NCS    ] camxncsintfqsee.cpp:2340 SensorCallback() Invalid sensor index -1
+12-23 20:44:50.749 E/CamX    ( 1118): [ERROR][NCS    ] camxncsservice.cpp:1007 EnqueueJob() Can not enqueue jobs when thread is stopped
+12-23 20:44:50.949 E/CamX    ( 1118): [ERROR][NCS    ] camxncsservice.cpp:1007 EnqueueJob() Can not enqueue jobs when thread is stopped
+12-23 20:44:51.149 E/CamX    ( 1118): [ERROR][NCS    ] camxncsservice.cpp:1007 EnqueueJob() Can not enqueue jobs when thread is stopped
+12-23 20:44:51.267 E/CamX    ( 1118): [ERROR][NCS    ] camxncsintfqsee.cpp:2555 FillSensorData() Invalid sensor index -1
+12-23 20:44:51.268 E/CamX    ( 1118): [ERROR][NCS    ] camxncsintfqsee.cpp:2340 SensorCallback() Invalid sensor index -1
+12-23 20:44:51.279 E/CamX    ( 1118): [ERROR][NCS    ] camxncsintfqsee.cpp:2555 FillSensorData() Invalid sensor index -1
+12-23 20:44:51.279 E/CamX    ( 1118): [ERROR][NCS    ] camxncsintfqsee.cpp:2340 SensorCallback() Invalid sensor index -1
+12-23 20:44:51.299 E/CamX    ( 1118): [ERROR][NCS    ] camxncsintfqsee.cpp:2555 FillSensorData() Invalid sensor index -1
+12-23 20:44:51.299 E/CamX    ( 1118): [ERROR][NCS    ] camxncsintfqsee.cpp:2340 SensorCallback() Invalid sensor index -1
+12-23 20:44:51.481 E/CamX    ( 1118): [ERROR][NCS    ] camxncsservice.cpp:1007 EnqueueJob() Can not enqueue jobs when thread is stopped
+12-23 20:44:51.681 E/CamX    ( 1118): [ERROR][NCS    ] camxncsservice.cpp:1007 EnqueueJob() Can not enqueue jobs when thread is stopped
+12-23 20:44:51.881 E/CamX    ( 1118): [ERROR][NCS    ] camxncsservice.cpp:1007 EnqueueJob() Can not enqueue jobs when thread is stopped
+12-23 20:44:52.021 E/CamX    ( 1118): [ERROR][NCS    ] camxncsintfqsee.cpp:2555 FillSensorData() Invalid sensor index -1
+12-23 20:44:52.022 E/CamX    ( 1118): [ERROR][NCS    ] camxncsintfqsee.cpp:2340 SensorCallback() Invalid sensor index -1
+12-23 20:44:52.212 E/CamX    ( 1118): [ERROR][NCS    ] camxncsservice.cpp:1007 EnqueueJob() Can not enqueue jobs when thread is stopped
+12-23 20:44:52.412 E/CamX    ( 1118): [ERROR][NCS    ] camxncsservice.cpp:1007 EnqueueJob() Can not enqueue jobs when thread is stopped
+12-23 20:44:52.612 E/CamX    ( 1118): [ERROR][NCS    ] camxncsservice.cpp:1007 EnqueueJob() Can not enqueue jobs when thread is stopped
+12-23 20:44:52.812 E/CamX    ( 1118): [ERROR][NCS    ] camxncsservice.cpp:1007 EnqueueJob() Can not enqueue jobs when thread is stopped
+12-23 20:44:53.012 E/CamX    ( 1118): [ERROR][NCS    ] camxncsservice.cpp:1007 EnqueueJob() Can not enqueue jobs when thread is stopped
+12-23 20:44:53.213 E/CamX    ( 1118): [ERROR][NCS    ] camxncsservice.cpp:1007 EnqueueJob() Can not enqueue jobs when thread is stopped
+12-23 20:44:53.412 E/CamX    ( 1118): [ERROR][NCS    ] camxncsservice.cpp:1007 EnqueueJob() Can not enqueue jobs when thread is stopped
+12-23 20:44:53.562 E/SDM     ( 1181): HWCSession::GetClientTargetProperty: GetClinetTargetProperty interface enter
+12-23 20:44:53.568 E/MI-SF   ( 1412): surfaceflinger setAffinity failed, error=22
+12-23 20:44:53.568 E/MI-SF   ( 1412): surfaceflinger setAffinity failed.
+12-23 20:44:53.569 E/MI-SF   ( 1412): surfaceflinger setAffinity failed, error=22
+12-23 20:44:53.569 E/MI-SF   ( 1412): surfaceflinger setreAffinity failed.
+12-23 20:44:53.613 E/CamX    ( 1118): [ERROR][NCS    ] camxncsservice.cpp:1007 EnqueueJob() Can not enqueue jobs when thread is stopped
+12-23 20:44:53.812 E/CamX    ( 1118): [ERROR][NCS    ] camxncsservice.cpp:1007 EnqueueJob() Can not enqueue jobs when thread is stopped
+12-23 20:44:54.012 E/CamX    ( 1118): [ERROR][NCS    ] camxncsservice.cpp:1007 EnqueueJob() Can not enqueue jobs when thread is stopped
+12-23 20:44:54.212 E/CamX    ( 1118): [ERROR][NCS    ] camxncsservice.cpp:1007 EnqueueJob() Can not enqueue jobs when thread is stopped
+12-23 20:44:54.412 E/CamX    ( 1118): [ERROR][NCS    ] camxncsservice.cpp:1007 EnqueueJob() Can not enqueue jobs when thread is stopped
+12-23 20:44:54.612 E/CamX    ( 1118): [ERROR][NCS    ] camxncsservice.cpp:1007 EnqueueJob() Can not enqueue jobs when thread is stopped
+12-23 20:44:54.812 E/CamX    ( 1118): [ERROR][NCS    ] camxncsservice.cpp:1007 EnqueueJob() Can not enqueue jobs when thread is stopped
+12-23 20:44:55.012 E/CamX    ( 1118): [ERROR][NCS    ] camxncsservice.cpp:1007 EnqueueJob() Can not enqueue jobs when thread is stopped
+12-23 20:44:55.212 E/CamX    ( 1118): [ERROR][NCS    ] camxncsservice.cpp:1007 EnqueueJob() Can not enqueue jobs when thread is stopped
+12-23 20:44:55.412 E/CamX    ( 1118): [ERROR][NCS    ] camxncsservice.cpp:1007 EnqueueJob() Can not enqueue jobs when thread is stopped
+12-23 20:44:55.612 E/CamX    ( 1118): [ERROR][NCS    ] camxncsservice.cpp:1007 EnqueueJob() Can not enqueue jobs when thread is stopped
+12-23 20:44:55.812 E/CamX    ( 1118): [ERROR][NCS    ] camxncsservice.cpp:1007 EnqueueJob() Can not enqueue jobs when thread is stopped
+12-23 20:44:56.012 E/CamX    ( 1118): [ERROR][NCS    ] camxncsservice.cpp:1007 EnqueueJob() Can not enqueue jobs when thread is stopped
+12-23 20:44:56.212 E/CamX    ( 1118): [ERROR][NCS    ] camxncsservice.cpp:1007 EnqueueJob() Can not enqueue jobs when thread is stopped
+12-23 20:44:56.412 E/CamX    ( 1118): [ERROR][NCS    ] camxncsservice.cpp:1007 EnqueueJob() Can not enqueue jobs when thread is stopped
+12-23 20:44:56.602 E/SDM     ( 1181): HWCSession::GetClientTargetProperty: GetClinetTargetProperty interface enter
+12-23 20:44:56.607 E/MI-SF   ( 1412): surfaceflinger setAffinity failed, error=22
+12-23 20:44:56.607 E/MI-SF   ( 1412): surfaceflinger setAffinity failed.
+12-23 20:44:56.607 E/MI-SF   ( 1412): surfaceflinger setAffinity failed, error=22
+12-23 20:44:56.607 E/MI-SF   ( 1412): surfaceflinger setreAffinity failed.
+12-23 20:44:56.612 E/CamX    ( 1118): [ERROR][NCS    ] camxncsservice.cpp:1007 EnqueueJob() Can not enqueue jobs when thread is stopped
+12-23 20:44:56.818 E/CamX    ( 1118): [ERROR][NCS    ] camxncsintfqsee.cpp:2555 FillSensorData() Invalid sensor index -1
+12-23 20:44:56.818 E/CamX    ( 1118): [ERROR][NCS    ] camxncsintfqsee.cpp:2340 SensorCallback() Invalid sensor index -1
+12-23 20:44:56.818 E/CamX    ( 1118): [ERROR][NCS    ] camxncsservice.cpp:1007 EnqueueJob() Can not enqueue jobs when thread is stopped
+12-23 20:44:56.832 E/CamX    ( 1118): [ERROR][NCS    ] camxncsintfqsee.cpp:2555 FillSensorData() Invalid sensor index -1
+12-23 20:44:56.837 E/CamX    ( 1118): [ERROR][NCS    ] camxncsintfqsee.cpp:2340 SensorCallback() Invalid sensor index -1
+12-23 20:44:56.844 E/CamX    ( 1118): [ERROR][NCS    ] camxncsintfqsee.cpp:2555 FillSensorData() Invalid sensor index -1
+12-23 20:44:56.844 E/CamX    ( 1118): [ERROR][NCS    ] camxncsintfqsee.cpp:2340 SensorCallback() Invalid sensor index -1
+12-23 20:44:57.031 E/CamX    ( 1118): [ERROR][NCS    ] camxncsservice.cpp:1007 EnqueueJob() Can not enqueue jobs when thread is stopped
+12-23 20:44:57.231 E/CamX    ( 1118): [ERROR][NCS    ] camxncsservice.cpp:1007 EnqueueJob() Can not enqueue jobs when thread is stopped
+12-23 20:44:57.431 E/CamX    ( 1118): [ERROR][NCS    ] camxncsservice.cpp:1007 EnqueueJob() Can not enqueue jobs when thread is stopped
+12-23 20:44:57.631 E/CamX    ( 1118): [ERROR][NCS    ] camxncsservice.cpp:1007 EnqueueJob() Can not enqueue jobs when thread is stopped
+12-23 20:44:57.831 E/CamX    ( 1118): [ERROR][NCS    ] camxncsservice.cpp:1007 EnqueueJob() Can not enqueue jobs when thread is stopped
+12-23 20:44:58.031 E/CamX    ( 1118): [ERROR][NCS    ] camxncsservice.cpp:1007 EnqueueJob() Can not enqueue jobs when thread is stopped
+12-23 20:44:58.231 E/CamX    ( 1118): [ERROR][NCS    ] camxncsservice.cpp:1007 EnqueueJob() Can not enqueue jobs when thread is stopped
+12-23 20:44:58.431 E/CamX    ( 1118): [ERROR][NCS    ] camxncsservice.cpp:1007 EnqueueJob() Can not enqueue jobs when thread is stopped
+12-23 20:44:58.631 E/CamX    ( 1118): [ERROR][NCS    ] camxncsservice.cpp:1007 EnqueueJob() Can not enqueue jobs when thread is stopped
+12-23 20:44:58.831 E/CamX    ( 1118): [ERROR][NCS    ] camxncsservice.cpp:1007 EnqueueJob() Can not enqueue jobs when thread is stopped
+12-23 20:44:59.031 E/CamX    ( 1118): [ERROR][NCS    ] camxncsservice.cpp:1007 EnqueueJob() Can not enqueue jobs when thread is stopped
+12-23 20:44:59.231 E/CamX    ( 1118): [ERROR][NCS    ] camxncsservice.cpp:1007 EnqueueJob() Can not enqueue jobs when thread is stopped
+12-23 20:44:59.431 E/CamX    ( 1118): [ERROR][NCS    ] camxncsservice.cpp:1007 EnqueueJob() Can not enqueue jobs when thread is stopped
+12-23 20:44:59.631 E/CamX    ( 1118): [ERROR][NCS    ] camxncsservice.cpp:1007 EnqueueJob() Can not enqueue jobs when thread is stopped
+12-23 20:44:59.831 E/CamX    ( 1118): [ERROR][NCS    ] camxncsservice.cpp:1007 EnqueueJob() Can not enqueue jobs when thread is stopped
+12-23 20:45:00.031 E/CamX    ( 1118): [ERROR][NCS    ] camxncsservice.cpp:1007 EnqueueJob() Can not enqueue jobs when thread is stopped
+12-23 20:45:00.041 E/ReflectUtils( 4132): invokeObject
+12-23 20:45:00.041 E/ReflectUtils( 4132): java.lang.reflect.InvocationTargetException
+12-23 20:45:00.041 E/ReflectUtils( 4132): 	at java.lang.reflect.Method.invoke(Native Method)
+12-23 20:45:00.041 E/ReflectUtils( 4132): 	at com.miui.clock.utils.ReflectUtils.invokeObject(go/retraceme 2fbb4b342f87460cb83f265508321d95def92a308e7534f39240a15809d879a3:11)
+12-23 20:45:00.041 E/ReflectUtils( 4132): 	at com.miui.clock.utils.DataUtils.isAppInstalledForUser(go/retraceme 2fbb4b342f87460cb83f265508321d95def92a308e7534f39240a15809d879a3:54)
+12-23 20:45:00.041 E/ReflectUtils( 4132): 	at com.miui.clock.classic.ClassicClockView.filterClassicClockInfo(go/retraceme 2fbb4b342f87460cb83f265508321d95def92a308e7534f39240a15809d879a3:32)
+12-23 20:45:00.041 E/ReflectUtils( 4132): 	at com.miui.clock.classic.ClassicClockView.updateTime(go/retraceme 2fbb4b342f87460cb83f265508321d95def92a308e7534f39240a15809d879a3:3)
+12-23 20:45:00.041 E/ReflectUtils( 4132): 	at com.miui.clock.MiuiClockController$1.run(go/retraceme 2fbb4b342f87460cb83f265508321d95def92a308e7534f39240a15809d879a3:82)
+12-23 20:45:00.041 E/ReflectUtils( 4132): 	at android.os.Handler.handleCallback(Handler.java:958)
+12-23 20:45:00.041 E/ReflectUtils( 4132): 	at android.os.Handler.dispatchMessage(Handler.java:99)
+12-23 20:45:00.041 E/ReflectUtils( 4132): 	at android.os.Looper.loopOnce(Looper.java:224)
+12-23 20:45:00.041 E/ReflectUtils( 4132): 	at android.os.Looper.loop(Looper.java:318)
+12-23 20:45:00.041 E/ReflectUtils( 4132): 	at android.app.ActivityThread.main(ActivityThread.java:8790)
+12-23 20:45:00.041 E/ReflectUtils( 4132): 	at java.lang.reflect.Method.invoke(Native Method)
+12-23 20:45:00.041 E/ReflectUtils( 4132): 	at com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:561)
+12-23 20:45:00.041 E/ReflectUtils( 4132): 	at com.android.internal.os.ZygoteInit.main(ZygoteInit.java:1013)
+12-23 20:45:00.041 E/ReflectUtils( 4132): Caused by: android.content.pm.PackageManager$NameNotFoundException: com.mi.health
+12-23 20:45:00.041 E/ReflectUtils( 4132): 	at android.app.ApplicationPackageManager.getPackageInfoAsUser(ApplicationPackageManager.java:259)
+12-23 20:45:00.041 E/ReflectUtils( 4132): 	at android.app.ApplicationPackageManager.getPackageInfoAsUser(ApplicationPackageManager.java:247)
+12-23 20:45:00.041 E/ReflectUtils( 4132): 	... 14 more
+12-23 20:45:00.044 E/AnimationHelper( 4132): updateTime mToAod:false mHasNotification: true, mClockType: classic
+12-23 20:45:00.153 E/SDM     ( 1181): HWCSession::GetClientTargetProperty: GetClinetTargetProperty interface enter
+12-23 20:45:00.159 E/MI-SF   ( 1412): surfaceflinger setAffinity failed, error=22
+12-23 20:45:00.159 E/MI-SF   ( 1412): surfaceflinger setAffinity failed.
+12-23 20:45:00.159 E/MI-SF   ( 1412): surfaceflinger setAffinity failed, error=22
+12-23 20:45:00.159 E/MI-SF   ( 1412): surfaceflinger setreAffinity failed.
+12-23 20:45:00.231 E/CamX    ( 1118): [ERROR][NCS    ] camxncsservice.cpp:1007 EnqueueJob() Can not enqueue jobs when thread is stopped
+12-23 20:45:00.296 E/vendor.qti.hardware.perf@2.2-service( 1194): Unknown params
+12-23 20:45:00.307 E/VibratorManagerServiceImpl( 1966): skipandroid.os.RemoteException: Method setUsageExt is unimplemented.
+12-23 20:45:00.381 E/MiuiInputKeyEventLog( 1966): before go to home
+12-23 20:45:00.393 E/NativeTurboSchedManagerJni( 1966): open /dev/metis failed!
+12-23 20:45:00.400 E/vendor.qti.hardware.perf@2.2-service( 1194): Unknown params
+12-23 20:45:00.400 E/vendor.qti.hardware.perf@2.2-service( 1194): Unknown params
+12-23 20:45:00.401 E/vendor.qti.hardware.perf@2.2-service( 1194): Unknown params
+12-23 20:45:00.402 E/ANDR-PERF-OPTSHANDLER( 1194): Perflock resource /sys/class/devfreq/soc:qcom,cpubw/max_freq not supported
+12-23 20:45:00.402 E/ANDR-PERF-RESOURCEQS( 1194): Failed to apply optimization [6, 6]
+12-23 20:45:00.402 E/ANDR-PERF-OPTSHANDLER( 1194): Perflock resource /sys/class/devfreq/soc:qcom,cpubw/min_freq not supported
+12-23 20:45:00.403 E/ANDR-PERF-RESOURCEQS( 1194): Failed to apply optimization [6, 0]
+12-23 20:45:00.408 E/NativeTurboSchedManagerJni( 4132): open /dev/metis failed!
+12-23 20:45:00.408 E/NativeTurboSchedManagerJni( 4132): open /dev/metis failed!
+12-23 20:45:00.412 E/NativeTurboSchedManagerJni( 4132): open /dev/metis failed!
+12-23 20:45:00.415 E/vendor.qti.hardware.perf@2.2-service( 1194): Unknown params
+12-23 20:45:00.415 E/vendor.qti.hardware.perf@2.2-service( 1194): Unknown params
+12-23 20:45:00.426 E/OpenGLRenderer(29819): Unable to match the desired swap behavior.
+12-23 20:45:00.428 E/NativeTurboSchedManagerJni( 1966): open /dev/metis failed!
+12-23 20:45:00.429 E/NativeTurboSchedManagerJni( 1966): open /dev/metis failed!
+12-23 20:45:00.430 E/CamX    ( 1118): [ERROR][NCS    ] camxncsservice.cpp:1007 EnqueueJob() Can not enqueue jobs when thread is stopped
+12-23 20:45:00.432 E/RotationHelper( 3614): setCurrentStateRequest: request=0
+12-23 20:45:00.434 E/Launcher.application( 3614): setClickAppWaitForCallback = false
+12-23 20:45:00.437 E/OpenGLRenderer(31463): Unable to match the desired swap behavior.
+12-23 20:45:00.441 E/NativeTurboSchedManagerJni( 1966): open /dev/metis failed!
+12-23 20:45:00.444 E/MarketCustomizeReflectHelper( 3614): call method getCurrentValidCustomizeIconList failed
+12-23 20:45:00.444 E/MarketCustomizeReflectHelper( 3614): java.lang.ClassNotFoundException: miui.content.res.MarketIconCustomizer
+12-23 20:45:00.444 E/MarketCustomizeReflectHelper( 3614): 	at java.lang.Class.classForName(Native Method)
+12-23 20:45:00.444 E/MarketCustomizeReflectHelper( 3614): 	at java.lang.Class.forName(Class.java:607)
+12-23 20:45:00.444 E/MarketCustomizeReflectHelper( 3614): 	at java.lang.Class.forName(Class.java:512)
+12-23 20:45:00.444 E/MarketCustomizeReflectHelper( 3614): 	at com.miui.home.launcher.operationicon.MarketCustomizeReflectHelper.getCurrentValidCustomizeIconIDs(MarketCustomizeReflectHelper.kt:23)
+12-23 20:45:00.444 E/MarketCustomizeReflectHelper( 3614): 	at com.miui.home.launcher.operationicon.MarketCustomizeIconManager.refreshCustomizeIcon(MarketCustomizeIconManager.kt:78)
+12-23 20:45:00.444 E/MarketCustomizeReflectHelper( 3614): 	at com.miui.home.launcher.operationicon.MarketCustomizeIconManager.onLauncherResume$lambda-2(MarketCustomizeIconManager.kt:49)
+12-23 20:45:00.444 E/MarketCustomizeReflectHelper( 3614): 	at com.miui.home.launcher.operationicon.MarketCustomizeIconManager.lambda$y7tIngnTKeDqrZIJMXDhkG1_EKw(Unknown Source:0)
+12-23 20:45:00.444 E/MarketCustomizeReflectHelper( 3614): 	at com.miui.home.launcher.operationicon.-$$Lambda$MarketCustomizeIconManager$y7tIngnTKeDqrZIJMXDhkG1_EKw.run(Unknown Source:0)
+12-23 20:45:00.444 E/MarketCustomizeReflectHelper( 3614): 	at java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:487)
+12-23 20:45:00.444 E/MarketCustomizeReflectHelper( 3614): 	at java.util.concurrent.FutureTask.run(FutureTask.java:264)
+12-23 20:45:00.444 E/MarketCustomizeReflectHelper( 3614): 	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1145)
+12-23 20:45:00.444 E/MarketCustomizeReflectHelper( 3614): 	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:644)
+12-23 20:45:00.444 E/MarketCustomizeReflectHelper( 3614): 	at java.lang.Thread.run(Thread.java:1012)
+12-23 20:45:00.444 E/MarketCustomizeReflectHelper( 3614): Caused by: java.lang.ClassNotFoundException: miui.content.res.MarketIconCustomizer
+12-23 20:45:00.444 E/MarketCustomizeReflectHelper( 3614): 	... 13 more
+12-23 20:45:00.445 E/NativeTurboSchedManagerJni( 1966): open /dev/metis failed!
+12-23 20:45:00.454 E/OpenGLRenderer( 3614): Unable to match the desired swap behavior.
+12-23 20:45:00.469 E/NativeTurboSchedManagerJni( 1966): open /dev/metis failed!
+12-23 20:45:00.469 E/NativeTurboSchedManagerJni( 1966): open /dev/metis failed!
+12-23 20:45:00.478 E/NativeTurboSchedManagerJni( 1966): open /dev/metis failed!
+12-23 20:45:00.480 E/system_server( 1966): 
+12-23 20:45:00.481 E/NativeTurboSchedManagerJni( 4132): open /dev/metis failed!
+12-23 20:45:00.483 E/NativeTurboSchedManagerJni( 4132): open /dev/metis failed!
+12-23 20:45:00.486 E/onWindowDecorRectChanged( 4132): start size:0
+12-23 20:45:00.488 E/RemoteAnimationAdapterCompat( 3614): printLeash::index = 0, root = {WCT{android.window.IWindowContainerToken$Stub$Proxy@14c233a} m=TO_FRONT f=SHOW_WALLPAPER|MOVE_TO_TOP leash=Surface(name=Task=1#47)/@0x902dbeb sb=Rect(0, 0 - 1080, 2400) eb=Rect(0, 0 - 1080, 2400) d=0}
+12-23 20:45:00.488 E/RemoteAnimationAdapterCompat( 3614): 0, check isClosingType type = 2, mode = 3
+12-23 20:45:00.489 E/RemoteAnimationAdapterCompat( 3614): 1, check isClosingType type = 1, mode = 4
+12-23 20:45:00.500 E/LauncherAnimationRunner( 3614): onAnimationStart
+12-23 20:45:00.500 E/LauncherAnimationRunner( 3614): onAnimationStart:   target=RemoteAnimationTargetCompat{taskId=1, mode=0, isTranslucent=false, clipRect=Rect(0, 0 - 0, 0), position=Point(0, 0), sourceContainerBounds=Rect(0, 0 - 1080, 2400), prefixOrderIndex=4, isNotInRecents=false, contentInsets=Rect(0, 0 - 0, 0), activityType=2, packageName=com.miui.home, startBounds=Rect(0, 0 - 1080, 2400), windowType=-1}
+12-23 20:45:00.500 E/LauncherAnimationRunner( 3614): onAnimationStart:   target=RemoteAnimationTargetCompat{taskId=84, mode=1, isTranslucent=false, clipRect=Rect(0, 0 - 0, 0), position=Point(0, 0), sourceContainerBounds=Rect(0, 0 - 1080, 2400), prefixOrderIndex=3, isNotInRecents=false, contentInsets=Rect(0, 0 - 0, 0), activityType=1, packageName=com.tumurelsedrakiney.pitchebak, startBounds=Rect(0, 0 - 1080, 2400), windowType=-1}
+12-23 20:45:00.501 E/QuickstepAppTransitionManagerImpl( 3614): startClosingWindowAnimators
+12-23 20:45:00.501 E/QuickstepAppTransitionManagerImpl( 3614): getWindowTargetBounds    bounds=Rect(0, 0 - 1080, 2400)
+12-23 20:45:00.502 E/ClipAnimationHelper( 3614): updateSourceStack  mSourceInsets=Rect(0, 0 - 0, 0), mSourceStackBounds=Rect(0, 0 - 1080, 2400)
+12-23 20:45:00.502 E/ClipAnimationHelper( 3614): updateHomeStack  mSourceInsets=Rect(0, 0 - 0, 0), mHomeStackBounds=Rect(0, 0 - 1080, 2400)
+12-23 20:45:00.502 E/ClipAnimationHelper( 3614): updateTargetRect  mSourceRect=RectF(0.0, 0.0, 1080.0, 2400.0)   mTargetRect=RectF(0.0, 0.0, 1080.0, 2400.0)   mSourceWindowClipInsets=RectF(0.0, 0.0, 0.0, 0.0)   mHomeStackBounds=Rect(0, 0 - 1080, 2400)   targetRect=Rect(0, 0 - 1080, 2400)
+12-23 20:45:00.502 E/FloatingIconViewClosing( 3614): recycle
+12-23 20:45:00.502 E/Launcher.Boost( 3614): setDynamicVIPContextForGC: mIsTurboSchedDisabled :false   isBoost=true   mIsDynamicVIPContextForGCDisabled=false
+12-23 20:45:00.502 E/Launcher.Boost( 3614): setDynamicVIPContextForGC: success isBoostContext:true
+12-23 20:45:00.503 E/QuickstepAppTransitionManagerImpl( 3614): startLauncherContentAnimator:isAppOpening=false
+12-23 20:45:00.503 E/TurboSchedMonitor( 3614): invoke error.
+12-23 20:45:00.503 E/TurboSchedMonitor( 3614): java.lang.NoSuchMethodException: dalvik.system.VMRuntime.setDynamicVIPContextForGC [boolean]
+12-23 20:45:00.503 E/TurboSchedMonitor( 3614): 	at java.lang.Class.getMethod(Class.java:2950)
+12-23 20:45:00.503 E/TurboSchedMonitor( 3614): 	at java.lang.Class.getMethod(Class.java:2450)
+12-23 20:45:00.503 E/TurboSchedMonitor( 3614): 	at android.os.TurboSchedMonitorImpl.invoke_setDynamicVIPContextForGC(TurboSchedMonitorImpl.java:1199)
+12-23 20:45:00.503 E/TurboSchedMonitor( 3614): 	at android.os.TurboSchedMonitorImpl.-$$Nest$sminvoke_setDynamicVIPContextForGC(Unknown Source:0)
+12-23 20:45:00.503 E/TurboSchedMonitor( 3614): 	at android.os.TurboSchedMonitorImpl$TurboClientHandler.handleMessage(TurboSchedMonitorImpl.java:1418)
+12-23 20:45:00.503 E/TurboSchedMonitor( 3614): 	at android.os.Handler.dispatchMessage(Handler.java:106)
+12-23 20:45:00.503 E/TurboSchedMonitor( 3614): 	at android.os.Looper.loopOnce(Looper.java:224)
+12-23 20:45:00.503 E/TurboSchedMonitor( 3614): 	at android.os.Looper.loop(Looper.java:318)
+12-23 20:45:00.503 E/TurboSchedMonitor( 3614): 	at android.os.HandlerThread.run(HandlerThread.java:67)
+12-23 20:45:00.504 E/StateBroadcastUtils( 3614): sendFsStateBroadCast state=closeWindow   channel=navigation_bar   packageName=
+12-23 20:45:00.510 E/ActivityManagerWrapper( 3614): get all recent tasks force including 2
+12-23 20:45:00.512 E/ActivityManagerWrapper( 3614): getRecentTasks: size=4
+12-23 20:45:00.512 E/ActivityManagerWrapper( 3614): getRecentTasks: mainTaskId=84   userId=0   windowMode=1   baseIntent=Intent { act=android.intent.action.MAIN flag=270532608 cmp=ComponentInfo{com.tumurelsedrakiney.pitchebak/com.tumurelsedrakiney.pitchebak.MainActivity} }
+12-23 20:45:00.512 E/ActivityManagerWrapper( 3614): getRecentTasks: mainTaskId=81   userId=0   windowMode=1   baseIntent=Intent { act=android.intent.action.VIEW flag=302579713 cmp=ComponentInfo{com.google.android.packageinstaller/com.android.packageinstaller.DeleteStagedFileOnResult} }
+12-23 20:45:00.512 E/ActivityManagerWrapper( 3614): getRecentTasks: mainTaskId=79   userId=0   windowMode=1   baseIntent=Intent { act=android.intent.action.MAIN flag=270532608 cmp=ComponentInfo{com.google.android.apps.docs/com.google.android.apps.docs.app.NewMainProxyActivity} }
+12-23 20:45:00.512 E/ActivityManagerWrapper( 3614): getRecentTasks: mainTaskId=78   userId=0   windowMode=1   baseIntent=Intent { act=android.intent.action.MAIN flag=270532608 cmp=ComponentInfo{com.mi.android.globalFileexplorer/com.android.fileexplorer.FileExplorerTabActivity} }
+12-23 20:45:00.533 E/SDM     ( 1181): HWCSession::GetClientTargetProperty: GetClinetTargetProperty interface enter
+12-23 20:45:00.534 E/BlurUtils( 3614): fastBlurDirectly ratio=0.0   win=com.android.internal.policy.PhoneWindow@7246fdc
+12-23 20:45:00.550 E/SDM     ( 1181): HWCSession::GetClientTargetProperty: GetClinetTargetProperty interface enter
+12-23 20:45:00.566 E/SDM     ( 1181): HWCSession::GetClientTargetProperty: GetClinetTargetProperty interface enter
+12-23 20:45:00.583 E/SDM     ( 1181): HWCSession::GetClientTargetProperty: GetClinetTargetProperty interface enter
+12-23 20:45:00.599 E/SDM     ( 1181): HWCSession::GetClientTargetProperty: GetClinetTargetProperty interface enter
+12-23 20:45:00.616 E/SDM     ( 1181): HWCSession::GetClientTargetProperty: GetClinetTargetProperty interface enter
+12-23 20:45:00.630 E/CamX    ( 1118): [ERROR][NCS    ] camxncsservice.cpp:1007 EnqueueJob() Can not enqueue jobs when thread is stopped
+12-23 20:45:00.632 E/SDM     ( 1181): HWCSession::GetClientTargetProperty: GetClinetTargetProperty interface enter
+12-23 20:45:00.649 E/SDM     ( 1181): HWCSession::GetClientTargetProperty: GetClinetTargetProperty interface enter
+12-23 20:45:00.666 E/SDM     ( 1181): HWCSession::GetClientTargetProperty: GetClinetTargetProperty interface enter
+12-23 20:45:00.682 E/SDM     ( 1181): HWCSession::GetClientTargetProperty: GetClinetTargetProperty interface enter
+12-23 20:45:00.831 E/CamX    ( 1118): [ERROR][NCS    ] camxncsservice.cpp:1007 EnqueueJob() Can not enqueue jobs when thread is stopped
+12-23 20:45:01.002 E/SDM     ( 1181): HWCSession::GetClientTargetProperty: GetClinetTargetProperty interface enter
+12-23 20:45:01.034 E/CamX    ( 1118): [ERROR][NCS    ] camxncsservice.cpp:1007 EnqueueJob() Can not enqueue jobs when thread is stopped
+12-23 20:45:01.230 E/CamX    ( 1118): [ERROR][NCS    ] camxncsservice.cpp:1007 EnqueueJob() Can not enqueue jobs when thread is stopped
+12-23 20:45:01.297 E/Launcher.Boost( 3614): setDynamicVIPContextForGC: mIsTurboSchedDisabled :false   isBoost=false   mIsDynamicVIPContextForGCDisabled=false
+12-23 20:45:01.297 E/Launcher.Boost( 3614): setDynamicVIPContextForGC: success isBoostContext:false
+12-23 20:45:01.297 E/TurboSchedMonitor( 3614): invoke error.
+12-23 20:45:01.297 E/TurboSchedMonitor( 3614): java.lang.NoSuchMethodException: dalvik.system.VMRuntime.setDynamicVIPContextForGC [boolean]
+12-23 20:45:01.297 E/TurboSchedMonitor( 3614): 	at java.lang.Class.getMethod(Class.java:2950)
+12-23 20:45:01.297 E/TurboSchedMonitor( 3614): 	at java.lang.Class.getMethod(Class.java:2450)
+12-23 20:45:01.297 E/TurboSchedMonitor( 3614): 	at android.os.TurboSchedMonitorImpl.invoke_setDynamicVIPContextForGC(TurboSchedMonitorImpl.java:1199)
+12-23 20:45:01.297 E/TurboSchedMonitor( 3614): 	at android.os.TurboSchedMonitorImpl.-$$Nest$sminvoke_setDynamicVIPContextForGC(Unknown Source:0)
+12-23 20:45:01.297 E/TurboSchedMonitor( 3614): 	at android.os.TurboSchedMonitorImpl$TurboClientHandler.handleMessage(TurboSchedMonitorImpl.java:1418)
+12-23 20:45:01.297 E/TurboSchedMonitor( 3614): 	at android.os.Handler.dispatchMessage(Handler.java:106)
+12-23 20:45:01.297 E/TurboSchedMonitor( 3614): 	at android.os.Looper.loopOnce(Looper.java:224)
+12-23 20:45:01.297 E/TurboSchedMonitor( 3614): 	at android.os.Looper.loop(Looper.java:318)
+12-23 20:45:01.297 E/TurboSchedMonitor( 3614): 	at android.os.HandlerThread.run(HandlerThread.java:67)
+12-23 20:45:01.297 E/ConnectAnimFinishCallbackManager( 3614): call executeFinishCallback, toHome = true
+12-23 20:45:01.297 E/ConnectAnimFinishCallbackManager( 3614): java.lang.Exception
+12-23 20:45:01.297 E/ConnectAnimFinishCallbackManager( 3614): 	at com.android.systemui.shared.recents.utilities.RemoteAnimationFinishCallbackManager.executeFinishCallback(RemoteAnimationFinishCallbackManager.java:160)
+12-23 20:45:01.297 E/ConnectAnimFinishCallbackManager( 3614): 	at com.android.systemui.shared.recents.utilities.RemoteAnimationFinishCallbackManager.executeFinishCallback(RemoteAnimationFinishCallbackManager.java:143)
+12-23 20:45:01.297 E/ConnectAnimFinishCallbackManager( 3614): 	at com.miui.home.recents.QuickstepAppTransitionManagerImpl$WallpaperOpenLauncherAnimationRunner$1.onAnimationEnd(QuickstepAppTransitionManagerImpl.java:1328)
+12-23 20:45:01.297 E/ConnectAnimFinishCallbackManager( 3614): 	at com.miui.home.recents.util.RectFSpringAnim.lambda$init$1$RectFSpringAnim(RectFSpringAnim.java:205)
+12-23 20:45:01.297 E/ConnectAnimFinishCallbackManager( 3614): 	at com.miui.home.recents.util.-$$Lambda$RectFSpringAnim$62XYQO9gz6raJ-D8Mw6-7b5BC_I.onAnimationEnd(Unknown Source:2)
+12-23 20:45:01.297 E/ConnectAnimFinishCallbackManager( 3614): 	at com.miui.home.recents.anim.MultiSpringDynamicAnimation.endAnimationInternal(MultiSpringDynamicAnimation.java:177)
+12-23 20:45:01.297 E/ConnectAnimFinishCallbackManager( 3614): 	at com.miui.home.recents.anim.MultiSpringDynamicAnimation.doAnimationFrame(MultiSpringDynamicAnimation.java:166)
+12-23 20:45:01.297 E/ConnectAnimFinishCallbackManager( 3614): 	at com.miui.home.recents.anim.AnimationHandler.doAnimationFrame(AnimationHandler.java:117)
+12-23 20:45:01.297 E/ConnectAnimFinishCallbackManager( 3614): 	at com.miui.home.recents.anim.AnimationHandler$AnimationCallbackDispatcher.dispatchAnimationFrame(AnimationHandler.java:32)
+12-23 20:45:01.297 E/ConnectAnimFinishCallbackManager( 3614): 	at com.miui.home.recents.anim.AnimationHandler$FrameCallbackProvider16$1.doFrame(AnimationHandler.java:165)
+12-23 20:45:01.297 E/ConnectAnimFinishCallbackManager( 3614): 	at android.view.Choreographer$CallbackRecord.run(Choreographer.java:1592)
+12-23 20:45:01.297 E/ConnectAnimFinishCallbackManager( 3614): 	at android.view.Choreographer$CallbackRecord.run(Choreographer.java:1603)
+12-23 20:45:01.297 E/ConnectAnimFinishCallbackManager( 3614): 	at android.view.Choreographer.doCallbacks(Choreographer.java:1125)
+12-23 20:45:01.297 E/ConnectAnimFinishCallbackManager( 3614): 	at android.view.Choreographer.doFrame(Choreographer.java:1026)
+12-23 20:45:01.297 E/ConnectAnimFinishCallbackManager( 3614): 	at android.view.Choreographer$FrameDisplayEventReceiver.run(Choreographer.java:1567)
+12-23 20:45:01.297 E/ConnectAnimFinishCallbackManager( 3614): 	at android.os.Handler.handleCallback(Handler.java:958)
+12-23 20:45:01.297 E/ConnectAnimFinishCallbackManager( 3614): 	at android.os.Handler.dispatchMessage(Handler.java:99)
+12-23 20:45:01.297 E/ConnectAnimFinishCallbackManager( 3614): 	at android.os.Looper.loopOnce(Looper.java:224)
+12-23 20:45:01.297 E/ConnectAnimFinishCallbackManager( 3614): 	at android.os.Looper.loop(Looper.java:318)
+12-23 20:45:01.297 E/ConnectAnimFinishCallbackManager( 3614): 	at android.app.ActivityThread.main(ActivityThread.java:8790)
+12-23 20:45:01.297 E/ConnectAnimFinishCallbackManager( 3614): 	at java.lang.reflect.Method.invoke(Native Method)
+12-23 20:45:01.297 E/ConnectAnimFinishCallbackManager( 3614): 	at com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:561)
+12-23 20:45:01.297 E/ConnectAnimFinishCallbackManager( 3614): 	at com.android.internal.os.ZygoteInit.main(ZygoteInit.java:1013)
+12-23 20:45:01.299 E/FloatingIconViewClosing( 3614): recycle
+12-23 20:45:01.314 E/RotationHelper( 3614): setCurrentTransitionRequest: request=0
+12-23 20:45:01.330 E/LauncherAnimationRunner( 3614): finish: mFinishRunnable.run
+12-23 20:45:01.431 E/CamX    ( 1118): [ERROR][NCS    ] camxncsservice.cpp:1007 EnqueueJob() Can not enqueue jobs when thread is stopped
+12-23 20:45:01.630 E/CamX    ( 1118): [ERROR][NCS    ] camxncsservice.cpp:1007 EnqueueJob() Can not enqueue jobs when thread is stopped
+12-23 20:45:01.831 E/CamX    ( 1118): [ERROR][NCS    ] camxncsservice.cpp:1007 EnqueueJob() Can not enqueue jobs when thread is stopped
+12-23 20:45:02.031 E/CamX    ( 1118): [ERROR][NCS    ] camxncsservice.cpp:1007 EnqueueJob() Can not enqueue jobs when thread is stopped
+12-23 20:45:02.039 E/QuickstepAppTransitionManagerImpl( 3614): getActivityLaunchOptions iconLoc=Rect(330, 1429 - 503, 1602)
+12-23 20:45:02.039 E/Launcher.application( 3614): setClickAppWaitForCallback = true
+12-23 20:45:02.046 E/NativeTurboSchedManagerJni( 1966): open /dev/metis failed!
+12-23 20:45:02.054 E/vendor.qti.hardware.perf@2.2-service( 1194): Unknown params
+12-23 20:45:02.054 E/CamX    ( 1118): [ERROR][NCS    ] camxncsintfqsee.cpp:2555 FillSensorData() Invalid sensor index -1
+12-23 20:45:02.055 E/vendor.qti.hardware.perf@2.2-service( 1194): Unknown params
+12-23 20:45:02.056 E/ANDR-PERF-OPTSHANDLER( 1194): Perflock resource /sys/class/devfreq/soc:qcom,cpubw/max_freq not supported
+12-23 20:45:02.056 E/vendor.qti.hardware.perf@2.2-service( 1194): Unknown params
+12-23 20:45:02.056 E/ANDR-PERF-RESOURCEQS( 1194): Failed to apply optimization [6, 6]
+12-23 20:45:02.056 E/ANDR-PERF-OPTSHANDLER( 1194): Perflock resource /sys/class/devfreq/soc:qcom,cpubw/min_freq not supported
+12-23 20:45:02.056 E/ANDR-PERF-RESOURCEQS( 1194): Failed to apply optimization [6, 0]
+12-23 20:45:02.056 E/NativeTurboSchedManagerJni( 4132): open /dev/metis failed!
+12-23 20:45:02.057 E/NativeTurboSchedManagerJni( 4132): open /dev/metis failed!
+12-23 20:45:02.059 E/NativeTurboSchedManagerJni( 4132): open /dev/metis failed!
+12-23 20:45:02.059 E/NativeTurboSchedManagerJni( 4132): open /dev/metis failed!
+12-23 20:45:02.063 E/NativeTurboSchedManagerJni( 4132): open /dev/metis failed!
+12-23 20:45:02.071 E/vendor.qti.hardware.perf@2.2-service( 1194): Unknown params
+12-23 20:45:02.071 E/NativeTurboSchedManagerJni( 1966): open /dev/metis failed!
+12-23 20:45:02.071 E/vendor.qti.hardware.perf@2.2-service( 1194): Unknown params
+12-23 20:45:02.072 E/ANDR-PERF-MPCTL( 1194):  return repeat opt = perf_lock_acq: client_pid=1966, client_tid=5443, inupt handle=0, duration=400 ms, num_args=28, list=0x40C00000 0x1 0x40804000 0xFFF 0x40804100 0xFFF 0x40804200 0xFFF 0x40800000 0xFFF 0x40800100 0xFFF 0x40800200 0xFFF 0x41818000 0xFF 0x41800000 0xFF 0x40400000 0x1 0x42C10000 0x1 0x43430100 0x28C5 0x43400000 0xFFFF 0x4281C000 0x7D0 
+12-23 20:45:02.072 E/Transition( 1966): Trying to add a ready-group twice: Display{#0 state=ON size=1080x2400 ROTATION_0}
+12-23 20:45:02.074 E/vendor.qti.hardware.perf@2.2-service( 1194): Unknown params
+12-23 20:45:02.075 E/vendor.qti.hardware.perf@2.2-service( 1194): Unknown params
+12-23 20:45:02.076 E/NativeTurboSchedManagerJni( 1966): open /dev/metis failed!
+12-23 20:45:02.082 E/NativeTurboSchedManagerJni( 1966): open /dev/metis failed!
+12-23 20:45:02.083 E/NativeTurboSchedManagerJni( 4132): open /dev/metis failed!
+12-23 20:45:02.084 E/NativeTurboSchedManagerJni( 4132): open /dev/metis failed!
+12-23 20:45:02.084 E/RemoteAnimationAdapterCompat( 3614): printLeash::index = 0, root = {WCT{android.window.IWindowContainerToken$Stub$Proxy@9f8ea55} m=TO_FRONT f=MOVE_TO_TOP leash=Surface(name=Task=84#3665)/@0x91fdc6a sb=Rect(0, 0 - 1080, 2400) eb=Rect(0, 0 - 1080, 2400) d=0}
+12-23 20:45:02.084 E/RemoteAnimationAdapterCompat( 3614): 0, check isClosingType type = 1, mode = 3
+12-23 20:45:02.084 E/RemoteAnimationAdapterCompat( 3614): 1, check isClosingType type = 2, mode = 4
+12-23 20:45:02.086 E/onWindowDecorRectChanged( 4132): start size:1
+12-23 20:45:02.086 E/onWindowDecorRectChanged( 4132): windowDecorRects: Rect(454, 12 - 625, 113)
+12-23 20:45:02.093 E/LauncherAnimationRunner( 3614): onAnimationStart
+12-23 20:45:02.094 E/LauncherAnimationRunner( 3614): onAnimationStart:   target=RemoteAnimationTargetCompat{taskId=84, mode=0, isTranslucent=false, clipRect=Rect(0, 0 - 0, 0), position=Point(0, 0), sourceContainerBounds=Rect(0, 0 - 1080, 2400), prefixOrderIndex=2, isNotInRecents=false, contentInsets=Rect(0, 0 - 0, 0), activityType=1, packageName=com.tumurelsedrakiney.pitchebak, startBounds=Rect(0, 0 - 1080, 2400), windowType=-1}
+12-23 20:45:02.094 E/LauncherAnimationRunner( 3614): onAnimationStart:   target=RemoteAnimationTargetCompat{taskId=1, mode=1, isTranslucent=false, clipRect=Rect(0, 0 - 0, 0), position=Point(0, 0), sourceContainerBounds=Rect(0, 0 - 1080, 2400), prefixOrderIndex=1, isNotInRecents=false, contentInsets=Rect(0, 0 - 0, 0), activityType=2, packageName=com.miui.home, startBounds=Rect(0, 0 - 1080, 2400), windowType=-1}
+12-23 20:45:02.094 E/Launcher.application( 3614): setClickAppWaitForCallback = false
+12-23 20:45:02.094 E/QuickstepAppTransitionManagerImpl( 3614): startIconLaunchAnimator:launcherClosing=true   iconLoc=Rect(330, 1429 - 503, 1602)
+12-23 20:45:02.094 E/QuickstepAppTransitionManagerImpl( 3614): startOpeningWindowAnimators:iconLoc=Rect(330, 1429 - 503, 1602)
+12-23 20:45:02.094 E/QuickstepAppTransitionManagerImpl( 3614): getWindowTargetBounds    bounds=Rect(0, 0 - 1080, 2400)
+12-23 20:45:02.094 E/ClipAnimationHelper( 3614): updateSourceStack  mSourceInsets=Rect(0, 0 - 0, 0), mSourceStackBounds=Rect(0, 0 - 1080, 2400)
+12-23 20:45:02.094 E/ClipAnimationHelper( 3614): updateHomeStack  mSourceInsets=Rect(0, 0 - 0, 0), mHomeStackBounds=Rect(0, 0 - 1080, 2400)
+12-23 20:45:02.094 E/ClipAnimationHelper( 3614): updateTargetRect  mSourceRect=RectF(0.0, 0.0, 1080.0, 2400.0)   mTargetRect=RectF(0.0, 0.0, 1080.0, 2400.0)   mSourceWindowClipInsets=RectF(0.0, 0.0, 0.0, 0.0)   mHomeStackBounds=Rect(0, 0 - 1080, 2400)   targetRect=Rect(0, 0 - 1080, 2400)
+12-23 20:45:02.094 E/FloatingIconViewClosing( 3614): recycle
+12-23 20:45:02.095 E/FloatingIconViewOpening( 3614): recycle
+12-23 20:45:02.095 E/Launcher.Boost( 3614): setDynamicVIPContextForGC: mIsTurboSchedDisabled :false   isBoost=true   mIsDynamicVIPContextForGCDisabled=false
+12-23 20:45:02.095 E/Launcher.Boost( 3614): setDynamicVIPContextForGC: success isBoostContext:true
+12-23 20:45:02.095 E/QuickstepAppTransitionManagerImpl( 3614): startLauncherContentAnimator:isAppOpening=true
+12-23 20:45:02.095 E/TurboSchedMonitor( 3614): invoke error.
+12-23 20:45:02.095 E/TurboSchedMonitor( 3614): java.lang.NoSuchMethodException: dalvik.system.VMRuntime.setDynamicVIPContextForGC [boolean]
+12-23 20:45:02.095 E/TurboSchedMonitor( 3614): 	at java.lang.Class.getMethod(Class.java:2950)
+12-23 20:45:02.095 E/TurboSchedMonitor( 3614): 	at java.lang.Class.getMethod(Class.java:2450)
+12-23 20:45:02.095 E/TurboSchedMonitor( 3614): 	at android.os.TurboSchedMonitorImpl.invoke_setDynamicVIPContextForGC(TurboSchedMonitorImpl.java:1199)
+12-23 20:45:02.095 E/TurboSchedMonitor( 3614): 	at android.os.TurboSchedMonitorImpl.-$$Nest$sminvoke_setDynamicVIPContextForGC(Unknown Source:0)
+12-23 20:45:02.095 E/TurboSchedMonitor( 3614): 	at android.os.TurboSchedMonitorImpl$TurboClientHandler.handleMessage(TurboSchedMonitorImpl.java:1418)
+12-23 20:45:02.095 E/TurboSchedMonitor( 3614): 	at android.os.Handler.dispatchMessage(Handler.java:106)
+12-23 20:45:02.095 E/TurboSchedMonitor( 3614): 	at android.os.Looper.loopOnce(Looper.java:224)
+12-23 20:45:02.095 E/TurboSchedMonitor( 3614): 	at android.os.Looper.loop(Looper.java:318)
+12-23 20:45:02.095 E/TurboSchedMonitor( 3614): 	at android.os.HandlerThread.run(HandlerThread.java:67)
+12-23 20:45:02.100 E/OpenGLRenderer( 3659): Unable to match the desired swap behavior.
+12-23 20:45:02.104 E/NativeTurboSchedManagerJni( 1966): open /dev/metis failed!
+12-23 20:45:02.105 E/NativeTurboSchedManagerJni( 1966): open /dev/metis failed!
+12-23 20:45:02.144 E/SDM     ( 1181): HWCSession::GetClientTargetProperty: GetClinetTargetProperty interface enter
+12-23 20:45:02.161 E/SDM     ( 1181): HWCSession::GetClientTargetProperty: GetClinetTargetProperty interface enter
+12-23 20:45:02.175 E/ActivityManagerWrapper( 3614): get all recent tasks force including 84
+12-23 20:45:02.177 E/SDM     ( 1181): HWCSession::GetClientTargetProperty: GetClinetTargetProperty interface enter
+12-23 20:45:02.178 E/ActivityManagerWrapper( 3614): getRecentTasks: size=4
+12-23 20:45:02.178 E/ActivityManagerWrapper( 3614): getRecentTasks: mainTaskId=84   userId=0   windowMode=1   baseIntent=Intent { act=android.intent.action.MAIN flag=270532608 cmp=ComponentInfo{com.tumurelsedrakiney.pitchebak/com.tumurelsedrakiney.pitchebak.MainActivity} }
+12-23 20:45:02.178 E/ActivityManagerWrapper( 3614): getRecentTasks: mainTaskId=81   userId=0   windowMode=1   baseIntent=Intent { act=android.intent.action.VIEW flag=302579713 cmp=ComponentInfo{com.google.android.packageinstaller/com.android.packageinstaller.DeleteStagedFileOnResult} }
+12-23 20:45:02.178 E/ActivityManagerWrapper( 3614): getRecentTasks: mainTaskId=79   userId=0   windowMode=1   baseIntent=Intent { act=android.intent.action.MAIN flag=270532608 cmp=ComponentInfo{com.google.android.apps.docs/com.google.android.apps.docs.app.NewMainProxyActivity} }
+12-23 20:45:02.178 E/ActivityManagerWrapper( 3614): getRecentTasks: mainTaskId=78   userId=0   windowMode=1   baseIntent=Intent { act=android.intent.action.MAIN flag=270532608 cmp=ComponentInfo{com.mi.android.globalFileexplorer/com.android.fileexplorer.FileExplorerTabActivity} }
+12-23 20:45:02.182 E/ActivityManagerWrapper( 3614): get all recent tasks force including 84
+12-23 20:45:02.183 E/ActivityManagerWrapper( 3614): getRecentTasks: size=4
+12-23 20:45:02.183 E/ActivityManagerWrapper( 3614): getRecentTasks: mainTaskId=84   userId=0   windowMode=1   baseIntent=Intent { act=android.intent.action.MAIN flag=270532608 cmp=ComponentInfo{com.tumurelsedrakiney.pitchebak/com.tumurelsedrakiney.pitchebak.MainActivity} }
+12-23 20:45:02.183 E/ActivityManagerWrapper( 3614): getRecentTasks: mainTaskId=81   userId=0   windowMode=1   baseIntent=Intent { act=android.intent.action.VIEW flag=302579713 cmp=ComponentInfo{com.google.android.packageinstaller/com.android.packageinstaller.DeleteStagedFileOnResult} }
+12-23 20:45:02.183 E/ActivityManagerWrapper( 3614): getRecentTasks: mainTaskId=79   userId=0   windowMode=1   baseIntent=Intent { act=android.intent.action.MAIN flag=270532608 cmp=ComponentInfo{com.google.android.apps.docs/com.google.android.apps.docs.app.NewMainProxyActivity} }
+12-23 20:45:02.183 E/ActivityManagerWrapper( 3614): getRecentTasks: mainTaskId=78   userId=0   windowMode=1   baseIntent=Intent { act=android.intent.action.MAIN flag=270532608 cmp=ComponentInfo{com.mi.android.globalFileexplorer/com.android.fileexplorer.FileExplorerTabActivity} }
+12-23 20:45:02.193 E/SDM     ( 1181): HWCSession::GetClientTargetProperty: GetClinetTargetProperty interface enter
+12-23 20:45:02.210 E/SDM     ( 1181): HWCSession::GetClientTargetProperty: GetClinetTargetProperty interface enter
+12-23 20:45:02.227 E/SDM     ( 1181): HWCSession::GetClientTargetProperty: GetClinetTargetProperty interface enter
+12-23 20:45:02.230 E/CamX    ( 1118): [ERROR][NCS    ] camxncsservice.cpp:1007 EnqueueJob() Can not enqueue jobs when thread is stopped
+12-23 20:45:02.243 E/SDM     ( 1181): HWCSession::GetClientTargetProperty: GetClinetTargetProperty interface enter
+12-23 20:45:02.260 E/SDM     ( 1181): HWCSession::GetClientTargetProperty: GetClinetTargetProperty interface enter
+12-23 20:45:02.276 E/SDM     ( 1181): HWCSession::GetClientTargetProperty: GetClinetTargetProperty interface enter
+12-23 20:45:02.293 E/SDM     ( 1181): HWCSession::GetClientTargetProperty: GetClinetTargetProperty interface enter
+12-23 20:45:02.310 E/SDM     ( 1181): HWCSession::GetClientTargetProperty: GetClinetTargetProperty interface enter
+12-23 20:45:02.326 E/SDM     ( 1181): HWCSession::GetClientTargetProperty: GetClinetTargetProperty interface enter
+12-23 20:45:02.343 E/SDM     ( 1181): HWCSession::GetClientTargetProperty: GetClinetTargetProperty interface enter
+12-23 20:45:02.359 E/SDM     ( 1181): HWCSession::GetClientTargetProperty: GetClinetTargetProperty interface enter
+12-23 20:45:02.376 E/SDM     ( 1181): HWCSession::GetClientTargetProperty: GetClinetTargetProperty interface enter
+12-23 20:45:02.393 E/SDM     ( 1181): HWCSession::GetClientTargetProperty: GetClinetTargetProperty interface enter
+12-23 20:45:02.409 E/SDM     ( 1181): HWCSession::GetClientTargetProperty: GetClinetTargetProperty interface enter
+12-23 20:45:02.426 E/SDM     ( 1181): HWCSession::GetClientTargetProperty: GetClinetTargetProperty interface enter
+12-23 20:45:02.430 E/CamX    ( 1118): [ERROR][NCS    ] camxncsservice.cpp:1007 EnqueueJob() Can not enqueue jobs when thread is stopped
+12-23 20:45:02.442 E/SDM     ( 1181): HWCSession::GetClientTargetProperty: GetClinetTargetProperty interface enter
+12-23 20:45:02.459 E/SDM     ( 1181): HWCSession::GetClientTargetProperty: GetClinetTargetProperty interface enter
+12-23 20:45:02.479 E/SDM     ( 1181): HWCSession::GetClientTargetProperty: GetClinetTargetProperty interface enter
+12-23 20:45:02.494 E/SDM     ( 1181): HWCSession::GetClientTargetProperty: GetClinetTargetProperty interface enter
+12-23 20:45:02.511 E/SDM     ( 1181): HWCSession::GetClientTargetProperty: GetClinetTargetProperty interface enter
+12-23 20:45:02.529 E/SDM     ( 1181): HWCSession::GetClientTargetProperty: GetClinetTargetProperty interface enter
+12-23 20:45:02.544 E/SDM     ( 1181): HWCSession::GetClientTargetProperty: GetClinetTargetProperty interface enter
+12-23 20:45:02.561 E/SDM     ( 1181): HWCSession::GetClientTargetProperty: GetClinetTargetProperty interface enter
+12-23 20:45:02.577 E/SDM     ( 1181): HWCSession::GetClientTargetProperty: GetClinetTargetProperty interface enter
+12-23 20:45:02.594 E/SDM     ( 1181): HWCSession::GetClientTargetProperty: GetClinetTargetProperty interface enter
+12-23 20:45:02.611 E/SDM     ( 1181): HWCSession::GetClientTargetProperty: GetClinetTargetProperty interface enter
+12-23 20:45:02.626 E/SDM     ( 1181): HWCSession::GetClientTargetProperty: GetClinetTargetProperty interface enter
+12-23 20:45:02.631 E/CamX    ( 1118): [ERROR][NCS    ] camxncsservice.cpp:1007 EnqueueJob() Can not enqueue jobs when thread is stopped
+12-23 20:45:02.643 E/SDM     ( 1181): HWCSession::GetClientTargetProperty: GetClinetTargetProperty interface enter
+12-23 20:45:02.660 E/SDM     ( 1181): HWCSession::GetClientTargetProperty: GetClinetTargetProperty interface enter
+12-23 20:45:02.677 E/SDM     ( 1181): HWCSession::GetClientTargetProperty: GetClinetTargetProperty interface enter
+12-23 20:45:02.693 E/SDM     ( 1181): HWCSession::GetClientTargetProperty: GetClinetTargetProperty interface enter
+12-23 20:45:02.709 E/SDM     ( 1181): HWCSession::GetClientTargetProperty: GetClinetTargetProperty interface enter
+12-23 20:45:02.726 E/SDM     ( 1181): HWCSession::GetClientTargetProperty: GetClinetTargetProperty interface enter
+12-23 20:45:02.742 E/SDM     ( 1181): HWCSession::GetClientTargetProperty: GetClinetTargetProperty interface enter
+12-23 20:45:02.758 E/Launcher.Boost( 3614): setDynamicVIPContextForGC: mIsTurboSchedDisabled :false   isBoost=false   mIsDynamicVIPContextForGCDisabled=false
+12-23 20:45:02.758 E/Launcher.Boost( 3614): setDynamicVIPContextForGC: success isBoostContext:false
+12-23 20:45:02.759 E/ConnectAnimFinishCallbackManager( 3614): call executeFinishCallback, toHome = true
+12-23 20:45:02.759 E/ConnectAnimFinishCallbackManager( 3614): java.lang.Exception
+12-23 20:45:02.759 E/ConnectAnimFinishCallbackManager( 3614): 	at com.android.systemui.shared.recents.utilities.RemoteAnimationFinishCallbackManager.executeFinishCallback(RemoteAnimationFinishCallbackManager.java:160)
+12-23 20:45:02.759 E/ConnectAnimFinishCallbackManager( 3614): 	at com.android.systemui.shared.recents.utilities.RemoteAnimationFinishCallbackManager.executeFinishCallback(RemoteAnimationFinishCallbackManager.java:143)
+12-23 20:45:02.759 E/ConnectAnimFinishCallbackManager( 3614): 	at com.android.systemui.shared.recents.system.RemoteAnimationAdapterCompat$2.lambda$startAnimation$0$RemoteAnimationAdapterCompat$2(RemoteAnimationAdapterCompat.java:332)
+12-23 20:45:02.759 E/ConnectAnimFinishCallbackManager( 3614): 	at com.android.systemui.shared.recents.system.-$$Lambda$RemoteAnimationAdapterCompat$2$hXVIpChbxGyaN7V9Ysu1nRdFtG4.run(Unknown Source:4)
+12-23 20:45:02.759 E/ConnectAnimFinishCallbackManager( 3614): 	at com.miui.home.recents.LauncherAnimationRunner$AnimationResult.finish(LauncherAnimationRunner.java:153)
+12-23 20:45:02.759 E/ConnectAnimFinishCallbackManager( 3614): 	at com.miui.home.recents.QuickstepAppTransitionManagerImpl.lambda$AlEeBxjHFsy1SRWRXeztzuuTMeo(Unknown Source:0)
+12-23 20:45:02.759 E/ConnectAnimFinishCallbackManager( 3614): 	at com.miui.home.recents.-$$Lambda$QuickstepAppTransitionManagerImpl$AlEeBxjHFsy1SRWRXeztzuuTMeo.run(Unknown Source:2)
+12-23 20:45:02.759 E/ConnectAnimFinishCallbackManager( 3614): 	at com.miui.home.recents.util.MultiAnimationEndDetector.performEndRunnable(MultiAnimationEndDetector.java:80)
+12-23 20:45:02.759 E/ConnectAnimFinishCallbackManager( 3614): 	at com.miui.home.recents.util.MultiAnimationEndDetector.access$100(MultiAnimationEndDetector.java:16)
+12-23 20:45:02.759 E/ConnectAnimFinishCallbackManager( 3614): 	at com.miui.home.recents.util.MultiAnimationEndDetector$1.lambda$onAnimationEnd$0$MultiAnimationEndDetector$1(MultiAnimationEndDetector.java:97)
+12-23 20:45:02.759 E/ConnectAnimFinishCallbackManager( 3614): 	at com.miui.home.recents.util.-$$Lambda$MultiAnimationEndDetector$1$QBQqsB4-44fI5KNxlKEq5yGmra8.run(Unknown Source:4)
+12-23 20:45:02.759 E/ConnectAnimFinishCallbackManager( 3614): 	at com.miui.home.library.utils.LooperExecutor.execute(LooperExecutor.java:43)
+12-23 20:45:02.759 E/ConnectAnimFinishCallbackManager( 3614): 	at com.miui.home.recents.util.MultiAnimationEndDetector$1.onAnimationEnd(MultiAnimationEndDetector.java:95)
+12-23 20:45:02.759 E/ConnectAnimFinishCallbackManager( 3614): 	at com.miui.home.recents.util.RectFSpringAnim.lambda$init$1$RectFSpringAnim(RectFSpringAnim.java:205)
+12-23 20:45:02.759 E/ConnectAnimFinishCallbackManager( 3614): 	at com.miui.home.recents.util.-$$Lambda$RectFSpringAnim$62XYQO9gz6raJ-D8Mw6-7b5BC_I.onAnimationEnd(Unknown Source:2)
+12-23 20:45:02.759 E/ConnectAnimFinishCallbackManager( 3614): 	at com.miui.home.recents.anim.MultiSpringDynamicAnimation.endAnimationInternal(MultiSpringDynamicAnimation.java:177)
+12-23 20:45:02.759 E/ConnectAnimFinishCallbackManager( 3614): 	at com.miui.home.recents.anim.MultiSpringDynamicAnimation.doAnimationFrame(MultiSpringDynamicAnimation.java:166)
+12-23 20:45:02.759 E/ConnectAnimFinishCallbackManager( 3614): 	at com.miui.home.recents.anim.AnimationHandler.doAnimationFrame(AnimationHandler.java:117)
+12-23 20:45:02.759 E/ConnectAnimFinishCallbackManager( 3614): 	at com.miui.home.recents.anim.AnimationHandler$AnimationCallbackDispatcher.dispatchAnimationFrame(AnimationHandler.java:32)
+12-23 20:45:02.759 E/ConnectAnimFinishCallbackManager( 3614): 	at com.miui.home.recents.anim.AnimationHandler$FrameCallbackProvider16$1.doFrame(AnimationHandler.java:165)
+12-23 20:45:02.759 E/ConnectAnimFinishCallbackManager( 3614): 	at android.view.Choreographer$CallbackRecord.run(Choreographer.java:1592)
+12-23 20:45:02.759 E/ConnectAnimFinishCallbackManager( 3614): 	at android.view.Choreographer$CallbackRecord.run(Choreographer.java:1603)
+12-23 20:45:02.759 E/ConnectAnimFinishCallbackManager( 3614): 	at android.view.Choreographer.doCallbacks(Choreographer.java:1125)
+12-23 20:45:02.759 E/ConnectAnimFinishCallbackManager( 3614): 	at android.view.Choreographer.doFrame(Choreographer.java:1026)
+12-23 20:45:02.759 E/ConnectAnimFinishCallbackManager( 3614): 	at android.view.Choreographer$FrameDisplayEventReceiver.run(Choreographer.java:1567)
+12-23 20:45:02.759 E/ConnectAnimFinishCallbackManager( 3614): 	at android.os.Handler.handleCallback(Handler.java:958)
+12-23 20:45:02.759 E/ConnectAnimFinishCallbackManager( 3614): 	at android.os.Handler.dispatchMessage(Handler.java:99)
+12-23 20:45:02.759 E/ConnectAnimFinishCallbackManager( 3614): 	at android.os.Looper.loopOnce(Looper.java:224)
+12-23 20:45:02.759 E/ConnectAnimFinishCallbackManager( 3614): 	at android.os.Looper.loop(Looper.java:318)
+12-23 20:45:02.759 E/ConnectAnimFinishCallbackManager( 3614): 	at android.app.ActivityThread.main(ActivityThread.java:8790)
+12-23 20:45:02.759 E/ConnectAnimFinishCallbackManager( 3614): 	at java.lang.reflect.Method.invoke(Native Method)
+12-23 20:45:02.759 E/ConnectAnimFinishCallbackManager( 3614): 	at com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:561)
+12-23 20:45:02.759 E/ConnectAnimFinishCallbackManager( 3614): 	at com.android.internal.os.ZygoteInit.main(ZygoteInit.java:1013)
+12-23 20:45:02.760 E/SDM     ( 1181): HWCSession::GetClientTargetProperty: GetClinetTargetProperty interface enter
+12-23 20:45:02.762 E/LauncherAnimationRunner( 3614): finish: mFinishRunnable.run
+12-23 20:45:02.763 E/FloatingIconViewOpening( 3614): recycle
+12-23 20:45:02.765 E/TurboSchedMonitor( 3614): invoke error.
+12-23 20:45:02.765 E/TurboSchedMonitor( 3614): java.lang.NoSuchMethodException: dalvik.system.VMRuntime.setDynamicVIPContextForGC [boolean]
+12-23 20:45:02.765 E/TurboSchedMonitor( 3614): 	at java.lang.Class.getMethod(Class.java:2950)
+12-23 20:45:02.765 E/TurboSchedMonitor( 3614): 	at java.lang.Class.getMethod(Class.java:2450)
+12-23 20:45:02.765 E/TurboSchedMonitor( 3614): 	at android.os.TurboSchedMonitorImpl.invoke_setDynamicVIPContextForGC(TurboSchedMonitorImpl.java:1199)
+12-23 20:45:02.765 E/TurboSchedMonitor( 3614): 	at android.os.TurboSchedMonitorImpl.-$$Nest$sminvoke_setDynamicVIPContextForGC(Unknown Source:0)
+12-23 20:45:02.765 E/TurboSchedMonitor( 3614): 	at android.os.TurboSchedMonitorImpl$TurboClientHandler.handleMessage(TurboSchedMonitorImpl.java:1418)
+12-23 20:45:02.765 E/TurboSchedMonitor( 3614): 	at android.os.Handler.dispatchMessage(Handler.java:106)
+12-23 20:45:02.765 E/TurboSchedMonitor( 3614): 	at android.os.Looper.loopOnce(Looper.java:224)
+12-23 20:45:02.765 E/TurboSchedMonitor( 3614): 	at android.os.Looper.loop(Looper.java:318)
+12-23 20:45:02.765 E/TurboSchedMonitor( 3614): 	at android.os.HandlerThread.run(HandlerThread.java:67)
+12-23 20:45:02.789 E/Launcher.application( 3614): setClickAppWaitForCallback = false
+12-23 20:45:02.830 E/CamX    ( 1118): [ERROR][NCS    ] camxncsservice.cpp:1007 EnqueueJob() Can not enqueue jobs when thread is stopped
+12-23 20:45:02.855 E/CamX    ( 1118): [ERROR][NCS    ] camxncsintfqsee.cpp:2555 FillSensorData() Invalid sensor index -1
+12-23 20:45:03.031 E/CamX    ( 1118): [ERROR][NCS    ] camxncsservice.cpp:1007 EnqueueJob() Can not enqueue jobs when thread is stopped
+12-23 20:45:03.205 E/TimeStats( 1412): [3698]-[com.tumurelsedrakiney.pitchebak/com.tumurelsedrakiney.pitchebak.MainActivity#3698]-timeRecords is at its maximum size[64]. Ignore this when unittesting.
+12-23 20:45:03.231 E/CamX    ( 1118): [ERROR][NCS    ] camxncsservice.cpp:1007 EnqueueJob() Can not enqueue jobs when thread is stopped
+12-23 20:45:03.431 E/CamX    ( 1118): [ERROR][NCS    ] camxncsservice.cpp:1007 EnqueueJob() Can not enqueue jobs when thread is stopped
+12-23 20:45:03.631 E/CamX    ( 1118): [ERROR][NCS    ] camxncsservice.cpp:1007 EnqueueJob() Can not enqueue jobs when thread is stopped
+12-23 20:45:03.831 E/CamX    ( 1118): [ERROR][NCS    ] camxncsservice.cpp:1007 EnqueueJob() Can not enqueue jobs when thread is stopped
+12-23 20:45:04.031 E/CamX    ( 1118): [ERROR][NCS    ] camxncsservice.cpp:1007 EnqueueJob() Can not enqueue jobs when thread is stopped
+12-23 20:45:04.156 E/CamX    ( 1118): [ERROR][NCS    ] camxncsintfqsee.cpp:2555 FillSensorData() Invalid sensor index -1
+12-23 20:45:04.231 E/CamX    ( 1118): [ERROR][NCS    ] camxncsservice.cpp:1007 EnqueueJob() Can not enqueue jobs when thread is stopped
+12-23 20:45:04.431 E/CamX    ( 1118): [ERROR][NCS    ] camxncsservice.cpp:1007 EnqueueJob() Can not enqueue jobs when thread is stopped
+12-23 20:45:04.437 E/SDM     ( 1181): HWCSession::GetClientTargetProperty: GetClinetTargetProperty interface enter
+12-23 20:45:04.555 E/CamX    ( 1118): [ERROR][NCS    ] camxncsintfqsee.cpp:2555 FillSensorData() Invalid sensor index -1
+12-23 20:45:04.631 E/CamX    ( 1118): [ERROR][NCS    ] camxncsservice.cpp:1007 EnqueueJob() Can not enqueue jobs when thread is stopped
+12-23 20:45:04.755 E/CamX    ( 1118): [ERROR][NCS    ] camxncsintfqsee.cpp:2555 FillSensorData() Invalid sensor index -1
+12-23 20:45:04.831 E/CamX    ( 1118): [ERROR][NCS    ] camxncsservice.cpp:1007 EnqueueJob() Can not enqueue jobs when thread is stopped
+12-23 20:45:05.031 E/CamX    ( 1118): [ERROR][NCS    ] camxncsservice.cpp:1007 EnqueueJob() Can not enqueue jobs when thread is stopped
+12-23 20:45:05.231 E/CamX    ( 1118): [ERROR][NCS    ] camxncsservice.cpp:1007 EnqueueJob() Can not enqueue jobs when thread is stopped
+12-23 20:45:05.431 E/CamX    ( 1118): [ERROR][NCS    ] camxncsservice.cpp:1007 EnqueueJob() Can not enqueue jobs when thread is stopped
+12-23 20:45:05.631 E/CamX    ( 1118): [ERROR][NCS    ] camxncsservice.cpp:1007 EnqueueJob() Can not enqueue jobs when thread is stopped
+12-23 20:45:05.831 E/CamX    ( 1118): [ERROR][NCS    ] camxncsservice.cpp:1007 EnqueueJob() Can not enqueue jobs when thread is stopped
+12-23 20:45:06.031 E/CamX    ( 1118): [ERROR][NCS    ] camxncsservice.cpp:1007 EnqueueJob() Can not enqueue jobs when thread is stopped
+12-23 20:45:06.231 E/CamX    ( 1118): [ERROR][NCS    ] camxncsservice.cpp:1007 EnqueueJob() Can not enqueue jobs when thread is stopped
+12-23 20:45:06.431 E/CamX    ( 1118): [ERROR][NCS    ] camxncsservice.cpp:1007 EnqueueJob() Can not enqueue jobs when thread is stopped
+12-23 20:45:06.631 E/CamX    ( 1118): [ERROR][NCS    ] camxncsservice.cpp:1007 EnqueueJob() Can not enqueue jobs when thread is stopped
+12-23 20:45:06.755 E/CamX    ( 1118): [ERROR][NCS    ] camxncsintfqsee.cpp:2555 FillSensorData() Invalid sensor index -1
+12-23 20:45:06.831 E/CamX    ( 1118): [ERROR][NCS    ] camxncsservice.cpp:1007 EnqueueJob() Can not enqueue jobs when thread is stopped
+12-23 20:45:07.031 E/CamX    ( 1118): [ERROR][NCS    ] camxncsservice.cpp:1007 EnqueueJob() Can not enqueue jobs when thread is stopped
+12-23 20:45:07.155 E/CamX    ( 1118): [ERROR][NCS    ] camxncsintfqsee.cpp:2555 FillSensorData() Invalid sensor index -1
+12-23 20:45:07.231 E/CamX    ( 1118): [ERROR][NCS    ] camxncsservice.cpp:1007 EnqueueJob() Can not enqueue jobs when thread is stopped
+12-23 20:45:07.355 E/CamX    ( 1118): [ERROR][NCS    ] camxncsintfqsee.cpp:2555 FillSensorData() Invalid sensor index -1
+12-23 20:45:07.431 E/CamX    ( 1118): [ERROR][NCS    ] camxncsservice.cpp:1007 EnqueueJob() Can not enqueue jobs when thread is stopped
+12-23 20:45:07.508 E/CamX    ( 1118): [ERROR][NCS    ] camxncsintfqsee.cpp:2555 FillSensorData() Invalid sensor index -1
+12-23 20:45:07.508 E/CamX    ( 1118): [ERROR][NCS    ] camxncsintfqsee.cpp:2340 SensorCallback() Invalid sensor index -1
+12-23 20:45:07.703 E/CamX    ( 1118): [ERROR][NCS    ] camxncsservice.cpp:1007 EnqueueJob() Can not enqueue jobs when thread is stopped
+12-23 20:45:07.902 E/CamX    ( 1118): [ERROR][NCS    ] camxncsservice.cpp:1007 EnqueueJob() Can not enqueue jobs when thread is stopped
+12-23 20:45:08.102 E/CamX    ( 1118): [ERROR][NCS    ] camxncsservice.cpp:1007 EnqueueJob() Can not enqueue jobs when thread is stopped
+12-23 20:45:08.302 E/CamX    ( 1118): [ERROR][NCS    ] camxncsservice.cpp:1007 EnqueueJob() Can not enqueue jobs when thread is stopped

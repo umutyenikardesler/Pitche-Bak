@@ -225,7 +225,13 @@ export default function AuthScreen() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-gray-100" edges={['top']}>
+    // ÖNEMLİ: NativeWind herhangi bir sebeple çalışmasa bile ekranın "0 yükseklik" kalmaması için
+    // kritik layout değerlerini inline style ile garanti ediyoruz. (Beyaz ekranı keser)
+    <SafeAreaView
+      className="flex-1 bg-gray-100"
+      style={{ flex: 1, backgroundColor: "#f3f4f6" }}
+      edges={["top"]}
+    >
       <KeyboardAvoidingView 
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}

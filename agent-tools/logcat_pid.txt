@@ -1,0 +1,249 @@
+﻿--------- beginning of main
+12-23 20:45:36.851 E/Zygote  ( 3837): process_name_ptr:3837 com.tumurelsedrakiney.pitchebak
+12-23 20:45:36.857 I/kiney.pitchebak( 3837): Using CollectorTypeCC GC.
+12-23 20:45:36.859 E/kiney.pitchebak( 3837): Not starting debugger since process cannot load the jdwp agent.
+12-23 20:45:36.862 D/nativeloader( 3837): Load libframework-connectivity-tiramisu-jni.so using APEX ns com_android_tethering for caller /apex/com.android.tethering/javalib/framework-connectivity-t.jar: ok
+12-23 20:45:36.863 I/MessageMonitor( 3837): Load libmiui_runtime
+12-23 20:45:36.879 I/ActivityThread( 3837): Relaunch all activities: onCoreSettingsChange
+12-23 20:45:36.879 D/CompatibilityChangeReporter( 3837): Compat change id reported: 171979766; UID 10319; state: ENABLED
+12-23 20:45:36.879 D/CompatibilityChangeReporter( 3837): Compat change id reported: 242716250; UID 10319; state: ENABLED
+12-23 20:45:36.882 D/AppScoutStateMachine( 3837): 3837-ScoutStateMachinecreated
+12-23 20:45:36.886 D/nativeloader( 3837): Configuring clns-4 for other apk /system/framework/org.apache.http.legacy.jar. target_sdk_version=36, uses_libraries=ALL, library_path=/data/app/~~17-8X89tVlCsNo7l_H47rA==/com.tumurelsedrakiney.pitchebak-sLmnCXqqbci1MOuURFIrcA==/lib/arm64:/data/app/~~17-8X89tVlCsNo7l_H47rA==/com.tumurelsedrakiney.pitchebak-sLmnCXqqbci1MOuURFIrcA==/base.apk!/lib/arm64-v8a, permitted_path=/data:/mnt/expand:/data/user/0/com.tumurelsedrakiney.pitchebak
+12-23 20:45:36.886 D/nativeloader( 3837): Extending system_exposed_libraries: libbinauralrenderer_wrapper.qti.so:libhoaeffects.qti.so:libQOC.qti.so:libmisys_jni.xiaomi.so:libxiaomi_modemdumpsdx55_jni.modem.so:libxiaomi_modemdump_jni.modem.so:libupdateprof.qti.so:libthermalclient.qti.so:libQOC.qti.so:libdiag_system.qti.so:libqape.qti.so:libqesdk_ndk_platform.qti.so:liblistenjni.qti.so
+12-23 20:45:36.899 D/nativeloader( 3837): Configuring clns-5 for other apk /data/app/~~17-8X89tVlCsNo7l_H47rA==/com.tumurelsedrakiney.pitchebak-sLmnCXqqbci1MOuURFIrcA==/base.apk. target_sdk_version=36, uses_libraries=, library_path=/data/app/~~17-8X89tVlCsNo7l_H47rA==/com.tumurelsedrakiney.pitchebak-sLmnCXqqbci1MOuURFIrcA==/lib/arm64:/data/app/~~17-8X89tVlCsNo7l_H47rA==/com.tumurelsedrakiney.pitchebak-sLmnCXqqbci1MOuURFIrcA==/base.apk!/lib/arm64-v8a, permitted_path=/data:/mnt/expand:/data/user/0/com.tumurelsedrakiney.pitchebak
+12-23 20:45:36.902 D/nativeloader( 3837): Load libframework-connectivity-jni.so using APEX ns com_android_tethering for caller /apex/com.android.tethering/javalib/framework-connectivity.jar: ok
+12-23 20:45:36.902 I/Perf    ( 3837): Connecting to perf service.
+12-23 20:45:36.904 V/GraphicsEnvironment( 3837): Currently set values for:
+12-23 20:45:36.904 V/GraphicsEnvironment( 3837):   angle_gl_driver_selection_pkgs=[]
+12-23 20:45:36.904 V/GraphicsEnvironment( 3837):   angle_gl_driver_selection_values=[]
+12-23 20:45:36.904 V/GraphicsEnvironment( 3837): ANGLE GameManagerService for com.tumurelsedrakiney.pitchebak: false
+12-23 20:45:36.904 V/GraphicsEnvironment( 3837): com.tumurelsedrakiney.pitchebak is not listed in per-application setting
+12-23 20:45:36.904 V/GraphicsEnvironment( 3837): App is not on the allowlist for updatable production driver.
+12-23 20:45:36.906 I/ForceDarkHelperStubImpl( 3837): initialize for com.tumurelsedrakiney.pitchebak , ForceDarkOrigin
+12-23 20:45:36.906 D/nativeloader( 3837): Load libforcedarkimpl.so using system ns (caller=/system_ext/framework/miui-framework.jar): ok
+12-23 20:45:36.906 D/OpenGLRenderer( 3837): JNI_OnLoad success
+12-23 20:45:36.907 I/MiuiForceDarkConfig( 3837): setConfig density:2.750000, mainRule:0, secondaryRule:0, tertiaryRule:0
+12-23 20:45:36.913 D/WM-WrkMgrInitializer( 3837): Initializing WorkManager with default configuration.
+12-23 20:45:36.914 W/ziparchive( 3837): Unable to open '/system/framework/QXPerformance.dm': No such file or directory
+12-23 20:45:36.914 W/ziparchive( 3837): Unable to open '/system/framework/QXPerformance.dm': No such file or directory
+12-23 20:45:36.916 W/SoLoader( 3837): Initializing SoLoader: 0
+12-23 20:45:36.916 W/SoLoader( 3837): Recording new base apk path: /data/app/~~17-8X89tVlCsNo7l_H47rA==/com.tumurelsedrakiney.pitchebak-sLmnCXqqbci1MOuURFIrcA==/base.apk
+12-23 20:45:36.916 W/SoLoader( 3837): Previously recorded 0 base apk paths.
+12-23 20:45:36.917 I/SoLoader( 3837): Preparing SO source: DirectorySoSource[root = /vendor/lib64 flags = 2]
+12-23 20:45:36.917 I/SoLoader( 3837): Preparing SO source: DirectorySoSource[root = /system/lib64 flags = 2]
+12-23 20:45:36.917 I/SoLoader( 3837): Preparing SO source: DirectApkSoSource[root = [/data/app/~~17-8X89tVlCsNo7l_H47rA==/com.tumurelsedrakiney.pitchebak-sLmnCXqqbci1MOuURFIrcA==/base.apk!/lib/arm64-v8a]]
+12-23 20:45:36.918 I/SoLoader( 3837): Preparing SO source: ApplicationSoSource[DirectorySoSource[root = /data/app/~~17-8X89tVlCsNo7l_H47rA==/com.tumurelsedrakiney.pitchebak-sLmnCXqqbci1MOuURFIrcA==/lib/arm64 flags = 0]]
+12-23 20:45:36.918 I/SoLoader( 3837): init finish: 4 SO sources prepared
+12-23 20:45:36.918 W/SoLoader( 3837): SoLoader initialized: 8
+12-23 20:45:36.921 D/nativeloader( 3837): Load /data/app/~~17-8X89tVlCsNo7l_H47rA==/com.tumurelsedrakiney.pitchebak-sLmnCXqqbci1MOuURFIrcA==/base.apk!/lib/arm64-v8a/libc++_shared.so using ns clns-5 from class loader (caller=/data/app/~~17-8X89tVlCsNo7l_H47rA==/com.tumurelsedrakiney.pitchebak-sLmnCXqqbci1MOuURFIrcA==/base.apk!classes3.dex): ok
+12-23 20:45:36.923 D/nativeloader( 3837): Load /data/app/~~17-8X89tVlCsNo7l_H47rA==/com.tumurelsedrakiney.pitchebak-sLmnCXqqbci1MOuURFIrcA==/base.apk!/lib/arm64-v8a/libjsi.so using ns clns-5 from class loader (caller=/data/app/~~17-8X89tVlCsNo7l_H47rA==/com.tumurelsedrakiney.pitchebak-sLmnCXqqbci1MOuURFIrcA==/base.apk!classes3.dex): ok
+12-23 20:45:36.925 D/nativeloader( 3837): Load /data/app/~~17-8X89tVlCsNo7l_H47rA==/com.tumurelsedrakiney.pitchebak-sLmnCXqqbci1MOuURFIrcA==/base.apk!/lib/arm64-v8a/libfbjni.so using ns clns-5 from class loader (caller=/data/app/~~17-8X89tVlCsNo7l_H47rA==/com.tumurelsedrakiney.pitchebak-sLmnCXqqbci1MOuURFIrcA==/base.apk!classes3.dex): ok
+12-23 20:45:36.926 D/nativeloader( 3837): Load /data/app/~~17-8X89tVlCsNo7l_H47rA==/com.tumurelsedrakiney.pitchebak-sLmnCXqqbci1MOuURFIrcA==/base.apk!/lib/arm64-v8a/libreactnative.so using ns clns-5 from class loader (caller=/data/app/~~17-8X89tVlCsNo7l_H47rA==/com.tumurelsedrakiney.pitchebak-sLmnCXqqbci1MOuURFIrcA==/base.apk!classes3.dex): ok
+12-23 20:45:36.926 D/CompatibilityChangeReporter( 3837): Compat change id reported: 160794467; UID 10319; state: ENABLED
+12-23 20:45:36.926 D/jni_lib_merge( 3837): Entering merged library JNI_OnLoad.
+12-23 20:45:36.926 D/jni_lib_merge( 3837): Preparing 12 pre-merged libs (including stub)
+12-23 20:45:36.927 D/jni_lib_merge( 3837): Preparing to register libfabricjni_so.  onload_func: 0x6fddcededc
+12-23 20:45:36.927 D/jni_lib_merge( 3837): Preparing to register libreact_devsupportjni_so.  onload_func: 0x6fdddbef40
+12-23 20:45:36.927 D/jni_lib_merge( 3837): Preparing to register libreact_featureflagsjni_so.  onload_func: 0x6fdddd19f8
+12-23 20:45:36.927 D/jni_lib_merge( 3837): Preparing to register libreact_newarchdefaults_so.  onload_func: 0x6fdddf6e30
+12-23 20:45:36.927 D/jni_lib_merge( 3837): Preparing to register libreactnativeblob_so.  onload_func: 0x6fdde895b0
+12-23 20:45:36.927 D/jni_lib_merge( 3837): Preparing to register libreactnativejni_so.  onload_func: 0x6fddea3b24
+12-23 20:45:36.927 D/jni_lib_merge( 3837): Preparing to register libreactnativejni_common_so.  onload_func: 0x6fddeaa458
+12-23 20:45:36.927 D/jni_lib_merge( 3837): Preparing to register librninstance_so.  onload_func: 0x6fddec6070
+12-23 20:45:36.927 D/jni_lib_merge( 3837): Preparing to register libturbomodulejsijni_so.  onload_func: 0x6fddf5e1a4
+12-23 20:45:36.927 D/jni_lib_merge( 3837): Preparing to register libuimanagerjni_so.  onload_func: 0x6fddf657e0
+12-23 20:45:36.927 D/jni_lib_merge( 3837): Preparing to register libyoga_so.  onload_func: 0x6fddf6cda4
+12-23 20:45:36.927 D/jni_lib_merge( 3837): About to register 11 actual methods.
+12-23 20:45:36.929 D/nativeloader( 3837): Load /data/app/~~17-8X89tVlCsNo7l_H47rA==/com.tumurelsedrakiney.pitchebak-sLmnCXqqbci1MOuURFIrcA==/base.apk!/lib/arm64-v8a/libreact_codegen_rnscreens.so using ns clns-5 from class loader (caller=/data/app/~~17-8X89tVlCsNo7l_H47rA==/com.tumurelsedrakiney.pitchebak-sLmnCXqqbci1MOuURFIrcA==/base.apk!classes3.dex): ok
+12-23 20:45:36.930 D/jni_lib_merge( 3837): Entering merged library JNI_OnLoad.
+12-23 20:45:36.930 D/jni_lib_merge( 3837): Preparing 12 pre-merged libs (including stub)
+12-23 20:45:36.930 D/jni_lib_merge( 3837): Preparing to register libfabricjni_so.  onload_func: 0x6fddcededc
+12-23 20:45:36.930 D/jni_lib_merge( 3837): Preparing to register libreact_devsupportjni_so.  onload_func: 0x6fdddbef40
+12-23 20:45:36.930 D/jni_lib_merge( 3837): Preparing to register libreact_featureflagsjni_so.  onload_func: 0x6fdddd19f8
+12-23 20:45:36.930 D/jni_lib_merge( 3837): Preparing to register libreact_newarchdefaults_so.  onload_func: 0x6fdddf6e30
+12-23 20:45:36.930 D/jni_lib_merge( 3837): Preparing to register libreactnativeblob_so.  onload_func: 0x6fdde895b0
+12-23 20:45:36.930 D/jni_lib_merge( 3837): Preparing to register libreactnativejni_so.  onload_func: 0x6fddea3b24
+12-23 20:45:36.930 D/jni_lib_merge( 3837): Preparing to register libreactnativejni_common_so.  onload_func: 0x6fddeaa458
+12-23 20:45:36.930 D/jni_lib_merge( 3837): Preparing to register librninstance_so.  onload_func: 0x6fddec6070
+12-23 20:45:36.930 D/jni_lib_merge( 3837): Preparing to register libturbomodulejsijni_so.  onload_func: 0x6fddf5e1a4
+12-23 20:45:36.930 D/jni_lib_merge( 3837): Preparing to register libuimanagerjni_so.  onload_func: 0x6fddf657e0
+12-23 20:45:36.930 D/jni_lib_merge( 3837): Preparing to register libyoga_so.  onload_func: 0x6fddf6cda4
+12-23 20:45:36.930 D/jni_lib_merge( 3837): About to register 11 actual methods.
+12-23 20:45:36.931 D/nativeloader( 3837): Load /data/app/~~17-8X89tVlCsNo7l_H47rA==/com.tumurelsedrakiney.pitchebak-sLmnCXqqbci1MOuURFIrcA==/base.apk!/lib/arm64-v8a/libreact_codegen_safeareacontext.so using ns clns-5 from class loader (caller=/data/app/~~17-8X89tVlCsNo7l_H47rA==/com.tumurelsedrakiney.pitchebak-sLmnCXqqbci1MOuURFIrcA==/base.apk!classes3.dex): ok
+12-23 20:45:36.932 D/nativeloader( 3837): Load /data/app/~~17-8X89tVlCsNo7l_H47rA==/com.tumurelsedrakiney.pitchebak-sLmnCXqqbci1MOuURFIrcA==/base.apk!/lib/arm64-v8a/libreact_codegen_rnpicker.so using ns clns-5 from class loader (caller=/data/app/~~17-8X89tVlCsNo7l_H47rA==/com.tumurelsedrakiney.pitchebak-sLmnCXqqbci1MOuURFIrcA==/base.apk!classes3.dex): ok
+12-23 20:45:36.932 D/jni_lib_merge( 3837): Entering merged library JNI_OnLoad.
+12-23 20:45:36.932 D/jni_lib_merge( 3837): Preparing 12 pre-merged libs (including stub)
+12-23 20:45:36.932 D/jni_lib_merge( 3837): Preparing to register libfabricjni_so.  onload_func: 0x6fddcededc
+12-23 20:45:36.932 D/jni_lib_merge( 3837): Preparing to register libreact_devsupportjni_so.  onload_func: 0x6fdddbef40
+12-23 20:45:36.932 D/jni_lib_merge( 3837): Preparing to register libreact_featureflagsjni_so.  onload_func: 0x6fdddd19f8
+12-23 20:45:36.932 D/jni_lib_merge( 3837): Preparing to register libreact_newarchdefaults_so.  onload_func: 0x6fdddf6e30
+12-23 20:45:36.932 D/jni_lib_merge( 3837): Preparing to register libreactnativeblob_so.  onload_func: 0x6fdde895b0
+12-23 20:45:36.932 D/jni_lib_merge( 3837): Preparing to register libreactnativejni_so.  onload_func: 0x6fddea3b24
+12-23 20:45:36.932 D/jni_lib_merge( 3837): Preparing to register libreactnativejni_common_so.  onload_func: 0x6fddeaa458
+12-23 20:45:36.932 D/jni_lib_merge( 3837): Preparing to register librninstance_so.  onload_func: 0x6fddec6070
+12-23 20:45:36.932 D/jni_lib_merge( 3837): Preparing to register libturbomodulejsijni_so.  onload_func: 0x6fddf5e1a4
+12-23 20:45:36.932 D/jni_lib_merge( 3837): Preparing to register libuimanagerjni_so.  onload_func: 0x6fddf657e0
+12-23 20:45:36.932 D/jni_lib_merge( 3837): Preparing to register libyoga_so.  onload_func: 0x6fddf6cda4
+12-23 20:45:36.932 D/jni_lib_merge( 3837): About to register 11 actual methods.
+12-23 20:45:36.933 D/nativeloader( 3837): Load /data/app/~~17-8X89tVlCsNo7l_H47rA==/com.tumurelsedrakiney.pitchebak-sLmnCXqqbci1MOuURFIrcA==/base.apk!/lib/arm64-v8a/libappmodules.so using ns clns-5 from class loader (caller=/data/app/~~17-8X89tVlCsNo7l_H47rA==/com.tumurelsedrakiney.pitchebak-sLmnCXqqbci1MOuURFIrcA==/base.apk!classes3.dex): ok
+12-23 20:45:36.940 D/AppCompatDelegate( 3837): Checking for metadata for AppLocalesMetadataHolderService : Service not found
+12-23 20:45:36.944 W/libc    ( 3837): Access denied finding property "vendor.migl.debug"
+12-23 20:45:36.944 I/libMiGL ( 3837): EnableDR: 0
+12-23 20:45:36.944 D/libMiGL ( 3837): mDFIInterval: -1
+12-23 20:45:36.946 E/kiney.pitchebak( 3837): Invalid resource ID 0x00000000.
+12-23 20:45:36.948 D/DecorView[]( 3837): getWindowModeFromSystem  windowmode is 1
+12-23 20:45:36.952 W/libc    ( 3837): Access denied finding property "ro.vendor.df.effect.conflict"
+12-23 20:45:36.956 W/unknown:BridgelessReact( 3837): ReactHost{0}.startSurface(surfaceId = 0): Schedule
+12-23 20:45:36.956 W/unknown:BridgelessReact( 3837): ReactHost{0}.attachSurface(surfaceId = 0)
+12-23 20:45:36.957 W/unknown:BridgelessReact( 3837): ReactHost{0}.getOrCreateReactInstanceTask()
+12-23 20:45:36.957 W/unknown:BridgelessReact( 3837): ReactHost{0}.getOrCreateReactInstanceTask(): Start
+12-23 20:45:36.957 W/unknown:BridgelessReact( 3837): ReactHost{0}.getJSBundleLoader()
+12-23 20:45:36.958 W/unknown:BridgelessReact( 3837): ReactHost{0}.getOrCreateReactContext(): Creating BridgelessReactContext
+12-23 20:45:36.958 W/unknown:BridgelessReact( 3837): ReactHost{0}.getOrCreateReactInstanceTask(): Creating ReactInstance
+12-23 20:45:36.960 W/unknown:BridgelessReact( 3837): ReactHost{0}.onHostResume(activity)
+12-23 20:45:36.960 W/unknown:BridgelessReact( 3837): ReactContext.onHostResume()
+12-23 20:45:36.962 D/nativeloader( 3837): Load /data/app/~~17-8X89tVlCsNo7l_H47rA==/com.tumurelsedrakiney.pitchebak-sLmnCXqqbci1MOuURFIrcA==/base.apk!/lib/arm64-v8a/libhermes.so using ns clns-5 from class loader (caller=/data/app/~~17-8X89tVlCsNo7l_H47rA==/com.tumurelsedrakiney.pitchebak-sLmnCXqqbci1MOuURFIrcA==/base.apk!classes3.dex): ok
+12-23 20:45:36.963 D/nativeloader( 3837): Load /data/app/~~17-8X89tVlCsNo7l_H47rA==/com.tumurelsedrakiney.pitchebak-sLmnCXqqbci1MOuURFIrcA==/base.apk!/lib/arm64-v8a/libhermestooling.so using ns clns-5 from class loader (caller=/data/app/~~17-8X89tVlCsNo7l_H47rA==/com.tumurelsedrakiney.pitchebak-sLmnCXqqbci1MOuURFIrcA==/base.apk!classes3.dex): ok
+12-23 20:45:36.963 D/jni_lib_merge( 3837): Entering merged library JNI_OnLoad.
+12-23 20:45:36.963 D/jni_lib_merge( 3837): Preparing 4 pre-merged libs (including stub)
+12-23 20:45:36.963 D/jni_lib_merge( 3837): Preparing to register libhermes_executor_so.  onload_func: 0x705ba2a4b0
+12-23 20:45:36.963 D/jni_lib_merge( 3837): Preparing to register libhermesinstancejni_so.  onload_func: 0x705ba31900
+12-23 20:45:36.963 D/jni_lib_merge( 3837): Preparing to register libjsijniprofiler_so.  onload_func: 0x705ba320ec
+12-23 20:45:36.963 D/jni_lib_merge( 3837): About to register 3 actual methods.
+12-23 20:45:36.963 D/CompatibilityChangeReporter( 3837): Compat change id reported: 237531167; UID 10319; state: DISABLED
+--------- beginning of system
+12-23 20:45:36.964 D/FramePredict( 3837): FramePredict init: false
+12-23 20:45:36.964 D/FramePredict( 3837): init success
+12-23 20:45:36.965 E/FramePredict( 3837): registerContentObserver fail
+12-23 20:45:36.971 I/ExpoModulesCore( 3837): Ô£à AppContext was initialized
+12-23 20:45:36.982 W/unknown:BridgelessReact( 3837): ReactHost{0}.getOrCreateReactInstanceTask(): Loading JS Bundle
+12-23 20:45:36.982 W/unknown:BridgelessReact( 3837): ReactHost{0}.getOrCreateReactInstanceTask(): Calling DevSupportManagerBase.onNewReactContextCreated(reactContext)
+12-23 20:45:36.982 W/unknown:BridgelessReact( 3837): ReactHost{0}.startSurface(surfaceId = 0): Execute
+12-23 20:45:36.986 W/libc    ( 3837): Access denied finding property "vendor.display.enable_optimal_refresh_rate"
+12-23 20:45:36.986 I/AdrenoGLES-0( 3837): QUALCOMM build                   : 329cf4c2a7, I63533b1e29
+12-23 20:45:36.986 I/AdrenoGLES-0( 3837): Build Date                       : 01/31/23
+12-23 20:45:36.986 I/AdrenoGLES-0( 3837): OpenGL ES Shader Compiler Version: EV031.35.01.12
+12-23 20:45:36.986 I/AdrenoGLES-0( 3837): Local Branch                     : 
+12-23 20:45:36.986 I/AdrenoGLES-0( 3837): Remote Branch                    : refs/tags/AU_LINUX_ANDROID_LA.UM.9.14.11.00.00.571.148
+12-23 20:45:36.986 I/AdrenoGLES-0( 3837): Remote Branch                    : NONE
+12-23 20:45:36.986 I/AdrenoGLES-0( 3837): Reconstruct Branch               : NOTHING
+12-23 20:45:36.986 I/AdrenoGLES-0( 3837): Build Config                     : S P 10.0.7 AArch64
+12-23 20:45:36.986 I/AdrenoGLES-0( 3837): Driver Path                      : /vendor/lib64/egl/libGLESv2_adreno.so
+12-23 20:45:36.987 D/VRI[MainActivity]( 3837): vri.reportNextDraw android.view.ViewRootImpl.performTraversals:4360 android.view.ViewRootImpl.doTraversal:2989 android.view.ViewRootImpl$TraversalRunnable.run:10304 android.view.Choreographer$CallbackRecord.run:1594 android.view.Choreographer$CallbackRecord.run:1603 
+12-23 20:45:36.989 I/AdrenoGLES-0( 3837): PFP: 0x016dc094, ME: 0x00000000
+12-23 20:45:36.995 D/nativeloader( 3837): Load /data/app/~~17-8X89tVlCsNo7l_H47rA==/com.tumurelsedrakiney.pitchebak-sLmnCXqqbci1MOuURFIrcA==/base.apk!/lib/arm64-v8a/libexpo-modules-core.so using ns clns-5 from class loader (caller=/data/app/~~17-8X89tVlCsNo7l_H47rA==/com.tumurelsedrakiney.pitchebak-sLmnCXqqbci1MOuURFIrcA==/base.apk!classes3.dex): ok
+12-23 20:45:36.998 E/OpenGLRenderer( 3837): Unable to match the desired swap behavior.
+12-23 20:45:36.999 W/unknown:BridgelessReact( 3837): ReactContext.onHostResume()
+12-23 20:45:36.999 W/unknown:BridgelessReact( 3837): ReactHost{0}.getOrCreateReactInstanceTask(): Executing ReactInstanceEventListeners
+12-23 20:45:37.000 D/CompatibilityChangeReporter( 3837): Compat change id reported: 210923482; UID 10319; state: ENABLED
+12-23 20:45:37.001 W/unknown:ViewManagerPropertyUpdater( 3837): Could not find generated setter for class com.rnmaps.maps.MapUrlTileManager
+12-23 20:45:37.002 W/unknown:ViewManagerPropertyUpdater( 3837): Could not find generated setter for class com.facebook.react.uimanager.LayoutShadowNode
+12-23 20:45:37.003 W/unknown:ViewManagerPropertyUpdater( 3837): Could not find generated setter for class com.swmansion.rnscreens.ScreenFooterManager
+12-23 20:45:37.003 W/unknown:ViewManagerPropertyUpdater( 3837): Could not find generated setter for class com.swmansion.rnscreens.gamma.tabs.TabScreenViewManager
+12-23 20:45:37.003 W/unknown:ViewManagerPropertyUpdater( 3837): Could not find generated setter for class com.rnmaps.maps.MapManager
+12-23 20:45:37.003 W/unknown:ViewManagerPropertyUpdater( 3837): Could not find generated setter for class com.swmansion.rnscreens.ScreenContainerViewManager
+12-23 20:45:37.004 W/unknown:ViewManagerPropertyUpdater( 3837): Could not find generated setter for class com.swmansion.rnscreens.gamma.tabs.TabsHostViewManager
+12-23 20:45:37.004 W/unknown:ViewManagerPropertyUpdater( 3837): Could not find generated setter for class com.rnmaps.maps.MapMarkerManager
+12-23 20:45:37.004 W/unknown:ViewManagerPropertyUpdater( 3837): Could not find generated setter for class com.rnmaps.maps.MapLocalTileManager
+12-23 20:45:37.004 W/unknown:ViewManagerPropertyUpdater( 3837): Could not find generated setter for class com.swmansion.rnscreens.ModalScreenViewManager
+12-23 20:45:37.005 W/unknown:ViewManagerPropertyUpdater( 3837): Could not find generated setter for class com.rnmaps.maps.MapPolylineManager
+12-23 20:45:37.005 W/unknown:ViewManagerPropertyUpdater( 3837): Could not find generated setter for class com.rnmaps.maps.MapCircleManager
+12-23 20:45:37.005 W/unknown:ViewManagerPropertyUpdater( 3837): Could not find generated setter for class com.th3rdwave.safeareacontext.SafeAreaViewManager
+12-23 20:45:37.006 W/unknown:ViewManagerPropertyUpdater( 3837): Could not find generated setter for class com.th3rdwave.safeareacontext.SafeAreaViewShadowNode
+12-23 20:45:37.006 W/unknown:ViewManagerPropertyUpdater( 3837): Could not find generated setter for class com.swmansion.rnscreens.ScreenViewManager
+12-23 20:45:37.006 W/unknown:ViewManagerPropertyUpdater( 3837): Could not find generated setter for class expo.modules.kotlin.views.GroupViewManagerWrapper
+12-23 20:45:37.006 W/unknown:ViewManagerPropertyUpdater( 3837): Could not find generated setter for class com.swmansion.rnscreens.ScreenStackViewManager
+12-23 20:45:37.006 W/unknown:ViewManagerPropertyUpdater( 3837): Could not find generated setter for class com.rnmaps.maps.MapCalloutManager
+12-23 20:45:37.006 W/unknown:ViewManagerPropertyUpdater( 3837): Could not find generated setter for class com.th3rdwave.safeareacontext.SafeAreaProviderManager
+12-23 20:45:37.006 W/unknown:ViewManagerPropertyUpdater( 3837): Could not find generated setter for class com.swmansion.rnscreens.SearchBarManager
+12-23 20:45:37.007 W/unknown:ViewManagerPropertyUpdater( 3837): Could not find generated setter for class com.rnmaps.maps.MapGradientPolylineManager
+12-23 20:45:37.007 W/unknown:ViewManagerPropertyUpdater( 3837): Could not find generated setter for class com.rnmaps.maps.MapHeatmapManager
+12-23 20:45:37.007 W/unknown:ViewManagerPropertyUpdater( 3837): Could not find generated setter for class com.reactnativecommunity.webview.RNCWebViewManager
+12-23 20:45:37.008 W/unknown:ViewManagerPropertyUpdater( 3837): Could not find generated setter for class com.rnmaps.maps.MapWMSTileManager
+12-23 20:45:37.008 W/unknown:ViewManagerPropertyUpdater( 3837): Could not find generated setter for class com.swmansion.rnscreens.ScreenStackHeaderConfigViewManager
+12-23 20:45:37.008 W/unknown:ViewManagerPropertyUpdater( 3837): Could not find generated setter for class com.swmansion.rnscreens.ScreenContentWrapperManager
+12-23 20:45:37.008 W/unknown:ViewManagerPropertyUpdater( 3837): Could not find generated setter for class com.rnmaps.maps.MapPolygonManager
+12-23 20:45:37.008 W/unknown:ViewManagerPropertyUpdater( 3837): Could not find generated setter for class com.swmansion.rnscreens.ScreenStackHeaderSubviewManager
+12-23 20:45:37.008 W/unknown:ViewManagerPropertyUpdater( 3837): Could not find generated setter for class com.reactnativecommunity.picker.ReactDialogPickerManager
+12-23 20:45:37.009 W/unknown:ViewManagerPropertyUpdater( 3837): Could not find generated setter for class com.reactnativecommunity.picker.ReactPickerShadowNode
+12-23 20:45:37.009 W/unknown:ViewManagerPropertyUpdater( 3837): Could not find generated setter for class com.rnmaps.maps.MapOverlayManager
+12-23 20:45:37.009 W/unknown:ViewManagerPropertyUpdater( 3837): Could not find generated setter for class com.reactnativecommunity.picker.ReactDropdownPickerManager
+12-23 20:45:37.009 W/unknown:ViewManagerPropertyUpdater( 3837): Could not find generated setter for class com.react.rnspinkit.RNSpinkit
+12-23 20:45:37.019 W/unknown:ViewManagerPropertyUpdater( 3837): Could not find generated setter for class com.swmansion.gesturehandler.react.RNGestureHandlerButtonViewManager
+12-23 20:45:37.020 W/unknown:ViewManagerPropertyUpdater( 3837): Could not find generated setter for class com.facebook.react.views.safeareaview.ReactSafeAreaViewManager
+12-23 20:45:37.020 W/unknown:ViewManagerPropertyUpdater( 3837): Could not find generated setter for class com.facebook.react.views.safeareaview.ReactSafeAreaViewShadowNode
+12-23 20:45:37.021 W/unknown:ViewManagerPropertyUpdater( 3837): Could not find generated setter for class com.facebook.react.views.modal.ReactModalHostManager
+12-23 20:45:37.021 W/unknown:ViewManagerPropertyUpdater( 3837): Could not find generated setter for class com.facebook.react.views.text.frescosupport.FrescoBasedReactTextInlineImageViewManager
+12-23 20:45:37.022 W/unknown:ViewManagerPropertyUpdater( 3837): Could not find generated setter for class com.facebook.react.views.text.frescosupport.FrescoBasedReactTextInlineImageShadowNode
+12-23 20:45:37.022 W/unknown:ViewManagerPropertyUpdater( 3837): Could not find generated setter for class com.facebook.react.views.progressbar.ReactProgressBarViewManager
+12-23 20:45:37.022 W/unknown:ViewManagerPropertyUpdater( 3837): Could not find generated setter for class com.facebook.react.views.progressbar.ProgressBarShadowNode
+12-23 20:45:37.023 W/unknown:ViewManagerPropertyUpdater( 3837): Could not find generated setter for class com.facebook.react.views.scroll.ReactHorizontalScrollViewManager
+12-23 20:45:37.023 W/unknown:ViewManagerPropertyUpdater( 3837): Could not find generated setter for class com.facebook.react.views.image.ReactImageManager
+12-23 20:45:37.024 W/unknown:ViewManagerPropertyUpdater( 3837): Could not find generated setter for class com.facebook.react.views.text.ReactTextViewManager
+12-23 20:45:37.024 W/unknown:ViewManagerPropertyUpdater( 3837): Could not find generated setter for class com.facebook.react.views.text.ReactTextShadowNode
+12-23 20:45:37.025 W/unknown:ViewManagerPropertyUpdater( 3837): Could not find generated setter for class com.facebook.react.views.scroll.ReactHorizontalScrollContainerViewManager
+12-23 20:45:37.025 W/unknown:ViewManagerPropertyUpdater( 3837): Could not find generated setter for class com.facebook.react.views.unimplementedview.ReactUnimplementedViewManager
+12-23 20:45:37.026 W/unknown:ViewManagerPropertyUpdater( 3837): Could not find generated setter for class com.facebook.react.views.scroll.ReactScrollViewManager
+12-23 20:45:37.026 W/unknown:ViewManagerPropertyUpdater( 3837): Could not find generated setter for class com.facebook.react.views.view.ReactViewManager
+12-23 20:45:37.027 W/unknown:ViewManagerPropertyUpdater( 3837): Could not find generated setter for class com.facebook.react.views.drawer.ReactDrawerLayoutManager
+12-23 20:45:37.027 W/unknown:ViewManagerPropertyUpdater( 3837): Could not find generated setter for class com.facebook.react.views.switchview.ReactSwitchManager
+12-23 20:45:37.027 W/unknown:ViewManagerPropertyUpdater( 3837): Could not find generated setter for class com.facebook.react.views.switchview.ReactSwitchShadowNode
+12-23 20:45:37.027 W/unknown:ViewManagerPropertyUpdater( 3837): Could not find generated setter for class com.facebook.react.views.text.ReactVirtualTextViewManager
+12-23 20:45:37.027 W/unknown:ViewManagerPropertyUpdater( 3837): Could not find generated setter for class com.facebook.react.views.text.ReactVirtualTextShadowNode
+12-23 20:45:37.028 W/unknown:ViewManagerPropertyUpdater( 3837): Could not find generated setter for class com.facebook.react.views.swiperefresh.SwipeRefreshLayoutManager
+12-23 20:45:37.028 W/unknown:ViewManagerPropertyUpdater( 3837): Could not find generated setter for class com.facebook.react.views.text.ReactRawTextManager
+12-23 20:45:37.028 W/unknown:ViewManagerPropertyUpdater( 3837): Could not find generated setter for class com.facebook.react.views.text.ReactRawTextShadowNode
+12-23 20:45:37.029 W/unknown:ViewManagerPropertyUpdater( 3837): Could not find generated setter for class com.facebook.react.views.textinput.ReactTextInputManager
+12-23 20:45:37.029 W/unknown:ViewManagerPropertyUpdater( 3837): Could not find generated setter for class com.facebook.react.views.textinput.ReactTextInputShadowNode
+12-23 20:45:37.029 W/unknown:ViewManagerPropertyUpdater( 3837): Could not find generated setter for class com.swmansion.gesturehandler.react.RNGestureHandlerRootViewManager
+12-23 20:45:37.033 W/BridgelessReactContext( 3837): [WARNING] Bridgeless doesn't support CatalystInstance. Accessing an API that's not part of the new architecture is not encouraged usage.
+12-23 20:45:37.034 I/ExpoModulesCore( 3837): Ô£à JSI interop was installed
+12-23 20:45:37.042 I/ExpoModulesCore( 3837): Ô£à Constants were exported
+12-23 20:45:37.059 D/nativeloader( 3837): Load /data/app/~~17-8X89tVlCsNo7l_H47rA==/com.tumurelsedrakiney.pitchebak-sLmnCXqqbci1MOuURFIrcA==/base.apk!/lib/arm64-v8a/librnscreens.so using ns clns-5 from class loader (caller=/data/app/~~17-8X89tVlCsNo7l_H47rA==/com.tumurelsedrakiney.pitchebak-sLmnCXqqbci1MOuURFIrcA==/base.apk!classes3.dex): ok
+12-23 20:45:37.062 D/CompatibilityChangeReporter( 3837): Compat change id reported: 289878283; UID 10319; state: ENABLED
+12-23 20:45:37.062 I/ReactNativeJS( 3837): Running "main"
+12-23 20:45:37.062 W/ReactNativeJS( 3837): SafeAreaView has been deprecated and will be removed in a future release. Please use 'react-native-safe-area-context' instead. See https://github.com/th3rdwave/react-native-safe-area-context
+12-23 20:45:37.078 D/nativeloader( 3837): Load /data/app/~~17-8X89tVlCsNo7l_H47rA==/com.tumurelsedrakiney.pitchebak-sLmnCXqqbci1MOuURFIrcA==/base.apk!/lib/arm64-v8a/libworklets.so using ns clns-5 from class loader (caller=/data/app/~~17-8X89tVlCsNo7l_H47rA==/com.tumurelsedrakiney.pitchebak-sLmnCXqqbci1MOuURFIrcA==/base.apk!classes3.dex): ok
+12-23 20:45:37.088 D/nativeloader( 3837): Load /data/app/~~17-8X89tVlCsNo7l_H47rA==/com.tumurelsedrakiney.pitchebak-sLmnCXqqbci1MOuURFIrcA==/base.apk!/lib/arm64-v8a/libreanimated.so using ns clns-5 from class loader (caller=/data/app/~~17-8X89tVlCsNo7l_H47rA==/com.tumurelsedrakiney.pitchebak-sLmnCXqqbci1MOuURFIrcA==/base.apk!classes3.dex): ok
+12-23 20:45:37.178 W/[RNScreens]( 3837): backTitleVisible prop is not available on Android
+12-23 20:45:37.178 W/[RNScreens]( 3837): backTitleFontFamily prop is not available on Android
+12-23 20:45:37.178 W/[RNScreens]( 3837): disableBackButtonMenu prop is not available on Android
+12-23 20:45:37.178 W/[RNScreens]( 3837): largeTitleFontFamily prop is not available on Android
+12-23 20:45:37.178 W/[RNScreens]( 3837): largeTitleFontWeight prop is not available on Android
+12-23 20:45:37.178 W/[RNScreens]( 3837): largeTitleHideShadow prop is not available on Android
+12-23 20:45:37.179 I/ReactNative( 3837): [GESTURE HANDLER] Initialize gesture handler for root view com.facebook.react.runtime.ReactSurfaceView{280c014 V.E...... ......ID 0,0-1080,2400 #1}
+12-23 20:45:37.194 D/CompatibilityChangeReporter( 3837): Compat change id reported: 171228096; UID 10319; state: ENABLED
+12-23 20:45:37.196 D/ScrollerOptimizationManager( 3837): registerConfigChangedListener
+12-23 20:45:37.206 D/nativeloader( 3837): Load /data/app/~~17-8X89tVlCsNo7l_H47rA==/com.tumurelsedrakiney.pitchebak-sLmnCXqqbci1MOuURFIrcA==/base.apk!/lib/arm64-v8a/libgesturehandler.so using ns clns-5 from class loader (caller=/data/app/~~17-8X89tVlCsNo7l_H47rA==/com.tumurelsedrakiney.pitchebak-sLmnCXqqbci1MOuURFIrcA==/base.apk!classes3.dex): ok
+12-23 20:45:37.206 D/jni_lib_merge( 3837): Entering merged library JNI_OnLoad.
+12-23 20:45:37.206 D/jni_lib_merge( 3837): Preparing 12 pre-merged libs (including stub)
+12-23 20:45:37.206 D/jni_lib_merge( 3837): Preparing to register libfabricjni_so.  onload_func: 0x6fddcededc
+12-23 20:45:37.206 D/jni_lib_merge( 3837): Preparing to register libreact_devsupportjni_so.  onload_func: 0x6fdddbef40
+12-23 20:45:37.206 D/jni_lib_merge( 3837): Preparing to register libreact_featureflagsjni_so.  onload_func: 0x6fdddd19f8
+12-23 20:45:37.206 D/jni_lib_merge( 3837): Preparing to register libreact_newarchdefaults_so.  onload_func: 0x6fdddf6e30
+12-23 20:45:37.206 D/jni_lib_merge( 3837): Preparing to register libreactnativeblob_so.  onload_func: 0x6fdde895b0
+12-23 20:45:37.206 D/jni_lib_merge( 3837): Preparing to register libreactnativejni_so.  onload_func: 0x6fddea3b24
+12-23 20:45:37.206 D/jni_lib_merge( 3837): Preparing to register libreactnativejni_common_so.  onload_func: 0x6fddeaa458
+12-23 20:45:37.206 D/jni_lib_merge( 3837): Preparing to register librninstance_so.  onload_func: 0x6fddec6070
+12-23 20:45:37.206 D/jni_lib_merge( 3837): Preparing to register libturbomodulejsijni_so.  onload_func: 0x6fddf5e1a4
+12-23 20:45:37.206 D/jni_lib_merge( 3837): Preparing to register libuimanagerjni_so.  onload_func: 0x6fddf657e0
+12-23 20:45:37.206 D/jni_lib_merge( 3837): Preparing to register libyoga_so.  onload_func: 0x6fddf6cda4
+12-23 20:45:37.206 D/jni_lib_merge( 3837): About to register 11 actual methods.
+12-23 20:45:37.206 W/[RNScreens]( 3837): backTitleVisible prop is not available on Android
+12-23 20:45:37.206 W/[RNScreens]( 3837): backTitleFontFamily prop is not available on Android
+12-23 20:45:37.206 W/[RNScreens]( 3837): disableBackButtonMenu prop is not available on Android
+12-23 20:45:37.206 W/[RNScreens]( 3837): largeTitleFontFamily prop is not available on Android
+12-23 20:45:37.206 W/[RNScreens]( 3837): largeTitleFontWeight prop is not available on Android
+12-23 20:45:37.206 W/[RNScreens]( 3837): largeTitleHideShadow prop is not available on Android
+12-23 20:45:37.213 D/VRI[MainActivity]( 3837): vri.Setup new sync=wmsSync-VRI[MainActivity]#0
+12-23 20:45:37.214 D/OpenGLRenderer( 3837): makeCurrent grContext:0xb400007041388920 reset mTextureAvailable
+12-23 20:45:37.215 D/kiney.pitchebak( 3837): MiuiProcessManagerServiceStub setSchedFifo
+12-23 20:45:37.215 I/MiuiProcessManagerImpl( 3837): setSchedFifo pid:3837, mode:3
+12-23 20:45:37.217 E/LB      ( 3837): fail to open node: No such file or directory
+12-23 20:45:37.217 D/VRI[MainActivity]( 3837): vri.reportDrawFinished
+12-23 20:45:37.243 D/CompatibilityChangeReporter( 3837): Compat change id reported: 163400105; UID 10319; state: ENABLED
+12-23 20:45:37.245 I/AssistStructure( 3837): Flattened final assist data: 9612 bytes, containing 1 windows, 95 views
+12-23 20:45:37.256 I/HandWritingStubImpl( 3837): refreshLastKeyboardType: 1
+12-23 20:45:37.256 I/HandWritingStubImpl( 3837): getCurrentKeyboardType: 1
+12-23 20:45:37.260 I/HandWritingStubImpl( 3837): getCurrentKeyboardType: 1
+12-23 20:45:42.548 D/ProfileInstaller( 3837): Skipping profile installation for com.tumurelsedrakiney.pitchebak
