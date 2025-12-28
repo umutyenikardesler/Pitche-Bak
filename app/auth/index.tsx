@@ -1,12 +1,15 @@
 import { useRef, useState, useEffect } from "react";
-import { View, Text, TextInput, TouchableOpacity, Alert, KeyboardAvoidingView, Platform, Pressable, ActivityIndicator, ScrollView, Keyboard } from "react-native";
+import { View, Text, TextInput, TouchableOpacity, Alert, KeyboardAvoidingView, Platform, Pressable, ActivityIndicator, ScrollView, Keyboard, Dimensions, Image } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { supabase } from "@/services/supabase";
 import * as Linking from "expo-linking";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Ionicons } from "@expo/vector-icons";
-import Animated, { useSharedValue, useAnimatedStyle, withRepeat, withTiming, Easing } from "react-native-reanimated";
+import Animated, { useSharedValue, useAnimatedStyle, withRepeat, withTiming, Easing, runOnJS } from "react-native-reanimated";
+import { Gesture, GestureDetector } from "react-native-gesture-handler";
+
+const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 export default function AuthScreen() {
   const router = useRouter();
@@ -17,40 +20,120 @@ export default function AuthScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const [keyboardVisible, setKeyboardVisible] = useState(false);
   const [keyboardWasOpened, setKeyboardWasOpened] = useState(false); // Klavye bir kere açıldı mı?
+  const [isFormExpanded, setIsFormExpanded] = useState(false); // Form genişletilmiş mi?
+  const [keyboardHeight, setKeyboardHeight] = useState(0); // iOS için klavye yüksekliği
   
   const passwordInputRef = useRef<TextInput>(null);
 
-  // Sistem fontunu kullan (her 2 platform için)
-  const fontFamily = 'sans-serif';
+  // Form yukarı kayma animasyonu - başlangıçta içerik aşağıda (görünmez)
+  const formContentTranslateY = useSharedValue(200);
+  const formContentOpacity = useSharedValue(0);
+  // Form container yükseklik animasyonu - başlangıçta küçük
+  const MIN_FORM_HEIGHT = Platform.OS === 'ios' ? 160 : 180;
+  const formHeight = useSharedValue(MIN_FORM_HEIGHT);
 
-  // Animasyon için harfleri ayır
-  const text = "SAHAYABAK";
-  const letters = text.split("");
+  // Pan gesture handler
+  const startHeight = useSharedValue(MIN_FORM_HEIGHT);
   
-  // Yanıp sönme animasyonu (react-native-reanimated)
-  const opacity = useSharedValue(1);
+  const panGesture = Gesture.Pan()
+    .onStart(() => {
+      startHeight.value = formHeight.value;
+    })
+    .onUpdate((event) => {
+      // Yukarı çekme (negatif translationY) formu büyütür
+      // Aşağı çekme (pozitif translationY) formu küçültür
+      const newHeight = startHeight.value - event.translationY;
+      // Minimum ve maksimum yükseklik limitleri
+      const maxHeight = Platform.OS === 'ios' 
+        ? SCREEN_HEIGHT * 0.42  // iOS için daha küçük
+        : SCREEN_HEIGHT * 0.55; // Android için
+      if (newHeight >= MIN_FORM_HEIGHT && newHeight <= maxHeight) {
+        formHeight.value = newHeight;
+        // İçerik pozisyonunu da güncelle
+        const progress = (newHeight - MIN_FORM_HEIGHT) / (maxHeight - MIN_FORM_HEIGHT);
+        formContentTranslateY.value = 200 * (1 - progress);
+        formContentOpacity.value = progress;
+      }
+    })
+    .onEnd((event) => {
+      // Eğer yukarı çekilmişse (threshold: -50) formu genişlet
+      if (event.translationY < -50) {
+        const maxHeight = Platform.OS === 'ios' 
+          ? SCREEN_HEIGHT * 0.42  // iOS için daha küçük
+          : SCREEN_HEIGHT * 0.55; // Android için
+        formHeight.value = withTiming(maxHeight, {
+          duration: 300,
+          easing: Easing.out(Easing.cubic),
+        });
+        formContentTranslateY.value = withTiming(0, {
+          duration: 300,
+          easing: Easing.out(Easing.cubic),
+        });
+        formContentOpacity.value = withTiming(1, {
+          duration: 300,
+          easing: Easing.out(Easing.cubic),
+        });
+        runOnJS(setIsFormExpanded)(true);
+      } else {
+        // Aşağı indir
+        formHeight.value = withTiming(MIN_FORM_HEIGHT, {
+          duration: 300,
+          easing: Easing.out(Easing.cubic),
+        });
+        formContentTranslateY.value = withTiming(200, {
+          duration: 300,
+          easing: Easing.out(Easing.cubic),
+        });
+        formContentOpacity.value = withTiming(0, {
+          duration: 300,
+          easing: Easing.out(Easing.cubic),
+        });
+        runOnJS(setIsFormExpanded)(false);
+      }
+    });
 
-  useEffect(() => {
-    opacity.value = withRepeat(
-      withTiming(0.5, {
-        duration: 1000,
-        easing: Easing.inOut(Easing.ease),
-      }),
-      -1, // Sonsuz döngü
-      true // Reverse (geriye doğru da animasyon yap)
-    );
-  }, []);
-
-  // Animated style'ı component seviyesinde tanımla
-  const animatedStyle = useAnimatedStyle(() => ({
-    opacity: opacity.value,
+  // Form içeriği animasyon style'ı
+  const formContentAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: formContentTranslateY.value }],
+    opacity: formContentOpacity.value,
+  }));
+  
+  // Form container yükseklik animasyon style'ı
+  const formContainerAnimatedStyle = useAnimatedStyle(() => ({
+    height: formHeight.value,
   }));
 
-  // Klavye durumunu dinle (Android için)
+  // Formu genişletme fonksiyonu
+  const expandForm = () => {
+    if (!isFormExpanded) {
+      const maxHeight = Platform.OS === 'ios' 
+        ? SCREEN_HEIGHT * 0.42
+        : SCREEN_HEIGHT * 0.55;
+      formHeight.value = withTiming(maxHeight, {
+        duration: 300,
+        easing: Easing.out(Easing.cubic),
+      });
+      formContentTranslateY.value = withTiming(0, {
+        duration: 300,
+        easing: Easing.out(Easing.cubic),
+      });
+      formContentOpacity.value = withTiming(1, {
+        duration: 300,
+        easing: Easing.out(Easing.cubic),
+      });
+      setIsFormExpanded(true);
+    }
+  };
+
+  // Klavye durumunu dinle
   useEffect(() => {
-    const keyboardDidShowListener = Keyboard.addListener("keyboardDidShow", () => {
+    const keyboardDidShowListener = Keyboard.addListener("keyboardDidShow", (e) => {
       setKeyboardVisible(true);
       setKeyboardWasOpened(true); // Klavye açıldı, flag'i set et
+      // iOS'ta klavye yüksekliğini al
+      if (Platform.OS === 'ios') {
+        setKeyboardHeight(e.endCoordinates.height);
+      }
     });
     const keyboardDidHideListener = Keyboard.addListener("keyboardDidHide", () => {
       // Android'de footer butonlarıyla klavye kapatıldığında da tetiklenmesi için kısa bir gecikme
@@ -60,6 +143,7 @@ export default function AuthScreen() {
         }, 150);
       } else {
         setKeyboardVisible(false);
+        setKeyboardHeight(0); // iOS'ta klavye kapandığında yüksekliği sıfırla
       }
     });
 
@@ -245,129 +329,236 @@ export default function AuthScreen() {
         >
           {/* Header */}
           <View 
-            className="bg-green-700 pb-4 px-4 pt-4">
-            <View className="flex-row items-center justify-center" style={{ height: 30 }}>
-              {letters.map((letter, index) => (
-                <Animated.View
-                  key={index}
-                  style={[
-                    animatedStyle,
-                    {
-                      marginHorizontal: 2,
-                      position: 'relative',
-                    }
-                  ]}
-                >
-                  {/* Siyah outline için arka plan katmanları - 8 yöne (ince kenarlık) */}
-                  <Text
-                    style={{
-                      position: 'absolute',
-                      left: -2,
-                      top: 0,
-                      fontSize: 20,
-                      color: 'black',
-                      fontFamily: fontFamily,
-                    }}
-                  >
-                    {letter}
-                  </Text>
-                  <Text
-                    style={{
-                      position: 'absolute',
-                      left: 2,
-                      top: 0,
-                      fontSize: 20,
-                      color: 'black',
-                      fontFamily: fontFamily,
-                    }}
-                  >
-                    {letter}
-                  </Text>
-                  <Text
-                    style={{
-                      position: 'absolute',
-                      left: 0,
-                      top: -2,
-                      fontSize: 20,
-                      color: 'black',
-                      fontFamily: fontFamily,
-                    }}
-                  >
-                    {letter}
-                  </Text>
-                  <Text
-                    style={{
-                      position: 'absolute',
-                      left: 0,
-                      top: 2,
-                      fontSize: 20,
-                      color: 'black',
-                      fontFamily: fontFamily,
-                    }}
-                  >
-                    {letter}
-                  </Text>
-                  {/* Köşeler */}
-                  <Text
-                    style={{
-                      position: 'absolute',
-                      left: -1,
-                      top: -1,
-                      fontSize: 20,
-                      color: 'black',
-                      fontFamily: fontFamily,
-                    }}
-                  >
-                    {letter}
-                  </Text>
-                  <Text
-                    style={{
-                      position: 'absolute',
-                      left: 1,
-                      top: -1,
-                      fontSize: 20,
-                      color: 'black',
-                      fontFamily: fontFamily,
-                    }}
-                  >
-                    {letter}
-                  </Text>
-                  <Text
-                    style={{
-                      position: 'absolute',
-                      left: -1,
-                      top: 1,
-                      fontSize: 20,
-                      color: 'black',
-                      fontFamily: fontFamily,
-                    }}
-                  >
-                    {letter}
-                  </Text>
-                  <Text
-                    style={{
-                      position: 'absolute',
-                      left: 1,
-                      top: 1,
-                      fontSize: 20,
-                      color: 'black',
-                      fontFamily: fontFamily,
-                    }}
-                  >
-                    {letter}
-                  </Text>
-                  {/* Ana beyaz metin */}
-                  <Text
-                    style={{
-                      fontSize: 20,
-                      color: 'white',
-                      fontFamily: fontFamily,
-                    }}
-                  >
-                    {letter}
-                  </Text>
-                </Animated.View>
-              ))}
+            className="bg-green-700 px-2"
+            style={{
+              height: 90,
+              position: 'relative',
+              overflow: 'hidden',
+            }}>
+            {/* Futbol sahası çizgileri efekti */}
+            <View 
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                opacity: 0.8,
+              }}>
+              {/* Üst dış çizgi - 1px boşluk ile */}
+              <View style={{ 
+                position: 'absolute', 
+                top: 1, 
+                left: 1, 
+                right: 1, 
+                height: 2, 
+                backgroundColor: 'white',
+              }} />
+              
+              {/* Alt dış çizgi - 1px boşluk ile */}
+              <View style={{ 
+                position: 'absolute', 
+                bottom: 1, 
+                left: 1, 
+                right: 1, 
+                height: 2, 
+                backgroundColor: 'white',
+              }} />
+              
+              {/* Sol dış çizgi - 1px boşluk ile */}
+              <View style={{ 
+                position: 'absolute', 
+                top: 1, 
+                bottom: 1, 
+                left: 1, 
+                width: 2, 
+                backgroundColor: 'white',
+              }} />
+              
+              {/* Sağ dış çizgi - 1px boşluk ile */}
+              <View style={{ 
+                position: 'absolute', 
+                top: 1, 
+                bottom: 1, 
+                right: 1, 
+                width: 2, 
+                backgroundColor: 'white',
+              }} />
+              
+              {/* Orta saha çizgisi */}
+              <View style={{ 
+                position: 'absolute', 
+                left: '50%', 
+                top: 1, 
+                bottom: 1, 
+                width: 2, 
+                backgroundColor: 'white',
+                transform: [{ translateX: -1 }]
+              }} />
+              
+              {/* Orta yuvarlak */}
+              <View style={{ 
+                position: 'absolute', 
+                top: '50%', 
+                left: '50%', 
+                width: 60, 
+                height: 60, 
+                borderWidth: 2, 
+                borderColor: 'white',
+                borderRadius: 30,
+                transform: [{ translateX: -30 }, { translateY: -30 }]
+              }} />
+              
+              {/* Sol kale - İç çizgiler (file gibi) */}
+              <View style={{
+                position: 'absolute',
+                left: 1,
+                top: '25%',
+                bottom: '25%',
+                width: 25,
+                borderWidth: 2,
+                borderColor: 'white',
+                borderRightWidth: 0,
+                backgroundColor: 'rgba(255, 255, 255, 0.15)',
+              }} />
+              
+              {/* Sol ceza sahası - Yan çizgiler (kale yan çizgisinden ayrı) */}
+              <View style={{
+                position: 'absolute',
+                left: 3,
+                top: '15%',
+                width: 40,
+                height: 2,
+                backgroundColor: 'white',
+              }} />
+              <View style={{
+                position: 'absolute',
+                left: 3,
+                bottom: '15%',
+                width: 40,
+                height: 2,
+                backgroundColor: 'white',
+              }} />
+              
+              {/* Sol ceza sahası - Ön çizgi (dikey) */}
+              <View style={{
+                position: 'absolute',
+                left: 42,
+                top: '15%',
+                bottom: '15%',
+                width: 2,
+                backgroundColor: 'white',
+              }} />
+              
+              {/* Sol penaltı noktası */}
+              <View style={{
+                position: 'absolute',
+                left: 32,
+                top: '50%',
+                width: 4,
+                height: 4,
+                borderRadius: 2,
+                backgroundColor: 'white',
+                transform: [{ translateX: -2 }, { translateY: -2 }],
+              }} />
+              
+              {/* Sağ kale - İç çizgiler (file gibi) */}
+              <View style={{
+                position: 'absolute',
+                right: 1,
+                top: '25%',
+                bottom: '25%',
+                width: 25,
+                borderWidth: 2,
+                borderColor: 'white',
+                borderLeftWidth: 0,
+                backgroundColor: 'rgba(255, 255, 255, 0.15)',
+              }} />
+              
+              {/* Sağ ceza sahası - Yan çizgiler (kale yan çizgisinden ayrı) */}
+              <View style={{
+                position: 'absolute',
+                right: 3,
+                top: '15%',
+                width: 40,
+                height: 2,
+                backgroundColor: 'white',
+              }} />
+              <View style={{
+                position: 'absolute',
+                right: 3,
+                bottom: '15%',
+                width: 40,
+                height: 2,
+                backgroundColor: 'white',
+              }} />
+              
+              {/* Sağ ceza sahası - Ön çizgi (dikey) */}
+              <View style={{
+                position: 'absolute',
+                right: 42,
+                top: '15%',
+                bottom: '15%',
+                width: 2,
+                backgroundColor: 'white',
+              }} />
+              
+              {/* Sağ penaltı noktası */}
+              <View style={{
+                position: 'absolute',
+                right: 32,
+                top: '50%',
+                width: 4,
+                height: 4,
+                borderRadius: 2,
+                backgroundColor: 'white',
+                transform: [{ translateX: 2 }, { translateY: -2 }],
+              }} />
+            </View>
+            
+            {/* İçerik */}
+            <View style={{ width: '100%', height: '100%', zIndex: 1, position: 'relative' }}>
+              {/* Orta nokta işareti */}
+              <View style={{ 
+                position: 'absolute', 
+                top: '50%', 
+                left: '50%',
+                width: 6,
+                height: 6,
+                borderRadius: 3,
+                backgroundColor: 'white',
+                transform: [{ translateX: -3 }, { translateY: -3 }],
+              }} />
+              
+              {/* "SAHAYA" yazısı - Kalenin ön çizgisi ile orta saha çizgisinin ortasında */}
+              <Text
+                style={{
+                  position: 'absolute',
+                  top: '50%',
+                  left: '26%',
+                  fontSize: 20,
+                  color: 'white',
+                  fontWeight: 'bold',
+                  transform: [{ translateX: -35 }, { translateY: -8 }],
+                }}
+              >
+                SAHAYA
+              </Text>
+              
+              {/* "BAK" yazısı - Orta saha çizgisi ile kalenin ön çizgisinin ortasında */}
+              <Text
+                style={{
+                  position: 'absolute',
+                  top: '50%',
+                  right: '25%',
+                  fontSize: 20,
+                  color: 'white',
+                  fontWeight: 'bold',
+                  transform: [{ translateX: 15 }, { translateY: -8 }],
+                }}
+              >
+                BAK
+              </Text>
             </View>
           </View>
           
@@ -404,33 +595,57 @@ export default function AuthScreen() {
           </View>
         </ScrollView>
 
-        {/* Giriş Formu - ScrollView dışında, altta sabit */}
-        <View 
-          className="bg-white rounded-t-3xl px-6 pt-6 shadow-2xl"
-          style={{ 
-            paddingBottom: Platform.OS === 'ios' 
-              ? 20 
-              : (keyboardVisible ? 20 : (keyboardWasOpened ? 20 : 50))
-          }}
-        >
+        {/* Giriş Formu - ScrollView dışında, altta sabit - Animasyonlu */}
+        <GestureDetector gesture={panGesture}>
+          <Animated.View 
+            className="bg-white rounded-t-3xl shadow-2xl"
+            style={[
+              formContainerAnimatedStyle,
+              { 
+                position: 'absolute',
+                bottom: Platform.OS === 'ios' ? keyboardHeight : 0,
+                left: 0,
+                right: 0,
+                paddingBottom: Platform.OS === 'ios' 
+                  ? (keyboardVisible ? 30 : 30)
+                  : (keyboardVisible ? 0 : (keyboardWasOpened ? 30 : 30)),
+                overflow: 'hidden'
+              }
+            ]}
+          >
+          <View
+            style={{
+              paddingHorizontal: 24,
+              paddingTop: isFormExpanded ? 16 : 12,
+              paddingBottom: Platform.OS === 'ios' && keyboardVisible && isFormExpanded ? 10 : 0,
+            }}
+          >
               {/* Drag indicator */}
-              <View className="w-12 h-1 bg-gray-300 rounded-full self-center mb-4" />
+              <View className="w-12 h-1 bg-gray-300 rounded-full self-center mb-2" />
               
-              {/* Logo ve Başlık */}
-              <View className="items-center mb-6">
-                <View className="w-16 h-16 bg-green-700 rounded-full items-center justify-center mb-3">
-                  <Ionicons name="football" size={36} color="white" />
+              {/* Logo ve Başlık - Her zaman görünür */}
+              <Pressable onPress={expandForm} disabled={isFormExpanded}>
+                <View className="items-center" style={{ marginBottom: isFormExpanded ? 12 : 8 }}>
+                  <View className="w-16 h-16 bg-green-700 rounded-full items-center justify-center mt-2 mb-3">
+                    <Ionicons name="football" size={36} color="white" />
+                  </View>
+                  <Text className="text-2xl font-bold text-gray-800">
+                    {isLogin ? "Hoş Geldin" : "Aramıza Katıl!"}
+                  </Text>
+                  <Text className="text-gray-700 mt-1">
+                    {isLogin ? (
+                      <>Sahaya çıkmak için <Text className="text-green-700 font-semibold">giriş yap</Text></>
+                    ) : (
+                      "Yeni bir hesap oluştur"
+                    )}
+                  </Text>
                 </View>
-                <Text className="text-2xl font-bold text-gray-800">
-                  {isLogin ? "Hoş Geldin!" : "Aramıza Katıl!"}
-                </Text>
-                <Text className="text-gray-500 mt-1">
-                  {isLogin ? "Sahaya çıkmak için giriş yap" : "Yeni bir hesap oluştur"}
-                </Text>
-              </View>
+              </Pressable>
 
+              {/* Form içeriği - Animasyonla yukarı kayacak */}
+              <Animated.View style={formContentAnimatedStyle}>
               {/* E-Posta Girişi */}
-              <View className="mb-4">
+              <View className="mb-3">
                 <View className="flex-row items-center bg-gray-100 rounded-xl px-4 py-3">
                   <Ionicons name="mail-outline" size={20} color="#6B7280" />
                   <TextInput
@@ -447,6 +662,12 @@ export default function AuthScreen() {
                     returnKeyType="next"
                     blurOnSubmit={false}
                     onSubmitEditing={() => passwordInputRef.current?.focus()}
+                    onFocus={() => {
+                      // iOS'ta input'a tıklandığında formu genişlet
+                      if (Platform.OS === 'ios' && !isFormExpanded) {
+                        expandForm();
+                      }
+                    }}
                     onBlur={() => {
                       // Android'de input focus kaybettiğinde klavye durumunu kontrol et
                       if (Platform.OS === 'android') {
@@ -461,7 +682,7 @@ export default function AuthScreen() {
               </View>
 
               {/* Şifre Girişi */}
-              <View className="mb-6">
+              <View className="mb-4">
                 <View className="flex-row items-center bg-gray-100 rounded-xl px-4 py-3">
                   <Ionicons name="lock-closed-outline" size={20} color="#6B7280" />
                   <TextInput
@@ -478,6 +699,12 @@ export default function AuthScreen() {
                     returnKeyType="done"
                     blurOnSubmit={false}
                     onSubmitEditing={handleAuth}
+                    onFocus={() => {
+                      // iOS'ta input'a tıklandığında formu genişlet
+                      if (Platform.OS === 'ios' && !isFormExpanded) {
+                        expandForm();
+                      }
+                    }}
                     onBlur={() => {
                       // Android'de input focus kaybettiğinde klavye durumunu kontrol et
                       if (Platform.OS === 'android') {
@@ -518,7 +745,14 @@ export default function AuthScreen() {
               </Pressable>
 
               {/* Kayıt / Giriş arasında geçiş */}
-              <TouchableOpacity className="mt-5" onPress={() => setIsLogin(!isLogin)}>
+              <TouchableOpacity 
+                className="mb-0" 
+                style={{ 
+                  marginTop: Platform.OS === 'ios' && keyboardVisible ? 15 : (Platform.OS === 'android' && keyboardVisible ? 24 : 12),
+                  paddingBottom: Platform.OS === 'ios' && keyboardVisible ? 8 : (Platform.OS === 'android' && keyboardVisible ? 0 : 12)
+                }}
+                onPress={() => setIsLogin(!isLogin)}
+              >
                 <Text className="text-center text-gray-600">
                   {isLogin ? (
                     <>Hesabın yok mu? <Text className="text-green-700 font-semibold">Kayıt ol</Text></>
@@ -527,7 +761,10 @@ export default function AuthScreen() {
                   )}
                 </Text>
               </TouchableOpacity>
-        </View>
+              </Animated.View>
+          </View>
+        </Animated.View>
+        </GestureDetector>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
