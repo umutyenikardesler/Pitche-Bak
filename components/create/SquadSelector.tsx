@@ -98,6 +98,7 @@ export const SquadSelector: React.FC<SquadSelectorProps> = ({
                   ? 'bg-green-600 border-green-600'
                   : 'bg-gray-200 border-gray-400'
               }`}
+              activeOpacity={1}
               onPress={() => setMatchFormat(format)}
             >
               <Text className={`text-center font-semibold ${
@@ -132,6 +133,7 @@ export const SquadSelector: React.FC<SquadSelectorProps> = ({
                 <View key={position} style={styles.buttonWrapper}>
                   <TouchableOpacity
                     className="flex p-3 rounded bg-green-600"
+                    activeOpacity={1}
                     onPress={() => handlePositionSelection(position)}
                   >
                     <Text className="text-white">
@@ -177,6 +179,7 @@ export const SquadSelector: React.FC<SquadSelectorProps> = ({
                 <View key={position} style={styles.buttonWrapper}>
                   <TouchableOpacity
                     className="flex p-3 rounded bg-green-600"
+                    activeOpacity={1}
                     onPress={() => handlePositionSelection(position)}
                   >
                     <Text className="text-white">

@@ -88,6 +88,7 @@ export default function SettingsModal({
           <View className="flex-1 p-4">
             <TouchableOpacity
               className="flex-row items-center justify-between p-3 bg-green-600 rounded-lg mb-3"
+              activeOpacity={1}
               onPress={() =>
                 setLanguageOptionsVisible(!languageOptionsVisible)
               }

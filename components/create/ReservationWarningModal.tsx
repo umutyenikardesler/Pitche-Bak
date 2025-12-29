@@ -51,17 +51,17 @@ export default function ReservationWarningModal({
 
           {/* İçerik */}
           <View className="mb-4">
-            <Text className="text-lg font-bold text-green-700 mb-2">
+            <Text className="text-lg font-bold text-green-700 mb-2 text-center">
               📞 Saha Rezervasyonu
             </Text>
-            <Text className="text-base text-gray-700 mb-4">
+            <Text className="text-base text-gray-700 mb-4 text-center">
               Maç oluşturmadan önce <Text className="font-bold text-red-600">mutlaka</Text> sahanın telefon numarasını arayarak rezervasyon yapmanız gerekmektedir.
             </Text>
 
-            <Text className="text-lg font-bold text-blue-700 mb-2">
+            <Text className="text-lg font-bold text-blue-700 mb-2 text-center">
               ⚽ Maç Oluşturma
             </Text>
-            <Text className="text-base text-gray-700 mb-4">
+            <Text className="text-base text-gray-700 mb-4 text-center">
               Rezervasyon yaptıktan sonra maçınızı oluşturabilir ve eksik pozisyonları belirleyebilirsiniz.
             </Text>
           </View>
@@ -69,7 +69,7 @@ export default function ReservationWarningModal({
           {/* Checkbox */}
           <TouchableOpacity
             onPress={() => setReservationConfirmed(!reservationConfirmed)}
-            className="flex-row items-center mb-4 p-3 bg-gray-50 rounded-lg"
+            className="flex-row items-center justify-center mb-4 p-3 bg-gray-50 rounded-lg"
             activeOpacity={0.7}
           >
             <View className={`w-6 h-6 border-2 rounded mr-3 items-center justify-center ${
@@ -79,7 +79,7 @@ export default function ReservationWarningModal({
                 <Ionicons name="checkmark" size={18} color="#fff" />
               )}
             </View>
-            <Text className="flex-1 text-base font-semibold text-gray-800">
+            <Text className="flex-1 text-base font-semibold text-gray-800 text-center">
               Öncelikle Sahayı Rezerve Et ardından Maçı Oluştur
             </Text>
           </TouchableOpacity>

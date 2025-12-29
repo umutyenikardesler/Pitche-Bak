@@ -125,6 +125,29 @@ export default function AuthScreen() {
     }
   };
 
+  // Formu genişletme/kapama fonksiyonu (logo ve başlık için)
+  const toggleForm = () => {
+    if (isFormExpanded) {
+      // Formu kapat
+      formHeight.value = withTiming(MIN_FORM_HEIGHT, {
+        duration: 300,
+        easing: Easing.out(Easing.cubic),
+      });
+      formContentTranslateY.value = withTiming(200, {
+        duration: 300,
+        easing: Easing.out(Easing.cubic),
+      });
+      formContentOpacity.value = withTiming(0, {
+        duration: 300,
+        easing: Easing.out(Easing.cubic),
+      });
+      setIsFormExpanded(false);
+    } else {
+      // Formu aç
+      expandForm();
+    }
+  };
+
   // Klavye durumunu dinle
   useEffect(() => {
     const keyboardDidShowListener = Keyboard.addListener("keyboardDidShow", (e) => {
@@ -530,35 +553,6 @@ export default function AuthScreen() {
                 transform: [{ translateX: -3 }, { translateY: -3 }],
               }} />
               
-              {/* "SAHAYA" yazısı - Kalenin ön çizgisi ile orta saha çizgisinin ortasında */}
-              <Text
-                style={{
-                  position: 'absolute',
-                  top: '50%',
-                  left: '26%',
-                  fontSize: 20,
-                  color: 'white',
-                  fontWeight: 'bold',
-                  transform: [{ translateX: -35 }, { translateY: -8 }],
-                }}
-              >
-                SAHAYA
-              </Text>
-              
-              {/* "BAK" yazısı - Orta saha çizgisi ile kalenin ön çizgisinin ortasında */}
-              <Text
-                style={{
-                  position: 'absolute',
-                  top: '50%',
-                  right: '25%',
-                  fontSize: 20,
-                  color: 'white',
-                  fontWeight: 'bold',
-                  transform: [{ translateX: 15 }, { translateY: -8 }],
-                }}
-              >
-                BAK
-              </Text>
             </View>
           </View>
           
@@ -624,7 +618,7 @@ export default function AuthScreen() {
               <View className="w-12 h-1 bg-gray-300 rounded-full self-center mb-2" />
               
               {/* Logo ve Başlık - Her zaman görünür */}
-              <Pressable onPress={expandForm} disabled={isFormExpanded}>
+              <Pressable onPress={toggleForm}>
                 <View className="items-center" style={{ marginBottom: isFormExpanded ? 12 : 8 }}>
                   <View className="w-16 h-16 bg-green-700 rounded-full items-center justify-center mt-2 mb-3">
                     <Ionicons name="football" size={36} color="white" />
