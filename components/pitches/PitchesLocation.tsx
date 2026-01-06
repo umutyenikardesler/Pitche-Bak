@@ -4,7 +4,7 @@ import { useLanguage } from "@/contexts/LanguageContext";
 interface PitchesLocationProps {
   locationText: string;
   setLocationText: (text: string) => void;
-  getLocation: () => void | Promise<void>;
+  getLocation: (showAlertOnError?: boolean) => void | Promise<void>;
 }
 
 export default function PitchesLocation({ locationText, setLocationText, getLocation }: PitchesLocationProps) {
@@ -19,7 +19,7 @@ export default function PitchesLocation({ locationText, setLocationText, getLoca
           value={locationText}
           onChangeText={setLocationText}
         />
-        <Pressable className="bg-green-600 px-4 py-2 rounded-md" onPress={getLocation}>
+        <Pressable className="bg-green-600 px-4 py-2 rounded-md" onPress={() => getLocation(true)}>
           <Text className="text-white font-bold">{t('pitches.findYourLocation')}</Text>
         </Pressable>
       </View>

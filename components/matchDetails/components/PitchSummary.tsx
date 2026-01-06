@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, Linking } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import MapView, { Marker } from 'react-native-maps';
+import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { Match } from '@/components/index/types';
 
@@ -48,6 +48,7 @@ export default function PitchSummary({ match }: PitchSummaryProps) {
           {pitch?.latitude && pitch?.longitude && (
             <View className="w-full h-48 rounded-lg overflow-hidden my-2">
               <MapView
+                provider={PROVIDER_GOOGLE}
                 style={{ width: "100%", height: "100%" }}
                 initialRegion={{
                   latitude: pitch.latitude,

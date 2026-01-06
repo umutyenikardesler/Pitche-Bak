@@ -11,6 +11,9 @@
     "ios": {
       "bundleIdentifier": "com.tumurelsedrakiney.PitcheBak",
       "supportsTablet": true,
+      "config": {
+        "googleMapsApiKey": "AIzaSyC9VGm56IFnVAYEYKoPnPt3eGJ3_NMwPB4"
+      },
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "Yakınınızdaki sahaları göstermek ve konuma göre sıralamak için konumunuza ihtiyaç var.",
         "ITSAppUsesNonExemptEncryption": false

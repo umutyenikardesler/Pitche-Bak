@@ -29,12 +29,17 @@ export default function Pitches() {
       const stored = await AsyncStorage.getItem("locationPermissionStatus");
       if (stored === "granted") {
         setLocationPermissionStatus("granted");
-        getLocation();
+        // İzin verilmişse otomatik olarak konumu al
+        await getLocation();
       } else {
         const { status, canAskAgain } = await Location.requestForegroundPermissionsAsync();
         setLocationPermissionStatus(status);
         await AsyncStorage.setItem("locationPermissionStatus", status);
-        if (status !== "granted") {
+        if (status === "granted") {
+          // İzin verildiyse otomatik olarak konumu al
+          await getLocation();
+        } else {
+          // İzin verilmediyse kullanıcıya bilgi ver
           Alert.alert(
             t('pitches.locationPermissionRequired'),
             t('pitches.locationPermissionMessage'),
@@ -92,9 +97,21 @@ export default function Pitches() {
     setRefreshing(false);
   };
 
-  const getLocation = async () => {
-    if (locationPermissionStatus !== "granted") return;
+  const getLocation = async (showAlertOnError: boolean = false) => {
     try {
+      // İzin kontrolü - state'e bağlı kalmadan direkt kontrol et
+      const { status } = await Location.getForegroundPermissionsAsync();
+      if (status !== "granted") {
+        setLocationText(t('pitches.locationCouldNotBeRetrieved'));
+        if (showAlertOnError) {
+          Alert.alert(t('pitches.locationError'), t('pitches.locationInfoCouldNotBeRetrieved'));
+        }
+        return;
+      }
+      
+      setLocationPermissionStatus("granted");
+      await AsyncStorage.setItem("locationPermissionStatus", "granted");
+      
       const { coords } = await Location.getCurrentPositionAsync({});
       const { latitude, longitude } = coords;
       setLocation({ latitude, longitude });
@@ -201,7 +218,10 @@ export default function Pitches() {
     } catch (err) {
       console.error(t('pitches.locationError'), err);
       setLocationText(t('pitches.locationCouldNotBeRetrieved'));
-      Alert.alert(t('pitches.locationError'), t('pitches.locationInfoCouldNotBeRetrieved'));
+      // Sadece manuel çağrıda (butonla) Alert göster
+      if (showAlertOnError) {
+        Alert.alert(t('pitches.locationError'), t('pitches.locationInfoCouldNotBeRetrieved'));
+      }
     }
   };
 

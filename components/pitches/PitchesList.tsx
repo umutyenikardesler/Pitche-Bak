@@ -131,6 +131,13 @@ export default function PitchesList({ pitches, selectedPitch, setSelectedPitch, 
     };
   });
 
+  // Yazı için animasyon (sadece scale)
+  const textAnimatedStyle = useAnimatedStyle(() => {
+    return {
+      transform: [{ scale: scale.value }],
+    };
+  });
+
 
   const handleSelectPitch = async (pitchId: string) => {
     const { data, error } = await supabase
@@ -374,38 +381,75 @@ export default function PitchesList({ pitches, selectedPitch, setSelectedPitch, 
                 </View>
               </View>
             </ScrollView>
-            <Animated.View
+            <View
               pointerEvents="box-none"
-              style={[
-                animatedStyle,
-                {
-                  position: 'absolute',
-                  right: 24,
-                  top: '47.5%',
-                  transform: [{ translateY: 0 }],
-                  borderRadius: 9999,
-                  shadowColor: '#000',
-                  shadowOffset: { width: 0, height: 2 },
-                  shadowOpacity: 0.6,
-                  shadowRadius: 6,
-                  elevation: 10,
-                },
-              ]}
+              style={{
+                position: 'absolute',
+                right: 32,
+                top: '47.5%',
+                alignItems: 'center',
+              }}
             >
-              <TouchableOpacity
-                onPress={() => handleSelectPitch(selectedPitch.id)}
-                className="flex-row"
-                style={{
-                  paddingHorizontal: 12,
-                  paddingVertical: 12,
-                  borderRadius: 9999,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
+              {/* Maç Oluştur yazısı - Yeşil arka planın üstüne yarım ay şeklinde (şapka gibi) */}
+              <Animated.View
+                style={[
+                  textAnimatedStyle,
+                  {
+                    position: 'absolute',
+                    top: -28,
+                    right: -10,
+                    backgroundColor: '#fff',
+                    borderRadius: 20,
+                    paddingHorizontal: 5,
+                    paddingVertical: 4,
+                    transform: [
+                      { perspective: 1000 },
+                      { rotateX: '20deg' },
+                    ],
+                  },
+                ]}
               >
-                <FontAwesome name="soccer-ball-o" size={24} color="#fff" />
-              </TouchableOpacity>
-            </Animated.View>
+                <Text
+                  style={{
+                    color: '#16a34a',
+                    fontSize: 12,
+                    textAlign: 'center',
+                    width: 70,
+                    fontWeight: 'bold',
+                  }}
+                >
+                  Maç Oluştur
+                </Text>
+              </Animated.View>
+              
+              <Animated.View
+                style={[
+                  animatedStyle,
+                  {
+                    borderRadius: 9999,
+                    shadowColor: '#000',
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: 0.6,
+                    shadowRadius: 6,
+                    elevation: 10,
+                  },
+                ]}
+              >
+                <TouchableOpacity
+                  onPress={() => handleSelectPitch(selectedPitch.id)}
+                  className="flex-row"
+                  style={{
+                    paddingHorizontal: 12,
+                    paddingVertical: 12,
+                    borderRadius: 9999,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <FontAwesome name="soccer-ball-o" size={24} color="#fff" />
+                </TouchableOpacity>
+              </Animated.View>
+            </View>
           </>
         </View>
       </GestureDetector>
