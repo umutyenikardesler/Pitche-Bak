@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, TextInput, ScrollView, TouchableOpacity, Alert, KeyboardAvoidingView, Platform, TouchableWithoutFeedback, Keyboard } from 'react-native';
+import { View, Text, TextInput, ScrollView, TouchableOpacity, Alert, KeyboardAvoidingView, Platform, TouchableWithoutFeedback, Keyboard, Modal } from 'react-native';
 
 import { MatchDetailsForm } from '@/components/create/MatchDetailsForm';
 import { LocationSelector } from '@/components/create/LocationSelector';
@@ -47,6 +47,9 @@ export default function CreateMatch() {
 
   const [userId, setUserId] = useState<string | null>(null);
   const [reservationModalVisible, setReservationModalVisible] = useState(true);
+  const [successModalVisible, setSuccessModalVisible] = useState(false);
+  const [errorModalVisible, setErrorModalVisible] = useState(false);
+  const [errorModalMessage, setErrorModalMessage] = useState("Maç oluşturulurken bir hata oluştu. Lütfen tekrar deneyin.");
   const router = useRouter();
   const navigation = useNavigation();
 
@@ -171,47 +174,51 @@ export default function CreateMatch() {
 
       console.log('Maç başarıyla oluşturuldu:', data);
 
-      // Başarılı mesajını göster
-      Alert.alert(
-        "Tebrikler 🎉",
-        "Maçınız başarılı bir şekilde oluşturulmuştur.",
-        [
-          {
-            text: "Tamam",
-            onPress: () => {
-              // Formu temizle
-              setMatchTitle('');
-              setSelectedDistrict('');
-              setSelectedPitch('');
-              setLocalDistrictName('');
-              setDate(new Date());
-              setTime('1');
-              setPrice('');
-              setIsSquadIncomplete(false);
-              setMatchFormat('5-5');
-              setMissingPositions({
-                kaleci: { selected: false, count: 1 },
-                defans: { selected: false, count: 1 },
-                ortaSaha: { selected: false, count: 1 },
-                forvet: { selected: false, count: 1 },
-              });
-              // Ana sayfaya yönlendir
-              if (Platform.OS === 'web') {
-                window.location.href = '/';
-              } else {
-                router.push("/(tabs)");
+      // Başarılı durumda:
+      // - Native: Alert.alert çalışıyor
+      // - Web: Alert çoğu zaman görünmüyor; bu yüzden Modal kullanıyoruz
+      if (Platform.OS === 'web') {
+        setSuccessModalVisible(true);
+      } else {
+        Alert.alert(
+          "Tebrikler 🎉",
+          "Maçınız başarılı bir şekilde oluşturulmuştur.",
+          [
+            {
+              text: "Tamam",
+              onPress: () => {
+                // Formu temizle
+                setMatchTitle('');
+                setSelectedDistrict('');
+                setSelectedPitch('');
+                setLocalDistrictName('');
+                setDate(new Date());
+                setTime('1');
+                setPrice('');
+                setIsSquadIncomplete(false);
+                setMatchFormat('5-5');
+                setMissingPositions({
+                  kaleci: { selected: false, count: 1 },
+                  defans: { selected: false, count: 1 },
+                  ortaSaha: { selected: false, count: 1 },
+                  forvet: { selected: false, count: 1 },
+                });
+
+                router.replace("/(tabs)");
               }
             }
-          }
-        ]
-      );
+          ]
+        );
+      }
 
     } catch (error) {
       console.error('Maç oluşturulurken hata oluştu:', error);
-      Alert.alert(
-        "Hata",
-        "Maç oluşturulurken bir hata oluştu. Lütfen tekrar deneyin."
-      );
+      if (Platform.OS === 'web') {
+        setErrorModalMessage("Maç oluşturulurken bir hata oluştu. Lütfen tekrar deneyin.");
+        setErrorModalVisible(true);
+      } else {
+        Alert.alert("Hata", "Maç oluşturulurken bir hata oluştu. Lütfen tekrar deneyin.");
+      }
     }
   };
 
@@ -254,6 +261,78 @@ export default function CreateMatch() {
         visible={reservationModalVisible}
         onClose={() => setReservationModalVisible(false)}
       />
+
+      {/* Web başarı modalı */}
+      <Modal
+        visible={successModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setSuccessModalVisible(false)}
+      >
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'center', alignItems: 'center' }}>
+          <View style={{ width: 320, backgroundColor: 'white', borderRadius: 16, padding: 18 }}>
+            <Text style={{ fontSize: 18, fontWeight: '800', textAlign: 'center', marginBottom: 8 }}>
+              Tebrikler 🎉
+            </Text>
+            <Text style={{ textAlign: 'center', color: '#374151', marginBottom: 14 }}>
+              Maçınız başarılı bir şekilde oluşturulmuştur.
+            </Text>
+            <TouchableOpacity
+              onPress={() => {
+                setSuccessModalVisible(false);
+                // Formu temizle
+                setMatchTitle('');
+                setSelectedDistrict('');
+                setSelectedPitch('');
+                setLocalDistrictName('');
+                setDate(new Date());
+                setTime('1');
+                setPrice('');
+                setIsSquadIncomplete(false);
+                setMatchFormat('5-5');
+                setMissingPositions({
+                  kaleci: { selected: false, count: 1 },
+                  defans: { selected: false, count: 1 },
+                  ortaSaha: { selected: false, count: 1 },
+                  forvet: { selected: false, count: 1 },
+                });
+                // Web'de router ile geri dön
+                router.replace("/(tabs)");
+              }}
+              style={{ backgroundColor: '#16a34a', paddingVertical: 10, borderRadius: 10 }}
+              activeOpacity={0.9}
+            >
+              <Text style={{ color: 'white', fontWeight: '800', textAlign: 'center' }}>Tamam</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Web hata modalı */}
+      <Modal
+        visible={errorModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setErrorModalVisible(false)}
+      >
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'center', alignItems: 'center' }}>
+          <View style={{ width: 320, backgroundColor: 'white', borderRadius: 16, padding: 18 }}>
+            <Text style={{ fontSize: 18, fontWeight: '800', textAlign: 'center', marginBottom: 8 }}>
+              Hata
+            </Text>
+            <Text style={{ textAlign: 'center', color: '#374151', marginBottom: 14 }}>
+              {errorModalMessage}
+            </Text>
+            <TouchableOpacity
+              onPress={() => setErrorModalVisible(false)}
+              style={{ backgroundColor: '#111827', paddingVertical: 10, borderRadius: 10 }}
+              activeOpacity={0.9}
+            >
+              <Text style={{ color: 'white', fontWeight: '800', textAlign: 'center' }}>Tamam</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
 
       <ScrollView 
         className="bg-white rounded-lg my-3 mx-4 p-4 shadow-md"

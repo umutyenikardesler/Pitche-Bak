@@ -7,6 +7,7 @@ import {
   Image,
   ScrollView,
   Alert,
+  Platform,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
@@ -255,7 +256,19 @@ export default function UserListModal({
         />
 
         {/* Modal içeriği */}
-        <View className="bg-white rounded-xl w-10/12 max-h-2/3 shadow-2xl">
+        <View
+          className="bg-white rounded-xl w-10/12 max-h-2/3 shadow-2xl"
+          style={
+            Platform.OS === "web"
+              ? {
+                  width: "36%",
+                  minWidth: 320,
+                  maxWidth: 520,
+                  alignSelf: "center",
+                }
+              : undefined
+          }
+        >
           {/* Header */}
           <View className="flex-row justify-between items-center p-4 border-b border-gray-200 bg-green-200 rounded-t-xl">
             <Text className="text-xl font-bold text-green-700">

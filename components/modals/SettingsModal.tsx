@@ -5,6 +5,7 @@ import {
   Text,
   TouchableOpacity,
   Alert,
+  Platform,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -49,7 +50,12 @@ export default function SettingsModal({
       onRequestClose={onClose}
       presentationStyle="overFullScreen"
     >
-      <View className="flex-1 justify-end">
+      <View
+        className="flex-1 justify-end"
+        // Web'de modal portal olduğu için tüm sayfayı kaplıyor gibi görünür.
+        // Görünümü bozmadan sadece sheet'i "app container" gibi ortada %50 genişlikte tutuyoruz.
+        style={Platform.OS === "web" ? { alignItems: "center" } : undefined}
+      >
         <TouchableOpacity
           activeOpacity={1}
           onPress={(e) => e.stopPropagation()}
@@ -69,6 +75,14 @@ export default function SettingsModal({
             shadowOpacity: 0.5,
             shadowRadius: 12,
             elevation: 12,
+            ...(Platform.OS === "web"
+              ? {
+                  width: "50%",
+                  minWidth: 360,
+                  maxWidth: 520,
+                  alignSelf: "center",
+                }
+              : null),
           }}
         >
           {/* Header */}

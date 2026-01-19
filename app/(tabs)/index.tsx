@@ -164,6 +164,7 @@ export default function Index() {
   
   // Yükseklik hesaplama fonksiyonu
   const calculateHeight = useCallback(() => {
+    const webExtraHeight = Platform.OS === 'web' ? 15 : 0;
     const calculatedHeight = (() => {
       if (futureMatches.length === 0) {
         // Android için daha fazla yükseklik gerekiyor
@@ -171,9 +172,9 @@ export default function Index() {
         return headerHeight + emptyStateHeight + 16; // Boş durum için başlık + buton + boşluk + mb-8 (32px)
       }
       if (futureMatches.length === 1) return headerHeight + itemHeight + 22; // 1 maç + padding
-      if (futureMatches.length === 2) return headerHeight + (itemHeight * 2) + 25; // 2 maç + padding
+      if (futureMatches.length === 2) return headerHeight + (itemHeight * 2) + 25 + webExtraHeight; // 2 maç + padding (+web)
       // 3 veya daha fazla maç varsa 2 maç + daha fazla padding + header
-      return headerHeight + (itemHeight * 2) + 30; // 80px padding ekledik
+      return headerHeight + (itemHeight * 2) + 30 + webExtraHeight; // 80px padding ekledik (+web)
     })();
     
     console.log('Yükseklik hesaplandı:', calculatedHeight, 'Maç sayısı:', futureMatches.length, 'Platform:', Platform.OS);
@@ -585,7 +586,12 @@ export default function Index() {
 
           {/* MyMatches için dinamik yükseklik */}
           <View 
-            style={{ height: futureMatches.length === 0 ? undefined : myMatchesHeight }}>
+            style={{
+              height: futureMatches.length === 0 ? undefined : myMatchesHeight,
+              // Web'de FlatList container'ı parent yüksekliğini aşarak bir sonraki bölüme taşabiliyor.
+              // Mobil davranışını bozmadan, web'de taşmayı engellemek için clip ediyoruz.
+              overflow: Platform.OS === 'web' ? 'hidden' : undefined,
+            }}>
             <MyMatches
               matches={futureMatches}
               refreshing={refreshing}

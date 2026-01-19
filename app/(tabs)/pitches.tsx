@@ -117,6 +117,163 @@ export default function Pitches() {
       setLocation({ latitude, longitude });
 
       try {
+        const stripMahalleSuffix = (s: string) => {
+          return s
+            .replace(/\s*Mahallesi\s*$/i, '')
+            .replace(/\s*Mah\.\s*$/i, '')
+            .trim();
+        };
+
+        const toTrTitleCase = (text: string) => {
+          return text
+            .toLocaleLowerCase('tr-TR')
+            .split(' ')
+            .filter(Boolean)
+            .map((w) => w.charAt(0).toLocaleUpperCase('tr-TR') + w.slice(1))
+            .join(' ');
+        };
+
+        const normalizeStreetTr = (streetRaw: string) => {
+          const s = streetRaw.trim();
+          // "Sokak" -> "Sok", "Cadde" -> "Cad" gibi (örnekte "5043 Sok")
+          return s
+            .replace(/\b(sokak|sokağı)\b/gi, 'Sok')
+            .replace(/\b(cadde|caddesi)\b/gi, 'Cad')
+            // "294. Sok" -> "294 Sok"
+            .replace(/(\d+)\.\s*(Sok|Cad)\b/gi, '$1 $2')
+            // "294." gibi kalan nokta
+            .replace(/(\d+)\.\b/g, '$1');
+        };
+
+        const formatTrAddress = (args: {
+          neighborhood?: string | null;
+          street?: string | null;
+          streetNumber?: string | null;
+          district?: string | null; // ilçe
+          province?: string | null; // il
+        }) => {
+          // İstenen örnek: "Rafetpaşa, 5043 Sok, 10, Bornova / İZMİR"
+          const neighborhood = args.neighborhood ? toTrTitleCase(stripMahalleSuffix(args.neighborhood)) : '';
+          const street = args.street ? normalizeStreetTr(args.street) : '';
+          const no = (args.streetNumber ?? '').trim();
+          const district = args.district ? toTrTitleCase(args.district.trim()) : '';
+          const province = args.province ? args.province.trim().toLocaleUpperCase('tr-TR') : '';
+
+          const leftParts: string[] = [];
+          if (neighborhood) leftParts.push(neighborhood);
+          if (street) leftParts.push(street);
+          if (no) leftParts.push(no);
+
+          const left = leftParts.join(', ').trim();
+
+          const right =
+            district && province ? `${district} / ${province}` : district ? district : province ? province : '';
+
+          if (left && right) return `${left}, ${right}`;
+          return (left || right).trim();
+        };
+
+        // Web'de expo-location reverse geocode çoğu zaman detaylı adres dönmeyebiliyor.
+        // Bu yüzden web'de önce Nominatim ile adresi dene.
+        const reverseGeocodeWeb = async (lat: number, lon: number) => {
+          const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lon}`;
+          const res = await fetch(url, {
+            headers: {
+              // Nominatim temel kullanım şartı: user-agent bilgisi
+              'User-Agent': 'PitcheBak/1.0 (web)',
+              'Accept-Language': 'tr-TR,tr;q=0.9,en;q=0.8',
+            },
+          });
+          if (!res.ok) return null;
+          const json: any = await res.json();
+          const a = json?.address ?? {};
+
+          const isTr = (a.country_code || '').toLowerCase() === 'tr';
+
+          if (isTr) {
+            const neighborhood = a.suburb || a.neighbourhood || a.quarter;
+            const street = a.road || a.pedestrian || a.footway || a.path;
+            const no = a.house_number;
+
+            // Nominatim TR alanları şehir/ilçe bazen farklı key'lerde gelebiliyor:
+            // - il (province): state / province / region / city
+            // - ilçe (district): county / city_district / municipality / district
+            const isRegionLike = (s: any) =>
+              typeof s === 'string' && /bölgesi|region/i.test(s);
+
+            // "Ege Bölgesi" gibi değerleri il olarak kabul etmeyelim.
+            // TR için il genelde `state` veya `city` alanında gelir (örn. state="İzmir", city="Bayraklı" gibi karışık durumlar olabiliyor).
+            let province: string =
+              (!isRegionLike(a.state) ? a.state : '') ||
+              (!isRegionLike(a.province) ? a.province : '') ||
+              (!isRegionLike(a.city) ? a.city : '') ||
+              (!isRegionLike(a.town) ? a.town : '') ||
+              (!isRegionLike(a.village) ? a.village : '') ||
+              '';
+
+            let district: string =
+              a.city_district || a.county || a.municipality || a.district || '';
+
+            // Bazı durumlarda ilçe a.city olarak gelir (örn. city="Bayraklı", state="İzmir")
+            // İlçe boşsa ve city, province'den farklıysa city'yi ilçe olarak al.
+            if (!district && a.city && province && a.city !== province) {
+              district = a.city;
+            }
+
+            // Kritik düzeltme:
+            // Bazı TR adreslerinde `city` ilçe (Bayraklı) olarak gelir, `state` ise il (İzmir) olur.
+            // Eğer ilçe boş kaldıysa ama `state` varsa ve province state'den farklıysa:
+            // province'i state yap, önceki province'i ilçe kabul et.
+            if (!district && a.state && province && a.state !== province && !isRegionLike(a.state)) {
+              district = province;
+              province = a.state;
+            }
+
+            // Eğer province ile district aynıysa (tekrar), province'i state'e çekmeye çalış
+            if (
+              district &&
+              province &&
+              district.toLocaleLowerCase('tr-TR') === province.toLocaleLowerCase('tr-TR') &&
+              a.state &&
+              !isRegionLike(a.state)
+            ) {
+              province = a.state;
+            }
+
+            // Eğer hala il "bölge" gibi kaldıysa ama address içinde daha iyi aday varsa, city'yi dene
+            if (isRegionLike(province) && a.city && !isRegionLike(a.city)) {
+              province = a.city;
+            }
+
+            // Son güvenlik: TR'de il mutlaka büyük harf olsun diye province boşsa state/province'ı tekrar dene
+            if (!province && a.state && !isRegionLike(a.state)) {
+              province = a.state;
+            }
+
+            const formatted = formatTrAddress({
+              neighborhood,
+              street,
+              streetNumber: no,
+              district,
+              province,
+            });
+
+            return formatted || json?.display_name || null;
+          }
+
+          // TR değilse basit bir fallback
+          return json?.display_name || null;
+        };
+
+        if (Platform.OS === 'web') {
+          const webAddress = await reverseGeocodeWeb(latitude, longitude);
+          if (webAddress) {
+            setLocationText(webAddress);
+            fetchPitches(latitude, longitude);
+            return;
+          }
+        }
+
         // Önce standart reverse geocoding
         const address = await Location.reverseGeocodeAsync({ latitude, longitude });
         console.log("📍 Tam adres verisi:", address[0]); // Debug için
@@ -125,9 +282,9 @@ export default function Pitches() {
         
                  if (address && address.length > 0) {
            const addr = address[0];
-           const { street, streetNumber, name, subregion, region, city, country, postalCode } = addr;
+           const { street, streetNumber, name, district, subregion, region, city, country, postalCode } = addr;
            
-           // Türkiye için özel adres formatı
+           // Türkiye için özel adres formatı (MOBİL zaten düzgün görünüyordu, eski davranışı koru)
            if (country === "Turkey" || country === "Türkiye") {
              // Sokak ve numara
              if (street) {
@@ -205,7 +362,10 @@ export default function Pitches() {
         
                  // Eğer hala adres bulunamadıysa, koordinatları göster
          if (!formatted) {
-           formatted = `📍 ${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;
+           // Web'de koordinat göstermek yerine daha sade göster
+           formatted = Platform.OS === 'web'
+             ? `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`
+             : `📍 ${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;
          }
         
         setLocationText(formatted || t('pitches.addressNotFound'));

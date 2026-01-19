@@ -44,9 +44,11 @@ export default function AuthScreen() {
       // Aşağı çekme (pozitif translationY) formu küçültür
       const newHeight = startHeight.value - event.translationY;
       // Minimum ve maksimum yükseklik limitleri
-      const maxHeight = Platform.OS === 'ios' 
+      const maxHeight = Platform.OS === 'ios'
         ? SCREEN_HEIGHT * 0.42  // iOS için daha küçük
-        : SCREEN_HEIGHT * 0.55; // Android için
+        : Platform.OS === 'web'
+          ? SCREEN_HEIGHT * 0.5   // Web'de biraz daha küçük (altta boşluk bırakmasın)
+          : SCREEN_HEIGHT * 0.55; // Android için
       if (newHeight >= MIN_FORM_HEIGHT && newHeight <= maxHeight) {
         formHeight.value = newHeight;
         // İçerik pozisyonunu da güncelle
@@ -58,9 +60,11 @@ export default function AuthScreen() {
     .onEnd((event) => {
       // Eğer yukarı çekilmişse (threshold: -50) formu genişlet
       if (event.translationY < -50) {
-        const maxHeight = Platform.OS === 'ios' 
+        const maxHeight = Platform.OS === 'ios'
           ? SCREEN_HEIGHT * 0.42  // iOS için daha küçük
-          : SCREEN_HEIGHT * 0.55; // Android için
+          : Platform.OS === 'web'
+            ? SCREEN_HEIGHT * 0.5   // Web'de biraz daha küçük (altta boşluk bırakmasın)
+            : SCREEN_HEIGHT * 0.55; // Android için
         formHeight.value = withTiming(maxHeight, {
           duration: 300,
           easing: Easing.out(Easing.cubic),
@@ -106,9 +110,11 @@ export default function AuthScreen() {
   // Formu genişletme fonksiyonu
   const expandForm = () => {
     if (!isFormExpanded) {
-      const maxHeight = Platform.OS === 'ios' 
+      const maxHeight = Platform.OS === 'ios'
         ? SCREEN_HEIGHT * 0.42
-        : SCREEN_HEIGHT * 0.55;
+        : Platform.OS === 'web'
+          ? SCREEN_HEIGHT * 0.5
+          : SCREEN_HEIGHT * 0.55;
       formHeight.value = withTiming(maxHeight, {
         duration: 300,
         easing: Easing.out(Easing.cubic),
@@ -600,9 +606,18 @@ export default function AuthScreen() {
                 bottom: Platform.OS === 'ios' ? keyboardHeight : 0,
                 left: 0,
                 right: 0,
-                paddingBottom: Platform.OS === 'ios' 
-                  ? (keyboardVisible ? 30 : 30)
-                  : (keyboardVisible ? 0 : (keyboardWasOpened ? 30 : 30)),
+                // Web'de (özellikle Animated.View + NativeWind) className'deki bg-white bazen uygulanmıyor.
+                // Bu yüzden arka planı inline garanti ediyoruz.
+                backgroundColor: '#ffffff',
+                borderTopLeftRadius: 24,
+                borderTopRightRadius: 24,
+                // Web'de burada 30px boşluk kalıyordu; web için paddingBottom'u kaldır.
+                paddingBottom:
+                  Platform.OS === 'web'
+                    ? 0
+                    : Platform.OS === 'ios'
+                      ? 30
+                      : (keyboardVisible ? 0 : (keyboardWasOpened ? 30 : 30)),
                 overflow: 'hidden'
               }
             ]}
@@ -743,7 +758,15 @@ export default function AuthScreen() {
                 className="mb-0" 
                 style={{ 
                   marginTop: Platform.OS === 'ios' && keyboardVisible ? 15 : (Platform.OS === 'android' && keyboardVisible ? 24 : 12),
-                  paddingBottom: Platform.OS === 'ios' && keyboardVisible ? 8 : (Platform.OS === 'android' && keyboardVisible ? 0 : 12)
+                  // Web'de form açılınca (isFormExpanded) altta gereksiz boşluk oluşuyor; sadece web'de azalt.
+                  paddingBottom:
+                    Platform.OS === 'ios' && keyboardVisible
+                      ? 8
+                      : Platform.OS === 'android' && keyboardVisible
+                        ? 0
+                        : Platform.OS === 'web' && isFormExpanded
+                          ? 0
+                          : 12
                 }}
                 onPress={() => setIsLogin(!isLogin)}
               >

@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { View, Text, FlatList, TouchableOpacity, Image, RefreshControl } from "react-native";
+import { View, Text, FlatList, TouchableOpacity, Image, RefreshControl, Platform } from "react-native";
 import Animated, { useSharedValue, useAnimatedStyle, withRepeat, withTiming, Easing } from "react-native-reanimated";
 import { Ionicons } from "@expo/vector-icons";
 import { Match } from "./types";
@@ -134,7 +134,7 @@ export default function MyMatches({ matches, refreshing, onRefresh, onSelectMatc
   );
 
   return (
-    <View className="">
+    <View style={{ flex: 1 }}>
       <View className="flex-row p-2 bg-green-700">
         <Ionicons name="alarm-outline" size={16} color="white" className="pl-2" />
         <Text className="font-bold text-white "> {t('home.waitingMatches')} </Text>
@@ -161,11 +161,17 @@ export default function MyMatches({ matches, refreshing, onRefresh, onSelectMatc
           keyExtractor={(item) => item.id.toString()}
           renderItem={renderMatch}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-          style={{ paddingTop: 3, paddingBottom: 5}}
-          contentContainerStyle={{ paddingBottom: matches.length > 2 ? 35 : 0 }} // 3+ maç varsa daha fazla padding
+          // Web'de FlatList içerik kadar uzayabiliyor; parent (Index) fixed-height verdiği için
+          // burada list'i kalan alana oturtup scroll'u aktif etmek gerekir.
+          style={{ flex: 1, paddingTop: 3, paddingBottom: Platform.OS === 'web' ? 0 : 5 }}
+          contentContainerStyle={{
+            // Web'de listenin sonunda fazladan boşluk oluşuyordu; web için daha küçük padding.
+            paddingBottom: Platform.OS === 'web' ? 10 : (matches.length > 2 ? 35 : 0),
+          }} // 3+ maç varsa daha fazla padding
           scrollEnabled={matches.length > 2} // 3 veya daha fazla maç varsa scroll aktif
           showsVerticalScrollIndicator={matches.length > 2} // 3+ maç varsa scroll bar göster
-          removeClippedSubviews={true} // Performans için
+          // Web'de removeClippedSubviews scroll/ölçüm sorunlarına yol açabiliyor.
+          removeClippedSubviews={Platform.OS !== 'web'} // Performans için
           maxToRenderPerBatch={5} // Performans için
           windowSize={5} // Performans için
         />

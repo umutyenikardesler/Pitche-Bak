@@ -15,6 +15,7 @@ export default function TabsLayout() {
   const insets = useSafeAreaInsets();
   const tabPressTimers = useRef<Record<string, NodeJS.Timeout>>({});
   const tabPressCounts = useRef<Record<string, number>>({});
+  const isWeb = Platform.OS === 'web';
 
   // CustomHeader başlık tıklaması için fonksiyon
   const handleTitlePress = () => {
@@ -27,9 +28,10 @@ export default function TabsLayout() {
   const tabBarStyles = StyleSheet.create({
     tabBar: {
       backgroundColor: "#ffffff",
-      height: Platform.OS === 'ios' ? 52 + insets.bottom : 120,
-      paddingBottom: Platform.OS === 'ios' ? Math.max(insets.bottom, 8) : 68,
-      paddingTop: 8,
+      // Web'de tab bar çok uzuyordu (Android branch'ine düşüyordu). Web için ayrı ölçüler veriyoruz.
+      height: Platform.OS === 'ios' ? 52 + insets.bottom : (isWeb ? 84 : 120),
+      paddingBottom: Platform.OS === 'ios' ? Math.max(insets.bottom, 8) : (isWeb ? 10 : 68),
+      paddingTop: isWeb ? 6 : 8,
       elevation: 8,
       shadowColor: '#000',
       shadowOffset: { width: 0, height: -2 },
@@ -52,13 +54,28 @@ export default function TabsLayout() {
       fontWeight: "700",
       fontSize: 10.5,
       marginTop: 2,
-      letterSpacing: 0.2
+      letterSpacing: 0.2,
+      // Web'de tab item'lar çok shrink olunca label görünmeyebiliyor
+      flexShrink: 0,
     },
     tabBarItem: {
-      paddingVertical: 2,
-      paddingHorizontal: 0,
-      minWidth: 0,
-      marginHorizontal: 0
+      // Mobil: mevcut davranışı bozma
+      // Web: her item'a yeterli genişlik ver ki label render edilebilsin
+      ...(isWeb
+        ? {
+            flex: 1,
+            flexBasis: 0,
+            minWidth: 84,
+            paddingVertical: 4,
+            paddingHorizontal: 6,
+            marginHorizontal: 0,
+          }
+        : {
+            paddingVertical: 2,
+            paddingHorizontal: 0,
+            minWidth: 0,
+            marginHorizontal: 0,
+          }),
     }
   });
 
@@ -99,7 +116,23 @@ export default function TabsLayout() {
   };
 
   return (
-    <Tabs>
+    <Tabs
+      // Web'de per-screen `tabBarShowLabel` bazı durumlarda uygulanmıyor.
+      // Mobil davranışını bozmamak için bunu SADECE web'de navigator seviyesinde zorluyoruz.
+      screenOptions={
+        isWeb
+          ? {
+              tabBarShowLabel: true,
+              tabBarLabelPosition: 'below-icon',
+              tabBarLabelStyle: {
+                fontSize: 12,
+                fontWeight: '700',
+                marginTop: 2,
+              },
+            }
+          : undefined
+      }
+    >
       <Tabs.Screen
         name="index"
         options={{
@@ -113,8 +146,17 @@ export default function TabsLayout() {
             </View>
           ),
           tabBarLabel: t('home.findMatch'),
-          tabBarLabelStyle: [tabBarStyles.tabBarLabel, { marginTop: 4 }],
-          headerTitle: () => <CustomHeader title={t('home.title')} onTitlePress={handleTitlePress} />,
+          ...(isWeb
+            ? {
+                header: () => (
+                  <View style={{ width: '100%', paddingHorizontal: 12, paddingVertical: 8, backgroundColor: '#fff' }}>
+                    <CustomHeader title={t('home.title')} onTitlePress={handleTitlePress} />
+                  </View>
+                ),
+              }
+            : {
+                headerTitle: () => <CustomHeader title={t('home.title')} onTitlePress={handleTitlePress} />,
+              }),
           tabBarIcon: ({ focused, color, size }) => (
             <Ionicons name="search-outline" color={color as string} size={focused ? 28 : 22} style={{ marginTop: 2 }} />
           ),
@@ -140,8 +182,17 @@ export default function TabsLayout() {
             </View>
           ),
           tabBarLabel: t('pitches.title'),
-          tabBarLabelStyle: [tabBarStyles.tabBarLabel, { marginTop: 4 }],
-          headerTitle: () => <CustomHeader title={t('pitches.title')} onTitlePress={handleTitlePress} />,
+          ...(isWeb
+            ? {
+                header: () => (
+                  <View style={{ width: '100%', paddingHorizontal: 12, paddingVertical: 8, backgroundColor: '#fff' }}>
+                    <CustomHeader title={t('pitches.title')} onTitlePress={handleTitlePress} />
+                  </View>
+                ),
+              }
+            : {
+                headerTitle: () => <CustomHeader title={t('pitches.title')} onTitlePress={handleTitlePress} />,
+              }),
           tabBarIcon: ({ focused, color }) => (
             <Ionicons
               name="navigate-circle-outline"
@@ -171,8 +222,17 @@ export default function TabsLayout() {
             </View>
           ),
           tabBarLabel: t('create.title'),
-          tabBarLabelStyle: [tabBarStyles.tabBarLabel, { marginTop: 4 }],
-          headerTitle: () => <CustomHeader title={t('create.title')} onTitlePress={handleTitlePress} />,
+          ...(isWeb
+            ? {
+                header: () => (
+                  <View style={{ width: '100%', paddingHorizontal: 12, paddingVertical: 8, backgroundColor: '#fff' }}>
+                    <CustomHeader title={t('create.title')} onTitlePress={handleTitlePress} />
+                  </View>
+                ),
+              }
+            : {
+                headerTitle: () => <CustomHeader title={t('create.title')} onTitlePress={handleTitlePress} />,
+              }),
           tabBarIcon: ({ focused, color }) => (
             <MaterialIcons
               name="add-circle-outline"
@@ -196,8 +256,17 @@ export default function TabsLayout() {
             </View>
           ),
           tabBarLabel: t('messages.title'),
-          tabBarLabelStyle: [tabBarStyles.tabBarLabel, { marginTop: 4 }],
-          headerTitle: () => <CustomHeader title={t('messages.title')} onTitlePress={handleTitlePress} />,
+          ...(isWeb
+            ? {
+                header: () => (
+                  <View style={{ width: '100%', paddingHorizontal: 12, paddingVertical: 8, backgroundColor: '#fff' }}>
+                    <CustomHeader title={t('messages.title')} onTitlePress={handleTitlePress} />
+                  </View>
+                ),
+              }
+            : {
+                headerTitle: () => <CustomHeader title={t('messages.title')} onTitlePress={handleTitlePress} />,
+              }),
           tabBarIcon: ({ focused, color }) => (
             <MessagesTabIcon focused={focused} color={color as string} />
           ),
@@ -216,8 +285,17 @@ export default function TabsLayout() {
             </View>
           ),
           tabBarLabel: t('profile.title'),
-          tabBarLabelStyle: [tabBarStyles.tabBarLabel, { marginTop: 4 }],
-          headerTitle: () => <CustomHeader title={t('profile.title')} onTitlePress={handleTitlePress} />,
+          ...(isWeb
+            ? {
+                header: () => (
+                  <View style={{ width: '100%', paddingHorizontal: 12, paddingVertical: 8, backgroundColor: '#fff' }}>
+                    <CustomHeader title={t('profile.title')} onTitlePress={handleTitlePress} />
+                  </View>
+                ),
+              }
+            : {
+                headerTitle: () => <CustomHeader title={t('profile.title')} onTitlePress={handleTitlePress} />,
+              }),
           tabBarIcon: ({ focused, color }) => (
             <Ionicons
               name="person-circle-outline"
@@ -241,8 +319,17 @@ export default function TabsLayout() {
             </View>
           ),
           tabBarLabel: t('notifications.title'),
-          tabBarLabelStyle: [tabBarStyles.tabBarLabel, { marginTop: 4 }],
-          headerTitle: () => <CustomHeader title={t('notifications.title')} onTitlePress={handleTitlePress} />,
+          ...(isWeb
+            ? {
+                header: () => (
+                  <View style={{ width: '100%', paddingHorizontal: 12, paddingVertical: 8, backgroundColor: '#fff' }}>
+                    <CustomHeader title={t('notifications.title')} onTitlePress={handleTitlePress} />
+                  </View>
+                ),
+              }
+            : {
+                headerTitle: () => <CustomHeader title={t('notifications.title')} onTitlePress={handleTitlePress} />,
+              }),
           tabBarIcon: ({ focused, color }) => (
             <Ionicons
               name="notifications-outline"

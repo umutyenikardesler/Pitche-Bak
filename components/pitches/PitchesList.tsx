@@ -1,7 +1,7 @@
 import { FlatList, RefreshControl, ScrollView, Text, TouchableOpacity, View, Platform, Linking, Modal } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import MapView, { Marker, UrlTile, PROVIDER_GOOGLE, Region } from "react-native-maps";
 import { GestureDetector, Gesture } from "react-native-gesture-handler";
+import PitchMap from "@/components/maps/PitchMap";
 import { runOnJS } from "react-native-reanimated";
 import { useRouter } from "expo-router"; // Router'ı getir
 import { useNavigation } from '@react-navigation/native';
@@ -22,33 +22,9 @@ export default function PitchesList({ pitches, selectedPitch, setSelectedPitch, 
   const scale = useSharedValue(1);
   const bgColor = useSharedValue(0); // 0 → yeşil, 1 → açık yeşil
 
-  const mapRef = useRef<MapView | null>(null);
-  const [currentRegion, setCurrentRegion] = useState<Region | null>(null);
-
   const [mapChooserVisible, setMapChooserVisible] = useState(false);
   const [availableMaps, setAvailableMaps] = useState<{ google: boolean; waze: boolean }>({ google: false, waze: false });
 
-  const animateZoom = (factor: number) => {
-    if (!selectedPitch) return;
-    const baseRegion: Region = currentRegion || {
-      latitude: selectedPitch.latitude,
-      longitude: selectedPitch.longitude,
-      latitudeDelta: Platform.OS === 'android' ? 0.001 : 0.002,
-      longitudeDelta: Platform.OS === 'android' ? 0.001 : 0.002,
-    };
-
-    const nextRegion: Region = {
-      latitude: baseRegion.latitude,
-      longitude: baseRegion.longitude,
-      latitudeDelta: Math.max(0.0001, Math.min(0.1, baseRegion.latitudeDelta * factor)),
-      longitudeDelta: Math.max(0.0001, Math.min(0.1, baseRegion.longitudeDelta * factor)),
-    };
-
-    mapRef.current?.animateToRegion(nextRegion, 250);
-  };
-
-  const handleZoomIn = () => animateZoom(0.7);
-  const handleZoomOut = () => animateZoom(1.4);
 
   const showMapChooser = async () => {
     try {
@@ -208,67 +184,26 @@ export default function PitchesList({ pitches, selectedPitch, setSelectedPitch, 
                   <View className="w-full flex-1">
                     <Text className="text-xl font-bold text-green-700 text-center mb-2">{t('pitches.pitchSummary')}</Text>
 
-                    {selectedPitch.latitude && selectedPitch.longitude && Platform.OS !== "web" && (
-                      <View className="w-full h-48 rounded-lg overflow-hidden my-2">
-                        <MapView
-                          ref={(ref) => { mapRef.current = ref; }}
-                          provider={PROVIDER_GOOGLE}
-                          style={{ width: "100%", height: "100%" }}
-                          initialRegion={{
-                            latitude: selectedPitch.latitude,
-                            longitude: selectedPitch.longitude,
-                            latitudeDelta: Platform.OS === 'android' ? 0.001 : 0.002,
-                            longitudeDelta: Platform.OS === 'android' ? 0.001 : 0.002,
-                          }}
-                          mapType="standard"
-                          showsUserLocation={false}
-                          showsScale={false}
-                          showsBuildings={true}
-                          showsTraffic={false}
-                          showsIndoors={true}
-                          loadingEnabled={false}
-                          cacheEnabled={false}
-                          moveOnMarkerPress={false}
-                          scrollEnabled={false}
-                          zoomEnabled={true}
-                          pitchEnabled={false}
-                          rotateEnabled={false}
-                          toolbarEnabled={true}
-                          zoomControlEnabled={false}
-                          showsMyLocationButton={false}
-                          showsCompass={false}
-                          minZoomLevel={14}
-                          maxZoomLevel={20}
-                          onRegionChangeComplete={(region) => setCurrentRegion(region)}
-                        >
-                          <Marker
-                            coordinate={{ latitude: selectedPitch.latitude, longitude: selectedPitch.longitude }}
-                            title={selectedPitch.name}
-                            pinColor="red"
-                          />
-                        </MapView>
-                        {/* Custom zoom controls - top-left */}
-                        <View style={{ position: 'absolute', left: 8, top: 8 }}>
-                          <View style={{ backgroundColor: 'rgba(255,255,255,0.95)', borderRadius: 8, overflow: 'hidden' }}>
-                            <TouchableOpacity onPress={handleZoomIn} style={{ paddingHorizontal: 10, paddingVertical: 6, alignItems: 'center' }}>
-                              <Text style={{ fontSize: 18, fontWeight: '700', color: '#111' }}>+</Text>
-                            </TouchableOpacity>
-                            <View style={{ height: 1, backgroundColor: '#e5e7eb' }} />
-                            <TouchableOpacity onPress={handleZoomOut} style={{ paddingHorizontal: 10, paddingVertical: 6, alignItems: 'center' }}>
-                              <Text style={{ fontSize: 18, fontWeight: '700', color: '#111' }}>−</Text>
+                    {selectedPitch.latitude && selectedPitch.longitude && (
+                      <View className="w-full rounded-lg overflow-hidden my-2" style={{ position: 'relative' }}>
+                        <PitchMap
+                          latitude={selectedPitch.latitude}
+                          longitude={selectedPitch.longitude}
+                          title={selectedPitch.name}
+                          height={192}
+                        />
+
+                        {/* Open in maps chooser - bottom-right (native'de anlamlı, web'de zaten PitchMap buton gösteriyor) */}
+                        {Platform.OS !== 'web' ? (
+                          <View style={{ position: 'absolute', right: 8, bottom: 8 }}>
+                            <TouchableOpacity
+                              onPress={showMapChooser}
+                              style={{ backgroundColor: 'rgba(255,255,255,0.95)', paddingHorizontal: 10, paddingVertical: 8, borderRadius: 9999 }}
+                            >
+                              <Text style={{ fontWeight: '700', color: '#111' }}>Haritalar uygulamasında Aç</Text>
                             </TouchableOpacity>
                           </View>
-                        </View>
-
-                        {/* Open in maps chooser - bottom-right */}
-                        <View style={{ position: 'absolute', right: 8, bottom: 8 }}>
-                          <TouchableOpacity
-                            onPress={showMapChooser}
-                            style={{ backgroundColor: 'rgba(255,255,255,0.95)', paddingHorizontal: 10, paddingVertical: 8, borderRadius: 9999 }}
-                          >
-                            <Text style={{ fontWeight: '700', color: '#111' }}>Haritalar uygulamasında Aç</Text>
-                          </TouchableOpacity>
-                        </View>
+                        ) : null}
 
                         {/* Maps chooser modal */}
                         <Modal

@@ -12,6 +12,7 @@
     "module": "esnext",
     "strict": true,
     "baseUrl": ".",
+    "moduleSuffixes": [".web", ".native", ""],
     "paths": {
       "@/*": [
         "./*"

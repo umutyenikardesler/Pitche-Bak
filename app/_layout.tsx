@@ -1,6 +1,6 @@
 import '@/global.css';
 import { Stack } from "expo-router";
-import { LogBox } from "react-native";
+import { LogBox, Platform, View } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { NotificationProvider } from '@/components/NotificationContext';
@@ -17,7 +17,27 @@ export default function RootLayout() {
       <NotificationProvider>
         <GestureHandlerRootView style={{ flex: 1 }}>
           <SafeAreaProvider>
-            <Stack screenOptions={{ headerShown: false }} />
+            {Platform.OS === 'web' ? (
+              <View style={{ flex: 1, backgroundColor: '#f3f4f6', alignItems: 'center' }}>
+                <View
+                  style={{
+                    flex: 1,
+                    width: '50%',
+                    minWidth: 360,
+                    maxWidth: 520,
+                    backgroundColor: '#ffffff',
+                    overflow: 'hidden',
+                    borderLeftWidth: 1,
+                    borderRightWidth: 1,
+                    borderColor: '#e5e7eb',
+                  }}
+                >
+                  <Stack screenOptions={{ headerShown: false }} />
+                </View>
+              </View>
+            ) : (
+              <Stack screenOptions={{ headerShown: false }} />
+            )}
           </SafeAreaProvider>
         </GestureHandlerRootView>
       </NotificationProvider>

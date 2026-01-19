@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, Linking } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
+import PitchMap from '@/components/maps/PitchMap';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { Match } from '@/components/index/types';
 
@@ -12,7 +12,8 @@ interface PitchSummaryProps {
 
 export default function PitchSummary({ match }: PitchSummaryProps) {
   const { t } = useLanguage();
-  const [isExpanded, setIsExpanded] = useState(false);
+  // "Halı Saha Özeti" başlangıçta açık gelsin (mobil + web)
+  const [isExpanded, setIsExpanded] = useState(true);
   
   const featuresArray: string[] = Array.isArray(match.pitches) 
     ? match.pitches[0]?.features || []
@@ -47,24 +48,7 @@ export default function PitchSummary({ match }: PitchSummaryProps) {
         <View style={{ minHeight: 200 }}>
           {pitch?.latitude && pitch?.longitude && (
             <View className="w-full h-48 rounded-lg overflow-hidden my-2">
-              <MapView
-                provider={PROVIDER_GOOGLE}
-                style={{ width: "100%", height: "100%" }}
-                initialRegion={{
-                  latitude: pitch.latitude,
-                  longitude: pitch.longitude,
-                  latitudeDelta: 0.01,
-                  longitudeDelta: 0.01,
-                }}
-              >
-                <Marker
-                  coordinate={{
-                    latitude: pitch.latitude,
-                    longitude: pitch.longitude,
-                  }}
-                  title={pitchName}
-                />
-              </MapView>
+              <PitchMap latitude={pitch.latitude} longitude={pitch.longitude} title={pitchName} height={192} />
             </View>
           )}
 

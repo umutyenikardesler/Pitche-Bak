@@ -90,7 +90,19 @@ export default function EditProfileModal({
                 padding: 10,
               }}
             >
-              <View className="bg-white p-6 rounded-lg w-3/4">
+              <View
+                className="bg-white p-6 rounded-lg w-3/4"
+                style={
+                  Platform.OS === "web"
+                    ? {
+                        width: "36%",
+                        minWidth: 320,
+                        maxWidth: 520,
+                        alignSelf: "center",
+                      }
+                    : undefined
+                }
+              >
                 <Text className="text-xl font-bold text-center text-green-700 mb-4">
                   {t("profile.completePersonalInfo")}
                 </Text>
