@@ -180,7 +180,7 @@ export default function Pitches() {
           const res = await fetch(url, {
             headers: {
               // Nominatim temel kullanım şartı: user-agent bilgisi
-              'User-Agent': 'PitcheBak/1.0 (web)',
+              'User-Agent': 'SahayaBak/1.0 (web)',
               'Accept-Language': 'tr-TR,tr;q=0.9,en;q=0.8',
             },
           });

@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "Pitche-Bak",
-    "slug": "Pitche-Bak",
+    "name": "SahayaBak",
+    "slug": "sahayabak",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/app.png",
@@ -16,7 +16,8 @@
       },
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "Yakınınızdaki sahaları göstermek ve konuma göre sıralamak için konumunuza ihtiyaç var.",
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "CFBundleDisplayName": "SahayaBak"
       }
     },
     "android": {

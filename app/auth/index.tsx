@@ -8,8 +8,14 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Ionicons } from "@expo/vector-icons";
 import Animated, { useSharedValue, useAnimatedStyle, withRepeat, withTiming, Easing, runOnJS } from "react-native-reanimated";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
+import * as WebBrowser from "expo-web-browser";
+import * as AuthSession from "expo-auth-session";
+import * as AppleAuthentication from "expo-apple-authentication";
+import Constants from "expo-constants";
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
+
+WebBrowser.maybeCompleteAuthSession();
 
 export default function AuthScreen() {
   const router = useRouter();
@@ -18,6 +24,8 @@ export default function AuthScreen() {
   const [isLogin, setIsLogin] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isOAuthLoading, setIsOAuthLoading] = useState<"google" | "apple" | "android" | null>(null);
+  const [appleAvailable, setAppleAvailable] = useState(false);
   const [keyboardVisible, setKeyboardVisible] = useState(false);
   const [keyboardWasOpened, setKeyboardWasOpened] = useState(false); // Klavye bir kere açıldı mı?
   const [isFormExpanded, setIsFormExpanded] = useState(false); // Form genişletilmiş mi?
@@ -45,10 +53,10 @@ export default function AuthScreen() {
       const newHeight = startHeight.value - event.translationY;
       // Minimum ve maksimum yükseklik limitleri
       const maxHeight = Platform.OS === 'ios'
-        ? SCREEN_HEIGHT * 0.42  // iOS için daha küçük
+        ? SCREEN_HEIGHT * 0.65  // iOS için biraz daha artırıldı (alt metin görünsün)
         : Platform.OS === 'web'
           ? SCREEN_HEIGHT * 0.5   // Web'de biraz daha küçük (altta boşluk bırakmasın)
-          : SCREEN_HEIGHT * 0.55; // Android için
+          : SCREEN_HEIGHT * 0.62; // Android için artırıldı (sosyal giriş butonları için)
       if (newHeight >= MIN_FORM_HEIGHT && newHeight <= maxHeight) {
         formHeight.value = newHeight;
         // İçerik pozisyonunu da güncelle
@@ -61,10 +69,10 @@ export default function AuthScreen() {
       // Eğer yukarı çekilmişse (threshold: -50) formu genişlet
       if (event.translationY < -50) {
         const maxHeight = Platform.OS === 'ios'
-          ? SCREEN_HEIGHT * 0.42  // iOS için daha küçük
+          ? SCREEN_HEIGHT * 0.65 // iOS için biraz daha artırıldı (alt metin görünsün)
           : Platform.OS === 'web'
             ? SCREEN_HEIGHT * 0.5   // Web'de biraz daha küçük (altta boşluk bırakmasın)
-            : SCREEN_HEIGHT * 0.55; // Android için
+            : SCREEN_HEIGHT * 0.62; // Android için artırıldı (sosyal giriş butonları için)
         formHeight.value = withTiming(maxHeight, {
           duration: 300,
           easing: Easing.out(Easing.cubic),
@@ -111,10 +119,10 @@ export default function AuthScreen() {
   const expandForm = () => {
     if (!isFormExpanded) {
       const maxHeight = Platform.OS === 'ios'
-        ? SCREEN_HEIGHT * 0.42
+        ? SCREEN_HEIGHT * 0.65
         : Platform.OS === 'web'
           ? SCREEN_HEIGHT * 0.5
-          : SCREEN_HEIGHT * 0.55;
+          : SCREEN_HEIGHT * 0.62;
       formHeight.value = withTiming(maxHeight, {
         duration: 300,
         easing: Easing.out(Easing.cubic),
@@ -207,6 +215,174 @@ export default function AuthScreen() {
     router.replace(destination as any);
   };
 
+  const handlePostLogin = async (userId: string, userEmail?: string | null) => {
+    // Kullanıcı ID'sini AsyncStorage içine kaydet
+    await AsyncStorage.setItem("userId", userId);
+
+    // Kullanıcının bilgilerini çek
+    const { data: userInfo, error: userError } = await supabase
+      .from("users")
+      .select("name, surname, age, height, weight, description")
+      .eq("id", userId)
+      .single();
+
+    // Eğer kullanıcı kaydı yoksa oluştur
+    if (userError && (userError as any).code === "PGRST116") {
+      console.log("Kullanıcı kaydı bulunamadı, oluşturuluyor...");
+      const { error: insertError } = await supabase.from("users").insert([
+        {
+          id: userId,
+          email: userEmail ?? null,
+          name: "Yeni Kullanıcı",
+          surname: "",
+          age: null,
+          height: null,
+          weight: null,
+          description: "",
+          created_at: new Date(),
+        },
+      ]);
+
+      if (insertError) {
+        console.error("Kullanıcı bilgileri eklenirken hata oluştu:", insertError.message);
+        Alert.alert("Hata", "Kullanıcı kaydı oluşturulamadı. Lütfen tekrar deneyin.");
+        setIsLoading(false);
+        setIsOAuthLoading(null);
+        return;
+      }
+
+      navigateTo("/(tabs)/profile?firstLogin=true");
+      return;
+    }
+
+    if (userError) {
+      console.error("Kullanıcı bilgileri alınırken hata oluştu:", userError.message);
+      navigateTo("/(tabs)/profile?firstLogin=true");
+      return;
+    }
+
+    const hasMissingFields = !userInfo?.name || !userInfo?.surname || !userInfo?.age ||
+      !userInfo?.height || !userInfo?.weight || !userInfo?.description;
+
+    if (hasMissingFields) {
+      navigateTo("/(tabs)/profile?firstLogin=true");
+    } else {
+      navigateTo("/(tabs)/profile");
+    }
+  };
+
+  useEffect(() => {
+    if (Platform.OS !== "ios") return;
+    AppleAuthentication.isAvailableAsync()
+      .then(setAppleAvailable)
+      .catch(() => setAppleAvailable(false));
+  }, []);
+
+  const getOAuthRedirectUri = () => {
+    // Expo Go'da exp://..., standalone build'de myapp://... üretir.
+    // Supabase Auth -> URL Configuration -> Additional Redirect URLs içine eklenmeli.
+    return Linking.createURL("/auth/callback");
+  };
+
+  const signInWithOAuth = async (provider: "google" | "apple") => {
+    const redirectUri = getOAuthRedirectUri();
+
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider,
+      options: {
+        redirectTo: redirectUri,
+      },
+    });
+
+    if (error) throw error;
+
+    // Native: auth session ile URL'i açıp geri dön
+    if (Platform.OS !== "web") {
+      const result = await WebBrowser.openAuthSessionAsync(data.url, redirectUri);
+      if (result.type !== "success" || !result.url) {
+        throw new Error("Giriş iptal edildi.");
+      }
+
+      const { data: exchanged, error: exchangeError } = await supabase.auth.exchangeCodeForSession(result.url);
+      if (exchangeError) throw exchangeError;
+
+      const userId = exchanged?.user?.id ?? (await supabase.auth.getUser()).data?.user?.id;
+      const userEmail = exchanged?.user?.email ?? (await supabase.auth.getUser()).data?.user?.email;
+      if (!userId) throw new Error("Kullanıcı bilgisi alınamadı.");
+
+      await handlePostLogin(userId, userEmail);
+      return;
+    }
+
+    // Web: supabase redirect yapacağı için burada genelde devam etmeyiz
+  };
+
+  const handleGoogleSignIn = async (label: "google" | "android" = "google") => {
+    if (isOAuthLoading) return;
+    setIsOAuthLoading(label);
+    try {
+      await signInWithOAuth("google");
+    } catch (error: any) {
+      Alert.alert("Hata", translateError(error?.message || "Bilinmeyen hata"));
+    } finally {
+      setIsOAuthLoading(null);
+    }
+  };
+
+  const handleAppleSignIn = async () => {
+    if (isOAuthLoading) return;
+    setIsOAuthLoading("apple");
+    try {
+      // iOS: native Apple Sign-In
+      const isExpoGo = Constants.appOwnership === "expo";
+
+      // Expo Go'da Apple native token aud = host.exp.Exponent olur ve Supabase'de audience mismatch çıkar.
+      // Bu yüzden Expo Go'da web OAuth akışına düş.
+      if (Platform.OS === "ios" && isExpoGo) {
+        await signInWithOAuth("apple");
+        return;
+      }
+
+      if (Platform.OS === "ios") {
+        // Native Apple Sign-In (token Supabase'e gider)
+        const nonce = Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
+        const credential = await AppleAuthentication.signInAsync({
+          requestedScopes: [
+            AppleAuthentication.AppleAuthenticationScope.EMAIL,
+            AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
+          ],
+          nonce,
+        });
+
+        if (!credential.identityToken) {
+          throw new Error("Apple kimlik doğrulama başarısız (token alınamadı).");
+        }
+
+        const { data, error } = await supabase.auth.signInWithIdToken({
+          provider: "apple",
+          token: credential.identityToken,
+          nonce,
+        } as any);
+
+        if (error) throw error;
+
+        const userId = data?.user?.id ?? (await supabase.auth.getUser()).data?.user?.id;
+        const userEmail = data?.user?.email ?? (await supabase.auth.getUser()).data?.user?.email;
+        if (!userId) throw new Error("Kullanıcı bilgisi alınamadı.");
+
+        await handlePostLogin(userId, userEmail);
+      } else {
+        // Web: OAuth (Apple provider)
+        await signInWithOAuth("apple");
+      }
+
+    } catch (error: any) {
+      Alert.alert("Hata", translateError(error?.message || "Bilinmeyen hata"));
+    } finally {
+      setIsOAuthLoading(null);
+    }
+  };
+
   const handleAuth = async () => {
     Keyboard.dismiss();
     
@@ -272,60 +448,7 @@ export default function AuthScreen() {
       
       if (isLogin && data?.user) {
         console.log("Login başarılı, user:", data.user.id);
-        // Kullanıcı ID'sini AsyncStorage içine kaydet
-        await AsyncStorage.setItem("userId", data.user.id);
-
-        // Kullanıcının bilgilerini çek
-        const { data: userInfo, error: userError } = await supabase
-          .from("users")
-          .select("name, surname, age, height, weight, description")
-          .eq("id", data.user.id)
-          .single();
-
-        // Eğer kullanıcı kaydı yoksa oluştur
-        if (userError && userError.code === 'PGRST116') {
-          console.log("Kullanıcı kaydı bulunamadı, oluşturuluyor...");
-          const { error: insertError } = await supabase.from("users").insert([
-            {
-              id: data.user.id,
-              email: data.user.email,
-              name: "Yeni Kullanıcı",
-              surname: "",
-              age: null,
-              height: null,
-              weight: null,
-              description: "",
-              created_at: new Date(),
-            },
-          ]);
-
-          if (insertError) {
-            console.error("Kullanıcı bilgileri eklenirken hata oluştu:", insertError.message);
-            Alert.alert("Hata", "Kullanıcı kaydı oluşturulamadı. Lütfen tekrar deneyin.");
-            setIsLoading(false);
-            return;
-          }
-
-          // Yeni oluşturulan kullanıcıyı firstLogin ile yönlendir
-          navigateTo("/(tabs)/profile?firstLogin=true");
-          return;
-        }
-
-        if (userError) {
-          console.error("Kullanıcı bilgileri alınırken hata oluştu:", userError.message);
-          // Kullanıcı bilgileri alınamadıysa da firstLogin ile yönlendir
-          navigateTo("/(tabs)/profile?firstLogin=true");
-          return;
-        }
-
-        const hasMissingFields = !userInfo?.name || !userInfo?.surname || !userInfo?.age ||
-          !userInfo?.height || !userInfo?.weight || !userInfo?.description;
-
-        if (hasMissingFields) {
-          navigateTo("/(tabs)/profile?firstLogin=true");
-        } else {
-          navigateTo("/(tabs)/profile");
-        }
+        await handlePostLogin(data.user.id, data.user.email);
       } else {
         // Kayıt başarılı
         setIsLoading(false);
@@ -778,6 +901,87 @@ export default function AuthScreen() {
                   )}
                 </Text>
               </TouchableOpacity>
+
+              {/* Sosyal Giriş Butonları (Kayıt/Giriş metninin altında) */}
+              {isLogin && (
+                <View className="mt-4">
+                  <View className="flex-row items-center mb-8">
+                    <View className="flex-1 h-px bg-gray-300" />
+                    <Text className="mx-3 text-gray-500 font-semibold">veya</Text>
+                    <View className="flex-1 h-px bg-gray-300" />
+                  </View>
+
+                  {/* Google (web + iOS + Android) */}
+                  <Pressable
+                    className="bg-white border-2 border-green-700 py-3 rounded-xl flex-row items-center justify-center mb-3"
+                    onPress={() => handleGoogleSignIn("google")}
+                    disabled={isLoading || isOAuthLoading !== null}
+                    style={({ pressed }) => pressed && { opacity: 0.85 }}
+                  >
+                    {isOAuthLoading === "google" ? (
+                      <ActivityIndicator color="#15803d" />
+                    ) : (
+                      <>
+                        <Ionicons name="logo-google" size={18} color="#15803d" style={{ marginRight: 10 }} />
+                        <Text className="text-green-700 font-bold">
+                          Google Hesabıyla Giriş Yap
+                        </Text>
+                      </>
+                    )}
+                  </Pressable>
+
+                  {/* Apple (web + iOS) */}
+                  {(Platform.OS === "web" || Platform.OS === "ios") && (
+                    <Pressable
+                      className={`py-3 rounded-xl flex-row items-center justify-center mb-3 ${
+                        Platform.OS === "ios" ? (appleAvailable ? "bg-black" : "bg-gray-300") : "bg-black"
+                      }`}
+                      onPress={handleAppleSignIn}
+                      disabled={(Platform.OS === "ios" && !appleAvailable) || isLoading || isOAuthLoading !== null}
+                      style={({ pressed }) => pressed && { opacity: 0.85 }}
+                    >
+                      {isOAuthLoading === "apple" ? (
+                        <ActivityIndicator color="white" />
+                      ) : (
+                        <>
+                          <Ionicons name="logo-apple" size={18} color="white" style={{ marginRight: 10 }} />
+                          <Text className="text-white font-bold">
+                            Apple Hesabınla Giriş Yap
+                          </Text>
+                        </>
+                      )}
+                    </Pressable>
+                  )}
+
+                  {/* Android (web + Android) */}
+                  {(Platform.OS === "web" || Platform.OS === "android") && (
+                    <Pressable
+                      className="py-3 rounded-xl flex-row items-center justify-center bg-green-700"
+                      onPress={() => handleGoogleSignIn("android")}
+                      disabled={isLoading || isOAuthLoading !== null}
+                      style={({ pressed }) => pressed && { opacity: 0.85 }}
+                    >
+                      {isOAuthLoading === "android" ? (
+                        <ActivityIndicator color="white" />
+                      ) : (
+                        <>
+                          <Ionicons name="logo-android" size={18} color="white" style={{ marginRight: 10 }} />
+                          <Text className="text-white font-bold">
+                            Android Hesabınla Giriş Yap
+                          </Text>
+                        </>
+                      )}
+                    </Pressable>
+                  )}
+
+                  <Text
+                    className="text-center text-xs text-gray-500"
+                    style={{ marginTop: Platform.OS === "ios" ? 8 : 16 }}
+                  >
+                    Giriş yaptıktan sonra profil bilgilerini tamamlayabilirsin.
+                  </Text>
+                </View>
+              )}
               </Animated.View>
           </View>
         </Animated.View>
