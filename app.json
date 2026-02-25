@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "SahayaBak",
-    "slug": "sahayabak",
+    "slug": "Pitche-Bak",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/app.png",
@@ -11,6 +11,7 @@
     "ios": {
       "bundleIdentifier": "com.tumurelsedrakiney.PitcheBak",
       "supportsTablet": true,
+      "usesAppleSignIn": true,
       "config": {
         "googleMapsApiKey": "AIzaSyC9VGm56IFnVAYEYKoPnPt3eGJ3_NMwPB4"
       },
@@ -47,7 +48,8 @@
       ],
       "expo-font",
       "expo-secure-store",
-      "expo-web-browser"
+      "expo-web-browser",
+      "expo-apple-authentication"
     ],
     "experiments": {
       "typedRoutes": true

@@ -12,6 +12,7 @@ import * as WebBrowser from "expo-web-browser";
 import * as AuthSession from "expo-auth-session";
 import * as AppleAuthentication from "expo-apple-authentication";
 import Constants from "expo-constants";
+import * as Crypto from "expo-crypto";
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -201,6 +202,8 @@ export default function AuthScreen() {
       "User not found": "Kullanıcı bulunamadı.",
       "AuthApiError: User already exists": "Bu e-posta adresiyle bir hesap zaten var.",
       "AuthApiError: Password should be at least 6 characters": "Şifreniz en az 6 karakter olmalıdır.",
+      "Unsupported provider: missing OAuth secret": "Apple ile giriş için Supabase'de Apple OAuth ayarlarında 'Client secret' eksik. Supabase Dashboard → Auth → Providers → Apple kısmına Services ID ve Secret girmeniz gerekiyor.",
+      "missing OAuth secret": "OAuth için gerekli secret eksik. Supabase Dashboard → Auth → Providers kısmında ilgili sağlayıcı için Client secret tanımlayın.",
     };
 
     return translations[errorMessage] || `Hata: ${errorMessage}`;
@@ -281,7 +284,7 @@ export default function AuthScreen() {
   const getOAuthRedirectUri = () => {
     // Expo Go'da exp://..., standalone build'de myapp://... üretir.
     // Supabase Auth -> URL Configuration -> Additional Redirect URLs içine eklenmeli.
-    return Linking.createURL("/auth/callback");
+    return Linking.createURL("auth/callback");
   };
 
   const signInWithOAuth = async (provider: "google" | "apple") => {
@@ -303,7 +306,18 @@ export default function AuthScreen() {
         throw new Error("Giriş iptal edildi.");
       }
 
-      const { data: exchanged, error: exchangeError } = await supabase.auth.exchangeCodeForSession(result.url);
+      const callbackUrl = new URL(result.url);
+      const callbackError = callbackUrl.searchParams.get("error_description") || callbackUrl.searchParams.get("error");
+      if (callbackError) {
+        throw new Error(callbackError);
+      }
+
+      const code = callbackUrl.searchParams.get("code");
+      if (!code) {
+        throw new Error("Giriş tamamlanamadı (OAuth kodu alınamadı).");
+      }
+
+      const { data: exchanged, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
       if (exchangeError) throw exchangeError;
 
       const userId = exchanged?.user?.id ?? (await supabase.auth.getUser()).data?.user?.id;
@@ -345,13 +359,17 @@ export default function AuthScreen() {
 
       if (Platform.OS === "ios") {
         // Native Apple Sign-In (token Supabase'e gider)
-        const nonce = Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
+        const rawNonce = Crypto.randomUUID();
+        const hashedNonce = await Crypto.digestStringAsync(
+          Crypto.CryptoDigestAlgorithm.SHA256,
+          rawNonce
+        );
         const credential = await AppleAuthentication.signInAsync({
           requestedScopes: [
             AppleAuthentication.AppleAuthenticationScope.EMAIL,
             AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
           ],
-          nonce,
+          nonce: hashedNonce,
         });
 
         if (!credential.identityToken) {
@@ -361,10 +379,23 @@ export default function AuthScreen() {
         const { data, error } = await supabase.auth.signInWithIdToken({
           provider: "apple",
           token: credential.identityToken,
-          nonce,
+          nonce: rawNonce,
+          access_token: credential.authorizationCode ?? undefined,
         } as any);
 
         if (error) throw error;
+
+        // Apple isim bilgisini sadece ilk girişte verir; varsa metadata'ya kaydet.
+        if (credential.fullName?.givenName || credential.fullName?.familyName) {
+          const fullName = [credential.fullName.givenName, credential.fullName.familyName].filter(Boolean).join(" ");
+          await supabase.auth.updateUser({
+            data: {
+              full_name: fullName,
+              given_name: credential.fullName.givenName ?? null,
+              family_name: credential.fullName.familyName ?? null,
+            },
+          });
+        }
 
         const userId = data?.user?.id ?? (await supabase.auth.getUser()).data?.user?.id;
         const userEmail = data?.user?.email ?? (await supabase.auth.getUser()).data?.user?.email;
