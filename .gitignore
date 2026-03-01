@@ -10,8 +10,13 @@ web-build/
 expo-env.d.ts
 
 # Native
-android/
-ios/
+# NOTE: This project contains native projects (`android/` tracked in git) and is built with EAS.
+# Do NOT ignore the entire `android/` or `ios/` directories, otherwise EAS upload can miss `gradlew`.
+android/**/build/
+android/.gradle/
+ios/build/
+ios/Pods/
+ios/.xcode.env.local
 *.orig.*
 *.jks
 *.p8

@@ -9,7 +9,8 @@ import { Ionicons } from "@expo/vector-icons";
 import Animated, { useSharedValue, useAnimatedStyle, withRepeat, withTiming, Easing, runOnJS } from "react-native-reanimated";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import * as WebBrowser from "expo-web-browser";
-import * as AuthSession from "expo-auth-session";
+import { makeRedirectUri } from "expo-auth-session";
+import * as QueryParams from "expo-auth-session/build/QueryParams";
 import * as AppleAuthentication from "expo-apple-authentication";
 import Constants from "expo-constants";
 import * as Crypto from "expo-crypto";
@@ -25,7 +26,7 @@ export default function AuthScreen() {
   const [isLogin, setIsLogin] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [isOAuthLoading, setIsOAuthLoading] = useState<"google" | "apple" | "android" | null>(null);
+  const [isOAuthLoading, setIsOAuthLoading] = useState<"google" | "apple" | null>(null);
   const [appleAvailable, setAppleAvailable] = useState(false);
   const [keyboardVisible, setKeyboardVisible] = useState(false);
   const [keyboardWasOpened, setKeyboardWasOpened] = useState(false); // Klavye bir kere açıldı mı?
@@ -41,6 +42,13 @@ export default function AuthScreen() {
   const MIN_FORM_HEIGHT = Platform.OS === 'ios' ? 160 : 180;
   const formHeight = useSharedValue(MIN_FORM_HEIGHT);
 
+  const getMaxFormHeight = () => {
+    if (Platform.OS === "ios") return SCREEN_HEIGHT * 0.65;
+    if (Platform.OS === "web") return SCREEN_HEIGHT * 0.5;
+    // Android: düşük çözünürlük/ekranlarda sosyal butonlar sığsın diye biraz daha yüksek.
+    return SCREEN_HEIGHT * 0.76;
+  };
+
   // Pan gesture handler
   const startHeight = useSharedValue(MIN_FORM_HEIGHT);
   
@@ -53,11 +61,7 @@ export default function AuthScreen() {
       // Aşağı çekme (pozitif translationY) formu küçültür
       const newHeight = startHeight.value - event.translationY;
       // Minimum ve maksimum yükseklik limitleri
-      const maxHeight = Platform.OS === 'ios'
-        ? SCREEN_HEIGHT * 0.65  // iOS için biraz daha artırıldı (alt metin görünsün)
-        : Platform.OS === 'web'
-          ? SCREEN_HEIGHT * 0.5   // Web'de biraz daha küçük (altta boşluk bırakmasın)
-          : SCREEN_HEIGHT * 0.62; // Android için artırıldı (sosyal giriş butonları için)
+      const maxHeight = getMaxFormHeight();
       if (newHeight >= MIN_FORM_HEIGHT && newHeight <= maxHeight) {
         formHeight.value = newHeight;
         // İçerik pozisyonunu da güncelle
@@ -69,11 +73,7 @@ export default function AuthScreen() {
     .onEnd((event) => {
       // Eğer yukarı çekilmişse (threshold: -50) formu genişlet
       if (event.translationY < -50) {
-        const maxHeight = Platform.OS === 'ios'
-          ? SCREEN_HEIGHT * 0.65 // iOS için biraz daha artırıldı (alt metin görünsün)
-          : Platform.OS === 'web'
-            ? SCREEN_HEIGHT * 0.5   // Web'de biraz daha küçük (altta boşluk bırakmasın)
-            : SCREEN_HEIGHT * 0.62; // Android için artırıldı (sosyal giriş butonları için)
+        const maxHeight = getMaxFormHeight();
         formHeight.value = withTiming(maxHeight, {
           duration: 300,
           easing: Easing.out(Easing.cubic),
@@ -119,11 +119,7 @@ export default function AuthScreen() {
   // Formu genişletme fonksiyonu
   const expandForm = () => {
     if (!isFormExpanded) {
-      const maxHeight = Platform.OS === 'ios'
-        ? SCREEN_HEIGHT * 0.65
-        : Platform.OS === 'web'
-          ? SCREEN_HEIGHT * 0.5
-          : SCREEN_HEIGHT * 0.62;
+      const maxHeight = getMaxFormHeight();
       formHeight.value = withTiming(maxHeight, {
         duration: 300,
         easing: Easing.out(Easing.cubic),
@@ -282,9 +278,41 @@ export default function AuthScreen() {
   }, []);
 
   const getOAuthRedirectUri = () => {
-    // Expo Go'da exp://..., standalone build'de myapp://... üretir.
     // Supabase Auth -> URL Configuration -> Additional Redirect URLs içine eklenmeli.
-    return Linking.createURL("auth/callback");
+    // Dev-client / standalone için custom scheme ile doğru deep link üretmek için makeRedirectUri kullan.
+    // Web için expo-linking ile site URL üretmek daha doğru.
+    if (Platform.OS === "web") return Linking.createURL("auth/callback");
+
+    const scheme =
+      (Constants.expoConfig as any)?.scheme ||
+      (Constants.expoConfig as any)?.ios?.scheme ||
+      (Constants.expoConfig as any)?.android?.scheme ||
+      "myapp";
+
+    return makeRedirectUri({ scheme, path: "auth/callback" });
+  };
+
+  const createSessionFromRedirectUrl = async (url: string) => {
+    const { params, errorCode } = QueryParams.getQueryParams(url);
+    if (errorCode) throw new Error(errorCode);
+
+    const code = (params as any)?.code as string | undefined;
+    const access_token = (params as any)?.access_token as string | undefined;
+    const refresh_token = (params as any)?.refresh_token as string | undefined;
+
+    if (code) {
+      const { data: exchanged, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+      if (exchangeError) throw exchangeError;
+      return exchanged?.session ?? null;
+    }
+
+    if (access_token && refresh_token) {
+      const { data, error } = await supabase.auth.setSession({ access_token, refresh_token });
+      if (error) throw error;
+      return data?.session ?? null;
+    }
+
+    return null;
   };
 
   const signInWithOAuth = async (provider: "google" | "apple") => {
@@ -294,6 +322,7 @@ export default function AuthScreen() {
       provider,
       options: {
         redirectTo: redirectUri,
+        skipBrowserRedirect: true,
       },
     });
 
@@ -306,22 +335,12 @@ export default function AuthScreen() {
         throw new Error("Giriş iptal edildi.");
       }
 
-      const callbackUrl = new URL(result.url);
-      const callbackError = callbackUrl.searchParams.get("error_description") || callbackUrl.searchParams.get("error");
-      if (callbackError) {
-        throw new Error(callbackError);
-      }
+      await createSessionFromRedirectUrl(result.url);
 
-      const code = callbackUrl.searchParams.get("code");
-      if (!code) {
-        throw new Error("Giriş tamamlanamadı (OAuth kodu alınamadı).");
-      }
-
-      const { data: exchanged, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
-      if (exchangeError) throw exchangeError;
-
-      const userId = exchanged?.user?.id ?? (await supabase.auth.getUser()).data?.user?.id;
-      const userEmail = exchanged?.user?.email ?? (await supabase.auth.getUser()).data?.user?.email;
+      const { data: userData, error: userErr } = await supabase.auth.getUser();
+      if (userErr) throw userErr;
+      const userId = userData?.user?.id;
+      const userEmail = userData?.user?.email;
       if (!userId) throw new Error("Kullanıcı bilgisi alınamadı.");
 
       await handlePostLogin(userId, userEmail);
@@ -331,9 +350,9 @@ export default function AuthScreen() {
     // Web: supabase redirect yapacağı için burada genelde devam etmeyiz
   };
 
-  const handleGoogleSignIn = async (label: "google" | "android" = "google") => {
+  const handleGoogleSignIn = async () => {
     if (isOAuthLoading) return;
-    setIsOAuthLoading(label);
+    setIsOAuthLoading("google");
     try {
       await signInWithOAuth("google");
     } catch (error: any) {
@@ -936,7 +955,10 @@ export default function AuthScreen() {
               {/* Sosyal Giriş Butonları (Kayıt/Giriş metninin altında) */}
               {isLogin && (
                 <View className="mt-4">
-                  <View className="flex-row items-center mb-8">
+                  <View
+                    className="flex-row items-center"
+                    style={{ marginBottom: Platform.OS === "android" ? 16 : 32 }}
+                  >
                     <View className="flex-1 h-px bg-gray-300" />
                     <Text className="mx-3 text-gray-500 font-semibold">veya</Text>
                     <View className="flex-1 h-px bg-gray-300" />
@@ -945,7 +967,7 @@ export default function AuthScreen() {
                   {/* Google (web + iOS + Android) */}
                   <Pressable
                     className="bg-white border-2 border-green-700 py-3 rounded-xl flex-row items-center justify-center mb-3"
-                    onPress={() => handleGoogleSignIn("google")}
+                    onPress={handleGoogleSignIn}
                     disabled={isLoading || isOAuthLoading !== null}
                     style={({ pressed }) => pressed && { opacity: 0.85 }}
                   >
@@ -978,27 +1000,6 @@ export default function AuthScreen() {
                           <Ionicons name="logo-apple" size={18} color="white" style={{ marginRight: 10 }} />
                           <Text className="text-white font-bold">
                             Apple Hesabınla Giriş Yap
-                          </Text>
-                        </>
-                      )}
-                    </Pressable>
-                  )}
-
-                  {/* Android (web + Android) */}
-                  {(Platform.OS === "web" || Platform.OS === "android") && (
-                    <Pressable
-                      className="py-3 rounded-xl flex-row items-center justify-center bg-green-700"
-                      onPress={() => handleGoogleSignIn("android")}
-                      disabled={isLoading || isOAuthLoading !== null}
-                      style={({ pressed }) => pressed && { opacity: 0.85 }}
-                    >
-                      {isOAuthLoading === "android" ? (
-                        <ActivityIndicator color="white" />
-                      ) : (
-                        <>
-                          <Ionicons name="logo-android" size={18} color="white" style={{ marginRight: 10 }} />
-                          <Text className="text-white font-bold">
-                            Android Hesabınla Giriş Yap
                           </Text>
                         </>
                       )}

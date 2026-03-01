@@ -1,0 +1,356 @@
+<!doctype html>
+<html lang="tr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>SahayaBak — Maça Başla</title>
+
+    <!-- SEO basics -->
+    <meta name="description" content="SahayaBak ile maçını planla, saha bul, kadronu kur ve anlık bildirimlerle oyunun içinde kal." />
+    <meta name="keywords" content="halı saha, maç, maç organizasyonu, takım kurma, saha bul, futbol, bildirim, mesajlaşma, SahayaBak" />
+    <meta name="author" content="SahayaBak" />
+    <meta name="robots" content="index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1" />
+    <meta name="referrer" content="strict-origin-when-cross-origin" />
+    <meta name="application-name" content="SahayaBak" />
+    <meta name="theme-color" content="#15803d" />
+    <meta name="color-scheme" content="light" />
+
+    <!-- Canonical (relative; set to absolute on deploy if desired) -->
+    <link rel="canonical" href="./" />
+
+    <!-- Favicons -->
+    <link rel="icon" href="./images/favicon.ico" sizes="any" />
+    <link rel="icon" type="image/png" sizes="32x32" href="./images/favicon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="./images/favicon-16x16.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="./images/apple-touch-icon.png" />
+    <link rel="manifest" href="./site.webmanifest" />
+
+    <!-- Open Graph -->
+    <meta property="og:locale" content="tr_TR" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="SahayaBak — Maça Başla" />
+    <meta property="og:description" content="Maç oluştur, oyuncu davet et, saha keşfet ve bildirimlerle her gelişmeden haberdar ol." />
+    <meta property="og:image" content="./images/android-chrome-512x512.png" />
+    <meta property="og:image:width" content="512" />
+    <meta property="og:image:height" content="512" />
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="SahayaBak — Maça Başla" />
+    <meta name="twitter:description" content="Maç oluştur, oyuncu davet et, saha keşfet ve bildirimlerle her gelişmeden haberdar ol." />
+    <meta name="twitter:image" content="./images/android-chrome-512x512.png" />
+
+    <!-- Structured data -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "SoftwareApplication",
+        "name": "SahayaBak",
+        "applicationCategory": "SportsApplication",
+        "operatingSystem": "Android, iOS, Web",
+        "description": "SahayaBak ile maçını planla, saha bul, kadronu kur ve anlık bildirimlerle oyunun içinde kal.",
+        "image": "./images/android-chrome-512x512.png"
+      }
+    </script>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./landing.css" />
+  </head>
+  <body>
+    <div class="bg">
+      <div class="glow g1"></div>
+      <div class="glow g2"></div>
+      <div class="grid"></div>
+    </div>
+
+    <header class="topbar">
+      <div class="container topbar__inner">
+        <a class="brand" href="./index.html">
+          <span class="brand__mark" aria-hidden="true">SB</span>
+          <span class="brand__text">SahayaBak</span>
+        </a>
+
+        <nav class="nav" aria-label="Üst Menü">
+          <a class="nav__link btn btn--ghost" href="#ozellikler">Özellikler</a>
+          <a class="nav__link btn btn--ghost" href="#nasil">Nasıl Çalışır?</a>
+        </nav>
+
+        <div class="actions">
+          <a href="#mobil-uygulama"
+            class="btn btn--ghost"
+            aria-label="Uygulamayı İndir"
+            rel="noopener noreferrer"
+          >
+          Uygulamayı İndir
+          </a>
+          <a
+            class="btn btn--primary"
+            href="./app/index.html"
+            aria-label="Maça başla"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Maça Başla
+          </a>
+        </div>
+      </div>
+    </header>
+
+    <main>
+      <section class="hero">
+        <div class="container hero__inner">
+          <div class="hero__copy">
+            <p class="pill">
+              <span class="pill__dot" aria-hidden="true"></span>
+              Takım kur • Saha bul • Maçı yönet
+            </p>
+            <h1 class="hero__title">
+              SahayaBak ile
+              <span class="grad">maça hazırlanmak</span>
+              çok daha kolay.
+            </h1>
+            <p class="hero__subtitle">
+              Maç oluştur, oyuncu davet et, konum bazlı sahaları keşfet ve bildirimlerle her
+              gelişmeden anında haberdar ol.
+            </p>
+
+            <div class="hero__cta">
+              <a
+                class="btn btn--primary btn--lg"
+                href="./app/index.html"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Maça Başla
+              </a>
+              <a class="btn btn--ghost btn--lg" href="#ozellikler">
+                Özelliklere göz at
+              </a>
+            </div>
+
+            <div class="stats">
+              <div class="stat">
+                <div class="stat__num">Hızlı</div>
+                <div class="stat__label">Maç oluşturma</div>
+              </div>
+              <div class="stat">
+                <div class="stat__num">Net</div>
+                <div class="stat__label">Kadrolaşma</div>
+              </div>
+              <div class="stat">
+                <div class="stat__num">Akıllı</div>
+                <div class="stat__label">Bildirimler</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="hero__card" aria-label="Önizleme kartı">
+            <div class="card">
+              <div class="card__top">
+                <div class="card__badge">Canlı</div>
+                <div class="card__title">Bu hafta</div>
+              </div>
+              <div class="card__body">
+                <div class="row">
+                  <div class="dot dot--green"></div>
+                  <div class="row__text">
+                    <div class="row__head">Maç Oluştur</div>
+                    <div class="row__sub">Saha, saat, oyuncu sayısı</div>
+                  </div>
+                </div>
+                <div class="row">
+                  <div class="dot dot--blue"></div>
+                  <div class="row__text">
+                    <div class="row__head">Kadroyu Kur</div>
+                    <div class="row__sub">Davet, onay, pozisyonlar</div>
+                  </div>
+                </div>
+                <div class="row">
+                  <div class="dot dot--amber"></div>
+                  <div class="row__text">
+                    <div class="row__head">Sahaya Çık</div>
+                    <div class="row__sub">Bildirimlerle herkes hazır</div>
+                  </div>
+                </div>
+              </div>
+              <div class="card__footer">
+                <a
+                  class="btn btn--primary"
+                  href="./app/index.html"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >Uygulamayı Aç</a>
+                <a class="btn btn--ghost" href="#nasil">Detay</a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="ozellikler">
+        <div class="container">
+          <div class="section__head">
+            <h2>Özellikler</h2>
+            <p>Maç organizasyonunu tek ekranda toparlayan temel parçalar.</p>
+          </div>
+
+          <div class="features">
+            <article class="feature feature--primary">
+              <h3>Maç oluşturma</h3>
+              <p>
+                Tarih, saat, saha ve oyuncu sayısını seç. Her şey tek akışta.
+              </p>
+            </article>
+            <article class="feature">
+              <h3>Saha keşfi</h3>
+              <p>
+                Konuma göre sahaları görüntüle, hızlıca karar ver.
+              </p>
+            </article>
+            <article class="feature feature--primary">
+              <h3>Kadro &amp; pozisyon</h3>
+              <p>
+                Katılım durumlarını yönet, pozisyonları düzenle, karmaşayı azalt.
+              </p>
+            </article>
+            <article class="feature">
+              <h3>Mesajlaşma</h3>
+              <p>
+                Maç özelinde konuş, son dakika değişikliklerini kaçırma.
+              </p>
+            </article>
+            <article class="feature feature--primary">
+              <h3>Bildirimler</h3>
+              <p>
+                Davet, onay ve güncellemelerde anında bildirim al.
+              </p>
+            </article>
+            <article class="feature">
+              <h3>Profil</h3>
+              <p>
+                Bilgilerini tamamla, maç geçmişini ve istatistiklerini gör.
+              </p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="section section--alt" id="nasil">
+        <div class="container">
+          <div class="section__head">
+            <h2>Nasıl çalışır?</h2>
+            <p>3 adımda organize ol.</p>
+          </div>
+
+          <ol class="steps">
+            <li class="step">
+              <div class="step__num">1</div>
+              <div class="step__body">
+                <div class="step__title">Maçı oluştur</div>
+                <div class="step__desc">Saha ve zamanını belirle, kriterleri seç.</div>
+              </div>
+            </li>
+            <li class="step">
+              <div class="step__num">2</div>
+              <div class="step__body">
+                <div class="step__title">Takımı tamamla</div>
+                <div class="step__desc">Davet gönder, katılımları takip et.</div>
+              </div>
+            </li>
+            <li class="step">
+              <div class="step__num">3</div>
+              <div class="step__body">
+                <div class="step__title">Maça başla</div>
+                <div class="step__desc">Uygulama üzerinden sahaya çık.</div>
+              </div>
+            </li>
+          </ol>
+
+          <div class="centerCta">
+            <a
+              class="btn btn--primary btn--lg"
+              href="./app/index.html"
+              target="_blank"
+              rel="noopener noreferrer"
+            >Uygulamaya Git</a>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <div class="container footer__inner">
+        <div class="footer__left">
+          <div class="brand brand--small">
+            <span class="brand__mark" aria-hidden="true">SB</span>
+            <span class="brand__text">SahayaBak</span>
+          </div>
+          <div class="muted">
+            <a class="footer__email" href="mailto:info@sahayabak.com">info@sahayabak.com</a>
+          </div>
+        </div>
+
+        <div class="footer__right">
+          <a
+            class="footer__link"
+            href="./app/index.html"
+            target="_blank"
+            rel="noopener noreferrer"
+          >Uygulamayı Aç</a>
+          <a class="footer__link" href="#ozellikler">Özellikler</a>
+          <a class="footer__link" href="#nasil">Nasıl Çalışır?</a>
+        </div>
+
+        <div class="footer__apps" id="mobil-uygulama" aria-label="Mobil uygulamalar">
+          <div class="footerApps">
+            <div class="footerApps__head">Mobil uygulama</div>
+            <div class="footerApps__sub">iOS ve Android’de sahaya daha hızlı çık.</div>
+
+            <div class="storeRow">
+              <a
+                class="storeBadge storeBadge--apple"
+                href="#"
+                aria-label="App Store (yakında)"
+                title="Yakında"
+              >
+                <span class="storeBadge__icon" aria-hidden="true">
+                  <img class="storeBadge__logo" src="./images/apple.svg" alt="" />
+                </span>
+                <span class="storeBadge__text">
+                  <span class="storeBadge__overline">App Store’dan</span>
+                  <span class="storeBadge__name">İndir</span>
+                </span>
+              </a>
+
+              <a
+                class="storeBadge storeBadge--google"
+                href="#"
+                aria-label="Google Play (yakında)"
+                title="Yakında"
+              >
+                <span class="storeBadge__icon" aria-hidden="true">
+                  <img class="storeBadge__logo" src="./images/google-play.svg" alt="" />
+                </span>
+                <span class="storeBadge__text">
+                  <span class="storeBadge__overline">Google Play’den</span>
+                  <span class="storeBadge__name">İndir</span>
+                </span>
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </footer>
+
+    <script>
+      const y = document.getElementById("y");
+      if (y) y.textContent = String(new Date().getFullYear());
+    </script>
+  </body>
+</html>
+
