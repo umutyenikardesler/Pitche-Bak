@@ -7,17 +7,31 @@ import { runOnJS } from "react-native-reanimated";
 import { supabase } from "@/services/supabase";
 import { useLanguage } from "@/contexts/LanguageContext";
 
-interface JoinedMatchSummary {
-  id: string; // match id
-  title: string;
-  date: string;
-  time: string;
+type ChatSummary = MatchChatSummary | DirectChatSummary;
+
+interface BaseChatSummary {
   owner_id: string;
   owner_name: string;
   owner_surname: string;
   owner_profile_image?: string | null;
-  pitches?: { name?: string; districts?: { name?: string } } | null;
   unreadCount?: number;
+}
+
+interface MatchChatSummary extends BaseChatSummary {
+  kind: "match";
+  id: string; // match id
+  title: string;
+  date: string;
+  time: string;
+  pitches?: { name?: string; districts?: { name?: string } } | null;
+}
+
+interface DirectChatSummary extends BaseChatSummary {
+  kind: "direct";
+  id: "dm";
+  lastMessage?: string | null;
+  lastAt?: string | null;
+  match_id?: string | null;
 }
 
 export default function Messages() {
@@ -25,12 +39,12 @@ export default function Messages() {
   const { t } = useLanguage();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [items, setItems] = useState<JoinedMatchSummary[]>([]);
+  const [items, setItems] = useState<ChatSummary[]>([]);
   const screenWidth = Dimensions.get('window').width;
   // Mesajlar ekranı için yatay animasyon (0: ekranda, +width: sağa kaymış)
   const [translateX] = useState(new Animated.Value(0));
 
-  const fetchJoinedMatches = useCallback(async (isRefresh = false) => {
+  const fetchChats = useCallback(async (isRefresh = false) => {
     try {
       if (isRefresh) {
         setRefreshing(true);
@@ -78,11 +92,12 @@ export default function Messages() {
         unreadMap.set(key, (unreadMap.get(key) || 0) + 1);
       });
 
-      const summaries: JoinedMatchSummary[] = (allData || [])
+      const matchSummaries: MatchChatSummary[] = (allData || [])
         .filter((n: any) => n.match && n.sender && n.sender.id && n.sender.id !== user.id)
         .map((n: any) => {
           const key = `${n.sender.id}-${n.match.id}`;
           return {
+            kind: "match",
             id: n.match.id,
             title: n.match.title,
             date: n.match.date,
@@ -97,9 +112,72 @@ export default function Messages() {
         });
 
       // Duplicate'leri kaldır (aynı maç + aynı kullanıcı için tek sohbet)
-      const uniqueSummaries = summaries.filter((summary, index, self) =>
+      const uniqueMatchSummaries = matchSummaries.filter((summary, index, self) =>
         index === self.findIndex(s => s.id === summary.id && s.owner_id === summary.owner_id)
       );
+
+      const matchPartnerIds = new Set(uniqueMatchSummaries.map(s => s.owner_id));
+
+      // Direkt mesaj sohbetlerini (match'siz) messages tablosundan türet
+      // Not: chat ekranı match_id'yi filtrelemiyor; bu yüzden sohbeti kullanıcı bazında topluyoruz.
+      const { data: recentMsgs, error: msgError } = await supabase
+        .from('messages')
+        .select('id, sender_id, recipient_id, content, created_at, match_id')
+        .or(`sender_id.eq.${user.id},recipient_id.eq.${user.id}`)
+        .order('created_at', { ascending: false })
+        .limit(250);
+
+      if (msgError) {
+        console.error('[Messages] recent messages fetch error:', msgError);
+      }
+
+      const dmMetaByUser = new Map<string, { lastMessage: string | null; lastAt: string | null; match_id: string | null }>();
+      (recentMsgs || []).forEach((m: any) => {
+        const otherId = m.sender_id === user.id ? m.recipient_id : m.sender_id;
+        if (!otherId || otherId === user.id) return;
+        // Aynı partner için match sohbeti zaten varsa listede iki kere göstermeyelim
+        if (matchPartnerIds.has(otherId)) return;
+        if (!dmMetaByUser.has(otherId)) {
+          dmMetaByUser.set(otherId, {
+            lastMessage: typeof m.content === 'string' ? m.content : null,
+            lastAt: typeof m.created_at === 'string' ? m.created_at : null,
+            match_id: m.match_id ?? null,
+          });
+        }
+      });
+
+      const dmUserIds = Array.from(dmMetaByUser.keys());
+      const dmUsersById = new Map<string, { id: string; name?: string; surname?: string; profile_image?: string | null }>();
+      if (dmUserIds.length > 0) {
+        const { data: dmUsers, error: dmUsersError } = await supabase
+          .from('users')
+          .select('id, name, surname, profile_image')
+          .in('id', dmUserIds);
+        if (dmUsersError) {
+          console.error('[Messages] dm users fetch error:', dmUsersError);
+        }
+        (dmUsers || []).forEach((u: any) => {
+          if (u?.id) dmUsersById.set(u.id, u);
+        });
+      }
+
+      const dmSummaries: DirectChatSummary[] = dmUserIds.map((otherId) => {
+        const meta = dmMetaByUser.get(otherId)!;
+        const u = dmUsersById.get(otherId);
+        const unreadKey = `${otherId}-${meta.match_id || 'null'}`;
+        return {
+          kind: "direct",
+          id: "dm",
+          owner_id: otherId,
+          owner_name: u?.name || '',
+          owner_surname: u?.surname || '',
+          owner_profile_image: u?.profile_image ?? null,
+          unreadCount: unreadMap.get(unreadKey) || 0,
+          lastMessage: meta.lastMessage,
+          lastAt: meta.lastAt,
+          match_id: meta.match_id,
+        };
+      });
 
       // Sohbetleri sıralama:
       // 1) Mesaj gelen (unreadCount > 0) sohbetler üstte
@@ -107,7 +185,7 @@ export default function Messages() {
       // 3) Kalanları en yakın maç tarihi/saatine göre (en yakın üstte)
       const now = new Date();
 
-      const sorted = [...uniqueSummaries].sort((a, b) => {
+      const sortedMatches = [...uniqueMatchSummaries].sort((a, b) => {
         const unreadA = (a.unreadCount ?? 0) > 0 ? 1 : 0;
         const unreadB = (b.unreadCount ?? 0) > 0 ? 1 : 0;
         if (unreadA !== unreadB) {
@@ -133,9 +211,18 @@ export default function Messages() {
         return 0;
       });
 
-      setItems(sorted);
+      const sortedDMs = [...dmSummaries].sort((a, b) => {
+        const unreadA = (a.unreadCount ?? 0) > 0 ? 1 : 0;
+        const unreadB = (b.unreadCount ?? 0) > 0 ? 1 : 0;
+        if (unreadA !== unreadB) return unreadB - unreadA;
+        const ta = a.lastAt ? new Date(a.lastAt).getTime() : 0;
+        const tb = b.lastAt ? new Date(b.lastAt).getTime() : 0;
+        return tb - ta; // son mesaj en üstte
+      });
+
+      setItems([...sortedDMs, ...sortedMatches]);
     } catch (e) {
-      console.error('[Messages] fetchJoinedMatches error:', e);
+      console.error('[Messages] fetchChats error:', e);
       setItems([]);
     } finally {
       setLoading(false);
@@ -144,19 +231,19 @@ export default function Messages() {
   }, []);
 
   useEffect(() => {
-    fetchJoinedMatches();
-  }, [fetchJoinedMatches]);
+    fetchChats();
+  }, [fetchChats]);
 
   const onRefresh = useCallback(() => {
-    fetchJoinedMatches(true);
-  }, [fetchJoinedMatches]);
+    fetchChats(true);
+  }, [fetchChats]);
 
   // Ekran odağa geldiğinde sohbet listesini bir kez tazele (ör: chat ekranından geri dönünce)
   useFocusEffect(
     useCallback(() => {
-      fetchJoinedMatches();
+      fetchChats();
       return () => {};
-    }, [fetchJoinedMatches])
+    }, [fetchChats])
   );
 
   // Soldan sağa kaydırarak index sayfasına dön (animasyonlu)
@@ -195,10 +282,10 @@ export default function Messages() {
           { event: 'INSERT', schema: 'public', table: 'messages', filter: `recipient_id=eq.${user.id}` },
           () => {
             // Mesaj INSERT olduktan hemen sonra sohbet listesini güncelle
-            fetchJoinedMatches(true);
+            fetchChats(true);
             // Birkaç yüz ms sonra tekrar çek ki notification da kesin oluşmuş olsun (unreadCount doğru gelsin)
             setTimeout(() => {
-              fetchJoinedMatches(true);
+              fetchChats(true);
             }, 300);
           }
         )
@@ -209,16 +296,78 @@ export default function Messages() {
       mounted = false;
       if (channel) supabase.removeChannel(channel);
     };
-  }, [fetchJoinedMatches]);
+  }, [fetchChats]);
 
-  const renderItem = ({ item }: { item: JoinedMatchSummary }) => {
+  const renderItem = ({ item }: { item: ChatSummary }) => {
     // Format date and times similar to MyMatches
+    const hasUnread = (item.unreadCount ?? 0) > 0;
+
+    if (item.kind === "direct") {
+      const lastAtText = item.lastAt ? new Date(item.lastAt).toLocaleString("tr-TR") : '';
+      const preview = (item.lastMessage || '').trim();
+      const previewText = preview.length ? (preview.length > 42 ? `${preview.slice(0, 42)}…` : preview) : (t('messages.directMessage') || 'Direkt mesaj');
+
+      const params: any = { to: item.owner_id, name: `${item.owner_name} ${item.owner_surname}`.trim() };
+      if (item.match_id) params.matchId = item.match_id;
+
+      return (
+        <TouchableOpacity
+          activeOpacity={0.8}
+          onPress={() => router.push({ pathname: '/message/chat', params })}
+        >
+          <View className={`bg-white rounded-lg mx-4 my-1 p-1 shadow-lg ${hasUnread ? '' : 'opacity-60'}`}>
+            <View className="flex-row items-center justify-between">
+              {/* Profil Resmi */}
+              <View className="w-1/5 flex justify-center p-1 py-1.5">
+                <Image
+                  source={item.owner_profile_image ? { uri: item.owner_profile_image } : require('@/assets/images/ball.png')}
+                  className="rounded-full mx-auto"
+                  style={{ width: 60, height: 60, resizeMode: 'contain' }}
+                />
+              </View>
+
+              {/* Sağ bilgi alanı */}
+              <View className="w-4/6 flex justify-center -mt-2 -ml-4">
+                <View className="flex-row items-center justify-between">
+                  <Text className={`text-lg font-semibold ${hasUnread ? 'text-green-700' : 'text-gray-500'}`}>
+                    {item.owner_name} {item.owner_surname}
+                  </Text>
+                  {hasUnread && (
+                    <View className="ml-2 px-2 py-0.5 rounded-full bg-red-500">
+                      <Text className="text-xs font-bold text-white">
+                        {item.unreadCount}
+                      </Text>
+                    </View>
+                  )}
+                </View>
+
+                <View className="text-gray-700 text-md flex-row items-center">
+                  <Ionicons name="chatbubbles-outline" size={18} color="black" />
+                  <Text className="pl-2 font-semibold"> {previewText} </Text>
+                </View>
+
+                {!!lastAtText && (
+                  <View className="text-gray-700 text-md flex-row items-center pt-1">
+                    <Ionicons name="time-outline" size={18} color="black" />
+                    <Text className="pl-2 font-semibold"> {lastAtText} </Text>
+                  </View>
+                )}
+              </View>
+
+              {/* Sağdaki ok ikonu */}
+              <View className="mr-1">
+                <Ionicons name="chevron-forward-outline" size={20} color="green" />
+              </View>
+            </View>
+          </View>
+        </TouchableOpacity>
+      );
+    }
+
     const formattedDate = new Date(item.date).toLocaleDateString("tr-TR");
     const [hours, minutes] = item.time.split(":").map(Number);
     const startFormatted = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
     const endFormatted = `${String((hours + 1)).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
-
-    const hasUnread = (item.unreadCount ?? 0) > 0;
 
     return (
       <TouchableOpacity
@@ -290,7 +439,7 @@ export default function Messages() {
         ListEmptyComponent={
           <View className="flex-1 justify-center items-center" style={{ minHeight: 200 }}>
             <Text className="text-gray-600">
-              {t('messages.noAcceptedJoins') || 'Henüz katıldığın maç yok'}
+              {t('messages.noChats') || 'Henüz sohbet yok'}
             </Text>
           </View>
         }
@@ -309,7 +458,7 @@ export default function Messages() {
     content = (
       <FlatList
         data={items}
-        keyExtractor={(it) => `${it.id}-${it.owner_id}`}
+        keyExtractor={(it) => `${it.kind}-${it.owner_id}-${it.kind === 'match' ? it.id : 'dm'}`}
         renderItem={renderItem}
         contentContainerStyle={{ paddingBottom: 16, paddingTop: 8 }}
         refreshControl={

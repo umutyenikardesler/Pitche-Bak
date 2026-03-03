@@ -37,26 +37,59 @@ export const MatchDetailsForm: React.FC<MatchDetailsFormProps> = ({ date, setDat
     return new Date(utcTime + (3 * 3600000));
   };
 
-  const currentNow = getCurrentDate();
-  const isToday = date.getDate() === currentNow.getDate() && 
-                 date.getMonth() === currentNow.getMonth() && 
-                 date.getFullYear() === currentNow.getFullYear();
-  const currentHour = currentNow.getHours();
-
+  // Zamanın ilerlemesiyle (ör. 22:59 -> 23:00) min seçim kurallarının otomatik güncellenmesi için
+  const [now, setNow] = useState(() => getCurrentDate());
   useEffect(() => {
-    if (!isToday) {
+    const id = setInterval(() => setNow(getCurrentDate()), 30 * 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  const isSameDay = (a: Date, b: Date) =>
+    a.getDate() === b.getDate() &&
+    a.getMonth() === b.getMonth() &&
+    a.getFullYear() === b.getFullYear();
+
+  const dayStamp = (d: Date) => d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate();
+
+  // Şu anki saate göre "en erken seçilebilir" slot: her zaman bir sonraki saat (00:00'a taşarsa tarih +1)
+  const getNextHourSlot = (d: Date) => {
+    const slot = new Date(d);
+    slot.setMinutes(0, 0, 0);
+    slot.setHours(slot.getHours() + 1); // her zaman bir sonraki saat
+    return slot;
+  };
+
+  const nextSlot = getNextHourSlot(now);
+  const minSelectableDay = createCurrentDate(nextSlot.getFullYear(), nextSlot.getMonth(), nextSlot.getDate());
+  const minSelectableHour = nextSlot.getHours(); // 0-23
+  const minCalendarDay = new Date(minSelectableDay.getFullYear(), minSelectableDay.getMonth(), minSelectableDay.getDate());
+
+  const isMinDay = isSameDay(date, minSelectableDay);
+  const availableHours = Array.from({ length: 24 }, (_, i) => i).filter(hour => {
+    if (isMinDay) return hour >= minSelectableHour;
+    return dayStamp(date) > dayStamp(minSelectableDay); // yarın ve sonrası: 0-23
+  });
+
+  // Tarih/saat tutarlılığını koru:
+  // - Eğer bugün artık seçilemiyorsa (örn 23:xx), tarihi otomatik yarına al
+  // - Seçilen gün min gün ise saati min saatten küçük seçtirme
+  useEffect(() => {
+    // Eğer önceki state'ten 24 gibi geçersiz bir değer geldiyse toparla
+    const numericTime = Number(time);
+    if (!Number.isNaN(numericTime) && numericTime >= 24) {
       setTime("0");
     }
-  }, [date]);
 
-  const availableHours = Array.from({ length: 24 }, (_, i) => i)
-    .filter(hour => !isToday || hour > currentHour);
-
-  useEffect(() => {
-    if (isToday && Number(time) <= currentHour) {
-      setTime((currentHour + 1).toString());
+    if (dayStamp(date) < dayStamp(minSelectableDay)) {
+      setDate(minSelectableDay);
+      setTime(minSelectableHour.toString());
+      return;
     }
-  }, [date]);
+
+    if (isMinDay && Number(time) < minSelectableHour) {
+      setTime(minSelectableHour.toString());
+    }
+  }, [date, time, dayStamp(minSelectableDay), minSelectableHour]);
 
   const formatDate = (date: Date) => {
     const day = date.getDate();
@@ -73,7 +106,17 @@ export const MatchDetailsForm: React.FC<MatchDetailsFormProps> = ({ date, setDat
       const day = selectedDate.getDate();
       
       const currentDate = createCurrentDate(year, month, day);
-      setDate(currentDate);
+      // Eğer artık bugünde saat seçilemiyorsa, minSelectableDay'e snap'le
+      if (dayStamp(currentDate) < dayStamp(minSelectableDay)) {
+        setDate(minSelectableDay);
+        setTime(minSelectableHour.toString());
+      } else {
+        setDate(currentDate);
+        // Min gün seçildiyse saat en az minSelectableHour olmalı
+        if (isSameDay(currentDate, minSelectableDay) && Number(time) < minSelectableHour) {
+          setTime(minSelectableHour.toString());
+        }
+      }
     }
     setShowDatePicker(false);
   };
@@ -88,7 +131,7 @@ export const MatchDetailsForm: React.FC<MatchDetailsFormProps> = ({ date, setDat
       <View className="flex-1 justify-center items-center bg-black/50">
         <View className="w-50 bg-white rounded-lg p-4" style={{ maxHeight: screenHeight * 0.75 }}>
           <FlatList
-            data={availableHours.map(hour => ({ label: `${hour}:00`, value: hour.toString() }))}
+            data={availableHours.map(hour => ({ label: `${String(hour).padStart(2, '0')}:00`, value: hour.toString() }))}
             keyExtractor={(item) => item.value}
             renderItem={({ item }) => (
               <TouchableOpacity
@@ -139,7 +182,7 @@ export const MatchDetailsForm: React.FC<MatchDetailsFormProps> = ({ date, setDat
               selected={date}
               onChange={handleDateChange}
               inline
-              minDate={getCurrentDate()}
+              minDate={minCalendarDay}
               locale={currentLanguage === 'tr' ? tr : enUS}
               adjustDateOnChange
               calendarClassName={`date-picker-calendar date-picker-calendar-${currentLanguage}`}
@@ -173,7 +216,7 @@ export const MatchDetailsForm: React.FC<MatchDetailsFormProps> = ({ date, setDat
           className="bg-green-600 rounded p-3 flex-1 ml-2"
           onPress={() => setShowTimeModal(true)}
         >
-          <Text className="text-white font-semibold text-center">{time}:00</Text>
+          <Text className="text-white font-semibold text-center">{String(time).padStart(2, '0')}:00</Text>
         </TouchableOpacity>
       </View>
 
@@ -190,13 +233,21 @@ export const MatchDetailsForm: React.FC<MatchDetailsFormProps> = ({ date, setDat
                 const month = selectedDate.getMonth();
                 const day = selectedDate.getDate();
                 
-                      const currentDate = createCurrentDate(year, month, day);
-      setDate(currentDate);
+                const currentDate = createCurrentDate(year, month, day);
+                if (dayStamp(currentDate) < dayStamp(minSelectableDay)) {
+                  setDate(minSelectableDay);
+                  setTime(minSelectableHour.toString());
+                } else {
+                  setDate(currentDate);
+                  if (isSameDay(currentDate, minSelectableDay) && Number(time) < minSelectableHour) {
+                    setTime(minSelectableHour.toString());
+                  }
+                }
               }
               setShowDatePicker(false);
             }}
                           locale={currentLanguage === 'tr' ? 'tr-TR' : 'en-US'}
-                            minimumDate={getCurrentDate()}
+                            minimumDate={minCalendarDay}
             style={{ width: '100%' }}
           />
         </View>

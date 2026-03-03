@@ -167,14 +167,12 @@ export default function ChatScreen() {
         return;
       }
 
-      // TR (UTC+3) saatine göre created_at oluştur
-      const trNowISO = new Date(Date.now() + 3 * 60 * 60 * 1000).toISOString();
+      const content = input.trim();
 
       const payload: any = {
         sender_id: user.id,
         recipient_id: recip,
-        content: input.trim(),
-        created_at: trNowISO,
+        content,
       };
 
       const getParam2 = (p: any): string | undefined => {
@@ -188,6 +186,25 @@ export default function ChatScreen() {
       if (error) {
         console.error('[Chat] sendMessage insert error:', error);
         return;
+      }
+
+      // Alıcı için unread sayısını besleyecek direct_message bildirimi oluştur.
+      // created_at'ı DB default'una bırakıyoruz (UTC).
+      try {
+        const notifPayload: any = {
+          user_id: recip,
+          sender_id: user.id,
+          type: 'direct_message',
+          message: content,
+          is_read: false,
+        };
+        if (matchIdStr) notifPayload.match_id = matchIdStr;
+        const { error: notifError } = await supabase.from('notifications').insert(notifPayload);
+        if (notifError) {
+          console.error('[Chat] direct_message notification insert error:', notifError);
+        }
+      } catch (e) {
+        console.error('[Chat] direct_message notification unexpected error:', e);
       }
 
       setInput('');
@@ -220,6 +237,7 @@ export default function ChatScreen() {
       <>
         <Stack.Screen
           options={{
+            headerShown: true,
             headerTitleAlign: 'center',
             headerLeft: () => (
               <TouchableOpacity onPress={() => router.back()} style={{ paddingHorizontal: 4 }} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
@@ -227,9 +245,12 @@ export default function ChatScreen() {
               </TouchableOpacity>
             ),
             headerTitle: () => (
-              <View style={{ alignItems: 'center', justifyContent: 'center' }}>
-                <Image source={require('@/assets/images/logo.png')} style={{ width: 120, height: 36, resizeMode: 'contain' }} />
-              </View>
+              <Text
+                style={{ fontWeight: '800', color: '#065f46', maxWidth: 240 }}
+                numberOfLines={1}
+              >
+                {String(name || 'Sohbet')}
+              </Text>
             ),
             headerRight: () => (
               <TouchableOpacity onPress={() => router.push('/notifications')} style={{ paddingHorizontal: 6 }} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
@@ -239,14 +260,6 @@ export default function ChatScreen() {
           }}
         />
         <View style={{ flex: 1 }}>
-          {/* Header altı bilgi satırı */}
-          <View style={{ alignItems: 'center', paddingVertical: 8, borderBottomWidth: 1, borderColor: '#e5e7eb' }}>
-            {!!name && (
-              <Text style={{ fontWeight: '700', color: '#065f46' }}>
-                {String(name)} ile Sohbet Ediyorsunuz
-              </Text>
-            )}
-          </View>
           <FlatList
             ref={listRef}
             data={messages}

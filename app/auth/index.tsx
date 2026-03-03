@@ -1,12 +1,12 @@
 import { useRef, useState, useEffect } from "react";
-import { View, Text, TextInput, TouchableOpacity, Alert, KeyboardAvoidingView, Platform, Pressable, ActivityIndicator, ScrollView, Keyboard, Dimensions, Image } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { View, Text, TextInput, TouchableOpacity, Alert, KeyboardAvoidingView, Platform, Pressable, ActivityIndicator, ScrollView, Keyboard, Dimensions, Image, FlatList } from "react-native";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { supabase } from "@/services/supabase";
 import * as Linking from "expo-linking";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Ionicons } from "@expo/vector-icons";
-import Animated, { useSharedValue, useAnimatedStyle, withRepeat, withTiming, Easing, runOnJS } from "react-native-reanimated";
+import Animated, { useSharedValue, useAnimatedStyle, useAnimatedScrollHandler, useFrameCallback, withTiming, Easing, runOnJS } from "react-native-reanimated";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import * as WebBrowser from "expo-web-browser";
 import { makeRedirectUri } from "expo-auth-session";
@@ -21,6 +21,7 @@ WebBrowser.maybeCompleteAuthSession();
 
 export default function AuthScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLogin, setIsLogin] = useState(true);
@@ -35,24 +36,223 @@ export default function AuthScreen() {
   
   const passwordInputRef = useRef<TextInput>(null);
 
+  // Form container yükseklik animasyonu - başlangıçta küçük
+  const MIN_FORM_HEIGHT = Platform.OS === 'ios' ? 160 : 180;
+
+  // Tanıtım slider'ı (giriş formu başlamadan önceki alanı doldurur)
+  const INTRO_SLIDES = [
+    { key: 's1', image: require('@/assets/images/screenShot/IMG_4990.PNG'), title: 'Maç Bul', subtitle: 'Yakınındaki maçlara katıl, yeni insanlarla oyna.' },
+    { key: 's2', image: require('@/assets/images/screenShot/IMG_4991.PNG'), title: 'Maç Oluştur', subtitle: 'Sahanı seç, saati belirle, ekibini kur.' },
+    { key: 's3', image: require('@/assets/images/screenShot/IMG_4992.PNG'), title: 'Kadronu Yönet', subtitle: 'Eksik pozisyonları belirle, talepleri yönet.' },
+    { key: 's4', image: require('@/assets/images/screenShot/IMG_4993.PNG'), title: 'Mesajlaş', subtitle: 'Takım arkadaşlarınla ve rakiplerinle sohbet et.' },
+    { key: 's5', image: require('@/assets/images/screenShot/IMG_4994.PNG'), title: 'Profilini Doldur', subtitle: 'Kendini tanıt, daha iyi eşleşmeler yakala.' },
+  ] as const;
+  const introListRef = useRef<any>(null);
+  const [introIndex, setIntroIndex] = useState(0);
+  const [introWidth, setIntroWidth] = useState(Dimensions.get('window').width);
+  const introWidthSV = useSharedValue(Dimensions.get('window').width);
+  const introScrollX = useSharedValue(0);
+  const activeDotX = useSharedValue(0);
+
+  const DOT_SIZE = 8;
+  const DOT_GAP = 8;
+  const dotsWidth = INTRO_SLIDES.length * DOT_SIZE + (INTRO_SLIDES.length - 1) * DOT_GAP;
+
+  const introScrollHandler = useAnimatedScrollHandler({
+    onScroll: (event) => {
+      introScrollX.value = event.contentOffset.x;
+    },
+  });
+
+  const activeDotStyle = useAnimatedStyle(() => {
+    return {
+      transform: [{ translateX: activeDotX.value }],
+    };
+  });
+
+  // Header halı saha içinde gezen top animasyonu
+  const FIELD_HEIGHT = 90;
+  const BALL_SIZE = 12;
+  const BALL_PADDING = 6;
+  const headerWidthSV = useSharedValue(0);
+  const ballX = useSharedValue(0);
+  const ballY = useSharedValue(0);
+  // px/ms hız bileşenleri
+  const ballVX = useSharedValue(0);
+  const ballVY = useSharedValue(0);
+  const ballRot = useSharedValue(0);
+
+  const rand = (min: number, max: number) => {
+    'worklet';
+    return min + Math.random() * (max - min);
+  };
+
+  const ensureBallInit = () => {
+    'worklet';
+    const w = headerWidthSV.value || 0;
+    if (w <= 0) return;
+    if (ballVX.value !== 0 || ballVY.value !== 0) return;
+
+    const minX = BALL_PADDING;
+    const maxX = Math.max(minX, w - BALL_SIZE - BALL_PADDING);
+    const minY = BALL_PADDING;
+    const maxY = Math.max(minY, FIELD_HEIGHT - BALL_SIZE - BALL_PADDING);
+
+    // Başlangıç: ortalara yakın
+    ballX.value = (minX + maxX) / 2;
+    ballY.value = (minY + maxY) / 2;
+
+    // Rastgele başlangıç hızı (px/ms). 0.06 -> 60px/sn
+    const speed = rand(0.05, 0.095);
+    const angle = rand(0, Math.PI * 2);
+    ballVX.value = Math.cos(angle) * speed;
+    ballVY.value = Math.sin(angle) * speed;
+  };
+
+  useFrameCallback((frame) => {
+    'worklet';
+    ensureBallInit();
+
+    const w = headerWidthSV.value || 0;
+    if (w <= 0) return;
+
+    const dt = frame.timeSincePreviousFrame ?? 16;
+
+    const minX = BALL_PADDING;
+    const maxX = Math.max(minX, w - BALL_SIZE - BALL_PADDING);
+    const minY = BALL_PADDING;
+    const maxY = Math.max(minY, FIELD_HEIGHT - BALL_SIZE - BALL_PADDING);
+
+    let x = ballX.value + ballVX.value * dt;
+    let y = ballY.value + ballVY.value * dt;
+    let vx = ballVX.value;
+    let vy = ballVY.value;
+
+    const bounceJitter = () => {
+      'worklet';
+      // Her çarpışmada küçük sapma: “rastgele desen” hissi
+      vx *= rand(0.92, 1.08);
+      vy *= rand(0.92, 1.08);
+      // Diğer eksene küçük itme
+      vy += rand(-0.02, 0.02);
+      vx += rand(-0.02, 0.02);
+      // Çok yavaşlamasın / çok hızlanmasın
+      const maxSpeed = 0.12;
+      const minSpeed = 0.035;
+      const sp = Math.sqrt(vx * vx + vy * vy) || 0.0001;
+      const clamped = Math.min(maxSpeed, Math.max(minSpeed, sp));
+      vx = (vx / sp) * clamped;
+      vy = (vy / sp) * clamped;
+    };
+
+    // X çarpışma
+    if (x <= minX) {
+      x = minX;
+      vx = Math.abs(vx);
+      bounceJitter();
+    } else if (x >= maxX) {
+      x = maxX;
+      vx = -Math.abs(vx);
+      bounceJitter();
+    }
+
+    // Y çarpışma
+    if (y <= minY) {
+      y = minY;
+      vy = Math.abs(vy);
+      bounceJitter();
+    } else if (y >= maxY) {
+      y = maxY;
+      vy = -Math.abs(vy);
+      bounceJitter();
+    }
+
+    ballX.value = x;
+    ballY.value = y;
+    ballVX.value = vx;
+    ballVY.value = vy;
+    ballRot.value = ballRot.value + (vx * dt) / 6;
+  });
+
+  const ballAnimatedStyle = useAnimatedStyle(() => {
+    const w = headerWidthSV.value || 0;
+    return {
+      transform: [
+        { translateX: ballX.value },
+        { translateY: ballY.value },
+        { rotate: `${ballRot.value}rad` },
+      ],
+      opacity: w > 0 ? 1 : 0,
+    };
+  });
+
+  // Header ortasında "SAHAYABAK" flash (10-15 sn arası)
+  const brandOpacity = useSharedValue(0);
+  const brandAnimatedStyle = useAnimatedStyle(() => {
+    return {
+      opacity: brandOpacity.value,
+      transform: [{ scale: 0.96 + 0.04 * brandOpacity.value }],
+    };
+  });
+
+  useEffect(() => {
+    let mounted = true;
+    let nextTimer: any = null;
+    let hideTimer: any = null;
+
+    const schedule = () => {
+      if (!mounted) return;
+      const delay = 10_000 + Math.floor(Math.random() * 5_000); // 10-15sn
+      nextTimer = setTimeout(() => {
+        // göster
+        brandOpacity.value = withTiming(1, { duration: 260, easing: Easing.out(Easing.cubic) });
+        // kısa süre sonra gizle
+        hideTimer = setTimeout(() => {
+          brandOpacity.value = withTiming(0, { duration: 320, easing: Easing.in(Easing.cubic) });
+        }, 3500);
+        // bir sonraki
+        schedule();
+      }, delay);
+    };
+
+    schedule();
+
+    return () => {
+      mounted = false;
+      if (nextTimer) clearTimeout(nextTimer);
+      if (hideTimer) clearTimeout(hideTimer);
+    };
+  }, []);
+
+  const HEADER_HEIGHT = 90;
+  // Slider yüksekliği: giriş formunun kapalı halinin üstünde kalan alan
+  const introHeight = Math.max(
+    0,
+    SCREEN_HEIGHT - MIN_FORM_HEIGHT - HEADER_HEIGHT - Math.max(insets.top, 0)
+  );
+
+  // Otomatik geçiş yok: kullanıcı kaydırdıkça dots güncellenecek.
+
   // Form yukarı kayma animasyonu - başlangıçta içerik aşağıda (görünmez)
   const formContentTranslateY = useSharedValue(200);
   const formContentOpacity = useSharedValue(0);
-  // Form container yükseklik animasyonu - başlangıçta küçük
-  const MIN_FORM_HEIGHT = Platform.OS === 'ios' ? 160 : 180;
   const formHeight = useSharedValue(MIN_FORM_HEIGHT);
 
   const getMaxFormHeight = () => {
-    if (Platform.OS === "ios") return SCREEN_HEIGHT * 0.65;
-    if (Platform.OS === "web") return SCREEN_HEIGHT * 0.5;
+    // Form içeriğinin (özellikle sosyal giriş + bilgilendirme metni) kesilmemesi için
+    // biraz daha yüksek limit veriyoruz.
+    if (Platform.OS === "ios") return SCREEN_HEIGHT * 0.67;
+    if (Platform.OS === "web") return SCREEN_HEIGHT * 0.55;
     // Android: düşük çözünürlük/ekranlarda sosyal butonlar sığsın diye biraz daha yüksek.
-    return SCREEN_HEIGHT * 0.76;
+    return SCREEN_HEIGHT * 0.82;
   };
 
   // Pan gesture handler
   const startHeight = useSharedValue(MIN_FORM_HEIGHT);
   
   const panGesture = Gesture.Pan()
+    // Küçük hareketlerde tetiklenmesin; yatay kaydırmaları da daha az yakalasın
+    .activeOffsetY([-12, 12])
     .onStart(() => {
       startHeight.value = formHeight.value;
     })
@@ -536,7 +736,12 @@ export default function AuthScreen() {
               height: 90,
               position: 'relative',
               overflow: 'hidden',
-            }}>
+            }}
+            onLayout={(e) => {
+              const w = e.nativeEvent.layout.width;
+              if (w && w > 0) headerWidthSV.value = w;
+            }}
+          >
             {/* Futbol sahası çizgileri efekti */}
             <View 
               style={{
@@ -731,46 +936,194 @@ export default function AuthScreen() {
                 backgroundColor: 'white',
                 transform: [{ translateX: -3 }, { translateY: -3 }],
               }} />
+
+              {/* Minik top: saha içinde sürekli gezer */}
+              <Animated.Image
+                source={require('../../assets/images/ball.png')}
+                style={[
+                  {
+                    position: 'absolute',
+                    width: BALL_SIZE,
+                    height: BALL_SIZE,
+                    zIndex: 2,
+                  },
+                  ballAnimatedStyle,
+                ]}
+                resizeMode="contain"
+              />
+
+              {/* SAHAYABAK: 10-15sn'de bir kısa flash */}
+              <View
+                pointerEvents="none"
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  zIndex: 3,
+                }}
+              >
+                <Animated.Text
+                  style={[
+                    {
+                      color: 'white',
+                      fontWeight: '900',
+                      letterSpacing: 3,
+                      fontSize: 16,
+                      paddingHorizontal: 12,
+                      paddingVertical: 6,
+                      borderRadius: 999,
+                      backgroundColor: 'rgba(0,0,0,0.22)',
+                      borderWidth: 1,
+                      borderColor: 'rgba(255,255,255,0.55)',
+                    },
+                    brandAnimatedStyle,
+                  ]}
+                >
+                  S A H A Y A B A K
+                </Animated.Text>
+              </View>
               
             </View>
           </View>
           
-          {/* Fake arka plan içeriği */}
-          <View className="flex-1 px-4 pt-4">
-            {/* Fake kondisyon kartı */}
-            <View className="bg-white rounded-xl p-4 shadow-sm opacity-75 mb-4">
-              <View className="flex-row justify-between items-center">
-                <View className="flex-row items-center">
-                  <View className="w-10 h-10 bg-gray-200 rounded-full" />
-                  <View className="ml-3">
-                    <View className="w-24 h-3 bg-gray-200 rounded mb-1" />
-                    <View className="w-16 h-2 bg-gray-200 rounded" />
-                  </View>
-                </View>
-                <View className="w-12 h-12 bg-gray-200 rounded-full" />
-              </View>
-            </View>
-            
-            {/* Fake maç kartları */}
-            {[1, 2].map((i) => (
-              <View key={i} className="bg-white rounded-xl p-4 shadow-sm opacity-75 mb-2">
-                <View className="flex-row justify-between">
-                  <View className="flex-row items-center">
-                    <View className="w-10 h-10 bg-gray-200 rounded-full" />
-                    <View className="ml-3">
-                      <View className="w-24 h-3 bg-gray-200 rounded mb-2" />
-                      <View className="w-16 h-2 bg-gray-200 rounded" />
+          {/* Uygulamayı tanıtan slider (5 slide) */}
+          <View
+            className="flex-1 pt-4"
+            style={{ height: introHeight, paddingHorizontal: 5 }}
+          >
+            <View
+              style={{ flex: 1 }}
+              onLayout={(e) => {
+                // paddingHorizontal: 5 olduğu için içerik genişliği = layout.width
+                const w = e.nativeEvent.layout.width;
+                if (w && Math.abs(w - introWidth) > 1) {
+                  setIntroWidth(w);
+                  introWidthSV.value = w;
+                }
+              }}
+            >
+            <View className="bg-white rounded-2xl overflow-hidden shadow-sm" style={{ flex: 1, position: 'relative' }}>
+              <Animated.FlatList
+                ref={introListRef}
+                data={INTRO_SLIDES as any}
+                horizontal
+                pagingEnabled
+                showsHorizontalScrollIndicator={false}
+                keyExtractor={(it: any) => it.key}
+                onScroll={introScrollHandler}
+                scrollEventThrottle={16}
+                style={{ flex: 1 }}
+                onMomentumScrollEnd={(e) => {
+                  const x = e.nativeEvent.contentOffset.x;
+                  const idx = introWidth > 0 ? Math.round(x / introWidth) : 0;
+                  const clamped = Math.max(0, Math.min(idx, INTRO_SLIDES.length - 1));
+                  setIntroIndex(clamped);
+                  activeDotX.value = withTiming(clamped * (DOT_SIZE + DOT_GAP), { duration: 180 });
+                }}
+                renderItem={({ item }: any) => (
+                  <View style={{ width: introWidth, flex: 1 }}>
+                    <Image
+                      source={item.image}
+                      style={{ width: '100%', height: '100%' }}
+                      resizeMode="contain"
+                    />
+
+                    <View
+                      style={{
+                        position: 'absolute',
+                        left: 0,
+                        right: 0,
+                        bottom: 12,
+                        paddingHorizontal: 14,
+                        paddingVertical: 12,
+                        zIndex: 2,
+                      }}
+                    >
+                      <Text style={{ fontSize: 18, fontWeight: '800', color: '#065f46' }} numberOfLines={1}>
+                        {item.title}
+                      </Text>
+                      <Text style={{ color: '#374151', marginTop: 2 }} numberOfLines={2}>
+                        {item.subtitle}
+                      </Text>
                     </View>
                   </View>
-                </View>
-              </View>
-            ))}
+                )}
+              />
+
+            </View>
+            </View>
           </View>
         </ScrollView>
 
+        {/* Pagination dots (formun hemen üstünde sabit) */}
+        <View
+          pointerEvents="none"
+          style={{
+            position: 'absolute',
+            left: 0,
+            right: 0,
+            bottom: MIN_FORM_HEIGHT + 12,
+            alignItems: 'center',
+            zIndex: 15,
+          }}
+        >
+          <View
+            style={{
+              backgroundColor: 'rgba(255,255,255,0.95)',
+              borderRadius: 999,
+              paddingHorizontal: 10,
+              paddingVertical: 6,
+              borderWidth: 2,
+              borderColor: '#16a34a',
+              ...(Platform.OS === 'android'
+                ? { elevation: 6 }
+                : {
+                    shadowColor: '#000',
+                    shadowOpacity: 0.18,
+                    shadowRadius: 8,
+                    shadowOffset: { width: 0, height: 3 },
+                  }),
+            }}
+          >
+            <View style={{ width: dotsWidth, height: DOT_SIZE, position: 'relative' }}>
+              <View style={{ flexDirection: 'row' }}>
+                {INTRO_SLIDES.map((s, idx) => (
+                  <View
+                    key={s.key}
+                    style={{
+                      width: DOT_SIZE,
+                      height: DOT_SIZE,
+                      borderRadius: DOT_SIZE / 2,
+                      backgroundColor: 'rgba(0,0,0,0.22)',
+                      marginRight: idx === INTRO_SLIDES.length - 1 ? 0 : DOT_GAP,
+                    }}
+                  />
+                ))}
+              </View>
+              <Animated.View
+                style={[
+                  {
+                    position: 'absolute',
+                    left: 0,
+                    top: 0,
+                    width: DOT_SIZE,
+                    height: DOT_SIZE,
+                    borderRadius: DOT_SIZE / 2,
+                    backgroundColor: '#16a34a',
+                  },
+                  activeDotStyle,
+                ]}
+              />
+            </View>
+          </View>
+        </View>
+
         {/* Giriş Formu - ScrollView dışında, altta sabit - Animasyonlu */}
-        <GestureDetector gesture={panGesture}>
-          <Animated.View 
+        <Animated.View 
             className="bg-white rounded-t-3xl shadow-2xl"
             style={[
               formContainerAnimatedStyle,
@@ -779,11 +1132,25 @@ export default function AuthScreen() {
                 bottom: Platform.OS === 'ios' ? keyboardHeight : 0,
                 left: 0,
                 right: 0,
+                zIndex: 20,
                 // Web'de (özellikle Animated.View + NativeWind) className'deki bg-white bazen uygulanmıyor.
                 // Bu yüzden arka planı inline garanti ediyoruz.
                 backgroundColor: '#ffffff',
+                // Ayarlar modalındaki gibi çerçeve
                 borderTopLeftRadius: 24,
                 borderTopRightRadius: 24,
+                borderTopWidth: 4,
+                borderTopColor: '#16a34a',
+                borderLeftWidth: 2,
+                borderRightWidth: 2,
+                borderLeftColor: '#16a34a',
+                borderRightColor: '#16a34a',
+                // Üst çizgiye gölge etkisi (container shadow)
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: -6 },
+                shadowOpacity: 0.35,
+                shadowRadius: 12,
+                elevation: 12,
                 // Web'de burada 30px boşluk kalıyordu; web için paddingBottom'u kaldır.
                 paddingBottom:
                   Platform.OS === 'web'
@@ -791,10 +1158,11 @@ export default function AuthScreen() {
                     : Platform.OS === 'ios'
                       ? 30
                       : (keyboardVisible ? 0 : (keyboardWasOpened ? 30 : 30)),
-                overflow: 'hidden'
               }
             ]}
           >
+          {/* İçerik (köşeleri düzgün kırpmak için içeride overflow hidden) */}
+          <View style={{ flex: 1, overflow: 'hidden', borderTopLeftRadius: 24, borderTopRightRadius: 24 }}>
           <View
             style={{
               paddingHorizontal: 24,
@@ -802,27 +1170,33 @@ export default function AuthScreen() {
               paddingBottom: Platform.OS === 'ios' && keyboardVisible && isFormExpanded ? 10 : 0,
             }}
           >
-              {/* Drag indicator */}
-              <View className="w-12 h-1 bg-gray-300 rounded-full self-center mb-2" />
-              
-              {/* Logo ve Başlık - Her zaman görünür */}
-              <Pressable onPress={toggleForm}>
-                <View className="items-center" style={{ marginBottom: isFormExpanded ? 12 : 8 }}>
-                  <View className="w-16 h-16 bg-green-700 rounded-full items-center justify-center mt-2 mb-3">
-                    <Ionicons name="football" size={36} color="white" />
-                  </View>
-                  <Text className="text-2xl font-bold text-gray-800">
-                    {isLogin ? "Hoş Geldin" : "Aramıza Katıl!"}
-                  </Text>
-                  <Text className="text-gray-700 mt-1">
-                    {isLogin ? (
-                      <>Sahaya çıkmak için <Text className="text-green-700 font-semibold">giriş yap</Text></>
-                    ) : (
-                      "Yeni bir hesap oluştur"
-                    )}
-                  </Text>
+              {/* Drag alanı: sadece üst başlık/handle bölgesi.
+                  Android'de alttan yukarı sistem gesture'ı (home) ile çakışmayı engeller. */}
+              <GestureDetector gesture={panGesture}>
+                <View>
+                  {/* Drag indicator */}
+                  <View className="w-12 h-1 bg-gray-300 rounded-full self-center mb-2" />
+                  
+                  {/* Logo ve Başlık - Her zaman görünür */}
+                  <Pressable onPress={toggleForm}>
+                    <View className="items-center" style={{ marginBottom: isFormExpanded ? 12 : 8 }}>
+                      <View className="w-16 h-16 bg-green-700 rounded-full items-center justify-center mt-2 mb-3">
+                        <Ionicons name="football" size={36} color="white" />
+                      </View>
+                      <Text className="text-2xl font-bold text-gray-800">
+                        {isLogin ? "Hoş Geldin" : "Aramıza Katıl!"}
+                      </Text>
+                      <Text className="text-gray-700 mt-1">
+                        {isLogin ? (
+                          <>Sahaya çıkmak için <Text className="text-green-700 font-semibold">giriş yap</Text></>
+                        ) : (
+                          "Yeni bir hesap oluştur"
+                        )}
+                      </Text>
+                    </View>
+                  </Pressable>
                 </View>
-              </Pressable>
+              </GestureDetector>
 
               {/* Form içeriği - Animasyonla yukarı kayacak */}
               <Animated.View style={formContentAnimatedStyle}>
@@ -1016,8 +1390,8 @@ export default function AuthScreen() {
               )}
               </Animated.View>
           </View>
-        </Animated.View>
-        </GestureDetector>
+          </View>
+          </Animated.View>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
