@@ -37,11 +37,12 @@ export default function AuthScreen() {
   const passwordInputRef = useRef<TextInput>(null);
 
   // Form container yükseklik animasyonu - başlangıçta küçük
-  const MIN_FORM_HEIGHT = Platform.OS === 'ios' ? 160 : 180;
+  // Üstteki futbol ikonu kaldırıldığı için kapalı hali biraz daha aşağı çekiyoruz.
+  const MIN_FORM_HEIGHT = Platform.OS === 'ios' ? 105 : 120;
 
   // Tanıtım slider'ı (giriş formu başlamadan önceki alanı doldurur)
   const INTRO_SLIDES = [
-    { key: 's1', image: require('@/assets/images/screenShot/IMG_4990.PNG'), title: 'Maç Bul', subtitle: 'Yakınındaki maçlara katıl, yeni insanlarla oyna.' },
+    { key: 's1', image: require('@/assets/images/screenShot/1a.png'), title: 'Maç Bul', subtitle: 'Yakınındaki maçlara katıl, yeni insanlarla oyna.' },
     { key: 's2', image: require('@/assets/images/screenShot/IMG_4991.PNG'), title: 'Maç Oluştur', subtitle: 'Sahanı seç, saati belirle, ekibini kur.' },
     { key: 's3', image: require('@/assets/images/screenShot/IMG_4992.PNG'), title: 'Kadronu Yönet', subtitle: 'Eksik pozisyonları belirle, talepleri yönet.' },
     { key: 's4', image: require('@/assets/images/screenShot/IMG_4993.PNG'), title: 'Mesajlaş', subtitle: 'Takım arkadaşlarınla ve rakiplerinle sohbet et.' },
@@ -186,43 +187,7 @@ export default function AuthScreen() {
     };
   });
 
-  // Header ortasında "SAHAYABAK" flash (10-15 sn arası)
-  const brandOpacity = useSharedValue(0);
-  const brandAnimatedStyle = useAnimatedStyle(() => {
-    return {
-      opacity: brandOpacity.value,
-      transform: [{ scale: 0.96 + 0.04 * brandOpacity.value }],
-    };
-  });
-
-  useEffect(() => {
-    let mounted = true;
-    let nextTimer: any = null;
-    let hideTimer: any = null;
-
-    const schedule = () => {
-      if (!mounted) return;
-      const delay = 10_000 + Math.floor(Math.random() * 5_000); // 10-15sn
-      nextTimer = setTimeout(() => {
-        // göster
-        brandOpacity.value = withTiming(1, { duration: 260, easing: Easing.out(Easing.cubic) });
-        // kısa süre sonra gizle
-        hideTimer = setTimeout(() => {
-          brandOpacity.value = withTiming(0, { duration: 320, easing: Easing.in(Easing.cubic) });
-        }, 3500);
-        // bir sonraki
-        schedule();
-      }, delay);
-    };
-
-    schedule();
-
-    return () => {
-      mounted = false;
-      if (nextTimer) clearTimeout(nextTimer);
-      if (hideTimer) clearTimeout(hideTimer);
-    };
-  }, []);
+  // Header ortasında "SAHAYABAK" sabit görünür
 
   const HEADER_HEIGHT = 90;
   // Slider yüksekliği: giriş formunun kapalı halinin üstünde kalan alan
@@ -241,11 +206,16 @@ export default function AuthScreen() {
   const getMaxFormHeight = () => {
     // Form içeriğinin (özellikle sosyal giriş + bilgilendirme metni) kesilmemesi için
     // biraz daha yüksek limit veriyoruz.
-    if (Platform.OS === "ios") return SCREEN_HEIGHT * 0.67;
-    if (Platform.OS === "web") return SCREEN_HEIGHT * 0.55;
+    // Ancak "açık" halde ekranı fazla kaplamasın diye daha dengeli bir max değer kullanıyoruz.
+    if (Platform.OS === "ios") return SCREEN_HEIGHT * 0.585;
+    if (Platform.OS === "web") return SCREEN_HEIGHT * 0.50;
     // Android: düşük çözünürlük/ekranlarda sosyal butonlar sığsın diye biraz daha yüksek.
-    return SCREEN_HEIGHT * 0.82;
+    return SCREEN_HEIGHT * 0.74;
   };
+
+  // Reanimated worklet içinde JS fonksiyon çağrısı (getMaxFormHeight) Android'de fatal crash'e gidebiliyor.
+  // Bu yüzden max yüksekliği JS tarafında bir kez hesaplayıp, worklet'larda sadece number kullanıyoruz.
+  const MAX_FORM_HEIGHT = getMaxFormHeight();
 
   // Pan gesture handler
   const startHeight = useSharedValue(MIN_FORM_HEIGHT);
@@ -261,7 +231,7 @@ export default function AuthScreen() {
       // Aşağı çekme (pozitif translationY) formu küçültür
       const newHeight = startHeight.value - event.translationY;
       // Minimum ve maksimum yükseklik limitleri
-      const maxHeight = getMaxFormHeight();
+      const maxHeight = MAX_FORM_HEIGHT;
       if (newHeight >= MIN_FORM_HEIGHT && newHeight <= maxHeight) {
         formHeight.value = newHeight;
         // İçerik pozisyonunu da güncelle
@@ -273,7 +243,7 @@ export default function AuthScreen() {
     .onEnd((event) => {
       // Eğer yukarı çekilmişse (threshold: -50) formu genişlet
       if (event.translationY < -50) {
-        const maxHeight = getMaxFormHeight();
+        const maxHeight = MAX_FORM_HEIGHT;
         formHeight.value = withTiming(maxHeight, {
           duration: 300,
           easing: Easing.out(Easing.cubic),
@@ -319,7 +289,7 @@ export default function AuthScreen() {
   // Formu genişletme fonksiyonu
   const expandForm = () => {
     if (!isFormExpanded) {
-      const maxHeight = getMaxFormHeight();
+      const maxHeight = MAX_FORM_HEIGHT;
       formHeight.value = withTiming(maxHeight, {
         duration: 300,
         easing: Easing.out(Easing.cubic),
@@ -925,17 +895,7 @@ export default function AuthScreen() {
             
             {/* İçerik */}
             <View style={{ width: '100%', height: '100%', zIndex: 1, position: 'relative' }}>
-              {/* Orta nokta işareti */}
-              <View style={{ 
-                position: 'absolute', 
-                top: '50%', 
-                left: '50%',
-                width: 6,
-                height: 6,
-                borderRadius: 3,
-                backgroundColor: 'white',
-                transform: [{ translateX: -3 }, { translateY: -3 }],
-              }} />
+             
 
               {/* Minik top: saha içinde sürekli gezer */}
               <Animated.Image
@@ -952,7 +912,7 @@ export default function AuthScreen() {
                 resizeMode="contain"
               />
 
-              {/* SAHAYABAK: 10-15sn'de bir kısa flash */}
+              {/* SAHAYABAK: sabit */}
               <View
                 pointerEvents="none"
                 style={{
@@ -966,25 +926,23 @@ export default function AuthScreen() {
                   zIndex: 3,
                 }}
               >
-                <Animated.Text
-                  style={[
-                    {
-                      color: 'white',
-                      fontWeight: '900',
-                      letterSpacing: 3,
-                      fontSize: 16,
-                      paddingHorizontal: 12,
-                      paddingVertical: 6,
-                      borderRadius: 999,
-                      backgroundColor: 'rgba(0,0,0,0.22)',
-                      borderWidth: 1,
-                      borderColor: 'rgba(255,255,255,0.55)',
-                    },
-                    brandAnimatedStyle,
-                  ]}
+                <Text
+                  style={{
+                    color: 'white',
+                    fontWeight: '900',
+                    letterSpacing: 3,
+                    fontSize: 20,
+                    paddingHorizontal: 12,
+                    paddingVertical: 6,
+                    borderRadius: 999,
+                    backgroundColor: 'rgba(0,0,0,0.22)',
+                    borderWidth: 1,
+                    borderColor: 'rgba(255,255,255,0.55)',
+                    transform: [{ translateX: 1 }],
+                  }}
                 >
                   S A H A Y A B A K
-                </Animated.Text>
+                </Text>
               </View>
               
             </View>
@@ -992,7 +950,7 @@ export default function AuthScreen() {
           
           {/* Uygulamayı tanıtan slider (5 slide) */}
           <View
-            className="flex-1 pt-4"
+            className="flex-1 pt-2"
             style={{ height: introHeight, paddingHorizontal: 5 }}
           >
             <View
@@ -1028,7 +986,8 @@ export default function AuthScreen() {
                   <View style={{ width: introWidth, flex: 1 }}>
                     <Image
                       source={item.image}
-                      style={{ width: '100%', height: '100%' }}
+                      // Tüm slidelarda biraz küçült: kapalı giriş formunun altına taşmasın
+                      style={{ width: '80%', height: '80%', alignSelf: 'center', marginTop: 6 }}
                       resizeMode="contain"
                     />
 
@@ -1066,7 +1025,7 @@ export default function AuthScreen() {
             position: 'absolute',
             left: 0,
             right: 0,
-            bottom: MIN_FORM_HEIGHT + 12,
+            bottom: MIN_FORM_HEIGHT + 2,
             alignItems: 'center',
             zIndex: 15,
           }}
@@ -1129,7 +1088,14 @@ export default function AuthScreen() {
               formContainerAnimatedStyle,
               { 
                 position: 'absolute',
-                bottom: Platform.OS === 'ios' ? keyboardHeight : 0,
+                // Android gesture navigation: alttan yukarı "home" swipe ile çakışmayı azaltmak için
+                // formu ekranın en altına sıfır yapıştırmıyoruz (klavye açıkken gap yok).
+                bottom:
+                  Platform.OS === 'ios'
+                    ? keyboardHeight
+                    : Platform.OS === 'android'
+                      ? (keyboardVisible ? 0 : Math.max(insets.bottom, 32))
+                      : 0,
                 left: 0,
                 right: 0,
                 zIndex: 20,
@@ -1157,7 +1123,7 @@ export default function AuthScreen() {
                     ? 0
                     : Platform.OS === 'ios'
                       ? 30
-                      : (keyboardVisible ? 0 : (keyboardWasOpened ? 30 : 30)),
+                      : (keyboardVisible ? 0 : Math.max(insets.bottom, 24)),
               }
             ]}
           >
@@ -1179,11 +1145,8 @@ export default function AuthScreen() {
                   
                   {/* Logo ve Başlık - Her zaman görünür */}
                   <Pressable onPress={toggleForm}>
-                    <View className="items-center" style={{ marginBottom: isFormExpanded ? 12 : 8 }}>
-                      <View className="w-16 h-16 bg-green-700 rounded-full items-center justify-center mt-2 mb-3">
-                        <Ionicons name="football" size={36} color="white" />
-                      </View>
-                      <Text className="text-2xl font-bold text-gray-800">
+                    <View className="items-center" style={{ marginBottom: isFormExpanded ? 12 : 0 }}>
+                      <Text className="text-2xl font-bold text-gray-800" style={{ marginTop: isFormExpanded ? 0 : 5 }}>
                         {isLogin ? "Hoş Geldin" : "Aramıza Katıl!"}
                       </Text>
                       <Text className="text-gray-700 mt-1">
