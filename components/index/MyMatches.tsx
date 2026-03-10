@@ -134,21 +134,23 @@ export default function MyMatches({ matches, refreshing, onRefresh, onSelectMatc
   );
 
   return (
-    <View style={{ flex: 1 }}>
+    <View className="flex-1">
       <View className="flex-row p-2 bg-green-700">
         <Ionicons name="alarm-outline" size={16} color="white" className="pl-2" />
         <Text className="font-bold text-white "> {t('home.waitingMatches')} </Text>
       </View>
 
       {matches.length === 0 && !refreshing ? (
-        <View className='py-4 px-4'>
-          <Text className="text-center font-bold">{t('home.noMatchesCreated')}</Text>
+        <View className='flex justify-center items-center py-3'>
+          <Text className="text-center font-bold my-1">{t('home.noMatchesCreated')}</Text>
           <TouchableOpacity
-            className="text-center bg-green-600 text-white font-semibold rounded-md my-3 mb-2 items-center self-center"
-            style={{ width: '50%' }}
+            className="text-center bg-green-600 text-white font-semibold rounded-md my-2 items-center self-center"
+            style={{ width: '40%' }}
             onPress={onCreateMatch}
           >
-            <Text className="text-white font-semibold text-center px-4 py-2 mx-2">{t('home.createMatchNow')}</Text>
+            <Text className="text-white font-semibold text-center p-4">
+              {t('home.createMatchNow')}
+            </Text>
           </TouchableOpacity>
         </View>
       ) : matches.length === 0 && refreshing ? (

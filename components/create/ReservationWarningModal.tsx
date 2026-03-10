@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, Modal, TouchableOpacity, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface ReservationWarningModalProps {
   visible: boolean;
@@ -11,6 +12,7 @@ export default function ReservationWarningModal({
   visible,
   onClose,
 }: ReservationWarningModalProps) {
+  const { t } = useLanguage();
   const [reservationConfirmed, setReservationConfirmed] = useState(false);
 
   const handleClose = () => {
@@ -19,9 +21,9 @@ export default function ReservationWarningModal({
       onClose();
     } else {
       Alert.alert(
-        "Uyarı",
-        "Lütfen önce saha rezervasyonu yaptığınızı onaylayın.",
-        [{ text: "Tamam" }]
+        t('create.reservationWarning.alertTitle'),
+        t('create.reservationWarning.alertMessage'),
+        [{ text: t('general.ok') }]
       );
     }
   };
@@ -44,7 +46,7 @@ export default function ReservationWarningModal({
           {/* Başlık */}
           <View className="mb-4">
             <Text className="text-2xl font-bold text-center mb-2 text-red-600">
-              ⚠️ ÖNEMLİ UYARI
+              {t('create.reservationWarning.title')}
             </Text>
             <View className="h-1 bg-red-600 rounded-full mb-3"></View>
           </View>
@@ -52,17 +54,19 @@ export default function ReservationWarningModal({
           {/* İçerik */}
           <View className="mb-4">
             <Text className="text-lg font-bold text-green-700 mb-2 text-center">
-              📞 Saha Rezervasyonu
+              {t('create.reservationWarning.reservationTitle')}
             </Text>
             <Text className="text-base text-gray-700 mb-4 text-center">
-              Maç oluşturmadan önce <Text className="font-bold text-red-600">mutlaka</Text> sahanın telefon numarasını arayarak rezervasyon yapmanız gerekmektedir.
+              {t('create.reservationWarning.reservationTextPrefix')}{' '}
+              <Text className="font-bold text-red-600">{t('create.reservationWarning.reservationTextEmphasis')}</Text>{' '}
+              {t('create.reservationWarning.reservationTextSuffix')}
             </Text>
 
             <Text className="text-lg font-bold text-blue-700 mb-2 text-center">
-              ⚽ Maç Oluşturma
+              {t('create.reservationWarning.createTitle')}
             </Text>
             <Text className="text-base text-gray-700 mb-4 text-center">
-              Rezervasyon yaptıktan sonra maçınızı oluşturabilir ve eksik pozisyonları belirleyebilirsiniz.
+              {t('create.reservationWarning.createText')}
             </Text>
           </View>
 
@@ -80,7 +84,7 @@ export default function ReservationWarningModal({
               )}
             </View>
             <Text className="flex-1 text-base font-semibold text-gray-800 text-center">
-              Öncelikle Sahayı Rezerve Et ardından Maçı Oluştur
+              {t('create.reservationWarning.checkboxText')}
             </Text>
           </TouchableOpacity>
 
@@ -93,7 +97,7 @@ export default function ReservationWarningModal({
             disabled={!reservationConfirmed}
           >
             <Text className="text-white font-bold text-center text-lg">
-              Tamam
+              {t('general.ok')}
             </Text>
           </TouchableOpacity>
         </View>

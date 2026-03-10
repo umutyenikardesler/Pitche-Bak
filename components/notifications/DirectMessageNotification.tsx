@@ -76,7 +76,7 @@ export default function DirectMessageNotification({ item, onMarkAsRead }: Direct
                                 className={`mt-1 ${item.is_read ? 'text-gray-400' : 'text-gray-600'}`} 
                                 numberOfLines={1}
                             >
-                                "{item.message}"
+                                {'"'}{item.message}{'"'}
                             </Text>
                         )}
                     </View>

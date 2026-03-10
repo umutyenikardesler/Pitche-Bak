@@ -9,7 +9,6 @@ import {
   Platform,
   TouchableOpacity,
 } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
 import { useLanguage } from "@/contexts/LanguageContext";
 
 interface UserDataType {
@@ -108,7 +107,7 @@ export default function EditProfileModal({
                 </Text>
 
                 <View className="flex-row items-center mb-2">
-                  <Text className="text-green-700 font-bold w-20">Ad:</Text>
+                  <Text className="text-green-700 font-bold w-20">{t("profile.field.name")}:</Text>
                   <TextInput
                     placeholder={t("profile.name")}
                     value={editUserData?.name || ""}
@@ -118,7 +117,7 @@ export default function EditProfileModal({
                 </View>
                 
                 <View className="flex-row items-center mb-2">
-                  <Text className="text-green-700 font-bold w-20">Soyad:</Text>
+                  <Text className="text-green-700 font-bold w-20">{t("profile.field.surname")}:</Text>
                   <TextInput
                     placeholder={t("profile.surname")}
                     value={editUserData?.surname || ""}
@@ -128,7 +127,7 @@ export default function EditProfileModal({
                 </View>
                 
                 <View className="flex-row items-center mb-2">
-                  <Text className="text-green-700 font-bold w-20">Yaş:</Text>
+                  <Text className="text-green-700 font-bold w-20">{t("profile.field.age")}:</Text>
                   <TextInput
                     placeholder={t("profile.age")}
                     value={editUserData?.age?.toString() || ""}
@@ -139,7 +138,7 @@ export default function EditProfileModal({
                 </View>
                 
                 <View className="flex-row items-center mb-2">
-                  <Text className="text-green-700 font-bold w-20">Boy:</Text>
+                  <Text className="text-green-700 font-bold w-20">{t("profile.field.height")}:</Text>
                   <TextInput
                     placeholder={t("profile.height")}
                     value={editUserData?.height?.toString() || ""}
@@ -150,7 +149,9 @@ export default function EditProfileModal({
                 </View>
                 
                 <View className="flex-row items-center mb-2">
-                  <Text className="text-green-700 font-bold w-20">Kilo (kg):</Text>
+                  <Text className="text-green-700 font-bold w-20">
+                    {t("profile.field.weight")} ({t("units.kg")}):
+                  </Text>
                   <TextInput
                     placeholder={t("profile.weight")}
                     value={editUserData?.weight?.toString() || ""}
@@ -161,7 +162,7 @@ export default function EditProfileModal({
                 </View>
                 
                 <View className="flex-row items-center mb-2">
-                  <Text className="text-green-700 font-bold w-20">Mevki:</Text>
+                  <Text className="text-green-700 font-bold w-20">{t("profile.field.position")}:</Text>
                   <TextInput
                     placeholder={t("profile.description")}
                     value={editUserData?.description || ""}

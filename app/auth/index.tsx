@@ -14,6 +14,7 @@ import * as QueryParams from "expo-auth-session/build/QueryParams";
 import * as AppleAuthentication from "expo-apple-authentication";
 import Constants from "expo-constants";
 import * as Crypto from "expo-crypto";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -22,6 +23,7 @@ WebBrowser.maybeCompleteAuthSession();
 export default function AuthScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { currentLanguage, changeLanguage, t } = useLanguage();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLogin, setIsLogin] = useState(true);
@@ -32,6 +34,7 @@ export default function AuthScreen() {
   const [keyboardVisible, setKeyboardVisible] = useState(false);
   const [keyboardWasOpened, setKeyboardWasOpened] = useState(false); // Klavye bir kere açıldı mı?
   const [isFormExpanded, setIsFormExpanded] = useState(false); // Form genişletilmiş mi?
+  const [languageMenuOpen, setLanguageMenuOpen] = useState(false);
   const [keyboardHeight, setKeyboardHeight] = useState(0); // iOS için klavye yüksekliği
   
   const passwordInputRef = useRef<TextInput>(null);
@@ -42,11 +45,12 @@ export default function AuthScreen() {
 
   // Tanıtım slider'ı (giriş formu başlamadan önceki alanı doldurur)
   const INTRO_SLIDES = [
-    { key: 's1', image: require('@/assets/images/screenShot/1a.png'), title: 'Maç Bul', subtitle: 'Yakınındaki maçlara katıl, yeni insanlarla oyna.' },
-    { key: 's2', image: require('@/assets/images/screenShot/IMG_4991.PNG'), title: 'Maç Oluştur', subtitle: 'Sahanı seç, saati belirle, ekibini kur.' },
-    { key: 's3', image: require('@/assets/images/screenShot/IMG_4992.PNG'), title: 'Kadronu Yönet', subtitle: 'Eksik pozisyonları belirle, talepleri yönet.' },
-    { key: 's4', image: require('@/assets/images/screenShot/IMG_4993.PNG'), title: 'Mesajlaş', subtitle: 'Takım arkadaşlarınla ve rakiplerinle sohbet et.' },
-    { key: 's5', image: require('@/assets/images/screenShot/IMG_4994.PNG'), title: 'Profilini Doldur', subtitle: 'Kendini tanıt, daha iyi eşleşmeler yakala.' },
+    { key: 's1', image: require('@/assets/images/screenShot/slide1.png'), titleKey: 'auth.slide1.title', subtitleKey: 'auth.slide1.subtitle' },
+    { key: 's2', image: require('@/assets/images/screenShot/slide2.png'), titleKey: 'auth.slide2.title', subtitleKey: 'auth.slide2.subtitle' },
+    { key: 's3', image: require('@/assets/images/screenShot/slide3.png'), titleKey: 'auth.slide3.title', subtitleKey: 'auth.slide3.subtitle' },
+    { key: 's4', image: require('@/assets/images/screenShot/slide4.png'), titleKey: 'auth.slide4.title', subtitleKey: 'auth.slide4.subtitle' },
+    { key: 's5', image: require('@/assets/images/screenShot/slide5.png'), titleKey: 'auth.slide5.title', subtitleKey: 'auth.slide5.subtitle' },
+    { key: 's6', image: require('@/assets/images/screenShot/slide6.png'), titleKey: 'auth.slide6.title', subtitleKey: 'auth.slide6.subtitle' },
   ] as const;
   const introListRef = useRef<any>(null);
   const [introIndex, setIntroIndex] = useState(0);
@@ -308,6 +312,7 @@ export default function AuthScreen() {
 
   // Formu genişletme/kapama fonksiyonu (logo ve başlık için)
   const toggleForm = () => {
+    setLanguageMenuOpen(false);
     if (isFormExpanded) {
       // Formu kapat
       formHeight.value = withTiming(MIN_FORM_HEIGHT, {
@@ -357,22 +362,27 @@ export default function AuthScreen() {
     };
   }, []);
 
-  // İngilizce hata mesajlarını Türkçeye çeviren fonksiyon
+  // Auth hata mesajlarını seçili dile göre çevir
   const translateError = (errorMessage: string): string => {
-    const translations: Record<string, string> = {
-      "Password should be at least 6 characters": "Şifre en az 6 karakter olmalıdır.",
-      "Email format is invalid": "Geçersiz e-posta formatı.",
-      "User already registered": "Bu e-posta ile kayıtlı bir kullanıcı zaten var.",
-      "Invalid login credentials": "E-posta veya şifre hatalı.",
-      "Email not confirmed": "E-posta adresinizi doğrulamanız gerekiyor.",
-      "User not found": "Kullanıcı bulunamadı.",
-      "AuthApiError: User already exists": "Bu e-posta adresiyle bir hesap zaten var.",
-      "AuthApiError: Password should be at least 6 characters": "Şifreniz en az 6 karakter olmalıdır.",
-      "Unsupported provider: missing OAuth secret": "Apple ile giriş için Supabase'de Apple OAuth ayarlarında 'Client secret' eksik. Supabase Dashboard → Auth → Providers → Apple kısmına Services ID ve Secret girmeniz gerekiyor.",
-      "missing OAuth secret": "OAuth için gerekli secret eksik. Supabase Dashboard → Auth → Providers kısmında ilgili sağlayıcı için Client secret tanımlayın.",
+    const errorKeyMap: Record<string, string> = {
+      "Password should be at least 6 characters": "auth.errors.passwordMin",
+      "AuthApiError: Password should be at least 6 characters": "auth.errors.passwordMin",
+      "Email format is invalid": "auth.errors.invalidEmail",
+      "User already registered": "auth.errors.userAlreadyRegistered",
+      "AuthApiError: User already exists": "auth.errors.userAlreadyExists",
+      "Invalid login credentials": "auth.errors.invalidCredentials",
+      "Email not confirmed": "auth.errors.emailNotConfirmed",
+      "User not found": "auth.errors.userNotFound",
+      "Unsupported provider: missing OAuth secret": "auth.errors.appleMissingOAuthSecret",
+      "missing OAuth secret": "auth.errors.missingOAuthSecret",
     };
 
-    return translations[errorMessage] || `Hata: ${errorMessage}`;
+    const key = errorKeyMap[errorMessage];
+    if (key) return t(key);
+
+    // Bilinmeyen hata: TR'de başlık ekle, EN'de mesajı olduğu gibi göster
+    if (currentLanguage === "tr") return `${t("general.error")}: ${errorMessage}`;
+    return errorMessage;
   };
 
  
@@ -414,7 +424,7 @@ export default function AuthScreen() {
 
       if (insertError) {
         console.error("Kullanıcı bilgileri eklenirken hata oluştu:", insertError.message);
-        Alert.alert("Hata", "Kullanıcı kaydı oluşturulamadı. Lütfen tekrar deneyin.");
+        Alert.alert(t("general.error"), t("auth.userCreateFailed"));
         setIsLoading(false);
         setIsOAuthLoading(null);
         return;
@@ -502,7 +512,7 @@ export default function AuthScreen() {
     if (Platform.OS !== "web") {
       const result = await WebBrowser.openAuthSessionAsync(data.url, redirectUri);
       if (result.type !== "success" || !result.url) {
-        throw new Error("Giriş iptal edildi.");
+        throw new Error(t("auth.signInCancelled"));
       }
 
       await createSessionFromRedirectUrl(result.url);
@@ -511,7 +521,7 @@ export default function AuthScreen() {
       if (userErr) throw userErr;
       const userId = userData?.user?.id;
       const userEmail = userData?.user?.email;
-      if (!userId) throw new Error("Kullanıcı bilgisi alınamadı.");
+      if (!userId) throw new Error(t("auth.userInfoMissing"));
 
       await handlePostLogin(userId, userEmail);
       return;
@@ -526,7 +536,7 @@ export default function AuthScreen() {
     try {
       await signInWithOAuth("google");
     } catch (error: any) {
-      Alert.alert("Hata", translateError(error?.message || "Bilinmeyen hata"));
+      Alert.alert(t("general.error"), translateError(error?.message || t("auth.unknownError")));
     } finally {
       setIsOAuthLoading(null);
     }
@@ -562,7 +572,7 @@ export default function AuthScreen() {
         });
 
         if (!credential.identityToken) {
-          throw new Error("Apple kimlik doğrulama başarısız (token alınamadı).");
+          throw new Error(t("auth.appleAuthFailed"));
         }
 
         const { data, error } = await supabase.auth.signInWithIdToken({
@@ -588,7 +598,7 @@ export default function AuthScreen() {
 
         const userId = data?.user?.id ?? (await supabase.auth.getUser()).data?.user?.id;
         const userEmail = data?.user?.email ?? (await supabase.auth.getUser()).data?.user?.email;
-        if (!userId) throw new Error("Kullanıcı bilgisi alınamadı.");
+        if (!userId) throw new Error(t("auth.userInfoMissing"));
 
         await handlePostLogin(userId, userEmail);
       } else {
@@ -597,7 +607,7 @@ export default function AuthScreen() {
       }
 
     } catch (error: any) {
-      Alert.alert("Hata", translateError(error?.message || "Bilinmeyen hata"));
+      Alert.alert(t("general.error"), translateError(error?.message || t("auth.unknownError")));
     } finally {
       setIsOAuthLoading(null);
     }
@@ -607,16 +617,16 @@ export default function AuthScreen() {
     Keyboard.dismiss();
     
     if (!email.trim() || !password.trim()) {
-      return Alert.alert("Hata", "Lütfen tüm alanları doldurun.");
+      return Alert.alert(t("general.error"), t("auth.fillAllFields"));
     }
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
-      return Alert.alert("Hata", "Geçersiz e-posta formatı.");
+      return Alert.alert(t("general.error"), t("auth.invalidEmail"));
     }
 
     if (password.length < 6) {
-      return Alert.alert("Hata", "Şifre en az 6 karakter olmalıdır.");
+      return Alert.alert(t("general.error"), t("auth.passwordMin"));
     }
 
     setIsLoading(true);
@@ -672,11 +682,11 @@ export default function AuthScreen() {
       } else {
         // Kayıt başarılı
         setIsLoading(false);
-        Alert.alert("Başarılı", "Kayıt başarılı! E-postanızı doğrulamanız gerekmektedir. E-postanızı kontrol ederek mail adresinizi doğrulayınız!");
+        Alert.alert(t("general.success"), t("auth.signupSuccessVerifyEmail"));
       }
     } catch (error: any) {
       setIsLoading(false);
-      Alert.alert("Hata", translateError(error?.message || "Bilinmeyen hata"));
+      Alert.alert(t("general.error"), translateError(error?.message || t("auth.unknownError")));
     }
   };
 
@@ -941,7 +951,7 @@ export default function AuthScreen() {
                     transform: [{ translateX: 1 }],
                   }}
                 >
-                  S A H A Y A B A K
+                  {t('auth.brand')}
                 </Text>
               </View>
               
@@ -1003,10 +1013,10 @@ export default function AuthScreen() {
                       }}
                     >
                       <Text style={{ fontSize: 18, fontWeight: '800', color: '#065f46' }} numberOfLines={1}>
-                        {item.title}
+                        {t(item.titleKey)}
                       </Text>
                       <Text style={{ color: '#374151', marginTop: 2 }} numberOfLines={2}>
-                        {item.subtitle}
+                        {t(item.subtitleKey)}
                       </Text>
                     </View>
                   </View>
@@ -1144,20 +1154,87 @@ export default function AuthScreen() {
                   <View className="w-12 h-1 bg-gray-300 rounded-full self-center mb-2" />
                   
                   {/* Logo ve Başlık - Her zaman görünür */}
-                  <Pressable onPress={toggleForm}>
-                    <View className="items-center" style={{ marginBottom: isFormExpanded ? 12 : 0 }}>
+                  <View className="items-center" style={{ marginBottom: isFormExpanded ? 12 : 0, width: '100%', position: 'relative' }}>
+                      {/* Dil seçimi (tek buton + açılır menü) */}
+                      <View style={{ position: 'absolute', right: 0, top: 0, alignItems: 'flex-end', zIndex: 50 }}>
+                        <TouchableOpacity
+                          onPress={() => setLanguageMenuOpen(v => !v)}
+                          activeOpacity={0.85}
+                          accessibilityRole="button"
+                          accessibilityLabel={currentLanguage === 'tr' ? 'Türkçe' : 'English'}
+                        >
+                          <View
+                            style={{
+                              width: 30,
+                              height: 24,
+                              borderRadius: 7,
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              backgroundColor: 'rgba(22,163,74,0.16)',
+                              borderWidth: 1,
+                              borderColor: '#16a34a',
+                              shadowColor: '#000',
+                              shadowOffset: { width: 0, height: 2 },
+                              shadowOpacity: 0.25,
+                              shadowRadius: 6,
+                              elevation: 4,
+                            }}
+                          >
+                            <Text style={{ fontSize: 18, opacity: 1 }}>
+                              {currentLanguage === 'tr' ? '🇹🇷' : '🇬🇧'}
+                            </Text>
+                          </View>
+                        </TouchableOpacity>
+
+                        {languageMenuOpen && (
+                          <View style={{ marginTop: 2 }}>
+                            <TouchableOpacity
+                              onPress={() => {
+                                const next = currentLanguage === 'tr' ? 'en' : 'tr';
+                                setLanguageMenuOpen(false);
+                                void changeLanguage(next);
+                              }}
+                              activeOpacity={0.85}
+                              accessibilityRole="button"
+                              accessibilityLabel={currentLanguage === 'tr' ? 'English' : 'Türkçe'}
+                            >
+                              <View
+                                style={{
+                                  width: 30,
+                                  height: 22,
+                                  borderRadius: 7,
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  backgroundColor: 'rgba(0,0,0,0.06)',
+                                  borderWidth: 1,
+                                  borderColor: 'rgba(17,24,39,0.15)',
+                                }}
+                              >
+                                <Text style={{ fontSize: 16, opacity: 0.9 }}>
+                                  {currentLanguage === 'tr' ? '🇬🇧' : '🇹🇷'}
+                                </Text>
+                              </View>
+                            </TouchableOpacity>
+                          </View>
+                        )}
+                      </View>
+
+                    <Pressable onPress={toggleForm} style={{ width: '100%', alignItems: 'center' }}>
                       <Text className="text-2xl font-bold text-gray-800" style={{ marginTop: isFormExpanded ? 0 : 5 }}>
-                        {isLogin ? "Hoş Geldin" : "Aramıza Katıl!"}
+                        {isLogin ? t('auth.welcomeTitle') : t('auth.joinTitle')}
                       </Text>
                       <Text className="text-gray-700 mt-1">
                         {isLogin ? (
-                          <>Sahaya çıkmak için <Text className="text-green-700 font-semibold">giriş yap</Text></>
+                          <>
+                            {t('auth.subtitleLoginPrefix')}{' '}
+                            <Text className="text-green-700 font-semibold">{t('auth.subtitleLoginAction')}</Text>
+                          </>
                         ) : (
-                          "Yeni bir hesap oluştur"
+                          t('auth.subtitleSignup')
                         )}
                       </Text>
-                    </View>
-                  </Pressable>
+                    </Pressable>
+                  </View>
                 </View>
               </GestureDetector>
 
@@ -1169,7 +1246,7 @@ export default function AuthScreen() {
                   <Ionicons name="mail-outline" size={20} color="#6B7280" />
                   <TextInput
                     className="flex-1 ml-3 text-gray-800"
-                    placeholder="E-posta adresin"
+                    placeholder={t('auth.emailPlaceholder')}
                     placeholderTextColor="#9CA3AF"
                     keyboardType="email-address"
                     autoCapitalize="none"
@@ -1207,7 +1284,7 @@ export default function AuthScreen() {
                   <TextInput
                     ref={passwordInputRef}
                     className="flex-1 ml-3 text-gray-800"
-                    placeholder="Şifren"
+                    placeholder={t('auth.passwordPlaceholder')}
                     placeholderTextColor="#9CA3AF"
                     secureTextEntry={!showPassword}
                     textContentType="password"
@@ -1256,7 +1333,7 @@ export default function AuthScreen() {
                 ) : (
                   <>
                     <Text className="text-white font-bold text-lg">
-                      {isLogin ? "Giriş Yap" : "Kayıt Ol"}
+                      {isLogin ? t('auth.signInButton') : t('auth.signUpButton')}
                     </Text>
                     <Ionicons name="arrow-forward" size={20} color="white" style={{ marginLeft: 8 }} />
                   </>
@@ -1282,9 +1359,15 @@ export default function AuthScreen() {
               >
                 <Text className="text-center text-gray-600">
                   {isLogin ? (
-                    <>Hesabın yok mu? <Text className="text-green-700 font-semibold">Kayıt ol</Text></>
+                    <>
+                      {t('auth.noAccountQuestion')}{' '}
+                      <Text className="text-green-700 font-semibold">{t('auth.signUpLink')}</Text>
+                    </>
                   ) : (
-                    <>Zaten hesabın var mı? <Text className="text-green-700 font-semibold">Giriş yap</Text></>
+                    <>
+                      {t('auth.haveAccountQuestion')}{' '}
+                      <Text className="text-green-700 font-semibold">{t('auth.signInLink')}</Text>
+                    </>
                   )}
                 </Text>
               </TouchableOpacity>
@@ -1297,7 +1380,7 @@ export default function AuthScreen() {
                     style={{ marginBottom: Platform.OS === "android" ? 16 : 32 }}
                   >
                     <View className="flex-1 h-px bg-gray-300" />
-                    <Text className="mx-3 text-gray-500 font-semibold">veya</Text>
+                    <Text className="mx-3 text-gray-500 font-semibold">{t('auth.or')}</Text>
                     <View className="flex-1 h-px bg-gray-300" />
                   </View>
 
@@ -1314,7 +1397,7 @@ export default function AuthScreen() {
                       <>
                         <Ionicons name="logo-google" size={18} color="#15803d" style={{ marginRight: 10 }} />
                         <Text className="text-green-700 font-bold">
-                          Google Hesabıyla Giriş Yap
+                          {t('auth.googleSignIn')}
                         </Text>
                       </>
                     )}
@@ -1336,7 +1419,7 @@ export default function AuthScreen() {
                         <>
                           <Ionicons name="logo-apple" size={18} color="white" style={{ marginRight: 10 }} />
                           <Text className="text-white font-bold">
-                            Apple Hesabınla Giriş Yap
+                            {t('auth.appleSignIn')}
                           </Text>
                         </>
                       )}
@@ -1347,7 +1430,7 @@ export default function AuthScreen() {
                     className="text-center text-xs text-gray-500"
                     style={{ marginTop: Platform.OS === "ios" ? 8 : 16 }}
                   >
-                    Giriş yaptıktan sonra profil bilgilerini tamamlayabilirsin.
+                    {t('auth.completeProfileNote')}
                   </Text>
                 </View>
               )}

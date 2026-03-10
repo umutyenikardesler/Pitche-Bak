@@ -587,10 +587,14 @@ export default function Index() {
           {/* MyMatches için dinamik yükseklik */}
           <View 
             style={{
-              height: futureMatches.length === 0 ? undefined : myMatchesHeight,
+              // MyMatches component'i root'ta flex:1 kullandığı için, wrapper'a yükseklik vermeyince
+              // (özellikle boş state'te) mobilde bölüm 0px'e düşebiliyor. Bu yüzden boşken de
+              // calculateHeight ile hesaplanan myMatchesHeight'i uygula.
+              height: myMatchesHeight === 0 ? undefined : myMatchesHeight,
               // Web'de FlatList container'ı parent yüksekliğini aşarak bir sonraki bölüme taşabiliyor.
-              // Mobil davranışını bozmadan, web'de taşmayı engellemek için clip ediyoruz.
-              overflow: Platform.OS === 'web' ? 'hidden' : undefined,
+              // Mobil davranışını bozmadan, web'de taşmayı engellemek için sadece LISTE modunda clip ediyoruz.
+              // Boş state'te (buton vs.) clip etmek butonu görünmez yapabiliyor.
+              overflow: Platform.OS === 'web' && futureMatches.length > 0 ? 'hidden' : undefined,
             }}>
             <MyMatches
               matches={futureMatches}

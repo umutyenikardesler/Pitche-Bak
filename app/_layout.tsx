@@ -5,6 +5,7 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { NotificationProvider } from '@/components/NotificationContext';
 import { LanguageProvider } from '@/contexts/LanguageContext';
+import AnalyticsProvider from '@/components/AnalyticsProvider';
 
 // Sadece belirli logları ignore et, tüm logları değil
 LogBox.ignoreLogs([
@@ -17,6 +18,7 @@ export default function RootLayout() {
       <NotificationProvider>
         <GestureHandlerRootView style={{ flex: 1 }}>
           <SafeAreaProvider>
+            <AnalyticsProvider />
             {Platform.OS === 'web' ? (
               <View style={{ flex: 1, backgroundColor: '#f3f4f6', alignItems: 'center' }}>
                 <View

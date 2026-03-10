@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { Text, View, Image, TouchableOpacity, Alert } from "react-native";
+import { Text, View, Image, TouchableOpacity } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useFocusEffect } from "@react-navigation/native";
@@ -124,9 +124,9 @@ export default function ProfileInfo({ userData, setModalVisible, setEditModalVis
                     <Text className="text-wrap font-semibold">{t('profile.age')}:</Text>
                     <Text className="text-green-600 font-semibold"> {userData?.age || "-"}  </Text>
                     <Text className="font-semibold">{t('profile.height')}:</Text>
-                    <Text className="text-green-600 font-semibold"> {userData?.height || "-"} cm  </Text>
+                    <Text className="text-green-600 font-semibold"> {userData?.height || "-"} {t('units.cm')}  </Text>
                     <Text className="font-semibold">{t('profile.weight')}:</Text>
-                    <Text className="text-green-600 font-semibold"> {userData?.weight || "-"} kg</Text>
+                    <Text className="text-green-600 font-semibold"> {userData?.weight || "-"} {t('units.kg')}</Text>
                 </View>
 
                 <View className="flex-row justify-start mb-1">

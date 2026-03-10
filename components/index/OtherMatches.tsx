@@ -89,12 +89,15 @@ export default function OtherMatches({ matches, refreshing, onRefresh, onSelectM
 
       {matches.length === 0 && !refreshing ? (
         <View className='flex justify-center items-center py-4'>
-          <Text className="text-center font-bold my-4">{t('home.noIncompleteSquadMatches')}</Text>
+          <Text className="text-center font-bold my-1">{t('home.noIncompleteSquadMatches')}</Text>
           <TouchableOpacity
-            className="text-center bg-green-600 text-white font-semibold rounded-md my-3 items-center"
+            className="text-center bg-green-600 text-white font-semibold rounded-md my-3 items-center self-center"
+            style={{ width: '40%' }}
             onPress={onCreateMatch}
           >
-            <Text className="w-1/2 text-white font-semibold text-center p-4">{t('home.createMatchNow')}</Text>
+            <Text className="text-white font-semibold text-center p-4">
+              {t('home.createMatchNow')}
+            </Text>
           </TouchableOpacity>
         </View>
       ) : matches.length === 0 && refreshing ? (

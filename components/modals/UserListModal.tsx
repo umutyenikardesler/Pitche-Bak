@@ -46,7 +46,10 @@ export default function UserListModal({
   const [followingStatusMap, setFollowingStatusMap] = useState<Map<string, "accepted" | "pending" | null>>(new Map());
   
   const currentList = activeListType === "followers" ? followersList : followingList;
-  const title = activeListType === "followers" ? "Takipçiler" : "Takip Edilenler";
+  const title =
+    activeListType === "followers"
+      ? t("profile.followers")
+      : t("profile.following");
 
   // Her kullanıcı için takip durumunu kontrol et
   useEffect(() => {
@@ -293,13 +296,13 @@ export default function UserListModal({
               activeListType === "following" ? (
                 <View className="py-10 px-4 items-center justify-center">
                   <Text className="text-base text-gray-500 text-center">
-                    Şuan hiç Takip ettiğiniz kişi Yok
+                    {t("profile.notFollowingAnyoneYet")}
                   </Text>
                 </View>
               ) : (
                 <View className="py-10 px-4 items-center justify-center">
                   <Text className="text-base text-gray-500 text-center">
-                    Şu an hiç takipçiniz yok
+                    {t("profile.noFollowersYet")}
                   </Text>
                 </View>
               )
@@ -334,7 +337,7 @@ export default function UserListModal({
                           {u.name} {u.surname}
                         </Text>
                         <Text className="text-sm text-gray-500 mt-1">
-                          {isFollowersList ? "Seni takip ediyor" : "Takip ediyorsun"}
+                          {isFollowersList ? t("profile.followingYou") : t("profile.youFollowing")}
                         </Text>
                       </View>
                     </TouchableOpacity>

@@ -36,20 +36,36 @@ export const formatMatchInfo = (notification: Notification): {
 };
 
 // Follow Request Messages
-export const buildFollowRequestAcceptMessage = (senderName: string, senderSurname: string): string => {
-    return `${senderName} ${senderSurname} seni takip etmeye başladı.`;
+export const buildFollowRequestAcceptMessage = (
+  senderName: string,
+  senderSurname: string,
+  t: (key: string) => string
+): string => {
+  const name = `${senderName} ${senderSurname}`.trim();
+  return t('notifications.follow.startedFollowing').replace('{name}', name);
 };
 
-export const buildFollowRequestAcceptSenderMessage = (accepterName: string): string => {
-    return `${accepterName} takip isteğinizi kabul etti.`;
+export const buildFollowRequestAcceptSenderMessage = (
+  accepterName: string,
+  t: (key: string) => string
+): string => {
+  return t('notifications.follow.acceptedYourRequest').replace('{name}', accepterName);
 };
 
-export const buildFollowRequestRejectMessage = (senderName: string, senderSurname: string): string => {
-    return `${senderName} ${senderSurname} kullanıcısının takip isteğini reddettiniz.`;
+export const buildFollowRequestRejectMessage = (
+  senderName: string,
+  senderSurname: string,
+  t: (key: string) => string
+): string => {
+  const name = `${senderName} ${senderSurname}`.trim();
+  return t('notifications.follow.youRejectedRequest').replace('{name}', name);
 };
 
-export const buildFollowRequestRejectSenderMessage = (rejecterName: string): string => {
-    return `${rejecterName} takip isteğinizi reddetti.`;
+export const buildFollowRequestRejectSenderMessage = (
+  rejecterName: string,
+  t: (key: string) => string
+): string => {
+  return t('notifications.follow.rejectedYourRequest').replace('{name}', rejecterName);
 };
 
 // Join Request Messages

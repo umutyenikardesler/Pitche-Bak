@@ -66,7 +66,8 @@ export const useNotificationHandlers = (
                 // Bildirimi okundu olarak işaretle
                 const acceptMessage = buildFollowRequestAcceptMessage(
                     notification.sender_name,
-                    notification.sender_surname
+                    notification.sender_surname,
+                    t
                 );
                 await supabase
                     .from('notifications')
@@ -86,13 +87,13 @@ export const useNotificationHandlers = (
                     
                     const senderName = currentUserData 
                         ? `${currentUserData.name} ${currentUserData.surname}` 
-                        : 'Kullanıcı';
+                        : t('notifications.userFallback');
                     
                     await supabase.from('notifications').insert({
                         user_id: notification.sender_id,
                         sender_id: user.id,
                         type: 'follow_request',
-                        message: buildFollowRequestAcceptSenderMessage(senderName),
+                        message: buildFollowRequestAcceptSenderMessage(senderName, t),
                         is_read: false,
                     });
                 } catch (e) {
@@ -103,7 +104,7 @@ export const useNotificationHandlers = (
                     n.id === notification.id ? { ...n, is_read: true, message: acceptMessage } : n
                 ));
                 refresh();
-                try { (global as any).toast?.show?.('İstek kabul edildi'); } catch (_) {}
+                try { (global as any).toast?.show?.(t('notifications.toast.accepted')); } catch (_) {}
             } else {
                 // Takip isteğini reddet
                 // Önce mevcut kaydı kontrol et
@@ -126,7 +127,8 @@ export const useNotificationHandlers = (
                 // Bildirimi okundu olarak işaretle
                 const rejectMessage = buildFollowRequestRejectMessage(
                     notification.sender_name,
-                    notification.sender_surname
+                    notification.sender_surname,
+                    t
                 );
                 await supabase
                     .from('notifications')
@@ -146,13 +148,13 @@ export const useNotificationHandlers = (
                     
                     const senderName = currentUserData 
                         ? `${currentUserData.name} ${currentUserData.surname}` 
-                        : 'Kullanıcı';
+                        : t('notifications.userFallback');
                     
                     await supabase.from('notifications').insert({
                         user_id: notification.sender_id,
                         sender_id: user.id,
                         type: 'follow_request',
-                        message: buildFollowRequestRejectSenderMessage(senderName),
+                        message: buildFollowRequestRejectSenderMessage(senderName, t),
                         is_read: false,
                     });
                 } catch (e) {
@@ -163,7 +165,7 @@ export const useNotificationHandlers = (
                     n.id === notification.id ? { ...n, is_read: true, message: rejectMessage } : n
                 ));
                 refresh();
-                try { (global as any).toast?.show?.('İstek reddedildi'); } catch (_) {}
+                try { (global as any).toast?.show?.(t('notifications.toast.rejected')); } catch (_) {}
             }
         } catch (error) {
             console.error(t('notifications.followRequestError'), error);
