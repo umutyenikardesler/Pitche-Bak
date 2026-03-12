@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
-import { View, Text, FlatList, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, InteractionManager } from 'react-native';
+import { View, Text, FlatList, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, InteractionManager, Alert } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { supabase } from '@/services/supabase';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -7,6 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Image, TouchableOpacity as RNTouchableOpacity } from 'react-native';
 import { useNotification } from '@/components/NotificationContext';
+import { containsBannedWord } from '@/constants/bannedWords';
 
 interface MsgItem {
   id: string;
@@ -156,6 +157,13 @@ export default function ChatScreen() {
   const sendMessage = useCallback(async () => {
     // Boş mesajı gönderme
     if (!input.trim()) return;
+
+    // Yasaklı kelime kontrolü
+    if (containsBannedWord(input)) {
+      Alert.alert(t('chat.profanityTitle'), t('chat.profanityWarning'));
+      return;
+    }
+
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
@@ -213,7 +221,7 @@ export default function ChatScreen() {
     } catch (e) {
       console.error('[Chat] sendMessage unexpected error:', e);
     }
-  }, [input, matchId, fetchMessages, resolveRecipientId]);
+  }, [input, matchId, fetchMessages, resolveRecipientId, t]);
 
   const renderItem = ({ item }: { item: MsgItem }) => {
     const mine = item.sender_id === me;

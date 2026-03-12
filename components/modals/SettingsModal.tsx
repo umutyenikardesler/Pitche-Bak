@@ -16,6 +16,8 @@ import Constants from "expo-constants";
 import * as Device from "expo-device";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { supabase } from "@/services/supabase";
+import PolicyModal from "./PolicyModal";
+import { POLICY_KEYS, PolicyKey } from "@/constants/policies";
 
 interface SettingsModalProps {
   visible: boolean;
@@ -28,6 +30,8 @@ export default function SettingsModal({
 }: SettingsModalProps) {
   const { currentLanguage, changeLanguage, t } = useLanguage();
   const [languageOptionsVisible, setLanguageOptionsVisible] = useState(false);
+  const [agreementsVisible, setAgreementsVisible] = useState(false);
+  const [policyModalKey, setPolicyModalKey] = useState<PolicyKey | null>(null);
   const [accountInfoVisible, setAccountInfoVisible] = useState(false);
   const [deviceInfoVisible, setDeviceInfoVisible] = useState(false);
   const [accountEmail, setAccountEmail] = useState<string | null>(null);
@@ -136,6 +140,8 @@ export default function SettingsModal({
     // Modal her açıldığında form state'lerini sıfırla
     setEditEmailVisible(false);
     setEditPasswordVisible(false);
+    setAgreementsVisible(false);
+    setPolicyModalKey(null);
     setDeviceInfoVisible(false);
     setSavingEmail(false);
     setSavingPassword(false);
@@ -335,6 +341,12 @@ export default function SettingsModal({
         style={Platform.OS === "web" ? { alignItems: "center" } : undefined}
       >
         {/* Hesap Silme Onayı (stil için custom modal) */}
+        <PolicyModal
+          visible={policyModalKey !== null}
+          onClose={() => setPolicyModalKey(null)}
+          policyKey={policyModalKey}
+        />
+
         <Modal
           visible={deleteConfirmVisible}
           transparent
@@ -706,6 +718,45 @@ export default function SettingsModal({
                       />
                     )}
                   </TouchableOpacity>
+                </View>
+              </View>
+            )}
+
+            {/* Sözleşmelerim */}
+            <TouchableOpacity
+              className="flex-row items-center justify-between p-3 bg-green-600 rounded-lg mb-3"
+              activeOpacity={1}
+              onPress={() => setAgreementsVisible(!agreementsVisible)}
+            >
+              <View className="flex-row items-center">
+                <Ionicons name="document-text-outline" size={24} color="white" />
+                <Text className="text-white font-semibold text-lg ml-3">
+                  {t("settings.agreements.title")}
+                </Text>
+              </View>
+              <Ionicons
+                name={agreementsVisible ? "chevron-up" : "chevron-down"}
+                size={24}
+                color="white"
+              />
+            </TouchableOpacity>
+
+            {agreementsVisible && (
+              <View className="mb-3">
+                <View className="bg-gray-100 rounded-lg p-2">
+                  {POLICY_KEYS.map((key) => (
+                    <TouchableOpacity
+                      key={key}
+                      className="flex-row items-center justify-between p-3 rounded-lg active:bg-gray-200"
+                      onPress={() => setPolicyModalKey(key)}
+                      activeOpacity={0.7}
+                    >
+                      <Text className="text-gray-800 font-medium">
+                        {t(`settings.agreements.${key}`)}
+                      </Text>
+                      <Ionicons name="chevron-forward" size={18} color="#16a34a" />
+                    </TouchableOpacity>
+                  ))}
                 </View>
               </View>
             )}

@@ -2,7 +2,7 @@
 <html lang="tr">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <title>SahayaBak — Maça Başla</title>
 
     <!-- SEO basics -->
@@ -56,7 +56,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=optional"
       rel="stylesheet"
     />
     <link rel="stylesheet" href="./landing.css" />
@@ -88,15 +88,6 @@
           >
           Uygulamayı İndir
           </a>
-          <a
-            class="btn btn--primary"
-            href="./app/index.html"
-            aria-label="Maça başla"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Maça Başla
-          </a>
         </div>
       </div>
     </header>
@@ -120,14 +111,6 @@
             </p>
 
             <div class="hero__cta">
-              <a
-                class="btn btn--primary btn--lg"
-                href="./app/index.html"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                Maça Başla
-              </a>
               <a class="btn btn--ghost btn--lg" href="#ozellikler">
                 Özelliklere göz at
               </a>
@@ -178,14 +161,10 @@
                   </div>
                 </div>
               </div>
-              <div class="card__footer">
-                <a
-                  class="btn btn--primary"
-                  href="./app/index.html"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >Uygulamayı Aç</a>
-                <a class="btn btn--ghost" href="#nasil">Detay</a>
+              <div class="card__footer card__footer--matches" id="liveMatchesContainer">
+                <div class="liveMatches__loading" id="liveMatchesLoading">Yükleniyor…</div>
+                <div class="liveMatches__list" id="liveMatchesList" hidden></div>
+                <div class="liveMatches__empty" id="liveMatchesEmpty" hidden>Şu an kadrosu eksik maç yok.</div>
               </div>
             </div>
           </div>
@@ -271,14 +250,6 @@
             </li>
           </ol>
 
-          <div class="centerCta">
-            <a
-              class="btn btn--primary btn--lg"
-              href="./app/index.html"
-              target="_blank"
-              rel="noopener noreferrer"
-            >Uygulamaya Git</a>
-          </div>
         </div>
       </section>
     </main>
@@ -295,15 +266,16 @@
           </div>
         </div>
 
-        <div class="footer__right">
-          <a
-            class="footer__link"
-            href="./app/index.html"
-            target="_blank"
-            rel="noopener noreferrer"
-          >Uygulamayı Aç</a>
-          <a class="footer__link" href="#ozellikler">Özellikler</a>
-          <a class="footer__link" href="#nasil">Nasıl Çalışır?</a>
+        <div class="footer__legal" aria-label="Yasal metinler">
+          <div class="footerLegal__head mb-2">Sözleşmelerimiz</div>
+          <div class="legalGrid">
+            <button class="legalLink" type="button" data-policy="terms">Kullanıcı Sözleşmesi</button>
+            <button class="legalLink" type="button" data-policy="privacy">Gizlilik Politikası</button>
+            <button class="legalLink" type="button" data-policy="kvkk">KVKK Aydınlatma Metni</button>
+            <button class="legalLink" type="button" data-policy="cookies">Çerez Politikası</button>
+            <button class="legalLink" type="button" data-policy="retention">Saklama ve İmha Politikası</button>
+            <button class="legalLink" type="button" data-policy="community">Topluluk İlkeleri</button>
+          </div>
         </div>
 
         <div class="footer__apps" id="mobil-uygulama" aria-label="Mobil uygulamalar">
@@ -338,7 +310,7 @@
                 </span>
                 <span class="storeBadge__text">
                   <span class="storeBadge__overline">Google Play’den</span>
-                  <span class="storeBadge__name">İndir</span>
+                  <span class="storeBadge__name">İndir <span class="badgeSoon">Yakında</span></span>
                 </span>
               </a>
             </div>
@@ -346,11 +318,8 @@
         </div>
       </div>
     </footer>
-
-    <script>
-      const y = document.getElementById("y");
-      if (y) y.textContent = String(new Date().getFullYear());
-    </script>
+    <script defer src="./modals/policy-modal.js?v=20260312"></script>
+    <script type="module" src="./scripts/live-matches.js?v=20260312"></script>
   </body>
 </html>
 

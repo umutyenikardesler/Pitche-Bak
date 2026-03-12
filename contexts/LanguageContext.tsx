@@ -57,6 +57,12 @@ const translations = {
     'home.matchesLoading': 'Maç Listesi Yükleniyor..',
     'home.incompleteSquadMatches': 'KADROSU EKSİK MAÇLAR',
     'home.noIncompleteSquadMatches': 'Başkaları Tarafından Oluşturulan Kadrosu Eksik Maç Yok!',
+    'home.sort.title': 'Sıralama',
+    'home.sort.open': 'Sıralama seçenekleri',
+    'home.sort.distance': 'Konuma göre sırala (Yakından Uzağa)',
+    'home.sort.datetime': 'Tarih ve saate göre sırala',
+    'home.sort.distanceShort': 'Yakın',
+    'home.sort.datetimeShort': 'Tarih',
     
     // Profil
     'profile.title': 'Profil',
@@ -251,7 +257,10 @@ const translations = {
     'general.reject': 'Reddet',
     'general.accept': 'Kabul Et',
     'general.sendMessage': 'Mesaj Gönder',
-    
+
+    'chat.profanityTitle': 'Yasaklı İçerik',
+    'chat.profanityWarning': 'Bu mesaj gönderilemez. Küfür ve hakaret içeren ifadeler topluluk kurallarımıza aykırıdır. Sohbette saygılı iletişim kurulması gerekmektedir.',
+
     // Dil Ayarları
     'language.settings': 'Dil Ayarları',
     'language.turkish': 'Türkçe',
@@ -305,6 +314,14 @@ const translations = {
     'settings.device.upToDate': 'Güncel',
     'settings.device.unknown': 'Bilinmiyor',
     'settings.device.goToStore': 'App Store’a Git',
+
+    'settings.agreements.title': 'Sözleşmelerim',
+    'settings.agreements.terms': 'Kullanıcı Sözleşmesi',
+    'settings.agreements.privacy': 'Gizlilik Politikası',
+    'settings.agreements.kvkk': 'KVKK Aydınlatma Metni',
+    'settings.agreements.cookies': 'Çerez Politikası',
+    'settings.agreements.retention': 'Saklama ve İmha Politikası',
+    'settings.agreements.community': 'Topluluk İlkeleri',
 
     // Auth (Giriş / Kayıt)
     'auth.slide1.title': 'Maç Bul',
@@ -430,6 +447,12 @@ const translations = {
     'home.matchesLoading': 'Matches Loading..',
     'home.incompleteSquadMatches': 'INCOMPLETE SQUAD MATCHES',
     'home.noIncompleteSquadMatches': 'No Incomplete Squad Matches Created by Others!',
+    'home.sort.title': 'Sort',
+    'home.sort.open': 'Sort options',
+    'home.sort.distance': 'Sort by location (Near → Far)',
+    'home.sort.datetime': 'Sort by date & time',
+    'home.sort.distanceShort': 'Near',
+    'home.sort.datetimeShort': 'Date',
     
     // Profile
     'profile.title': 'Profile',
@@ -624,7 +647,10 @@ const translations = {
     'general.reject': 'Reject',
     'general.accept': 'Accept',
     'general.sendMessage': 'Send Message',
-    
+
+    'chat.profanityTitle': 'Prohibited Content',
+    'chat.profanityWarning': 'This message cannot be sent. Profanity and offensive language violate our community guidelines. Please keep the conversation respectful.',
+
     // Language Settings
     'language.settings': 'Language Settings',
     'language.turkish': 'Turkish',
@@ -678,6 +704,14 @@ const translations = {
     'settings.device.upToDate': 'Up to date',
     'settings.device.unknown': 'Unknown',
     'settings.device.goToStore': 'Go to App Store',
+
+    'settings.agreements.title': 'My Agreements',
+    'settings.agreements.terms': 'Terms of Use',
+    'settings.agreements.privacy': 'Privacy Policy',
+    'settings.agreements.kvkk': 'KVKK Disclosure',
+    'settings.agreements.cookies': 'Cookie Policy',
+    'settings.agreements.retention': 'Retention and Destruction Policy',
+    'settings.agreements.community': 'Community Guidelines',
 
     // Auth (Sign in / Sign up)
     'auth.slide1.title': 'Find Match',

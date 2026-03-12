@@ -1,4 +1,5 @@
-import { View, Text, FlatList, TouchableOpacity, Image, RefreshControl } from "react-native";
+import { View, Text, FlatList, TouchableOpacity, Image, RefreshControl, Pressable } from "react-native";
+import { useRef } from "react";
 import { useEffect, useState } from "react";
 import { Ionicons } from "@expo/vector-icons";
 import { Match } from "./types";
@@ -23,11 +24,38 @@ export default function OtherMatches({ matches, refreshing, onRefresh, onSelectM
 }: OtherMatchesProps) {
   const { t } = useLanguage();
   const [visibleCount, setVisibleCount] = useState(5);
+  const [sortMenuOpen, setSortMenuOpen] = useState(false);
+  const [sortMode, setSortMode] = useState<"distance" | "datetime">("datetime");
+  const [headerHeight, setHeaderHeight] = useState(48);
 
   // Maç listesi değiştiğinde görünür sayıyı resetle
   useEffect(() => {
     setVisibleCount(5);
   }, [matches.length]);
+
+  const sortedMatches = (() => {
+    const arr = [...matches];
+    if (sortMode === "datetime") {
+      arr.sort((a, b) => {
+        const d = a.date.localeCompare(b.date);
+        if (d !== 0) return d;
+        return a.time.localeCompare(b.time);
+      });
+      return arr;
+    }
+
+    // distance: Yakından -> Uzağa (distance yoksa sona)
+    arr.sort((a, b) => {
+      const da = a.distance ?? Number.MAX_SAFE_INTEGER;
+      const db = b.distance ?? Number.MAX_SAFE_INTEGER;
+      if (Math.abs(da - db) > 0.0001) return da - db;
+      const d = a.date.localeCompare(b.date);
+      if (d !== 0) return d;
+      return a.time.localeCompare(b.time);
+    });
+    return arr;
+  })();
+
   const renderMatch = ({ item }: { item: Match }) => (
     <TouchableOpacity onPress={() => onSelectMatch(item)}>
      <View className="bg-white rounded-lg mx-4 mt-1 p-1 shadow-lg">
@@ -80,12 +108,120 @@ export default function OtherMatches({ matches, refreshing, onRefresh, onSelectM
     </TouchableOpacity>
   );
 
+  const DROPDOWN_WIDTH = 220;
+  const GAP = 5;
+
   return (
     <View className="flex-1">
-      <View className="flex-row p-2 bg-green-700">
-        <Ionicons name="alarm-outline" size={16} color="white" className="pl-2" />
-        <Text className="font-bold text-white"> {t('home.incompleteSquadMatches')} </Text>
+      <View
+        onLayout={(e) => setHeaderHeight(e.nativeEvent.layout.height)}
+        className="flex-row items-center justify-between p-2 pr-4 bg-green-700"
+      >
+        <View className="flex-row items-center" style={{ flex: 1, flexShrink: 1, marginRight: 10 }}>
+          <Ionicons name="alarm-outline" size={16} color="white" className="pl-2" />
+          <Text
+            className="font-bold text-white"
+            numberOfLines={1}
+            ellipsizeMode="tail"
+            style={{ flexShrink: 1 }}
+          >
+            {" "}{t('home.incompleteSquadMatches')}{" "}
+          </Text>
+        </View>
+
+        <TouchableOpacity
+          onPress={() => setSortMenuOpen((p) => !p)}
+            activeOpacity={0.85}
+            accessibilityRole="button"
+            accessibilityLabel={t("home.sort.open")}
+            style={{
+            flexDirection: "row",
+            alignItems: "center",
+            paddingHorizontal: 10,
+            paddingVertical: 6,
+            borderRadius: 10,
+            backgroundColor: "#ffffff",
+            borderWidth: 1,
+            borderColor: "rgba(255,255,255,0.85)",
+            flexShrink: 0,
+          }}
+        >
+          <Ionicons name="options-outline" size={16} color="#16a34a" />
+          <Text style={{ color: "#16a34a", fontWeight: "900", marginLeft: 6, fontSize: 12 }}>
+            {sortMode === "distance" ? t("home.sort.distanceShort") : t("home.sort.datetimeShort")}
+          </Text>
+        </TouchableOpacity>
       </View>
+
+      {sortMenuOpen && (
+        <>
+          <Pressable
+            style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(0,0,0,0.35)", zIndex: 10 }}
+            onPress={() => setSortMenuOpen(false)}
+          />
+          <View
+            style={{
+              position: "absolute",
+              top: headerHeight + GAP,
+              right: 16,
+              width: DROPDOWN_WIDTH,
+              backgroundColor: "white",
+              borderRadius: 14,
+              paddingVertical: 8,
+              shadowColor: "#000",
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: 0.2,
+              shadowRadius: 12,
+              elevation: 12,
+              zIndex: 11,
+            }}
+          >
+            <Text style={{ paddingHorizontal: 14, paddingVertical: 8, fontWeight: "900", color: "#111827" }}>
+              {t("home.sort.title")}
+            </Text>
+
+            <TouchableOpacity
+              onPress={() => {
+                setSortMode("distance");
+                setSortMenuOpen(false);
+              }}
+              activeOpacity={0.85}
+              style={{
+                paddingHorizontal: 14,
+                paddingVertical: 12,
+                flexDirection: "row",
+                alignItems: "center",
+                backgroundColor: sortMode === "distance" ? "rgba(22,163,74,0.12)" : "transparent",
+              }}
+            >
+              <Ionicons name="navigate-outline" size={18} color={sortMode === "distance" ? "#16a34a" : "#111827"} />
+              <Text style={{ marginLeft: 10, fontWeight: "800", color: "#111827" }}>
+                {t("home.sort.distance")}
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={() => {
+                setSortMode("datetime");
+                setSortMenuOpen(false);
+              }}
+              activeOpacity={0.85}
+              style={{
+                paddingHorizontal: 14,
+                paddingVertical: 12,
+                flexDirection: "row",
+                alignItems: "center",
+                backgroundColor: sortMode === "datetime" ? "rgba(22,163,74,0.12)" : "transparent",
+              }}
+            >
+              <Ionicons name="calendar-outline" size={18} color={sortMode === "datetime" ? "#16a34a" : "#111827"} />
+              <Text style={{ marginLeft: 10, fontWeight: "800", color: "#111827" }}>
+                {t("home.sort.datetime")}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </>
+      )}
 
       {matches.length === 0 && !refreshing ? (
         <View className='flex justify-center items-center py-4'>
@@ -106,7 +242,7 @@ export default function OtherMatches({ matches, refreshing, onRefresh, onSelectM
         </View>
       ) : (
         <FlatList
-          data={matches.slice(0, visibleCount)}
+          data={sortedMatches.slice(0, visibleCount)}
           keyExtractor={(item) => item.id.toString()}
           renderItem={renderMatch}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
