@@ -1,12 +1,12 @@
 import { FlatList, RefreshControl, ScrollView, Text, TouchableOpacity, View, Platform, Linking, Modal } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { GestureDetector, Gesture } from "react-native-gesture-handler";
 import PitchMap from "@/components/maps/PitchMap";
-import { runOnJS } from "react-native-reanimated";
 import { useRouter } from "expo-router"; // Router'ı getir
 import { useNavigation } from '@react-navigation/native';
 import { supabase } from '@/services/supabase';
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useAuth } from "@/contexts/AuthContext";
+import { useGuestAuthAlert } from "@/contexts/GuestAuthModalContext";
 
 import Animated, { useSharedValue, useAnimatedStyle, withRepeat, withTiming, interpolateColor, Easing } from 'react-native-reanimated';
 import { FontAwesome } from '@expo/vector-icons'; // Top ikonu için
@@ -15,7 +15,8 @@ import { useEffect, useRef, useState } from 'react';
 
 export default function PitchesList({ pitches, selectedPitch, setSelectedPitch, handleCloseDetail, refreshing, onRefresh }: any) {
   const { t } = useLanguage();
-
+  const { isGuest } = useAuth();
+  const { showGuestAuthAlert } = useGuestAuthAlert();
   const router = useRouter();
 
   // animasyon değeri
@@ -116,6 +117,12 @@ export default function PitchesList({ pitches, selectedPitch, setSelectedPitch, 
 
 
   const handleSelectPitch = async (pitchId: string) => {
+    // Misafir: Create sayfasına gitmeden önce uyarı göster, giriş sayfasına yönlendir
+    if (isGuest) {
+      showGuestAuthAlert(t('auth.guestCreateMatch'));
+      return;
+    }
+
     const { data, error } = await supabase
       .from("pitches")
       .select("id, district_id, name, price, district:districts(name)")
@@ -142,27 +149,14 @@ export default function PitchesList({ pitches, selectedPitch, setSelectedPitch, 
     });
   };
 
-  // Detay ekranı için soldan sağa swipe-back (tüm ekranı kapsasın)
-  // Android'de dikey scroll'u engellememesi için sadece yatay harekette aktif olacak şekilde sınırla
-  const swipeGesture = Gesture.Pan()
-    .activeOffsetX(20) // en az 20px yatay hareket olmalı
-    .failOffsetY([-10, 10]) // dikeyde ±10px'den fazla hareket olursa gesture iptal (ScrollView'a geçer)
-    .onEnd((event) => {
-      // Yeterince sağa sürüklenmişse ve dikey hareket çok değilse geri dön
-      if (event.translationX > 80 && Math.abs(event.translationY) < 80) {
-        runOnJS(handleCloseDetail)();
-      }
-    });
-
   const featuresArray = selectedPitch?.features || [];
   const pitchPhone = selectedPitch?.phone || '';
   const hasPhone = !!pitchPhone;
 
   if (selectedPitch) {
     return (
-      <GestureDetector gesture={swipeGesture}>
-        <View style={{ flex: 1 }}>
-          <>
+      <View style={{ flex: 1 }}>
+        <>
             <ScrollView
               style={{ flex: 1 }}
               contentContainerStyle={{
@@ -185,7 +179,10 @@ export default function PitchesList({ pitches, selectedPitch, setSelectedPitch, 
                     <Text className="text-xl font-bold text-green-700 text-center mb-2">{t('pitches.pitchSummary')}</Text>
 
                     {selectedPitch.latitude && selectedPitch.longitude && (
-                      <View className="w-full rounded-lg overflow-hidden my-2" style={{ position: 'relative' }}>
+                      <View
+                        className="w-full rounded-lg overflow-hidden my-2"
+                        style={{ position: 'relative', height: 192, minHeight: 192 }}
+                      >
                         <PitchMap
                           latitude={selectedPitch.latitude}
                           longitude={selectedPitch.longitude}
@@ -386,8 +383,7 @@ export default function PitchesList({ pitches, selectedPitch, setSelectedPitch, 
               </Animated.View>
             </View>
           </>
-        </View>
-      </GestureDetector>
+      </View>
     );
   }
 

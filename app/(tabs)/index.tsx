@@ -7,6 +7,9 @@ import { supabase } from '@/services/supabase';
 import haversine from 'haversine';
 import * as Location from 'expo-location';
 import '@/global.css';
+import { useAuth } from '@/contexts/AuthContext';
+import { useLanguage } from '@/contexts/LanguageContext';
+import { useGuestAuthAlert } from '@/contexts/GuestAuthModalContext';
 
 import IndexCondition from '@/components/index/IndexCondition';
 import MyMatches from '@/components/index/MyMatches';
@@ -16,6 +19,8 @@ import ProfilePreview from '@/components/index/ProfilePreview';
 import { Match } from '@/components/index/types';
 
 export default function Index() {
+  const { isGuest } = useAuth();
+  const { showGuestAuthAlert } = useGuestAuthAlert();
   const [futureMatches, setFutureMatches] = useState<Match[]>([]);
   const [otherMatches, setOtherMatches] = useState<Match[]>([]);
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
@@ -281,39 +286,35 @@ export default function Index() {
       console.log('Konum alınamadı veya izin verilmedi:', e);
     }
 
-    const { data: authData, error: authError } = await supabase.auth.getUser();
-    if (authError || !authData.user.id) {
-      console.error("Kullanıcı kimlik doğrulama hatası:", authError);
-      setRefreshing(false);
-      return;
-    }
+    const { data: authData } = await supabase.auth.getUser();
+    const loggedUserId = authData?.user?.id ?? null;
+    const isGuestUser = !loggedUserId;
 
-    const loggedUserId = authData.user.id;
+    if (!isGuestUser && loggedUserId) {
+      // Tüm maçları say (kondisyon için) - sadece giriş yapmış kullanıcı
+      const { data: allMatchData, error: allMatchError } = await supabase
+        .from("match")
+        .select(`id`)
+        .eq("create_user", loggedUserId);
 
-    // Tüm maçları say (kondisyon için)
-    const { data: allMatchData, error: allMatchError } = await supabase
-      .from("match")
-      .select(`id`)
-      .eq("create_user", loggedUserId);
+      if (!allMatchError) {
+        setTotalMatchCount(allMatchData?.length ?? 0);
+      }
 
-    if (!allMatchError) {
-      setTotalMatchCount(allMatchData.length);
-    }
+      // Kendi maçlarını çek - sadece giriş yapmış kullanıcı
+      const { data: matchData, error: matchError } = await supabase
+        .from("match")
+        .select(`
+          id, title, time, date, prices, missing_groups, create_user, match_format,
+          pitches (name, address, price, phone, features, district_id, latitude, longitude, districts (name)),
+          users (id, name, surname, profile_image)
+        `)
+        .eq("create_user", loggedUserId)
+        .order("date", { ascending: true })
+        .order("time", { ascending: true });
 
-    // Tüm maçları çek (tarih filtrelemesi yapmadan)
-    const { data: matchData, error: matchError } = await supabase
-      .from("match")
-      .select(`
-        id, title, time, date, prices, missing_groups, create_user, match_format,
-        pitches (name, address, price, phone, features, district_id, latitude, longitude, districts (name)),
-        users (id, name, surname, profile_image)
-      `)
-      .eq("create_user", loggedUserId)
-      .order("date", { ascending: true })
-      .order("time", { ascending: true });
-
-    if (!matchError) {
-      const filteredMatches = matchData?.filter((item) => {
+      if (!matchError && matchData) {
+        const filteredMatches = matchData.filter((item) => {
         // Maç tarihini Date objesine çevir
         const matchDate = new Date(item.date);
         const matchDateStr = matchDate.toISOString().split('T')[0];
@@ -360,32 +361,26 @@ export default function Index() {
         }) || []
       );
 
-      setFutureMatches(updatedMatches);
-      
-      // Debug: Filtrelenen maçları göster
-      console.log('Filtrelenen maçlar:');
-      updatedMatches.forEach(match => {
-        const [matchHours, matchMinutes] = match.time.split(":").map(Number);
-        const matchEndHour = matchHours + 1;
-        const matchEndTimeInMinutes = matchEndHour * 60 + matchMinutes;
-        console.log(`- ${match.date} ${match.time} (bitiş: ${matchEndHour}:${matchMinutes}) - EndTime: ${matchEndTimeInMinutes} > Current: ${currentHours * 60 + currentMinutes}`);
-      });
-      
-      // Maç verisi değiştiğinde yüksekliği güncelleniyor - useEffect ile otomatik
-      console.log('Maç verisi yüklendi, maç sayısı:', updatedMatches.length);
+        setFutureMatches(updatedMatches);
+      }
     }
 
-    // Diğer kullanıcıların tüm maçları (tarih filtrelemesi yapmadan)
-    const { data: otherMatchData, error: otherMatchError } = await supabase
+    // Diğer maçlar (misafir: tüm maçlar, giriş yapmış: kendi maçları hariç)
+    let otherQuery = supabase
       .from("match")
       .select(`
         id, title, time, date, prices, missing_groups, create_user, match_format,
         pitches (name, price, phone, address, features, district_id, latitude, longitude, districts (name)),
         users (id, name, surname, profile_image)
       `)
-      .neq("create_user", loggedUserId)
       .order("date", { ascending: true })
       .order("time", { ascending: true });
+
+    if (!isGuestUser && loggedUserId) {
+      otherQuery = otherQuery.neq("create_user", loggedUserId);
+    }
+
+    const { data: otherMatchData, error: otherMatchError } = await otherQuery;
 
     if (!otherMatchError) {
       const filteredOtherMatches = otherMatchData?.filter((item) => {
@@ -412,14 +407,17 @@ export default function Index() {
       // Diğer maçlar için de profil resimlerini güncelle + mesafeyi hesapla
       const updatedOtherMatches = await Promise.all(
         filteredOtherMatches?.map(async (item) => {
-          let updatedProfileImage = null;
+          let updatedProfileImage: string | null = null;
+          const originalProfileImage = Array.isArray(item.users) ? item.users[0]?.profile_image : (item.users as any)?.profile_image;
           
-          // Güvenli şekilde profil resmini al
+          // Güvenli şekilde profil resmini al (storage'dan en güncel)
           if (Array.isArray(item.users) && item.users[0]?.id) {
             updatedProfileImage = await fetchLatestProfileImage(item.users[0].id);
           } else if (item.users && typeof item.users === 'object' && 'id' in item.users) {
             updatedProfileImage = await fetchLatestProfileImage((item.users as any).id);
           }
+          // fetchLatestProfileImage null dönerse (misafir vb.) DB'deki profile_image kullan
+          const finalProfileImage = updatedProfileImage ?? originalProfileImage ?? null;
 
           // Maç sahasına olan mesafeyi hesapla (varsa)
           let distance: number | undefined = undefined;
@@ -437,8 +435,8 @@ export default function Index() {
           return {
             ...item,
             users: Array.isArray(item.users) 
-              ? item.users.map(user => ({ ...user, profile_image: updatedProfileImage }))
-              : { ...(item.users as any), profile_image: updatedProfileImage },
+              ? item.users.map(user => ({ ...user, profile_image: finalProfileImage }))
+              : { ...(item.users as any), profile_image: finalProfileImage },
             formattedDate: new Date(item.date).toLocaleDateString("tr-TR"),
             startFormatted: `${item.time.split(":")[0]}:${item.time.split(":")[1]}`,
             endFormatted: `${parseInt(item.time.split(":")[0], 10) + 1}:${item.time.split(":")[1]}`,
@@ -477,7 +475,12 @@ export default function Index() {
     setSelectedMatch(match);
   };
 
+  const { t } = useLanguage();
   const handleCreateMatch = () => {
+    if (isGuest) {
+      showGuestAuthAlert(t('auth.guestCreateMatch'));
+      return;
+    }
     router.push("/create");
   };
 
@@ -582,30 +585,26 @@ export default function Index() {
         </GestureDetector>
       ) : (
         <View className="flex-1">
-          <IndexCondition totalMatchCount={totalMatchCount} />
+          {!isGuest && <IndexCondition totalMatchCount={totalMatchCount} />}
 
-          {/* MyMatches için dinamik yükseklik */}
-          <View 
-            style={{
-              // MyMatches component'i root'ta flex:1 kullandığı için, wrapper'a yükseklik vermeyince
-              // (özellikle boş state'te) mobilde bölüm 0px'e düşebiliyor. Bu yüzden boşken de
-              // calculateHeight ile hesaplanan myMatchesHeight'i uygula.
-              height: myMatchesHeight === 0 ? undefined : myMatchesHeight,
-              // Web'de FlatList container'ı parent yüksekliğini aşarak bir sonraki bölüme taşabiliyor.
-              // Mobil davranışını bozmadan, web'de taşmayı engellemek için sadece LISTE modunda clip ediyoruz.
-              // Boş state'te (buton vs.) clip etmek butonu görünmez yapabiliyor.
-              overflow: Platform.OS === 'web' && futureMatches.length > 0 ? 'hidden' : undefined,
-            }}>
-            <MyMatches
-              matches={futureMatches}
-              refreshing={refreshing}
-              onRefresh={fetchMatches}
-              onSelectMatch={handleSelectMatch}
-              onCreateMatch={handleCreateMatch}
-            />
-          </View>
+          {/* MyMatches - sadece giriş yapmış kullanıcı için */}
+          {!isGuest && (
+            <View 
+              style={{
+                height: myMatchesHeight === 0 ? undefined : myMatchesHeight,
+                overflow: Platform.OS === 'web' && futureMatches.length > 0 ? 'hidden' : undefined,
+              }}>
+              <MyMatches
+                matches={futureMatches}
+                refreshing={refreshing}
+                onRefresh={fetchMatches}
+                onSelectMatch={handleSelectMatch}
+                onCreateMatch={handleCreateMatch}
+              />
+            </View>
+          )}
 
-          {/* OtherMatches kalan alanı doldursun */}
+          {/* OtherMatches - misafir ve giriş yapmış herkes için */}
           <View style={{ flex: 1 }}>
             <OtherMatches
               matches={otherMatches}
@@ -613,6 +612,7 @@ export default function Index() {
               onRefresh={fetchMatches}
               onSelectMatch={handleSelectMatch}
               onCreateMatch={handleCreateMatch}
+              isGuest={isGuest}
             />
           </View>
         </View>

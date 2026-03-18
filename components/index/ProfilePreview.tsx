@@ -12,6 +12,7 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { supabase } from "@/services/supabase";
+import { blockUser } from "@/services/blocks";
 import { useState, useEffect, useCallback } from "react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import "@/global.css";
@@ -68,6 +69,7 @@ export default function ProfilePreview({
   // Takipçi ve takip edilen listeleri için state'ler
   const [followersList, setFollowersList] = useState<FollowUser[]>([]);
   const [followingList, setFollowingList] = useState<FollowUser[]>([]);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
   // Kullanıcının maç sayısını çek
   const fetchMatchCount = async (userId: string) => {
@@ -252,6 +254,7 @@ export default function ProfilePreview({
       const {
         data: { user },
       } = await supabase.auth.getUser();
+      setCurrentUserId(user?.id ?? null);
       if (user) {
         // Sizin karşı tarafı takip durumunuz
         const { data: followData } = await supabase
@@ -498,6 +501,34 @@ export default function ProfilePreview({
   };
 
   // Takipten çıkma fonksiyonu
+  const handleBlockUser = async () => {
+    Alert.alert(
+      t("profile.blockUser"),
+      t("profile.blockConfirm"),
+      [
+        { text: t("general.cancel"), style: "cancel" },
+        {
+          text: t("profile.blockUser"),
+          style: "destructive",
+          onPress: async () => {
+            try {
+              const { data: { user } } = await supabase.auth.getUser();
+              if (!user) return;
+              const { error } = await blockUser(user.id, userId);
+              if (!error) {
+                Alert.alert(t("general.success"), t("chat.blocked"));
+                handleClose();
+              }
+            } catch (e) {
+              console.error("Block error:", e);
+              Alert.alert(t("general.error"), t("profile.blockError"));
+            }
+          },
+        },
+      ]
+    );
+  };
+
   const handleUnfollow = async () => {
     try {
       const {
@@ -697,19 +728,29 @@ export default function ProfilePreview({
                     {isFollowing && followStatus === "accepted" ? (
                       <View className="flex-row space-x-2">
                         <TouchableOpacity
-                          className="w-full bg-green-700 px-4 py-2 rounded"
+                          className="flex-1 bg-green-700 px-4 py-2 rounded"
                           onPress={handleUnfollow}
                         >
                           <Text className="text-center font-bold text-white">
                             {t("profilePreview.youAreFollowing")}
                           </Text>
                         </TouchableOpacity>
+                        {currentUserId && currentUserId !== userId && (
+                          <TouchableOpacity
+                            className="px-4 py-2 rounded border border-red-500"
+                            onPress={handleBlockUser}
+                          >
+                            <Text className="text-center font-bold text-red-600">
+                              {t("profile.blockUser")}
+                            </Text>
+                          </TouchableOpacity>
+                        )}
                       </View>
                     ) : (
-                      <View className="flex-row">
+                      <View className="flex-row gap-2">
                         <TouchableOpacity
                           onPress={handleFollow}
-                          className={`w-full px-4 py-2 rounded ${
+                          className={`flex-1 px-4 py-2 rounded ${
                             isFollowing ? "bg-gray-400" : "bg-green-700"
                           }`}
                           disabled={isFollowing}
@@ -722,6 +763,16 @@ export default function ProfilePreview({
                               : t("profile.follow")}
                           </Text>
                         </TouchableOpacity>
+                        {currentUserId && currentUserId !== userId && (
+                          <TouchableOpacity
+                            className="px-4 py-2 rounded border border-red-500"
+                            onPress={handleBlockUser}
+                          >
+                            <Text className="text-center font-bold text-red-600">
+                              {t("profile.blockUser")}
+                            </Text>
+                          </TouchableOpacity>
+                        )}
                       </View>
                     )}
                   </View>

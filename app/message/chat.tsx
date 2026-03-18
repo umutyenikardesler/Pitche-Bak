@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
-import { View, Text, FlatList, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, InteractionManager, Alert } from 'react-native';
+import { View, Text, FlatList, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, InteractionManager, Alert, Pressable, Modal } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { supabase } from '@/services/supabase';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -8,6 +8,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { Image, TouchableOpacity as RNTouchableOpacity } from 'react-native';
 import { useNotification } from '@/components/NotificationContext';
 import { containsBannedWord } from '@/constants/bannedWords';
+import { getBlockedUserIds, blockUser } from '@/services/blocks';
+import { reportContent, hasUserReportedContent } from '@/services/contentReports';
 
 interface MsgItem {
   id: string;
@@ -26,6 +28,10 @@ export default function ChatScreen() {
   const [me, setMe] = useState<string | null>(null);
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState<MsgItem[]>([]);
+  const [blockedIds, setBlockedIds] = useState<Set<string>>(new Set());
+  const [reportModalVisible, setReportModalVisible] = useState(false);
+  const [reportItem, setReportItem] = useState<MsgItem | null>(null);
+  const [reportNotes, setReportNotes] = useState('');
   const listRef = useRef<FlatList<MsgItem>>(null);
 
   const normParam = useCallback((p: any): string | undefined => {
@@ -61,6 +67,10 @@ export default function ChatScreen() {
   const loadMe = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser();
     setMe(user?.id ?? null);
+    if (user) {
+      const ids = await getBlockedUserIds(user.id);
+      setBlockedIds(ids);
+    }
   }, []);
 
   const fetchMessages = useCallback(async () => {
@@ -82,7 +92,10 @@ export default function ChatScreen() {
 
     if (!error) {
       const rows = (data as MsgItem[]) || [];
-      setMessages(rows);
+      const blocked = await getBlockedUserIds(user.id);
+      const filtered = blocked.size > 0 ? rows.filter((m) => !blocked.has(m.sender_id)) : rows;
+      setMessages(filtered);
+      setBlockedIds(blocked);
       // Mesajlar yüklendikten hemen sonra listeyi en alta kaydır
       setTimeout(() => {
         listRef.current?.scrollToEnd({ animated: false });
@@ -135,12 +148,13 @@ export default function ChatScreen() {
 
       channel = supabase
         .channel(`msg-${user.id}-${recip}`)
-        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, (payload: any) => {
+        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, async (payload: any) => {
           const m = payload.new as MsgItem;
           const participants = (m.sender_id === user.id && m.recipient_id === recip) || (m.sender_id === recip && m.recipient_id === user.id);
-          
-          // Sadece bu iki kullanıcı arasındaki mesajları al (match_id'ye bakmadan)
-          if (participants) {
+          const blocked = await getBlockedUserIds(user.id);
+          const isBlocked = blocked.has(m.sender_id);
+
+          if (participants && !isBlocked) {
             setMessages(prev => [...prev, m]);
             setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 30);
           }
@@ -223,14 +237,92 @@ export default function ChatScreen() {
     }
   }, [input, matchId, fetchMessages, resolveRecipientId, t]);
 
+  const openReportModal = useCallback((item: MsgItem) => {
+    setReportItem(item);
+    setReportNotes('');
+    setReportModalVisible(true);
+  }, []);
+
+  const closeReportModal = useCallback(() => {
+    setReportModalVisible(false);
+    setReportItem(null);
+    setReportNotes('');
+  }, []);
+
+  const handleReportSubmit = useCallback(async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user || !reportItem) return;
+
+    const alreadyReported = await hasUserReportedContent(user.id, 'message', reportItem.id);
+    if (alreadyReported) {
+      closeReportModal();
+      Alert.alert('', t('chat.reportAlreadySubmitted'));
+      return;
+    }
+
+    const { error } = await reportContent({
+      reporterId: user.id,
+      reportedUserId: reportItem.sender_id,
+      contentType: 'message',
+      contentId: reportItem.id,
+      contentPreview: reportItem.content?.slice(0, 200) || null,
+      reason: reportNotes.trim() || null,
+    });
+    closeReportModal();
+    if (!error) {
+      Alert.alert('', t('chat.reportSent'));
+    }
+  }, [reportItem, reportNotes, closeReportModal, t]);
+
+  const handleBlockUser = useCallback(async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    const recip = normParam(to);
+    if (!recip) return;
+    Alert.alert(
+      t('chat.blockUser'),
+      t('chat.blockConfirm'),
+      [
+        { text: t('general.cancel'), style: 'cancel' },
+        {
+          text: t('chat.blockUser'),
+          style: 'destructive',
+          onPress: async () => {
+            const { error } = await blockUser(user.id, recip);
+            if (!error) {
+              setBlockedIds((prev) => new Set([...prev, recip]));
+              setMessages((prev) => prev.filter((m) => m.sender_id !== recip));
+              Alert.alert('', t('chat.blocked'));
+              router.back();
+            }
+          },
+        },
+      ]
+    );
+  }, [to, t, router]);
+
   const renderItem = ({ item }: { item: MsgItem }) => {
     const mine = item.sender_id === me;
     return (
-      <View style={{ paddingHorizontal: 12, paddingVertical: 6, alignItems: mine ? 'flex-end' : 'flex-start' }}>
+      <Pressable
+        style={{ paddingHorizontal: 12, paddingVertical: 6, alignItems: mine ? 'flex-end' : 'flex-start' }}
+        onLongPress={() => {
+          if (!mine) {
+            Alert.alert(
+              t('chat.reportMessage'),
+              item.content?.slice(0, 80) + (item.content && item.content.length > 80 ? '...' : ''),
+              [
+                { text: t('general.cancel'), style: 'cancel' },
+                { text: t('chat.reportMessage'), onPress: () => openReportModal(item) },
+              ]
+            );
+          }
+        }}
+      >
         <View style={{ backgroundColor: mine ? '#16a34a' : '#e5e7eb', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 8, maxWidth: '85%' }}>
           <Text style={{ color: mine ? 'white' : '#111827' }}>{item.content}</Text>
         </View>
-      </View>
+      </Pressable>
     );
   };
 
@@ -261,9 +353,14 @@ export default function ChatScreen() {
               </Text>
             ),
             headerRight: () => (
-              <TouchableOpacity onPress={() => router.push('/notifications')} style={{ paddingHorizontal: 6 }} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                <Ionicons name="heart-outline" size={22} color="green" />
-              </TouchableOpacity>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <TouchableOpacity onPress={handleBlockUser} style={{ padding: 6 }} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                  <Ionicons name="ban-outline" size={22} color="#dc2626" />
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => router.push('/notifications')} style={{ padding: 6 }} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                  <Ionicons name="heart-outline" size={22} color="green" />
+                </TouchableOpacity>
+              </View>
             ),
           }}
         />
@@ -276,6 +373,40 @@ export default function ChatScreen() {
             contentContainerStyle={{ paddingVertical: 8, paddingBottom: Math.max(60, insets.bottom + 8) }}
             onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: true })}
           />
+          <Modal
+            visible={reportModalVisible}
+            transparent
+            animationType="fade"
+            onRequestClose={closeReportModal}
+          >
+            <Pressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 20 }} onPress={closeReportModal}>
+              <Pressable style={{ backgroundColor: 'white', borderRadius: 12, padding: 20 }} onPress={(e) => e.stopPropagation()}>
+                <Text style={{ fontSize: 16, fontWeight: '600', marginBottom: 8 }}>{t('chat.reportMessage')}</Text>
+                {reportItem && (
+                  <Text style={{ fontSize: 14, color: '#6b7280', marginBottom: 12 }} numberOfLines={3}>
+                    "{reportItem.content?.slice(0, 100)}{reportItem.content && reportItem.content.length > 100 ? '...' : ''}"
+                  </Text>
+                )}
+                <TextInput
+                  placeholder={t('chat.reportAdditionalNotes')}
+                  value={reportNotes}
+                  onChangeText={setReportNotes}
+                  multiline
+                  numberOfLines={3}
+                  style={{ borderWidth: 1, borderColor: '#d1d5db', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 8, marginBottom: 16, minHeight: 80, textAlignVertical: 'top' }}
+                />
+                <View style={{ flexDirection: 'row', gap: 12, justifyContent: 'flex-end' }}>
+                  <TouchableOpacity onPress={closeReportModal} style={{ backgroundColor: '#e5e7eb', borderRadius: 8, paddingHorizontal: 16, paddingVertical: 10 }}>
+                    <Text style={{ color: '#374151', fontWeight: '600' }}>{t('general.cancel')}</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={handleReportSubmit} style={{ backgroundColor: '#dc2626', borderRadius: 8, paddingHorizontal: 16, paddingVertical: 10 }}>
+                    <Text style={{ color: 'white', fontWeight: '600' }}>{t('chat.reportSubmit')}</Text>
+                  </TouchableOpacity>
+                </View>
+              </Pressable>
+            </Pressable>
+          </Modal>
+
           <View style={{ flexDirection: 'row', paddingTop: 6, paddingHorizontal: 8, paddingBottom: Math.max(9, insets.bottom + 9), borderTopWidth: 1, borderColor: '#e5e7eb' }}>
             <TextInput
               placeholder="Mesaj yaz"

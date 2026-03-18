@@ -5,9 +5,16 @@ import { useNotifications } from '@/components/notifications/useNotifications';
 import { useNotificationHandlers } from '@/components/notifications/useNotificationHandlers';
 import NotificationList from '@/components/notifications/NotificationList';
 import { useNotification } from '@/components/NotificationContext';
-import { useFocusEffect } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
+import { useAuth } from '@/contexts/AuthContext';
+import { useLanguage } from '@/contexts/LanguageContext';
+import { useGuestAuthAlert } from '@/contexts/GuestAuthModalContext';
 
 export default function Notifications() {
+    const router = useRouter();
+    const { t } = useLanguage();
+    const { isGuest } = useAuth();
+    const { showGuestAuthAlert } = useGuestAuthAlert();
     const [profileModalVisible, setProfileModalVisible] = useState(false);
     const [viewingUserId, setViewingUserId] = useState<string | null>(null);
     
@@ -22,12 +29,14 @@ export default function Notifications() {
 
     const { clearBadge, refresh } = useNotification();
 
-    // Bildirim sayfasına her odaklanıldığında kalp ikonundaki badge'i sıfırla
-    // clearBadge() artık DB'deki bildirimleri okundu olarak işaretliyor
     useFocusEffect(
         useCallback(() => {
-            clearBadge(); // async fonksiyon, kendi içinde fetchCount() çağırıyor
-        }, [clearBadge])
+            if (isGuest) {
+                showGuestAuthAlert(t('auth.guestNotifications'));
+            } else {
+                clearBadge();
+            }
+        }, [isGuest, showGuestAuthAlert, clearBadge, t])
     );
 
     const {

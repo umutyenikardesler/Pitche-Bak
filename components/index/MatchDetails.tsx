@@ -1,6 +1,9 @@
 import { View, Text, ScrollView, TouchableOpacity } from "react-native";
+import { useRouter } from "expo-router";
 import { Match } from "./types";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useAuth } from "@/contexts/AuthContext";
+import { useGuestAuthAlert } from '@/contexts/GuestAuthModalContext';
 import { useEffect, useState } from "react";
 import '@/global.css';
 import { supabase } from '@/services/supabase';
@@ -26,6 +29,9 @@ interface MatchDetailsProps {
 
 export default function MatchDetails({ match, onClose, onOpenProfilePreview }: MatchDetailsProps) {
   const { t } = useLanguage();
+  const router = useRouter();
+  const { isGuest } = useAuth();
+  const { showGuestAuthAlert } = useGuestAuthAlert();
   const [editPositionsModalVisible, setEditPositionsModalVisible] = useState(false);
   
   // State yönetimi
@@ -95,7 +101,7 @@ export default function MatchDetails({ match, onClose, onOpenProfilePreview }: M
   });
 
   // Position handlers
-  const { handlePositionRequest } = useMatchPositionHandlers({
+  const { handlePositionRequest: handlePositionRequestBase } = useMatchPositionHandlers({
     match,
     currentUserId,
     sentRequests,
@@ -113,6 +119,15 @@ export default function MatchDetails({ match, onClose, onOpenProfilePreview }: M
     setCompletedPositions,
     fetchSentRequests,
   });
+
+  // Misafir maça katılmak istediğinde alert göster, 2-3 sn sonra giriş sayfasına yönlendir
+  const handlePositionRequest = (position: string) => {
+    if (isGuest) {
+      showGuestAuthAlert(t('auth.guestJoinMatch'));
+      return;
+    }
+    handlePositionRequestBase(position);
+  };
 
   // İlk yüklemede çek
   useEffect(() => {

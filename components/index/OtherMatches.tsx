@@ -12,6 +12,7 @@ interface OtherMatchesProps {
   onRefresh: () => void;
   onSelectMatch: (match: Match) => void;
   onCreateMatch: () => void;
+  isGuest?: boolean;
 }
 
 const formatTitle = (text: string) => {
@@ -20,17 +21,17 @@ const formatTitle = (text: string) => {
   return formattedText.length > 23 ? formattedText.slice(0, 23) + "..." : formattedText;
 };
 
-export default function OtherMatches({ matches, refreshing, onRefresh, onSelectMatch, onCreateMatch
-}: OtherMatchesProps) {
+export default function OtherMatches({ matches, refreshing, onRefresh, onSelectMatch, onCreateMatch, isGuest }: OtherMatchesProps) {
   const { t } = useLanguage();
-  const [visibleCount, setVisibleCount] = useState(5);
+  const INITIAL_VISIBLE = 7;
+  const [visibleCount, setVisibleCount] = useState(INITIAL_VISIBLE);
   const [sortMenuOpen, setSortMenuOpen] = useState(false);
   const [sortMode, setSortMode] = useState<"distance" | "datetime">("datetime");
   const [headerHeight, setHeaderHeight] = useState(48);
 
   // Maç listesi değiştiğinde görünür sayıyı resetle
   useEffect(() => {
-    setVisibleCount(5);
+    setVisibleCount(INITIAL_VISIBLE);
   }, [matches.length]);
 
   const sortedMatches = (() => {
@@ -258,12 +259,12 @@ export default function OtherMatches({ matches, refreshing, onRefresh, onSelectM
             matches.length > visibleCount ? (
               <View className="items-center my-3">
                 <TouchableOpacity
-                  onPress={() => setVisibleCount((prev: number) => prev + 5)}
+                  onPress={() => setVisibleCount((prev: number) => prev + INITIAL_VISIBLE)}
                   className="px-4 py-2 rounded-md"
                   style={{ backgroundColor: '#e5e7eb' }}
                 >
                   <Text className="text-green-700 font-semibold">
-                    Daha fazla görüntüle
+                    {t('home.showMore')}
                   </Text>
                 </TouchableOpacity>
               </View>

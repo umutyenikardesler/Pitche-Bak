@@ -14,6 +14,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import Constants from "expo-constants";
 import * as Device from "expo-device";
+import { useRouter } from "expo-router";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { supabase } from "@/services/supabase";
 import PolicyModal from "./PolicyModal";
@@ -28,7 +29,9 @@ export default function SettingsModal({
   visible,
   onClose,
 }: SettingsModalProps) {
+  const router = useRouter();
   const { currentLanguage, changeLanguage, t } = useLanguage();
+  const [userRole, setUserRole] = useState<string | null>(null);
   const [languageOptionsVisible, setLanguageOptionsVisible] = useState(false);
   const [agreementsVisible, setAgreementsVisible] = useState(false);
   const [policyModalKey, setPolicyModalKey] = useState<PolicyKey | null>(null);
@@ -106,12 +109,13 @@ export default function SettingsModal({
 
         if (!userId) {
           setAccountEmail(authEmail);
+          setUserRole(null);
           return;
         }
 
         const { data: userRow, error: userError } = await supabase
           .from("users")
-          .select("email")
+          .select("email, role")
           .eq("id", userId)
           .single();
 
@@ -122,10 +126,12 @@ export default function SettingsModal({
         }
 
         setAccountEmail(userRow?.email ?? authEmail);
+        setUserRole(userRow?.role ?? null);
       } catch {
         // Sessizce geç; UI'da "-" görünecek
         setAccountUserId(null);
         setAccountEmail(null);
+        setUserRole(null);
       } finally {
         setAccountLoading(false);
       }
@@ -759,6 +765,26 @@ export default function SettingsModal({
                   ))}
                 </View>
               </View>
+            )}
+
+            {/* Raporlarım - sadece admin için */}
+            {userRole === "admin" && (
+              <TouchableOpacity
+                className="flex-row items-center justify-between p-3 bg-green-600 rounded-lg mb-3"
+                activeOpacity={1}
+                onPress={() => {
+                  onClose();
+                  router.push("/admin/reports");
+                }}
+              >
+                <View className="flex-row items-center">
+                  <Ionicons name="flag-outline" size={24} color="white" />
+                  <Text className="text-white font-semibold text-lg ml-3">
+                    {t("settings.reports.title")}
+                  </Text>
+                </View>
+                <Ionicons name="chevron-forward" size={24} color="white" />
+              </TouchableOpacity>
             )}
 
             {/* Cihaz Bilgileri */}

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { View, Text, TextInput, ScrollView, TouchableOpacity, Alert, KeyboardAvoidingView, Platform, TouchableWithoutFeedback, Keyboard, Modal } from 'react-native';
 
 import { MatchDetailsForm } from '@/components/create/MatchDetailsForm';
@@ -8,6 +8,8 @@ import ReservationWarningModal from '@/components/create/ReservationWarningModal
 
 import { supabase } from '@/services/supabase';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useAuth } from '@/contexts/AuthContext';
+import { useGuestAuthAlert } from '@/contexts/GuestAuthModalContext';
 import '@/global.css';
 
 import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
@@ -29,6 +31,17 @@ interface MissingPositions {
 
 export default function CreateMatch() {
   const { t } = useLanguage();
+  const router = useRouter();
+  const { isGuest } = useAuth();
+  const { showGuestAuthAlert } = useGuestAuthAlert();
+
+  useFocusEffect(
+    useCallback(() => {
+      if (isGuest) {
+        showGuestAuthAlert(t('auth.guestCreateMatch'));
+      }
+    }, [isGuest, showGuestAuthAlert, t])
+  );
   const [matchTitle, setMatchTitle] = useState('');
   const [selectedDistrict, setSelectedDistrict] = useState('');
   const [localDistrictName, setLocalDistrictName] = useState(''); // İsmini değiştirdik
@@ -50,7 +63,6 @@ export default function CreateMatch() {
   const [successModalVisible, setSuccessModalVisible] = useState(false);
   const [errorModalVisible, setErrorModalVisible] = useState(false);
   const [errorModalMessage, setErrorModalMessage] = useState("Maç oluşturulurken bir hata oluştu. Lütfen tekrar deneyin.");
-  const router = useRouter();
   const navigation = useNavigation();
 
   // const [matchTitle, setMatchTitle] = useState('');

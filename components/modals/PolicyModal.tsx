@@ -117,9 +117,9 @@ export default function PolicyModal({
               }
               if (block.type === "li") {
                 return (
-                  <View key={idx} className="flex-row mb-2">
-                    <Text className="text-gray-700 mr-2">•</Text>
-                    <Text className="text-gray-700 flex-1">{block.text}</Text>
+                  <View key={idx} style={{ flexDirection: "row", marginBottom: 8, alignItems: "flex-start" }}>
+                    <Text style={{ color: "#374151", marginRight: 8, marginTop: 2 }}>•</Text>
+                    <Text style={{ color: "#374151", flex: 1, flexShrink: 1 }}>{block.text}</Text>
                   </View>
                 );
               }

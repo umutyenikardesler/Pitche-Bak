@@ -5,7 +5,10 @@ import { useRouter, useFocusEffect } from "expo-router";
 import { GestureDetector, Gesture } from "react-native-gesture-handler";
 import { runOnJS } from "react-native-reanimated";
 import { supabase } from "@/services/supabase";
+import { getBlockedUserIds } from "@/services/blocks";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useAuth } from "@/contexts/AuthContext";
+import { useGuestAuthAlert } from '@/contexts/GuestAuthModalContext';
 
 type ChatSummary = MatchChatSummary | DirectChatSummary;
 
@@ -37,6 +40,16 @@ interface DirectChatSummary extends BaseChatSummary {
 export default function Messages() {
   const router = useRouter();
   const { t } = useLanguage();
+  const { isGuest } = useAuth();
+  const { showGuestAuthAlert } = useGuestAuthAlert();
+
+  useFocusEffect(
+    useCallback(() => {
+      if (isGuest) {
+        showGuestAuthAlert(t('auth.guestMessage'));
+      }
+    }, [isGuest, showGuestAuthAlert, t])
+  );
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [items, setItems] = useState<ChatSummary[]>([]);
@@ -54,6 +67,8 @@ export default function Messages() {
       
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
+
+      const blockedIds = await getBlockedUserIds(user.id);
 
       // Katılım kabul edilmiş join_request bildirimlerinden sohbetleri topla
       // Hem maça katılan kişi (user_id = current) hem de maç sahibi (user_id = current)
@@ -93,7 +108,7 @@ export default function Messages() {
       });
 
       const matchSummaries: MatchChatSummary[] = (allData || [])
-        .filter((n: any) => n.match && n.sender && n.sender.id && n.sender.id !== user.id)
+        .filter((n: any) => n.match && n.sender && n.sender.id && n.sender.id !== user.id && !blockedIds.has(n.sender.id))
         .map((n: any) => {
           const key = `${n.sender.id}-${n.match.id}`;
           return {
@@ -134,7 +149,7 @@ export default function Messages() {
       const dmMetaByUser = new Map<string, { lastMessage: string | null; lastAt: string | null; match_id: string | null }>();
       (recentMsgs || []).forEach((m: any) => {
         const otherId = m.sender_id === user.id ? m.recipient_id : m.sender_id;
-        if (!otherId || otherId === user.id) return;
+        if (!otherId || otherId === user.id || blockedIds.has(otherId)) return;
         // Aynı partner için match sohbeti zaten varsa listede iki kere göstermeyelim
         if (matchPartnerIds.has(otherId)) return;
         if (!dmMetaByUser.has(otherId)) {

@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { Text, View, ScrollView, RefreshControl, Alert, TouchableOpacity, Image, DeviceEventEmitter, Modal } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -7,6 +7,8 @@ import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import * as FileSystem from "expo-file-system/legacy";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useAuth } from "@/contexts/AuthContext";
+import { useGuestAuthAlert } from '@/contexts/GuestAuthModalContext';
 
 import ProfileInfo from "@/components/profile/ProfileInfo";
 import ProfileStatus from "@/components/profile/ProfileStatus";
@@ -22,6 +24,20 @@ export default function Profile() {
   const searchParams = useLocalSearchParams();
   const router = useRouter();
   const { currentLanguage, changeLanguage, t } = useLanguage();
+  const { isGuest } = useAuth();
+  const { showGuestAuthAlert } = useGuestAuthAlert();
+
+  useFocusEffect(
+    useCallback(() => {
+      if (isGuest && !isLoggingOutRef.current) {
+        showGuestAuthAlert(t('auth.guestProfile'));
+      }
+    }, [isGuest, showGuestAuthAlert, t])
+  );
+
+  useEffect(() => {
+    if (!isGuest) isLoggingOutRef.current = false;
+  }, [isGuest]);
 
   interface UserDataType {
     id: string;
@@ -56,7 +72,8 @@ export default function Profile() {
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [settingsModalVisible, setSettingsModalVisible] = useState(false);
   const [logoutModalVisible, setLogoutModalVisible] = useState(false);
-  
+  const isLoggingOutRef = useRef(false);
+
   // Modal state'ini debug et
   useEffect(() => {
     console.log("Modal state değişti:", {
@@ -923,11 +940,14 @@ export default function Profile() {
 
   const confirmLogout = async (): Promise<void> => {
     setLogoutModalVisible(false);
+    isLoggingOutRef.current = true;
     const { error } = await supabase.auth.signOut();
     if (error) {
+      isLoggingOutRef.current = false;
       Alert.alert("Çıkış Yapılamadı", "Bir hata oluştu.");
     } else {
-      router.replace("/auth");
+      router.replace("/(tabs)");
+      setTimeout(() => router.push("/auth"), 50);
     }
   };
 

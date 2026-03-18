@@ -5,6 +5,8 @@ import CustomHeader from "@/components/CustomHeader";
 import * as Haptics from 'expo-haptics';
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useNotification } from "@/components/NotificationContext";
+import { useAuth } from "@/contexts/AuthContext";
+import { useGuestAuthAlert } from "@/contexts/GuestAuthModalContext";
 import { DeviceEventEmitter, Platform, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -12,6 +14,8 @@ export default function TabsLayout() {
   const navigation = useNavigation();
   const router = useRouter();
   const { t } = useLanguage();
+  const { isGuest } = useAuth();
+  const { showGuestAuthAlert } = useGuestAuthAlert();
   const insets = useSafeAreaInsets();
   const tabPressTimers = useRef<Record<string, NodeJS.Timeout>>({});
   const tabPressCounts = useRef<Record<string, number>>({});
@@ -211,6 +215,14 @@ export default function TabsLayout() {
       />
       <Tabs.Screen
         name="create"
+        listeners={{
+          tabPress: (e) => {
+            if (isGuest) {
+              e.preventDefault();
+              showGuestAuthAlert(t('auth.guestCreateMatch'));
+            }
+          },
+        }}
         options={{
           tabBarActiveTintColor: "#059669",
           tabBarInactiveTintColor: "#374151",
@@ -245,6 +257,14 @@ export default function TabsLayout() {
       />
       <Tabs.Screen
         name="message"
+        listeners={{
+          tabPress: (e) => {
+            if (isGuest) {
+              e.preventDefault();
+              showGuestAuthAlert(t('auth.guestMessage'));
+            }
+          },
+        }}
         options={{
           tabBarActiveTintColor: "#059669",
           tabBarInactiveTintColor: "#374151",
@@ -274,6 +294,14 @@ export default function TabsLayout() {
       />
       <Tabs.Screen
         name="profile"
+        listeners={{
+          tabPress: (e) => {
+            if (isGuest) {
+              e.preventDefault();
+              showGuestAuthAlert(t('auth.guestProfile'));
+            }
+          },
+        }}
         options={{
           tabBarActiveTintColor: "#059669",
           tabBarInactiveTintColor: "#374151",
@@ -308,6 +336,14 @@ export default function TabsLayout() {
       />
       <Tabs.Screen
         name="notifications"
+        listeners={{
+          tabPress: (e) => {
+            if (isGuest) {
+              e.preventDefault();
+              showGuestAuthAlert(t('auth.guestNotifications'));
+            }
+          },
+        }}
         options={{
           tabBarActiveTintColor: "#059669",
           tabBarInactiveTintColor: "#374151",

@@ -2,6 +2,10 @@ import React, { useMemo, useRef, useState } from 'react';
 import { Platform, Text, TouchableOpacity, View } from 'react-native';
 import MapView, { Marker, PROVIDER_GOOGLE, Region } from 'react-native-maps';
 
+// iOS'ta Apple Maps (anahtar gerektirmez, tile'lar düzgün yüklenir)
+// Android'de Google Maps
+const mapProvider = Platform.OS === 'ios' ? undefined : PROVIDER_GOOGLE;
+
 type Props = {
   latitude: number;
   longitude: number;
@@ -32,25 +36,50 @@ export default function PitchMap({
   );
 
   const [region, setRegion] = useState<Region>(initialRegion);
+  const regionRef = useRef<Region>(initialRegion);
+  regionRef.current = region;
 
   const animateZoom = (factor: number) => {
-    const next: Region = {
-      latitude: region.latitude,
-      longitude: region.longitude,
-      latitudeDelta: Math.max(0.0001, Math.min(0.1, region.latitudeDelta * factor)),
-      longitudeDelta: Math.max(0.0001, Math.min(0.1, region.longitudeDelta * factor)),
-    };
-    setRegion(next);
-    mapRef.current?.animateToRegion(next, 250);
+    mapRef.current?.getMapBoundaries().then((bounds: { northEast: { latitude: number; longitude: number }; southWest: { latitude: number; longitude: number } } | undefined) => {
+      if (!bounds) return;
+      const { northEast, southWest } = bounds;
+      const lat = (northEast.latitude + southWest.latitude) / 2;
+      const lng = (northEast.longitude + southWest.longitude) / 2;
+      const latDelta = northEast.latitude - southWest.latitude;
+      const lngDelta = northEast.longitude - southWest.longitude;
+      const next: Region = {
+        latitude: lat,
+        longitude: lng,
+        latitudeDelta: Math.max(0.0001, Math.min(15, latDelta * factor)),
+        longitudeDelta: Math.max(0.0001, Math.min(15, lngDelta * factor)),
+      };
+      regionRef.current = next;
+      setRegion(next);
+      mapRef.current?.animateToRegion(next, 250);
+    }).catch(() => {
+      const current = regionRef.current;
+      const next: Region = {
+        latitude: current.latitude,
+        longitude: current.longitude,
+        latitudeDelta: Math.max(0.0001, Math.min(15, current.latitudeDelta * factor)),
+        longitudeDelta: Math.max(0.0001, Math.min(15, current.longitudeDelta * factor)),
+      };
+      regionRef.current = next;
+      setRegion(next);
+      mapRef.current?.animateToRegion(next, 250);
+    });
   };
 
   return (
-    <View style={{ width: '100%', height, borderRadius: 12, overflow: 'hidden' }}>
+    <View
+      style={{ width: '100%', height, minHeight: height, borderRadius: 12, overflow: 'hidden' }}
+      collapsable={false}
+    >
       <MapView
-        ref={(ref) => {
+        ref={(ref: MapView | null) => {
           mapRef.current = ref;
         }}
-        provider={PROVIDER_GOOGLE}
+        provider={mapProvider}
         style={{ width: '100%', height: '100%' }}
         initialRegion={initialRegion}
         mapType="standard"
@@ -62,7 +91,7 @@ export default function PitchMap({
         loadingEnabled={false}
         cacheEnabled={false}
         moveOnMarkerPress={false}
-        scrollEnabled={false}
+        scrollEnabled
         zoomEnabled
         pitchEnabled={false}
         rotateEnabled={false}
@@ -72,7 +101,7 @@ export default function PitchMap({
         showsCompass={false}
         minZoomLevel={minZoomLevel}
         maxZoomLevel={maxZoomLevel}
-        onRegionChangeComplete={(r) => setRegion(r)}
+        onRegionChangeComplete={(r: Region) => setRegion(r)}
       >
         <Marker coordinate={{ latitude, longitude }} title={title} pinColor="red" />
       </MapView>
@@ -88,7 +117,7 @@ export default function PitchMap({
           </TouchableOpacity>
           <View style={{ height: 1, backgroundColor: '#e5e7eb' }} />
           <TouchableOpacity
-            onPress={() => animateZoom(1.4)}
+            onPress={() => animateZoom(12)}
             style={{ paddingHorizontal: 10, paddingVertical: 6, alignItems: 'center' }}
           >
             <Text style={{ fontSize: 18, fontWeight: '700', color: '#111' }}>−</Text>

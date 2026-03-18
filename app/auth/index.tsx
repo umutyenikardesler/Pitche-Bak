@@ -6,7 +6,7 @@ import { supabase } from "@/services/supabase";
 import * as Linking from "expo-linking";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Ionicons } from "@expo/vector-icons";
-import Animated, { useSharedValue, useAnimatedStyle, useAnimatedScrollHandler, useFrameCallback, withTiming, Easing, runOnJS } from "react-native-reanimated";
+import Animated, { useSharedValue, useAnimatedStyle, useAnimatedScrollHandler, useFrameCallback, withTiming, Easing, runOnJS, scrollTo, runOnUI, useAnimatedRef } from "react-native-reanimated";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import * as WebBrowser from "expo-web-browser";
 import { makeRedirectUri } from "expo-auth-session";
@@ -15,6 +15,8 @@ import * as AppleAuthentication from "expo-apple-authentication";
 import Constants from "expo-constants";
 import * as Crypto from "expo-crypto";
 import { useLanguage } from "@/contexts/LanguageContext";
+import PolicyModal from "@/components/modals/PolicyModal";
+import type { PolicyKey } from "@/constants/policies";
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -36,7 +38,9 @@ export default function AuthScreen() {
   const [isFormExpanded, setIsFormExpanded] = useState(false); // Form genişletilmiş mi?
   const [languageMenuOpen, setLanguageMenuOpen] = useState(false);
   const [keyboardHeight, setKeyboardHeight] = useState(0); // iOS için klavye yüksekliği
-  
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
+  const [policyModalKey, setPolicyModalKey] = useState<PolicyKey | null>(null);
+
   const passwordInputRef = useRef<TextInput>(null);
 
   // Form container yükseklik animasyonu - başlangıçta küçük
@@ -52,7 +56,7 @@ export default function AuthScreen() {
     { key: 's5', image: require('@/assets/images/screenShot/slide5.png'), titleKey: 'auth.slide5.title', subtitleKey: 'auth.slide5.subtitle' },
     { key: 's6', image: require('@/assets/images/screenShot/slide6.png'), titleKey: 'auth.slide6.title', subtitleKey: 'auth.slide6.subtitle' },
   ] as const;
-  const introListRef = useRef<any>(null);
+  const introListRef = useAnimatedRef<Animated.FlatList<any>>();
   const [introIndex, setIntroIndex] = useState(0);
   const [introWidth, setIntroWidth] = useState(Dimensions.get('window').width);
   const introWidthSV = useSharedValue(Dimensions.get('window').width);
@@ -208,13 +212,12 @@ export default function AuthScreen() {
   const formHeight = useSharedValue(MIN_FORM_HEIGHT);
 
   const getMaxFormHeight = () => {
-    // Form içeriğinin (özellikle sosyal giriş + bilgilendirme metni) kesilmemesi için
-    // biraz daha yüksek limit veriyoruz.
-    // Ancak "açık" halde ekranı fazla kaplamasın diye daha dengeli bir max değer kullanıyoruz.
-    if (Platform.OS === "ios") return SCREEN_HEIGHT * 0.585;
-    if (Platform.OS === "web") return SCREEN_HEIGHT * 0.50;
+    // Form içeriğinin (sözleşmeler, sosyal giriş + bilgilendirme metni) kesilmemesi için
+    // yüksek limit - Kullanıcı Sözleşmesi ve Topluluk İlkeleri eklendi.
+    if (Platform.OS === "ios") return SCREEN_HEIGHT * 0.635;
+    if (Platform.OS === "web") return SCREEN_HEIGHT * 0.60;
     // Android: düşük çözünürlük/ekranlarda sosyal butonlar sığsın diye biraz daha yüksek.
-    return SCREEN_HEIGHT * 0.74;
+    return SCREEN_HEIGHT * 0.78;
   };
 
   // Reanimated worklet içinde JS fonksiyon çağrısı (getMaxFormHeight) Android'de fatal crash'e gidebiliyor.
@@ -532,6 +535,10 @@ export default function AuthScreen() {
 
   const handleGoogleSignIn = async () => {
     if (isOAuthLoading) return;
+    if (!agreedToTerms) {
+      Alert.alert(t("general.error"), t("auth.agreeToTermsRequired"));
+      return;
+    }
     setIsOAuthLoading("google");
     try {
       await signInWithOAuth("google");
@@ -544,6 +551,10 @@ export default function AuthScreen() {
 
   const handleAppleSignIn = async () => {
     if (isOAuthLoading) return;
+    if (!agreedToTerms) {
+      Alert.alert(t("general.error"), t("auth.agreeToTermsRequired"));
+      return;
+    }
     setIsOAuthLoading("apple");
     try {
       // iOS: native Apple Sign-In
@@ -615,6 +626,10 @@ export default function AuthScreen() {
 
   const handleAuth = async () => {
     Keyboard.dismiss();
+
+    if (!agreedToTerms) {
+      return Alert.alert(t("general.error"), t("auth.agreeToTermsRequired"));
+    }
     
     if (!email.trim() || !password.trim()) {
       return Alert.alert(t("general.error"), t("auth.fillAllFields"));
@@ -992,7 +1007,7 @@ export default function AuthScreen() {
                   setIntroIndex(clamped);
                   activeDotX.value = withTiming(clamped * (DOT_SIZE + DOT_GAP), { duration: 180 });
                 }}
-                renderItem={({ item }: any) => (
+                renderItem={({ item, index }: any) => (
                   <View style={{ width: introWidth, flex: 1 }}>
                     <Image
                       source={item.image}
@@ -1000,6 +1015,62 @@ export default function AuthScreen() {
                       style={{ width: '80%', height: '80%', alignSelf: 'center', marginTop: 6 }}
                       resizeMode="contain"
                     />
+
+                    {/* Sol boşlukta: önceki slide'a geç (2. slide'dan itibaren) */}
+                    {index > 0 && (
+                      <TouchableOpacity
+                        activeOpacity={0.7}
+                        onPress={() => {
+                          const offset = (index - 1) * introWidth;
+                          runOnUI((x: number) => {
+                            'worklet';
+                            scrollTo(introListRef, x, 0, true);
+                          })(offset);
+                        }}
+                        style={{
+                          position: 'absolute',
+                          left: 8,
+                          top: 12,
+                          width: 32,
+                          height: 32,
+                          borderRadius: 16,
+                          backgroundColor: 'rgba(22, 163, 74, 0.25)',
+                          justifyContent: 'center',
+                          alignItems: 'center',
+                          zIndex: 5,
+                        }}
+                      >
+                        <Ionicons name="chevron-back" size={20} color="#16a34a" />
+                      </TouchableOpacity>
+                    )}
+
+                    {/* Sağ boşlukta: sonraki slide'a geç (son slide hariç) */}
+                    {index < INTRO_SLIDES.length - 1 && (
+                      <TouchableOpacity
+                        activeOpacity={0.7}
+                        onPress={() => {
+                          const offset = (index + 1) * introWidth;
+                          runOnUI((x: number) => {
+                            'worklet';
+                            scrollTo(introListRef, x, 0, true);
+                          })(offset);
+                        }}
+                        style={{
+                          position: 'absolute',
+                          right: 8,
+                          top: 12,
+                          width: 32,
+                          height: 32,
+                          borderRadius: 16,
+                          backgroundColor: 'rgba(22, 163, 74, 0.25)',
+                          justifyContent: 'center',
+                          alignItems: 'center',
+                          zIndex: 5,
+                        }}
+                      >
+                        <Ionicons name="chevron-forward" size={20} color="#16a34a" />
+                      </TouchableOpacity>
+                    )}
 
                     <View
                       style={{
@@ -1321,6 +1392,27 @@ export default function AuthScreen() {
                 </View>
               </View>
 
+              {/* Kullanıcı Sözleşmesi ve Topluluk İlkeleri checkbox */}
+              <Pressable
+                onPress={() => setAgreedToTerms((prev) => !prev)}
+                style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: 12, marginTop: 4 }}
+              >
+                <View style={{ width: 22, height: 22, borderWidth: 2, borderColor: agreedToTerms ? '#16a34a' : '#9ca3af', borderRadius: 4, alignItems: 'center', justifyContent: 'center', marginRight: 10, marginTop: 2 }}>
+                  {agreedToTerms && <Ionicons name="checkmark" size={16} color="#16a34a" />}
+                </View>
+                <Text style={{ flex: 1, color: '#374151', fontSize: 13 }}>
+                  <Text onPress={() => setPolicyModalKey('terms')} style={{ color: '#16a34a', fontWeight: '600', textDecorationLine: 'underline' }}>
+                    {t('settings.agreements.terms')}
+                  </Text>
+                  {' ve '}
+                  <Text onPress={() => setPolicyModalKey('community')} style={{ color: '#16a34a', fontWeight: '600', textDecorationLine: 'underline' }}>
+                    {t('settings.agreements.community')}
+                  </Text>
+                  {' '}
+                  {t('auth.agreeToTermsSuffix')}
+                </Text>
+              </Pressable>
+
               {/* Giriş / Kayıt Butonu */}
               <Pressable 
                 className="bg-green-700 py-4 rounded-xl flex-row items-center justify-center"
@@ -1439,6 +1531,12 @@ export default function AuthScreen() {
           </View>
           </Animated.View>
       </KeyboardAvoidingView>
+
+      <PolicyModal
+        visible={policyModalKey !== null}
+        onClose={() => setPolicyModalKey(null)}
+        policyKey={policyModalKey}
+      />
     </SafeAreaView>
   );
 }

@@ -63,7 +63,8 @@ const translations = {
     'home.sort.datetime': 'Tarih ve saate göre sırala',
     'home.sort.distanceShort': 'Yakın',
     'home.sort.datetimeShort': 'Tarih',
-    
+    'home.showMore': 'Daha fazla görüntüle',
+
     // Profil
     'profile.title': 'Profil',
     'profile.settings': 'Ayarlar',
@@ -219,6 +220,7 @@ const translations = {
     
     // Mesajlar
     'messages.title': 'Mesajlar',
+    'messages.noChats': 'Şuan Sohbetiniz bulunmamaktadır.',
     'messages.noAcceptedJoins': 'Henüz katıldığın maç yok',
     
     // Bildirimler
@@ -260,6 +262,17 @@ const translations = {
 
     'chat.profanityTitle': 'Yasaklı İçerik',
     'chat.profanityWarning': 'Bu mesaj gönderilemez. Küfür ve hakaret içeren ifadeler topluluk kurallarımıza aykırıdır. Sohbette saygılı iletişim kurulması gerekmektedir.',
+    'chat.reportMessage': 'Şikayet et',
+    'chat.reportAlreadySubmitted': 'Şikayetiniz daha önce bildirilmiştir. İnceleme süresi 24 saattir.',
+    'chat.reportAdditionalNotes': 'Ek açıklama (isteğe bağlı)',
+    'chat.reportSubmit': 'Şikayeti Gönder',
+    'chat.blockUser': 'Kullanıcıyı engelle',
+    'chat.blockConfirm': 'Bu kullanıcıyı engellemek istediğinize emin misiniz? Engellediğinizde mesajları gizlenecektir.',
+    'chat.blocked': 'Engellendi',
+    'chat.reportSent': 'Şikayetiniz alındı. 24 saat içinde incelenecektir.',
+    'profile.blockUser': 'Kullanıcıyı engelle',
+    'profile.blockConfirm': 'Bu kullanıcıyı engellemek istediğinize emin misiniz?',
+    'profile.blockError': 'Engelleme işlemi başarısız.',
 
     // Dil Ayarları
     'language.settings': 'Dil Ayarları',
@@ -316,6 +329,21 @@ const translations = {
     'settings.device.goToStore': 'App Store’a Git',
 
     'settings.agreements.title': 'Sözleşmelerim',
+    'settings.reports.title': 'Raporlarım',
+    'admin.reports.title': 'Şikayet Raporları',
+    'admin.reports.colNo': 'S/N',
+    'admin.reports.colReporter': 'Şikayet Eden',
+    'admin.reports.colReported': 'Şikayet Edilen',
+    'admin.reports.colMessage': 'Mesajı',
+    'admin.reports.colNotes': 'Ek Bilgi',
+    'admin.reports.colDate': 'Tarih/Saat',
+    'admin.reports.colStatus': 'Durum',
+    'admin.reports.statusPending': 'İnceleme Bekleniyor',
+    'admin.reports.statusResolved': 'Onaylandı',
+    'admin.reports.statusReviewed': 'Reddedildi',
+    'admin.reports.statusChecked': 'Gözden Geçirildi',
+    'admin.reports.changeStatusTitle': 'Durumu güncelle',
+    'admin.reports.empty': 'Şikayet bulunamadı.',
     'settings.agreements.terms': 'Kullanıcı Sözleşmesi',
     'settings.agreements.privacy': 'Gizlilik Politikası',
     'settings.agreements.kvkk': 'KVKK Aydınlatma Metni',
@@ -357,6 +385,9 @@ const translations = {
     'auth.googleSignIn': 'Google Hesabıyla Giriş Yap',
     'auth.appleSignIn': 'Apple Hesabınla Giriş Yap',
     'auth.completeProfileNote': 'Giriş yaptıktan sonra profil bilgilerini tamamlayabilirsin.',
+    'auth.agreeToTerms': 'Kullanıcı Sözleşmesi ve Topluluk İlkelerini okudum, kabul ediyorum.',
+    'auth.agreeToTermsSuffix': 'okudum, kabul ediyorum.',
+    'auth.agreeToTermsRequired': 'Devam etmek için Kullanıcı Sözleşmesi ve Topluluk İlkelerini kabul etmelisiniz.',
 
     'auth.userCreateFailed': 'Kullanıcı kaydı oluşturulamadı. Lütfen tekrar deneyin.',
     'auth.unknownError': 'Bilinmeyen hata',
@@ -377,6 +408,12 @@ const translations = {
     'auth.errors.userNotFound': 'Kullanıcı bulunamadı.',
     'auth.errors.appleMissingOAuthSecret': "Apple ile giriş için Supabase'de Apple OAuth ayarlarında 'Client secret' eksik. Supabase Dashboard → Auth → Providers → Apple kısmına Services ID ve Secret girmeniz gerekiyor.",
     'auth.errors.missingOAuthSecret': 'OAuth için gerekli secret eksik. Supabase Dashboard → Auth → Providers kısmında ilgili sağlayıcı için Client secret tanımlayın.',
+    'auth.guestCreateMatch': 'Maç oluşturmak için önce giriş yapmalısınız',
+    'auth.guestMessage': 'Mesaj atmak istiyorsanız önce giriş yapmalısınız',
+    'auth.guestProfile': 'Profil sayfasını görmek için önce giriş yapmalısınız',
+    'auth.guestNotifications': 'Bildirimleri görmek için önce giriş yapmalısınız',
+    'auth.guestJoinMatch': 'Maça katılmak için önce giriş yapmalısınız',
+    'auth.guestRedirectNotice': 'Giriş sayfasına yönlendiriliyorsunuz...',
     
     // Maç
     'match.createSuccess': 'Tebrikler 🎉\nMaçınız başarılı bir şekilde oluşturulmuştur.',
@@ -453,7 +490,8 @@ const translations = {
     'home.sort.datetime': 'Sort by date & time',
     'home.sort.distanceShort': 'Near',
     'home.sort.datetimeShort': 'Date',
-    
+    'home.showMore': 'Show more',
+
     // Profile
     'profile.title': 'Profile',
     'profile.settings': 'Settings',
@@ -609,6 +647,7 @@ const translations = {
     
     // Messages
     'messages.title': 'Messages',
+    'messages.noChats': 'You have no chats at the moment.',
     'messages.noAcceptedJoins': 'No accepted joins yet',
     
     // Notifications
@@ -650,6 +689,17 @@ const translations = {
 
     'chat.profanityTitle': 'Prohibited Content',
     'chat.profanityWarning': 'This message cannot be sent. Profanity and offensive language violate our community guidelines. Please keep the conversation respectful.',
+    'chat.reportMessage': 'Report',
+    'chat.reportAlreadySubmitted': 'Your report has already been submitted. Review time is 24 hours.',
+    'chat.reportAdditionalNotes': 'Additional notes (optional)',
+    'chat.reportSubmit': 'Submit Report',
+    'chat.blockUser': 'Block user',
+    'chat.blockConfirm': 'Are you sure you want to block this user? Their messages will be hidden.',
+    'chat.blocked': 'Blocked',
+    'chat.reportSent': 'Your report has been received. It will be reviewed within 24 hours.',
+    'profile.blockUser': 'Block user',
+    'profile.blockConfirm': 'Are you sure you want to block this user?',
+    'profile.blockError': 'Block operation failed.',
 
     // Language Settings
     'language.settings': 'Language Settings',
@@ -706,6 +756,21 @@ const translations = {
     'settings.device.goToStore': 'Go to App Store',
 
     'settings.agreements.title': 'My Agreements',
+    'settings.reports.title': 'Reports',
+    'admin.reports.title': 'Content Reports',
+    'admin.reports.colNo': 'S/N',
+    'admin.reports.colReporter': 'Reporter',
+    'admin.reports.colReported': 'Reported',
+    'admin.reports.colMessage': 'Message',
+    'admin.reports.colNotes': 'Additional Info',
+    'admin.reports.colDate': 'Date/Time',
+    'admin.reports.colStatus': 'Status',
+    'admin.reports.statusPending': 'Pending Review',
+    'admin.reports.statusResolved': 'Approved',
+    'admin.reports.statusReviewed': 'Rejected',
+    'admin.reports.statusChecked': 'Reviewed',
+    'admin.reports.changeStatusTitle': 'Update status',
+    'admin.reports.empty': 'No reports found.',
     'settings.agreements.terms': 'Terms of Use',
     'settings.agreements.privacy': 'Privacy Policy',
     'settings.agreements.kvkk': 'KVKK Disclosure',
@@ -747,6 +812,9 @@ const translations = {
     'auth.googleSignIn': 'Sign in with Google',
     'auth.appleSignIn': 'Sign in with Apple',
     'auth.completeProfileNote': 'After signing in, you can complete your profile.',
+    'auth.agreeToTerms': 'I have read and accept the User Agreement and Community Guidelines.',
+    'auth.agreeToTermsSuffix': 'I have read and accept.',
+    'auth.agreeToTermsRequired': 'You must accept the User Agreement and Community Guidelines to continue.',
 
     'auth.userCreateFailed': "Couldn't create user record. Please try again.",
     'auth.unknownError': 'Unknown error',
@@ -767,6 +835,12 @@ const translations = {
     'auth.errors.userNotFound': 'User not found.',
     'auth.errors.appleMissingOAuthSecret': "Apple sign-in isn't configured: missing OAuth client secret in Supabase (Auth → Providers → Apple).",
     'auth.errors.missingOAuthSecret': "OAuth isn't configured: missing client secret in Supabase (Auth → Providers).",
+    'auth.guestCreateMatch': 'You must sign in first to create a match',
+    'auth.guestMessage': 'You must sign in first to send messages',
+    'auth.guestProfile': 'You must sign in first to view your profile',
+    'auth.guestNotifications': 'You must sign in first to view notifications',
+    'auth.guestJoinMatch': 'You must sign in first to join a match',
+    'auth.guestRedirectNotice': 'Redirecting to sign in page...',
     
     // Match
     'match.createSuccess': 'Congratulations 🎉\nYour match has been created successfully.',

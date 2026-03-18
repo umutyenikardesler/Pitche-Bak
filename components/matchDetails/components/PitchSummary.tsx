@@ -47,7 +47,7 @@ export default function PitchSummary({ match }: PitchSummaryProps) {
       {isExpanded && (
         <View style={{ minHeight: 200 }}>
           {pitch?.latitude && pitch?.longitude && (
-            <View className="w-full h-48 rounded-lg overflow-hidden my-2">
+            <View className="w-full rounded-lg overflow-hidden my-2" style={{ height: 192, minHeight: 192 }}>
               <PitchMap latitude={pitch.latitude} longitude={pitch.longitude} title={pitchName} height={192} />
             </View>
           )}

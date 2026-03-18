@@ -22,19 +22,13 @@ export default function Index() {
         
         if (error) {
           console.log("Session error:", error.message);
-          setTarget("/auth");
-          return;
         }
         
-        if (data?.session?.user) {
-          setTarget("/(tabs)");
-        } else {
-          setTarget("/auth");
-        }
+        setTarget("/(tabs)");
       } catch (error) {
         if (!isMounted) return;
         console.log("Auth check error:", error);
-        setTarget("/auth");
+        setTarget("/(tabs)");
       } finally {
         if (isMounted) {
           setIsLoading(false);

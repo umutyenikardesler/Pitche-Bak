@@ -5,6 +5,8 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { NotificationProvider } from '@/components/NotificationContext';
 import { LanguageProvider } from '@/contexts/LanguageContext';
+import { AuthProvider } from '@/contexts/AuthContext';
+import { GuestAuthModalProvider } from '@/contexts/GuestAuthModalContext';
 import AnalyticsProvider from '@/components/AnalyticsProvider';
 
 // Sadece belirli logları ignore et, tüm logları değil
@@ -15,7 +17,9 @@ LogBox.ignoreLogs([
 export default function RootLayout() {
   return (
     <LanguageProvider>
-      <NotificationProvider>
+      <AuthProvider>
+        <GuestAuthModalProvider>
+        <NotificationProvider>
         <GestureHandlerRootView style={{ flex: 1 }}>
           <SafeAreaProvider>
             <AnalyticsProvider />
@@ -43,6 +47,8 @@ export default function RootLayout() {
           </SafeAreaProvider>
         </GestureHandlerRootView>
       </NotificationProvider>
+        </GuestAuthModalProvider>
+    </AuthProvider>
     </LanguageProvider>
   );
 }
