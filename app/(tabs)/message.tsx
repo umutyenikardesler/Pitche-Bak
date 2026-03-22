@@ -1,11 +1,13 @@
 import { useEffect, useState, useCallback } from "react";
-import { View, Text, FlatList, TouchableOpacity, Image, ActivityIndicator, RefreshControl, Animated, Dimensions } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import { View, Text, FlatList, TouchableOpacity, Image, ActivityIndicator, RefreshControl, Animated, Dimensions, Modal, Pressable, Alert, TextInput, ScrollView } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter, useFocusEffect } from "expo-router";
 import { GestureDetector, Gesture } from "react-native-gesture-handler";
 import { runOnJS } from "react-native-reanimated";
 import { supabase } from "@/services/supabase";
-import { getBlockedUserIds } from "@/services/blocks";
+import { getBlockedUserIds, blockUser } from "@/services/blocks";
+import { reportContent, hasUserReportedContent } from "@/services/contentReports";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useGuestAuthAlert } from '@/contexts/GuestAuthModalContext';
@@ -54,8 +56,17 @@ export default function Messages() {
   const [refreshing, setRefreshing] = useState(false);
   const [items, setItems] = useState<ChatSummary[]>([]);
   const screenWidth = Dimensions.get('window').width;
-  // Mesajlar ekranı için yatay animasyon (0: ekranda, +width: sağa kaymış)
   const [translateX] = useState(new Animated.Value(0));
+  const [chatOptionsItem, setChatOptionsItem] = useState<ChatSummary | null>(null);
+  const [reportModalVisible, setReportModalVisible] = useState(false);
+  const [reportNotes, setReportNotes] = useState('');
+  const [reportTargetItem, setReportTargetItem] = useState<ChatSummary | null>(null);
+  const [ugcAgreed, setUgcAgreed] = useState<boolean | null>(null);
+  const [pinnedChatKeys, setPinnedChatKeys] = useState<Set<string>>(new Set());
+  const getChatKey = useCallback((item: ChatSummary): string => {
+    if (item.kind === "match") return `${item.owner_id}-m-${item.id}`;
+    return `${item.owner_id}-d-${(item as DirectChatSummary).match_id ?? "x"}`;
+  }, []);
 
   const fetchChats = useCallback(async (isRefresh = false) => {
     try {
@@ -235,7 +246,19 @@ export default function Messages() {
         return tb - ta; // son mesaj en üstte
       });
 
-      setItems([...sortedDMs, ...sortedMatches]);
+      const allSorted = [...sortedDMs, ...sortedMatches];
+      const hiddenRaw = await AsyncStorage.getItem(`hidden_chats_${user.id}`);
+      const pinnedRaw = await AsyncStorage.getItem(`pinned_chats_${user.id}`);
+      const hiddenSet = new Set<string>((hiddenRaw ? JSON.parse(hiddenRaw) : []) || []);
+      const pinnedSet = new Set<string>((pinnedRaw ? JSON.parse(pinnedRaw) : []) || []);
+
+      const getKey = (it: ChatSummary) =>
+        it.kind === "match" ? `${it.owner_id}-m-${it.id}` : `${it.owner_id}-d-${(it as DirectChatSummary).match_id ?? "x"}`;
+
+      const filtered = allSorted.filter((it) => !hiddenSet.has(getKey(it)));
+      const pinnedFirst = [...filtered.filter((it) => pinnedSet.has(getKey(it))), ...filtered.filter((it) => !pinnedSet.has(getKey(it)))];
+      setItems(pinnedFirst);
+      setPinnedChatKeys(pinnedSet);
     } catch (e) {
       console.error('[Messages] fetchChats error:', e);
       setItems([]);
@@ -249,9 +272,135 @@ export default function Messages() {
     fetchChats();
   }, [fetchChats]);
 
+  useEffect(() => {
+    (async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setUgcAgreed(true);
+        return;
+      }
+      const v = await AsyncStorage.getItem(`ugc_messaging_agreed_${user.id}`);
+      setUgcAgreed(v === '1');
+    })();
+  }, []);
+
+  const handleUgcAgree = useCallback(async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      await AsyncStorage.setItem(`ugc_messaging_agreed_${user.id}`, '1');
+    }
+    setUgcAgreed(true);
+  }, []);
+
   const onRefresh = useCallback(() => {
     fetchChats(true);
   }, [fetchChats]);
+
+  const handleBlockFromList = useCallback(async (item: ChatSummary) => {
+    setChatOptionsItem(null);
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user || !item.owner_id) return;
+    Alert.alert(
+      t('chat.blockUser'),
+      t('chat.blockConfirm'),
+      [
+        { text: t('general.cancel'), style: 'cancel' },
+        {
+          text: t('chat.blockUser'),
+          style: 'destructive',
+          onPress: async () => {
+            const { error } = await blockUser(user.id, item.owner_id);
+            if (!error) {
+              setItems((prev) => prev.filter((i) => i.owner_id !== item.owner_id));
+              Alert.alert('', t('chat.blocked'));
+            }
+          },
+        },
+      ]
+    );
+  }, [t]);
+
+  const openReportModalForItem = useCallback((item: ChatSummary) => {
+    setChatOptionsItem(null);
+    setReportTargetItem(item);
+    setReportNotes('');
+    setReportModalVisible(true);
+  }, []);
+
+  const handleDeleteChat = useCallback(async (item: ChatSummary) => {
+    setChatOptionsItem(null);
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    Alert.alert(
+      t('messages.deleteChat'),
+      t('messages.deleteChatConfirm'),
+      [
+        { text: t('general.cancel'), style: 'cancel' },
+        {
+          text: t('messages.deleteChat'),
+          style: 'destructive',
+          onPress: async () => {
+            const key = getChatKey(item);
+            const raw = await AsyncStorage.getItem(`hidden_chats_${user.id}`);
+            const arr: string[] = raw ? JSON.parse(raw) : [];
+            if (!arr.includes(key)) arr.push(key);
+            await AsyncStorage.setItem(`hidden_chats_${user.id}`, JSON.stringify(arr));
+            setItems((prev) => prev.filter((i) => getChatKey(i) !== key));
+            Alert.alert('', t('messages.chatDeleted'));
+          },
+        },
+      ]
+    );
+  }, [t, getChatKey]);
+
+  const handlePinChat = useCallback(async (item: ChatSummary) => {
+    setChatOptionsItem(null);
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    const key = getChatKey(item);
+    const raw = await AsyncStorage.getItem(`pinned_chats_${user.id}`);
+    const arr: string[] = raw ? JSON.parse(raw) : [];
+    if (!arr.includes(key)) arr.push(key);
+    await AsyncStorage.setItem(`pinned_chats_${user.id}`, JSON.stringify(arr));
+    fetchChats(true);
+  }, [getChatKey, fetchChats]);
+
+  const handleUnpinChat = useCallback(async (item: ChatSummary) => {
+    setChatOptionsItem(null);
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    const key = getChatKey(item);
+    const raw = await AsyncStorage.getItem(`pinned_chats_${user.id}`);
+    const arr: string[] = (raw ? JSON.parse(raw) : []).filter((k: string) => k !== key);
+    await AsyncStorage.setItem(`pinned_chats_${user.id}`, JSON.stringify(arr));
+    fetchChats(true);
+  }, [getChatKey, fetchChats]);
+
+  const handleReportSubmitFromList = useCallback(async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    const item = reportTargetItem;
+    if (!user || !item) return;
+
+    const alreadyReported = await hasUserReportedContent(user.id, 'profile', item.owner_id);
+    if (alreadyReported) {
+      setReportModalVisible(false);
+      setChatOptionsItem(null);
+      Alert.alert('', t('chat.reportAlreadySubmitted'));
+      return;
+    }
+
+    const { error } = await reportContent({
+      reporterId: user.id,
+      reportedUserId: item.owner_id,
+      contentType: 'profile',
+      contentId: item.owner_id,
+      contentPreview: null,
+      reason: reportNotes.trim() || null,
+    });
+    setReportModalVisible(false);
+    setReportTargetItem(null);
+    if (!error) Alert.alert('', t('chat.reportSent'));
+  }, [reportTargetItem, reportNotes, t]);
 
   // Ekran odağa geldiğinde sohbet listesini bir kez tazele (ör: chat ekranından geri dönünce)
   useFocusEffect(
@@ -314,8 +463,8 @@ export default function Messages() {
   }, [fetchChats]);
 
   const renderItem = ({ item }: { item: ChatSummary }) => {
-    // Format date and times similar to MyMatches
     const hasUnread = (item.unreadCount ?? 0) > 0;
+    const isPinned = pinnedChatKeys.has(getChatKey(item));
 
     if (item.kind === "direct") {
       const lastAtText = item.lastAt ? new Date(item.lastAt).toLocaleString("tr-TR") : '';
@@ -326,56 +475,59 @@ export default function Messages() {
       if (item.match_id) params.matchId = item.match_id;
 
       return (
-        <TouchableOpacity
-          activeOpacity={0.8}
-          onPress={() => router.push({ pathname: '/message/chat', params })}
+        <View
+          className={`bg-white rounded-lg mx-4 my-1 p-1 shadow-lg ${hasUnread ? '' : 'opacity-60'}`}
+          style={isPinned ? { borderWidth: 2, borderColor: '#16a34a' } : undefined}
         >
-          <View className={`bg-white rounded-lg mx-4 my-1 p-1 shadow-lg ${hasUnread ? '' : 'opacity-60'}`}>
-            <View className="flex-row items-center justify-between">
-              {/* Profil Resmi */}
-              <View className="w-1/5 flex justify-center p-1 py-1.5">
-                <Image
-                  source={item.owner_profile_image ? { uri: item.owner_profile_image } : require('@/assets/images/ball.png')}
-                  className="rounded-full mx-auto"
-                  style={{ width: 60, height: 60, resizeMode: 'contain' }}
-                />
-              </View>
+          <TouchableOpacity activeOpacity={0.8} onPress={() => router.push({ pathname: '/message/chat', params })} className="flex-row items-center">
+            {/* Profil Resmi */}
+            <View className="w-1/5 flex justify-center p-1 py-1.5">
+              <Image
+                source={item.owner_profile_image ? { uri: item.owner_profile_image } : require('@/assets/images/ball.png')}
+                className="rounded-full mx-auto"
+                style={{ width: 60, height: 60, resizeMode: 'contain' }}
+              />
+            </View>
 
-              {/* Sağ bilgi alanı */}
-              <View className="w-4/6 flex justify-center -mt-2 -ml-4">
-                <View className="flex-row items-center justify-between">
-                  <Text className={`text-lg font-semibold ${hasUnread ? 'text-green-700' : 'text-gray-500'}`}>
-                    {item.owner_name} {item.owner_surname}
-                  </Text>
-                  {hasUnread && (
-                    <View className="ml-2 px-2 py-0.5 rounded-full bg-red-500">
-                      <Text className="text-xs font-bold text-white">
-                        {item.unreadCount}
-                      </Text>
-                    </View>
-                  )}
-                </View>
-
-                <View className="text-gray-700 text-md flex-row items-center">
-                  <Ionicons name="chatbubbles-outline" size={18} color="black" />
-                  <Text className="pl-2 font-semibold"> {previewText} </Text>
-                </View>
-
-                {!!lastAtText && (
-                  <View className="text-gray-700 text-md flex-row items-center pt-1">
-                    <Ionicons name="time-outline" size={18} color="black" />
-                    <Text className="pl-2 font-semibold"> {lastAtText} </Text>
+            {/* Orta bilgi alanı - flex-1 ile kalan alanı doldurur */}
+            <View className="flex-1 flex justify-center -mt-2 ml-2 min-w-0">
+              <View className="flex-row items-center justify-between">
+                <Text className={`text-lg font-semibold ${hasUnread ? 'text-green-700' : 'text-gray-500'}`} numberOfLines={1}>
+                  {item.owner_name} {item.owner_surname}
+                </Text>
+                {hasUnread && (
+                  <View className="ml-2 px-2 py-0.5 rounded-full bg-red-500">
+                    <Text className="text-xs font-bold text-white">
+                      {item.unreadCount}
+                    </Text>
                   </View>
                 )}
               </View>
 
-              {/* Sağdaki ok ikonu */}
-              <View className="mr-1">
-                <Ionicons name="chevron-forward-outline" size={20} color="green" />
+              <View className="text-gray-700 text-md flex-row items-center">
+                <Ionicons name="chatbubbles-outline" size={18} color="black" />
+                <Text className="pl-2 font-semibold flex-1" numberOfLines={1}> {previewText} </Text>
               </View>
+
+              {!!lastAtText && (
+                <View className="text-gray-700 text-md flex-row items-center pt-1">
+                  <Ionicons name="time-outline" size={18} color="black" />
+                  <Text className="pl-2 font-semibold"> {lastAtText} </Text>
+                </View>
+              )}
             </View>
-          </View>
-        </TouchableOpacity>
+
+            {/* 3 nokta + sabitlenmişse altlı üstlü, değilse ortalı */}
+            <TouchableOpacity onPress={() => setChatOptionsItem(item)} style={{ paddingVertical: 8, paddingLeft: 8, paddingRight: 2, marginLeft: 20, alignSelf: isPinned ? 'flex-end' : 'center', marginBottom: isPinned ? 4 : 0 }} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+              <View style={{ alignItems: 'center', justifyContent: 'center' }}>
+                {isPinned && (
+                  <MaterialCommunityIcons name="pin" size={24} color="#047857" style={{ marginBottom: 6, transform: [{ rotate: '25deg' }] }} />
+                )}
+                <Ionicons name="ellipsis-vertical" size={22} color="#059669" />
+              </View>
+            </TouchableOpacity>
+          </TouchableOpacity>
+        </View>
       );
     }
 
@@ -385,12 +537,15 @@ export default function Messages() {
     const endFormatted = `${String((hours + 1)).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
 
     return (
-      <TouchableOpacity
-        activeOpacity={0.8}
-        onPress={() => router.push({ pathname: '/message/chat', params: { to: item.owner_id, matchId: item.id, name: `${item.owner_name} ${item.owner_surname}` } })}
+      <View
+        className={`bg-white rounded-lg mx-4 my-1 p-1 shadow-lg ${hasUnread ? '' : 'opacity-60'}`}
+        style={isPinned ? { borderWidth: 2, borderColor: '#16a34a' } : undefined}
       >
-        <View className={`bg-white rounded-lg mx-4 my-1 p-1 shadow-lg ${hasUnread ? '' : 'opacity-60'}`}>
-          <View className="flex-row items-center justify-between">
+        <TouchableOpacity
+          activeOpacity={0.8}
+          onPress={() => router.push({ pathname: '/message/chat', params: { to: item.owner_id, matchId: item.id, name: `${item.owner_name} ${item.owner_surname}` } })}
+          className="flex-row items-center"
+        >
           {/* Profil Resmi */}
           <View className="w-1/5 flex justify-center p-1 py-1.5">
             <Image
@@ -400,10 +555,10 @@ export default function Messages() {
             />
           </View>
 
-          {/* Sağ bilgi alanı */}
-          <View className="w-4/6 flex justify-center -mt-2 -ml-4">
+          {/* Orta bilgi alanı - flex-1 ile kalan alanı doldurur */}
+          <View className="flex-1 flex justify-center -mt-2 ml-2 min-w-0">
             <View className="flex-row items-center justify-between">
-              <Text className={`text-lg font-semibold ${hasUnread ? 'text-green-700' : 'text-gray-500'}`}>
+              <Text className={`text-lg font-semibold ${hasUnread ? 'text-green-700' : 'text-gray-500'}`} numberOfLines={1}>
                 {item.owner_name} {item.owner_surname}
               </Text>
               {hasUnread && (
@@ -427,13 +582,18 @@ export default function Messages() {
               <Text className="pl-2 font-bold text-green-700"> {item.pitches?.name || 'Bilinmiyor'} </Text>
             </View>
           </View>
-          {/* Sağdaki ok ikonu (index sayfasındaki gibi) */}
-          <View className="mr-1">
-            <Ionicons name="chevron-forward-outline" size={20} color="green" />
-          </View>
-          </View>
-        </View>
-      </TouchableOpacity>
+
+          {/* 3 nokta + sabitlenmişse altlı üstlü, değilse ortalı */}
+          <TouchableOpacity onPress={() => setChatOptionsItem(item)} style={{ paddingVertical: 8, paddingLeft: 8, paddingRight: 2, marginLeft: 20, alignSelf: isPinned ? 'flex-end' : 'center', marginBottom: isPinned ? 4 : 0 }} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+            <View style={{ alignItems: 'center', justifyContent: 'center' }}>
+              {isPinned && (
+                <MaterialCommunityIcons name="pin" size={24} color="#047857" style={{ marginBottom: 6, transform: [{ rotate: '25deg' }] }} />
+              )}
+              <Ionicons name="ellipsis-vertical" size={22} color="#059669" />
+            </View>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </View>
     );
   };
 
@@ -491,7 +651,92 @@ export default function Messages() {
   return (
     <GestureDetector gesture={swipeGesture}>
       <Animated.View style={{ flex: 1, transform: [{ translateX }] }}>
+        {/* EULA/Topluluk İlkeleri - Apple UGC: kullanıcı içeriğe girmeden önce kabul */}
+        {!isGuest && ugcAgreed === false && (
+          <Modal visible={true} animationType="fade">
+            <View style={{ flex: 1, backgroundColor: '#fff', justifyContent: 'center', padding: 24 }}>
+              <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'center' }} showsVerticalScrollIndicator={false}>
+                <Text style={{ fontSize: 20, fontWeight: '700', color: '#065f46', marginBottom: 16, textAlign: 'center' }}>{t('ugc.agreeTitle')}</Text>
+                <Text style={{ fontSize: 15, color: '#4b5563', lineHeight: 22, marginBottom: 24 }}>{t('ugc.agreeMessage')}</Text>
+                <Text style={{ fontSize: 13, color: '#16a34a', fontWeight: '600', marginBottom: 24 }}>• {t('chat.contentFilteredNote')}</Text>
+                <TouchableOpacity onPress={handleUgcAgree} style={{ backgroundColor: '#16a34a', borderRadius: 12, paddingVertical: 14, alignItems: 'center' }}>
+                  <Text style={{ color: 'white', fontWeight: '700', fontSize: 16 }}>{t('ugc.agreeButton')}</Text>
+                </TouchableOpacity>
+              </ScrollView>
+            </View>
+          </Modal>
+        )}
+
         {content}
+
+        {/* Sohbet seçenekleri modalı (... menüsü) */}
+        <Modal visible={!!chatOptionsItem} transparent animationType="fade">
+          <Pressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 24 }} onPress={() => setChatOptionsItem(null)}>
+            <Pressable style={{ backgroundColor: 'white', borderRadius: 16, padding: 20, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.15, shadowRadius: 12, elevation: 8 }} onPress={(e) => e.stopPropagation()}>
+              <Text style={{ fontSize: 18, fontWeight: '700', color: '#065f46', marginBottom: 16, textAlign: 'center' }}>{t('messages.chatOptions')}</Text>
+              {chatOptionsItem && (
+                <View style={{ gap: 4 }}>
+                  {pinnedChatKeys.has(getChatKey(chatOptionsItem)) ? (
+                    <TouchableOpacity activeOpacity={0.7} onPress={() => handleUnpinChat(chatOptionsItem)} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 12, paddingHorizontal: 14, backgroundColor: '#f0fdf4', borderRadius: 10 }}>
+                      <Text style={{ color: '#047857', fontWeight: '600', fontSize: 15 }}>{t('messages.unpinChat')}</Text>
+                      <MaterialCommunityIcons name="pin-off" size={22} color="#047857" style={{ transform: [{ rotate: '25deg' }] }} />
+                    </TouchableOpacity>
+                  ) : (
+                    <TouchableOpacity activeOpacity={0.7} onPress={() => handlePinChat(chatOptionsItem)} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 12, paddingHorizontal: 14, backgroundColor: '#f0fdf4', borderRadius: 10 }}>
+                      <Text style={{ color: '#047857', fontWeight: '600', fontSize: 15 }}>{t('messages.pinChat')}</Text>
+                      <MaterialCommunityIcons name="pin" size={22} color="#047857" style={{ transform: [{ rotate: '25deg' }] }} />
+                    </TouchableOpacity>
+                  )}
+                  <TouchableOpacity activeOpacity={0.7} onPress={() => handleDeleteChat(chatOptionsItem)} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 12, paddingHorizontal: 14, backgroundColor: '#fee2e2', borderRadius: 10 }}>
+                    <Text style={{ color: '#dc2626', fontWeight: '600', fontSize: 15 }}>{t('messages.deleteChat')}</Text>
+                    <Ionicons name="trash-outline" size={22} color="#dc2626" />
+                  </TouchableOpacity>
+                  <TouchableOpacity activeOpacity={0.7} onPress={() => handleBlockFromList(chatOptionsItem)} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 12, paddingHorizontal: 14, backgroundColor: '#fef2f2', borderRadius: 10 }}>
+                    <Text style={{ color: '#dc2626', fontWeight: '600', fontSize: 15 }}>{t('chat.blockUser')}</Text>
+                    <Ionicons name="ban-outline" size={22} color="#dc2626" />
+                  </TouchableOpacity>
+                  <TouchableOpacity activeOpacity={0.7} onPress={() => openReportModalForItem(chatOptionsItem)} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 12, paddingHorizontal: 14, backgroundColor: '#fff7ed', borderRadius: 10 }}>
+                    <Text style={{ color: '#ea580c', fontWeight: '600', fontSize: 15 }}>{t('messages.reportUser')}</Text>
+                    <Ionicons name="flag-outline" size={22} color="#ea580c" />
+                  </TouchableOpacity>
+                </View>
+              )}
+              <TouchableOpacity activeOpacity={0.8} onPress={() => setChatOptionsItem(null)} style={{ marginTop: 16, paddingVertical: 12, borderRadius: 10, backgroundColor: '#6b7280', alignItems: 'center' }}>
+                <Text style={{ color: 'white', fontWeight: '600', fontSize: 15 }}>{t('general.cancel')}</Text>
+              </TouchableOpacity>
+            </Pressable>
+          </Pressable>
+        </Modal>
+
+        {/* Kullanıcı şikayet modalı */}
+        <Modal visible={reportModalVisible} transparent animationType="fade">
+          <Pressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 20 }} onPress={() => { setReportModalVisible(false); setReportTargetItem(null); }}>
+            <Pressable style={{ backgroundColor: 'white', borderRadius: 12, padding: 20 }} onPress={(e) => e.stopPropagation()}>
+              <Text style={{ fontSize: 16, fontWeight: '600', marginBottom: 8 }}>{t('chat.reportUser')}</Text>
+              {reportTargetItem && (
+                <Text style={{ fontSize: 14, color: '#6b7280', marginBottom: 12 }} numberOfLines={2}>
+                  {reportTargetItem.owner_name} {reportTargetItem.owner_surname}
+                </Text>
+              )}
+              <TextInput
+                placeholder={t('chat.reportAdditionalNotes')}
+                value={reportNotes}
+                onChangeText={setReportNotes}
+                multiline
+                numberOfLines={3}
+                style={{ borderWidth: 1, borderColor: '#d1d5db', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 8, marginBottom: 16, minHeight: 80, textAlignVertical: 'top' }}
+              />
+              <View style={{ flexDirection: 'row', gap: 12, justifyContent: 'flex-end' }}>
+                <TouchableOpacity onPress={() => { setReportModalVisible(false); setReportTargetItem(null); }} style={{ backgroundColor: '#e5e7eb', borderRadius: 8, paddingHorizontal: 16, paddingVertical: 10 }}>
+                  <Text style={{ color: '#374151', fontWeight: '600' }}>{t('general.cancel')}</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={handleReportSubmitFromList} style={{ backgroundColor: '#dc2626', borderRadius: 8, paddingHorizontal: 16, paddingVertical: 10 }}>
+                  <Text style={{ color: 'white', fontWeight: '600' }}>{t('chat.reportSubmit')}</Text>
+                </TouchableOpacity>
+              </View>
+            </Pressable>
+          </Pressable>
+        </Modal>
       </Animated.View>
     </GestureDetector>
   );

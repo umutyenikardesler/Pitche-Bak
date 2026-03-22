@@ -58,7 +58,8 @@
       "router": {},
       "eas": {
         "projectId": "bcaeff72-7e2a-4511-8ad1-73798a478d1a"
-      }
+      },
+      "webBaseUrl": "https://sahayabak.com"
     }
   }
 }

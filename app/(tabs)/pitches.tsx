@@ -1,6 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { ActivityIndicator, Alert, Platform, View, DeviceEventEmitter, Linking } from "react-native";
+import { GestureDetector, Gesture } from "react-native-gesture-handler";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { runOnJS } from "react-native-reanimated";
 import { supabase } from "@/services/supabase";
 import haversine from "haversine";
 import * as Location from "expo-location";
@@ -67,7 +69,7 @@ export default function Pitches() {
     }
   };
 
-  const fetchPitches = async (userLat?: number, userLon?: number) => {
+  const fetchPitches = useCallback(async (userLat?: number, userLon?: number) => {
     setLoading(true);
     const { data, error } = await supabase.from("pitches").select("*");
     if (error) {
@@ -95,9 +97,9 @@ export default function Pitches() {
 
     setLoading(false);
     setRefreshing(false);
-  };
+  }, [t]);
 
-  const getLocation = async (showAlertOnError: boolean = false) => {
+  const getLocation = useCallback(async (showAlertOnError: boolean = false) => {
     try {
       // İzin kontrolü - state'e bağlı kalmadan direkt kontrol et
       const { status } = await Location.getForegroundPermissionsAsync();
@@ -383,16 +385,31 @@ export default function Pitches() {
         Alert.alert(t('pitches.locationError'), t('pitches.locationInfoCouldNotBeRetrieved'));
       }
     }
-  };
+  }, [t, fetchPitches]);
 
   const onRefresh = async () => {
     setRefreshing(true);
     await fetchPitches(location?.latitude, location?.longitude);
   };
 
-  const handleCloseDetail = () => {
+  const handleCloseDetail = useCallback(() => {
     setSelectedPitch(null);
-  };
+  }, []);
+
+  const handlePriceUpdated = useCallback((pitchId: string, newPrice: number) => {
+    setPitches((prev) => prev.map((p) => (p.id === pitchId ? { ...p, price: newPrice } : p)));
+    setSelectedPitch((prev) => (prev && prev.id === pitchId ? { ...prev, price: newPrice } : prev));
+  }, []);
+
+  // Soldan sağa swipe ile saha detayından geri dön
+  const swipeBackGesture = Gesture.Pan()
+    .activeOffsetX(20)
+    .failOffsetY([-12, 12])
+    .onEnd((event) => {
+      if (event.translationX > 80 && Math.abs(event.translationY) < 100) {
+        runOnJS(handleCloseDetail)();
+      }
+    });
 
   // CustomHeader başlık tıklaması veya tab'a basılması ile modal'ları/detayı kapat
   useEffect(() => {
@@ -422,17 +439,24 @@ export default function Pitches() {
 
   return (
     <GestureHandlerRootView className="flex-1">
-      <View className="bg-slate-100 flex-1">
-        <PitchesLocation locationText={locationText} setLocationText={setLocationText} getLocation={getLocation} />
-        <PitchesList
+      <GestureDetector gesture={swipeBackGesture}>
+        <View className="bg-slate-100 flex-1">
+          {!selectedPitch && (
+            <View style={{ flexShrink: 0 }} collapsable={false}>
+              <PitchesLocation locationText={locationText} setLocationText={setLocationText} getLocation={getLocation} />
+            </View>
+          )}
+          <PitchesList
           pitches={pitches}
           selectedPitch={selectedPitch}
           setSelectedPitch={setSelectedPitch}
           handleCloseDetail={handleCloseDetail}
           refreshing={refreshing}
           onRefresh={onRefresh}
+          onPriceUpdated={handlePriceUpdated}
         />
-      </View>
+        </View>
+      </GestureDetector>
     </GestureHandlerRootView>
   );
 }

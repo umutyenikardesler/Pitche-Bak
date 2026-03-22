@@ -32,6 +32,8 @@ export default function ChatScreen() {
   const [reportModalVisible, setReportModalVisible] = useState(false);
   const [reportItem, setReportItem] = useState<MsgItem | null>(null);
   const [reportNotes, setReportNotes] = useState('');
+  const [headerMenuVisible, setHeaderMenuVisible] = useState(false);
+  const [messageOptionsItem, setMessageOptionsItem] = useState<MsgItem | null>(null);
   const listRef = useRef<FlatList<MsgItem>>(null);
 
   const normParam = useCallback((p: any): string | undefined => {
@@ -237,6 +239,21 @@ export default function ChatScreen() {
     }
   }, [input, matchId, fetchMessages, resolveRecipientId, t]);
 
+  const openReportUserModal = useCallback(() => {
+    setHeaderMenuVisible(false);
+    const recip = normParam(to);
+    if (!recip) return;
+    setReportItem({
+      id: 'profile-report',
+      sender_id: recip,
+      recipient_id: me || '',
+      content: '',
+      created_at: '',
+    });
+    setReportNotes('');
+    setReportModalVisible(true);
+  }, [to, me]);
+
   const openReportModal = useCallback((item: MsgItem) => {
     setReportItem(item);
     setReportNotes('');
@@ -253,7 +270,11 @@ export default function ChatScreen() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user || !reportItem) return;
 
-    const alreadyReported = await hasUserReportedContent(user.id, 'message', reportItem.id);
+    const isProfileReport = reportItem.id === 'profile-report';
+    const contentType = isProfileReport ? 'profile' : 'message';
+    const contentId = isProfileReport ? reportItem.sender_id : reportItem.id;
+
+    const alreadyReported = await hasUserReportedContent(user.id, contentType, contentId);
     if (alreadyReported) {
       closeReportModal();
       Alert.alert('', t('chat.reportAlreadySubmitted'));
@@ -263,9 +284,9 @@ export default function ChatScreen() {
     const { error } = await reportContent({
       reporterId: user.id,
       reportedUserId: reportItem.sender_id,
-      contentType: 'message',
-      contentId: reportItem.id,
-      contentPreview: reportItem.content?.slice(0, 200) || null,
+      contentType,
+      contentId: isProfileReport ? reportItem.sender_id : reportItem.id,
+      contentPreview: isProfileReport ? null : (reportItem.content?.slice(0, 200) || null),
       reason: reportNotes.trim() || null,
     });
     closeReportModal();
@@ -304,25 +325,43 @@ export default function ChatScreen() {
   const renderItem = ({ item }: { item: MsgItem }) => {
     const mine = item.sender_id === me;
     return (
-      <Pressable
-        style={{ paddingHorizontal: 12, paddingVertical: 6, alignItems: mine ? 'flex-end' : 'flex-start' }}
-        onLongPress={() => {
-          if (!mine) {
-            Alert.alert(
-              t('chat.reportMessage'),
-              item.content?.slice(0, 80) + (item.content && item.content.length > 80 ? '...' : ''),
-              [
-                { text: t('general.cancel'), style: 'cancel' },
-                { text: t('chat.reportMessage'), onPress: () => openReportModal(item) },
-              ]
-            );
-          }
-        }}
-      >
-        <View style={{ backgroundColor: mine ? '#16a34a' : '#e5e7eb', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 8, maxWidth: '85%' }}>
-          <Text style={{ color: mine ? 'white' : '#111827' }}>{item.content}</Text>
-        </View>
-      </Pressable>
+      <View style={{ paddingHorizontal: 12, paddingVertical: 6, alignItems: mine ? 'flex-end' : 'flex-start', flexDirection: 'row', justifyContent: mine ? 'flex-end' : 'flex-start', gap: 2 }}>
+        <Pressable
+          style={{ maxWidth: '85%' }}
+          onLongPress={() => {
+            if (!mine) {
+              Alert.alert(
+                t('chat.reportMessage'),
+                item.content?.slice(0, 80) + (item.content && item.content.length > 80 ? '...' : ''),
+                [
+                  { text: t('general.cancel'), style: 'cancel' },
+                  { text: t('chat.reportMessage'), onPress: () => openReportModal(item) },
+                ]
+              );
+            }
+          }}
+        >
+          <View style={{
+            backgroundColor: mine ? '#16a34a' : '#e5e7eb',
+            borderRadius: 12,
+            paddingHorizontal: 12,
+            paddingVertical: 8,
+            ...(!mine && { borderWidth: 2, borderColor: '#16a34a' }),
+          }}>
+            <Text style={{ color: mine ? 'white' : '#111827' }}>{item.content}</Text>
+          </View>
+        </Pressable>
+        {/* Görünür ... menüsü (Apple UGC: flag objectionable content) */}
+        {!mine && (
+          <TouchableOpacity
+            onPress={() => setMessageOptionsItem(item)}
+            style={{ alignSelf: 'center', padding: 6, backgroundColor: '#fff', borderRadius: 6, borderWidth: 2, borderColor: '#16a34a' }}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Ionicons name="ellipsis-horizontal" size={16} color="#16a34a" />
+          </TouchableOpacity>
+        )}
+      </View>
     );
   };
 
@@ -373,6 +412,66 @@ export default function ChatScreen() {
             contentContainerStyle={{ paddingVertical: 8, paddingBottom: Math.max(60, insets.bottom + 8) }}
             onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: true })}
           />
+          {/* Mesaj balonu 3 nokta → Sohbet Seçenekleri modalı */}
+          <Modal visible={!!messageOptionsItem} transparent animationType="fade">
+            <Pressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 24 }} onPress={() => setMessageOptionsItem(null)}>
+              <Pressable style={{ backgroundColor: 'white', borderRadius: 16, padding: 20, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.15, shadowRadius: 12, elevation: 8 }} onPress={(e) => e.stopPropagation()}>
+                <Text style={{ fontSize: 18, fontWeight: '700', color: '#065f46', marginBottom: 16, textAlign: 'center' }}>{t('messages.chatOptions')}</Text>
+                <View style={{ gap: 6 }}>
+                  <TouchableOpacity
+                    activeOpacity={0.7}
+                    onPress={() => { if (messageOptionsItem) { setMessageOptionsItem(null); openReportModal(messageOptionsItem); } }}
+                    style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 12, paddingHorizontal: 14, backgroundColor: '#fff7ed', borderRadius: 10 }}
+                  >
+                    <Text style={{ color: '#ea580c', fontWeight: '600', fontSize: 15 }}>{t('chat.reportMessage')}</Text>
+                    <Ionicons name="flag-outline" size={22} color="#ea580c" />
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    activeOpacity={0.7}
+                    onPress={() => { setMessageOptionsItem(null); handleBlockUser(); }}
+                    style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 12, paddingHorizontal: 14, backgroundColor: '#fef2f2', borderRadius: 10 }}
+                  >
+                    <Text style={{ color: '#dc2626', fontWeight: '600', fontSize: 15 }}>{t('chat.blockUser')}</Text>
+                    <Ionicons name="ban-outline" size={22} color="#dc2626" />
+                  </TouchableOpacity>
+                </View>
+                <TouchableOpacity activeOpacity={0.8} onPress={() => setMessageOptionsItem(null)} style={{ marginTop: 16, paddingVertical: 12, borderRadius: 10, backgroundColor: '#6b7280', alignItems: 'center' }}>
+                  <Text style={{ color: 'white', fontWeight: '600', fontSize: 15 }}>{t('general.cancel')}</Text>
+                </TouchableOpacity>
+              </Pressable>
+            </Pressable>
+          </Modal>
+
+          {/* Header ... menüsü (Report / Block) - stille güncellendi */}
+          <Modal visible={headerMenuVisible} transparent animationType="fade">
+            <Pressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 24 }} onPress={() => setHeaderMenuVisible(false)}>
+              <Pressable style={{ backgroundColor: 'white', borderRadius: 16, padding: 20, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.15, shadowRadius: 12, elevation: 8 }} onPress={(e) => e.stopPropagation()}>
+                <Text style={{ fontSize: 18, fontWeight: '700', color: '#065f46', marginBottom: 16, textAlign: 'center' }}>{t('messages.chatOptions')}</Text>
+                <View style={{ gap: 6 }}>
+                  <TouchableOpacity
+                    activeOpacity={0.7}
+                    onPress={() => { setHeaderMenuVisible(false); openReportUserModal(); }}
+                    style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 12, paddingHorizontal: 14, backgroundColor: '#fff7ed', borderRadius: 10 }}
+                  >
+                    <Text style={{ color: '#ea580c', fontWeight: '600', fontSize: 15 }}>{t('messages.reportUser')}</Text>
+                    <Ionicons name="flag-outline" size={22} color="#ea580c" />
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    activeOpacity={0.7}
+                    onPress={() => { setHeaderMenuVisible(false); handleBlockUser(); }}
+                    style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 12, paddingHorizontal: 14, backgroundColor: '#fef2f2', borderRadius: 10 }}
+                  >
+                    <Text style={{ color: '#dc2626', fontWeight: '600', fontSize: 15 }}>{t('chat.blockUser')}</Text>
+                    <Ionicons name="ban-outline" size={22} color="#dc2626" />
+                  </TouchableOpacity>
+                </View>
+                <TouchableOpacity activeOpacity={0.8} onPress={() => setHeaderMenuVisible(false)} style={{ marginTop: 16, paddingVertical: 12, borderRadius: 10, backgroundColor: '#6b7280', alignItems: 'center' }}>
+                  <Text style={{ color: 'white', fontWeight: '600', fontSize: 15 }}>{t('general.cancel')}</Text>
+                </TouchableOpacity>
+              </Pressable>
+            </Pressable>
+          </Modal>
+
           <Modal
             visible={reportModalVisible}
             transparent
@@ -381,8 +480,8 @@ export default function ChatScreen() {
           >
             <Pressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 20 }} onPress={closeReportModal}>
               <Pressable style={{ backgroundColor: 'white', borderRadius: 12, padding: 20 }} onPress={(e) => e.stopPropagation()}>
-                <Text style={{ fontSize: 16, fontWeight: '600', marginBottom: 8 }}>{t('chat.reportMessage')}</Text>
-                {reportItem && (
+                <Text style={{ fontSize: 16, fontWeight: '600', marginBottom: 8 }}>{reportItem?.id === 'profile-report' ? t('chat.reportUser') : t('chat.reportMessage')}</Text>
+                {reportItem && reportItem.id !== 'profile-report' && (
                   <Text style={{ fontSize: 14, color: '#6b7280', marginBottom: 12 }} numberOfLines={3}>
                     "{reportItem.content?.slice(0, 100)}{reportItem.content && reportItem.content.length > 100 ? '...' : ''}"
                   </Text>
@@ -407,16 +506,19 @@ export default function ChatScreen() {
             </Pressable>
           </Modal>
 
-          <View style={{ flexDirection: 'row', paddingTop: 6, paddingHorizontal: 8, paddingBottom: Math.max(9, insets.bottom + 9), borderTopWidth: 1, borderColor: '#e5e7eb' }}>
-            <TextInput
-              placeholder="Mesaj yaz"
-              value={input}
-              onChangeText={setInput}
-              style={{ flex: 1, borderWidth: 1, borderColor: '#d1d5db', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 8, marginRight: 8 }}
-            />
-            <TouchableOpacity onPress={sendMessage} style={{ backgroundColor: '#16a34a', borderRadius: 8, paddingHorizontal: 16, justifyContent: 'center' }}>
-              <Text style={{ color: 'white', fontWeight: '700' }}>Gönder</Text>
-            </TouchableOpacity>
+          <View style={{ borderTopWidth: 1, borderColor: '#e5e7eb', backgroundColor: '#fff' }}>
+            <Text style={{ fontSize: 11, color: '#dc2626', fontWeight: '600', paddingHorizontal: 12, paddingTop: 4 }}>{t('chat.contentFilteredNote')}</Text>
+            <View style={{ flexDirection: 'row', paddingTop: 6, paddingHorizontal: 8, paddingBottom: Math.max(9, insets.bottom + 9) }}>
+              <TextInput
+                placeholder="Mesaj yaz"
+                value={input}
+                onChangeText={setInput}
+                style={{ flex: 1, borderWidth: 1, borderColor: '#d1d5db', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 8, marginRight: 8 }}
+              />
+              <TouchableOpacity onPress={sendMessage} style={{ backgroundColor: '#16a34a', borderRadius: 8, paddingHorizontal: 16, justifyContent: 'center' }}>
+                <Text style={{ color: 'white', fontWeight: '700' }}>Gönder</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
       </>

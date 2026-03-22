@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 import { Platform, Text, TouchableOpacity, View } from 'react-native';
 import MapView, { Marker, PROVIDER_GOOGLE, Region } from 'react-native-maps';
 
@@ -35,9 +35,11 @@ export default function PitchMap({
     [latitude, longitude]
   );
 
-  const [region, setRegion] = useState<Region>(initialRegion);
+  // Sadece ref kullan - onRegionChangeComplete sık tetiklenir, setState döngüye sokar
   const regionRef = useRef<Region>(initialRegion);
-  regionRef.current = region;
+  useEffect(() => {
+    regionRef.current = initialRegion;
+  }, [initialRegion]);
 
   const animateZoom = (factor: number) => {
     mapRef.current?.getMapBoundaries().then((bounds: { northEast: { latitude: number; longitude: number }; southWest: { latitude: number; longitude: number } } | undefined) => {
@@ -54,7 +56,6 @@ export default function PitchMap({
         longitudeDelta: Math.max(0.0001, Math.min(15, lngDelta * factor)),
       };
       regionRef.current = next;
-      setRegion(next);
       mapRef.current?.animateToRegion(next, 250);
     }).catch(() => {
       const current = regionRef.current;
@@ -65,7 +66,6 @@ export default function PitchMap({
         longitudeDelta: Math.max(0.0001, Math.min(15, current.longitudeDelta * factor)),
       };
       regionRef.current = next;
-      setRegion(next);
       mapRef.current?.animateToRegion(next, 250);
     });
   };
@@ -101,7 +101,7 @@ export default function PitchMap({
         showsCompass={false}
         minZoomLevel={minZoomLevel}
         maxZoomLevel={maxZoomLevel}
-        onRegionChangeComplete={(r: Region) => setRegion(r)}
+        onRegionChangeComplete={(r: Region) => { regionRef.current = r; }}
       >
         <Marker coordinate={{ latitude, longitude }} title={title} pinColor="red" />
       </MapView>

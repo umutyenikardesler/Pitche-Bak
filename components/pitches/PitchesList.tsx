@@ -1,30 +1,38 @@
-import { FlatList, RefreshControl, ScrollView, Text, TouchableOpacity, View, Platform, Linking, Modal } from "react-native";
+import { FlatList, RefreshControl, ScrollView, Text, TouchableOpacity, View, Platform, Linking, Modal, TextInput, Alert } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import PitchMap from "@/components/maps/PitchMap";
-import { useRouter } from "expo-router"; // Router'ı getir
-import { useNavigation } from '@react-navigation/native';
+import { useRouter } from "expo-router";
 import { supabase } from '@/services/supabase';
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useGuestAuthAlert } from "@/contexts/GuestAuthModalContext";
+import { FontAwesome } from '@expo/vector-icons';
+import Animated, { useAnimatedStyle, useSharedValue, withRepeat, withTiming, Easing } from 'react-native-reanimated';
+import { useEffect, useState } from 'react';
 
-import Animated, { useSharedValue, useAnimatedStyle, withRepeat, withTiming, interpolateColor, Easing } from 'react-native-reanimated';
-import { FontAwesome } from '@expo/vector-icons'; // Top ikonu için
-
-import { useEffect, useRef, useState } from 'react';
-
-export default function PitchesList({ pitches, selectedPitch, setSelectedPitch, handleCloseDetail, refreshing, onRefresh }: any) {
+export default function PitchesList({ pitches, selectedPitch, setSelectedPitch, handleCloseDetail, refreshing, onRefresh, onPriceUpdated }: any) {
   const { t } = useLanguage();
   const { isGuest } = useAuth();
   const { showGuestAuthAlert } = useGuestAuthAlert();
   const router = useRouter();
 
-  // animasyon değeri
-  const scale = useSharedValue(1);
-  const bgColor = useSharedValue(0); // 0 → yeşil, 1 → açık yeşil
-
   const [mapChooserVisible, setMapChooserVisible] = useState(false);
   const [availableMaps, setAvailableMaps] = useState<{ google: boolean; waze: boolean }>({ google: false, waze: false });
+  const [priceInfoVisible, setPriceInfoVisible] = useState(false);
+  const [priceEditVisible, setPriceEditVisible] = useState(false);
+  const [editPriceValue, setEditPriceValue] = useState('');
+  const [priceUpdating, setPriceUpdating] = useState(false);
+
+  // Yanıp sönme - opacity ile (layout etkilemez)
+  const pulseOpacity = useSharedValue(1);
+  useEffect(() => {
+    pulseOpacity.value = withRepeat(
+      withTiming(0.65, { duration: 1000, easing: Easing.inOut(Easing.ease) }),
+      -1,
+      true
+    );
+  }, []);
+  const pulseStyle = useAnimatedStyle(() => ({ opacity: pulseOpacity.value }));
 
 
   const showMapChooser = async () => {
@@ -78,42 +86,7 @@ export default function PitchesList({ pitches, selectedPitch, setSelectedPitch, 
     setMapChooserVisible(false);
   };
 
-  useEffect(() => {
-    scale.value = withRepeat(
-      withTiming(1.15, {
-        duration: 800,
-        easing: Easing.inOut(Easing.ease),
-      }),
-      -1,
-      true
-    );
-
-    bgColor.value = withRepeat(
-      withTiming(1, { duration: 800, easing: Easing.inOut(Easing.ease) }),
-      -1,
-      true
-    );
-  }, []);
-
-  const animatedStyle = useAnimatedStyle(() => {
-    const backgroundColor = interpolateColor(
-      bgColor.value,
-      [0, 1],
-      ['#16a34a', '#4ade80'] // green-600 → green-400 gibi
-    );
-
-    return {
-      transform: [{ scale: scale.value }],
-      backgroundColor,
-    };
-  });
-
-  // Yazı için animasyon (sadece scale)
-  const textAnimatedStyle = useAnimatedStyle(() => {
-    return {
-      transform: [{ scale: scale.value }],
-    };
-  });
+  // Statik stil - sürekli withRepeat layout titremede sebep oluyordu
 
 
   const handleSelectPitch = async (pitchId: string) => {
@@ -153,9 +126,32 @@ export default function PitchesList({ pitches, selectedPitch, setSelectedPitch, 
   const pitchPhone = selectedPitch?.phone || '';
   const hasPhone = !!pitchPhone;
 
+  const openPriceEdit = () => {
+    setEditPriceValue(String(selectedPitch?.price ?? ''));
+    setPriceEditVisible(true);
+  };
+
+  const handleSavePrice = async () => {
+    const num = parseInt(editPriceValue.replace(/\D/g, ''), 10);
+    if (isNaN(num) || num < 0) {
+      Alert.alert('', t('pitches.priceInvalid'));
+      return;
+    }
+    if (!selectedPitch?.id) return;
+    setPriceUpdating(true);
+    const { error } = await supabase.from('pitches').update({ price: num }).eq('id', selectedPitch.id);
+    setPriceUpdating(false);
+    setPriceEditVisible(false);
+    if (!error && onPriceUpdated) {
+      onPriceUpdated(selectedPitch.id, num);
+    } else if (error) {
+      Alert.alert(t('general.error'), error.message || t('pitches.priceUpdateFailed'));
+    }
+  };
+
   if (selectedPitch) {
     return (
-      <View style={{ flex: 1 }}>
+      <View style={{ flex: 1, overflow: 'visible' }}>
         <>
             <ScrollView
               style={{ flex: 1 }}
@@ -280,11 +276,17 @@ export default function PitchesList({ pitches, selectedPitch, setSelectedPitch, 
                         <Text className="h-7 text-lg font-semibold text-green-700 text-center my-2">
                           {t('pitches.pitchPrice')}
                         </Text>
-                        <View className="flex-row justify-center items-center pt-1">
+                        <View className="flex-row justify-center items-center pt-1 flex-wrap">
                           <Ionicons name="wallet-outline" size={18} color="green" />
                           <Text className="pl-2 text-gray-700 font-semibold">
                             {selectedPitch.price} ₺
                           </Text>
+                          <TouchableOpacity onPress={() => setPriceInfoVisible(true)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} style={{ marginLeft: 4 }}>
+                            <Ionicons name="information-circle-outline" size={20} color="#6b7280" />
+                          </TouchableOpacity>
+                          <TouchableOpacity onPress={openPriceEdit} style={{ marginLeft: 6, paddingHorizontal: 8, paddingVertical: 4, backgroundColor: '#e5e7eb', borderRadius: 6 }}>
+                            <Text style={{ fontSize: 12, fontWeight: '600', color: '#374151' }}>{t('pitches.editPrice')}</Text>
+                          </TouchableOpacity>
                         </View>
                       </View>
                     </View>
@@ -317,47 +319,43 @@ export default function PitchesList({ pitches, selectedPitch, setSelectedPitch, 
               pointerEvents="box-none"
               style={{
                 position: 'absolute',
-                right: 32,
-                top: '47.5%',
+                right: 20,
+                top: '38%',
                 alignItems: 'center',
+                overflow: 'visible',
               }}
             >
-              {/* Maç Oluştur yazısı - Yeşil arka planın üstüne yarım ay şeklinde (şapka gibi) */}
-              <Animated.View
-                style={[
-                  textAnimatedStyle,
-                  {
-                    position: 'absolute',
-                    top: -28,
-                    right: -10,
-                    backgroundColor: '#fff',
-                    borderRadius: 20,
-                    paddingHorizontal: 5,
-                    paddingVertical: 4,
-                    transform: [
-                      { perspective: 1000 },
-                      { rotateX: '20deg' },
-                    ],
-                  },
-                ]}
+              {/* Maç Oluştur - top işaretinin hemen üstünde, yan yana */}
+              <View
+                style={{
+                  backgroundColor: '#fff',
+                  borderRadius: 20,
+                  paddingHorizontal: 10,
+                  paddingVertical: 6,
+                  marginBottom: 2,
+                  shadowColor: '#000',
+                  shadowOffset: { width: 0, height: 1 },
+                  shadowOpacity: 0.2,
+                  shadowRadius: 2,
+                  elevation: 3,
+                }}
               >
                 <Text
+                  numberOfLines={1}
                   style={{
                     color: '#16a34a',
-                    fontSize: 12,
-                    textAlign: 'center',
-                    width: 70,
+                    fontSize: 13,
                     fontWeight: 'bold',
                   }}
                 >
                   Maç Oluştur
                 </Text>
-              </Animated.View>
+              </View>
               
               <Animated.View
                 style={[
-                  animatedStyle,
                   {
+                    backgroundColor: '#16a34a',
                     borderRadius: 9999,
                     shadowColor: '#000',
                     shadowOffset: { width: 0, height: 2 },
@@ -365,11 +363,11 @@ export default function PitchesList({ pitches, selectedPitch, setSelectedPitch, 
                     shadowRadius: 6,
                     elevation: 10,
                   },
+                  pulseStyle,
                 ]}
               >
                 <TouchableOpacity
                   onPress={() => handleSelectPitch(selectedPitch.id)}
-                  className="flex-row"
                   style={{
                     paddingHorizontal: 12,
                     paddingVertical: 12,
@@ -382,6 +380,44 @@ export default function PitchesList({ pitches, selectedPitch, setSelectedPitch, 
                 </TouchableOpacity>
               </Animated.View>
             </View>
+
+            {/* Saha ücreti bilgi modalı */}
+            <Modal visible={priceInfoVisible} transparent animationType="fade">
+              <TouchableOpacity style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 24 }} activeOpacity={1} onPress={() => setPriceInfoVisible(false)}>
+                <TouchableOpacity activeOpacity={1} onPress={(e) => e.stopPropagation()} style={{ backgroundColor: 'white', borderRadius: 12, padding: 20 }}>
+                  <Text style={{ fontSize: 13, color: '#374151', lineHeight: 20, textAlign: 'center' }}>
+                    {t('pitches.priceDisclaimer')}
+                  </Text>
+                  <TouchableOpacity onPress={() => setPriceInfoVisible(false)} style={{ marginTop: 16, paddingVertical: 10, backgroundColor: '#6b7280', borderRadius: 8, alignItems: 'center' }}>
+                    <Text style={{ color: 'white', fontWeight: '600' }}>{t('general.close')}</Text>
+                  </TouchableOpacity>
+                </TouchableOpacity>
+              </TouchableOpacity>
+            </Modal>
+
+            {/* Saha ücreti düzenleme modalı */}
+            <Modal visible={priceEditVisible} transparent animationType="fade">
+              <TouchableOpacity style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 24 }} activeOpacity={1} onPress={() => !priceUpdating && setPriceEditVisible(false)}>
+                <TouchableOpacity activeOpacity={1} onPress={(e) => e.stopPropagation()} style={{ backgroundColor: 'white', borderRadius: 12, padding: 20 }}>
+                  <Text style={{ fontSize: 16, fontWeight: '600', marginBottom: 12, textAlign: 'center' }}>{t('pitches.editPriceTitle')}</Text>
+                  <TextInput
+                    value={editPriceValue}
+                    onChangeText={setEditPriceValue}
+                    keyboardType="numeric"
+                    placeholder="0"
+                    style={{ borderWidth: 1, borderColor: '#d1d5db', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10, fontSize: 16, marginBottom: 16 }}
+                  />
+                  <View style={{ flexDirection: 'row', gap: 12 }}>
+                    <TouchableOpacity onPress={() => setPriceEditVisible(false)} style={{ flex: 1, paddingVertical: 10, backgroundColor: '#e5e7eb', borderRadius: 8, alignItems: 'center' }}>
+                      <Text style={{ color: '#374151', fontWeight: '600' }}>{t('general.cancel')}</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={handleSavePrice} disabled={priceUpdating} style={{ flex: 1, paddingVertical: 10, backgroundColor: '#16a34a', borderRadius: 8, alignItems: 'center' }}>
+                      <Text style={{ color: 'white', fontWeight: '600' }}>{priceUpdating ? '...' : t('general.save')}</Text>
+                    </TouchableOpacity>
+                  </View>
+                </TouchableOpacity>
+              </TouchableOpacity>
+            </Modal>
           </>
       </View>
     );

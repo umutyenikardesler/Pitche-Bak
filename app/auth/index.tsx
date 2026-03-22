@@ -1,13 +1,12 @@
 import { useRef, useState, useEffect } from "react";
-import { View, Text, TextInput, TouchableOpacity, Alert, KeyboardAvoidingView, Platform, Pressable, ActivityIndicator, ScrollView, Keyboard, Dimensions, Image, FlatList } from "react-native";
+import { View, Text, TextInput, TouchableOpacity, Alert, KeyboardAvoidingView, Platform, Pressable, ActivityIndicator, ScrollView, Keyboard, Dimensions } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { supabase } from "@/services/supabase";
 import * as Linking from "expo-linking";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Ionicons } from "@expo/vector-icons";
-import Animated, { useSharedValue, useAnimatedStyle, useAnimatedScrollHandler, useFrameCallback, withTiming, Easing, runOnJS, scrollTo, runOnUI, useAnimatedRef } from "react-native-reanimated";
-import { Gesture, GestureDetector } from "react-native-gesture-handler";
+import Animated, { useSharedValue, useAnimatedStyle, useFrameCallback, runOnJS } from "react-native-reanimated";
 import * as WebBrowser from "expo-web-browser";
 import { makeRedirectUri } from "expo-auth-session";
 import * as QueryParams from "expo-auth-session/build/QueryParams";
@@ -35,49 +34,12 @@ export default function AuthScreen() {
   const [appleAvailable, setAppleAvailable] = useState(false);
   const [keyboardVisible, setKeyboardVisible] = useState(false);
   const [keyboardWasOpened, setKeyboardWasOpened] = useState(false); // Klavye bir kere açıldı mı?
-  const [isFormExpanded, setIsFormExpanded] = useState(false); // Form genişletilmiş mi?
   const [languageMenuOpen, setLanguageMenuOpen] = useState(false);
   const [keyboardHeight, setKeyboardHeight] = useState(0); // iOS için klavye yüksekliği
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [policyModalKey, setPolicyModalKey] = useState<PolicyKey | null>(null);
 
   const passwordInputRef = useRef<TextInput>(null);
-
-  // Form container yükseklik animasyonu - başlangıçta küçük
-  // Üstteki futbol ikonu kaldırıldığı için kapalı hali biraz daha aşağı çekiyoruz.
-  const MIN_FORM_HEIGHT = Platform.OS === 'ios' ? 105 : 120;
-
-  // Tanıtım slider'ı (giriş formu başlamadan önceki alanı doldurur)
-  const INTRO_SLIDES = [
-    { key: 's1', image: require('@/assets/images/screenShot/slide1.png'), titleKey: 'auth.slide1.title', subtitleKey: 'auth.slide1.subtitle' },
-    { key: 's2', image: require('@/assets/images/screenShot/slide2.png'), titleKey: 'auth.slide2.title', subtitleKey: 'auth.slide2.subtitle' },
-    { key: 's3', image: require('@/assets/images/screenShot/slide3.png'), titleKey: 'auth.slide3.title', subtitleKey: 'auth.slide3.subtitle' },
-    { key: 's4', image: require('@/assets/images/screenShot/slide4.png'), titleKey: 'auth.slide4.title', subtitleKey: 'auth.slide4.subtitle' },
-    { key: 's5', image: require('@/assets/images/screenShot/slide5.png'), titleKey: 'auth.slide5.title', subtitleKey: 'auth.slide5.subtitle' },
-    { key: 's6', image: require('@/assets/images/screenShot/slide6.png'), titleKey: 'auth.slide6.title', subtitleKey: 'auth.slide6.subtitle' },
-  ] as const;
-  const introListRef = useAnimatedRef<Animated.FlatList<any>>();
-  const [introIndex, setIntroIndex] = useState(0);
-  const [introWidth, setIntroWidth] = useState(Dimensions.get('window').width);
-  const introWidthSV = useSharedValue(Dimensions.get('window').width);
-  const introScrollX = useSharedValue(0);
-  const activeDotX = useSharedValue(0);
-
-  const DOT_SIZE = 8;
-  const DOT_GAP = 8;
-  const dotsWidth = INTRO_SLIDES.length * DOT_SIZE + (INTRO_SLIDES.length - 1) * DOT_GAP;
-
-  const introScrollHandler = useAnimatedScrollHandler({
-    onScroll: (event) => {
-      introScrollX.value = event.contentOffset.x;
-    },
-  });
-
-  const activeDotStyle = useAnimatedStyle(() => {
-    return {
-      transform: [{ translateX: activeDotX.value }],
-    };
-  });
 
   // Header halı saha içinde gezen top animasyonu
   const FIELD_HEIGHT = 90;
@@ -195,148 +157,6 @@ export default function AuthScreen() {
     };
   });
 
-  // Header ortasında "SAHAYABAK" sabit görünür
-
-  const HEADER_HEIGHT = 90;
-  // Slider yüksekliği: giriş formunun kapalı halinin üstünde kalan alan
-  const introHeight = Math.max(
-    0,
-    SCREEN_HEIGHT - MIN_FORM_HEIGHT - HEADER_HEIGHT - Math.max(insets.top, 0)
-  );
-
-  // Otomatik geçiş yok: kullanıcı kaydırdıkça dots güncellenecek.
-
-  // Form yukarı kayma animasyonu - başlangıçta içerik aşağıda (görünmez)
-  const formContentTranslateY = useSharedValue(200);
-  const formContentOpacity = useSharedValue(0);
-  const formHeight = useSharedValue(MIN_FORM_HEIGHT);
-
-  const getMaxFormHeight = () => {
-    // Form içeriğinin (sözleşmeler, sosyal giriş + bilgilendirme metni) kesilmemesi için
-    // yüksek limit - Kullanıcı Sözleşmesi ve Topluluk İlkeleri eklendi.
-    if (Platform.OS === "ios") return SCREEN_HEIGHT * 0.635;
-    if (Platform.OS === "web") return SCREEN_HEIGHT * 0.60;
-    // Android: düşük çözünürlük/ekranlarda sosyal butonlar sığsın diye biraz daha yüksek.
-    return SCREEN_HEIGHT * 0.78;
-  };
-
-  // Reanimated worklet içinde JS fonksiyon çağrısı (getMaxFormHeight) Android'de fatal crash'e gidebiliyor.
-  // Bu yüzden max yüksekliği JS tarafında bir kez hesaplayıp, worklet'larda sadece number kullanıyoruz.
-  const MAX_FORM_HEIGHT = getMaxFormHeight();
-
-  // Pan gesture handler
-  const startHeight = useSharedValue(MIN_FORM_HEIGHT);
-  
-  const panGesture = Gesture.Pan()
-    // Küçük hareketlerde tetiklenmesin; yatay kaydırmaları da daha az yakalasın
-    .activeOffsetY([-12, 12])
-    .onStart(() => {
-      startHeight.value = formHeight.value;
-    })
-    .onUpdate((event) => {
-      // Yukarı çekme (negatif translationY) formu büyütür
-      // Aşağı çekme (pozitif translationY) formu küçültür
-      const newHeight = startHeight.value - event.translationY;
-      // Minimum ve maksimum yükseklik limitleri
-      const maxHeight = MAX_FORM_HEIGHT;
-      if (newHeight >= MIN_FORM_HEIGHT && newHeight <= maxHeight) {
-        formHeight.value = newHeight;
-        // İçerik pozisyonunu da güncelle
-        const progress = (newHeight - MIN_FORM_HEIGHT) / (maxHeight - MIN_FORM_HEIGHT);
-        formContentTranslateY.value = 200 * (1 - progress);
-        formContentOpacity.value = progress;
-      }
-    })
-    .onEnd((event) => {
-      // Eğer yukarı çekilmişse (threshold: -50) formu genişlet
-      if (event.translationY < -50) {
-        const maxHeight = MAX_FORM_HEIGHT;
-        formHeight.value = withTiming(maxHeight, {
-          duration: 300,
-          easing: Easing.out(Easing.cubic),
-        });
-        formContentTranslateY.value = withTiming(0, {
-          duration: 300,
-          easing: Easing.out(Easing.cubic),
-        });
-        formContentOpacity.value = withTiming(1, {
-          duration: 300,
-          easing: Easing.out(Easing.cubic),
-        });
-        runOnJS(setIsFormExpanded)(true);
-      } else {
-        // Aşağı indir
-        formHeight.value = withTiming(MIN_FORM_HEIGHT, {
-          duration: 300,
-          easing: Easing.out(Easing.cubic),
-        });
-        formContentTranslateY.value = withTiming(200, {
-          duration: 300,
-          easing: Easing.out(Easing.cubic),
-        });
-        formContentOpacity.value = withTiming(0, {
-          duration: 300,
-          easing: Easing.out(Easing.cubic),
-        });
-        runOnJS(setIsFormExpanded)(false);
-      }
-    });
-
-  // Form içeriği animasyon style'ı
-  const formContentAnimatedStyle = useAnimatedStyle(() => ({
-    transform: [{ translateY: formContentTranslateY.value }],
-    opacity: formContentOpacity.value,
-  }));
-  
-  // Form container yükseklik animasyon style'ı
-  const formContainerAnimatedStyle = useAnimatedStyle(() => ({
-    height: formHeight.value,
-  }));
-
-  // Formu genişletme fonksiyonu
-  const expandForm = () => {
-    if (!isFormExpanded) {
-      const maxHeight = MAX_FORM_HEIGHT;
-      formHeight.value = withTiming(maxHeight, {
-        duration: 300,
-        easing: Easing.out(Easing.cubic),
-      });
-      formContentTranslateY.value = withTiming(0, {
-        duration: 300,
-        easing: Easing.out(Easing.cubic),
-      });
-      formContentOpacity.value = withTiming(1, {
-        duration: 300,
-        easing: Easing.out(Easing.cubic),
-      });
-      setIsFormExpanded(true);
-    }
-  };
-
-  // Formu genişletme/kapama fonksiyonu (logo ve başlık için)
-  const toggleForm = () => {
-    setLanguageMenuOpen(false);
-    if (isFormExpanded) {
-      // Formu kapat
-      formHeight.value = withTiming(MIN_FORM_HEIGHT, {
-        duration: 300,
-        easing: Easing.out(Easing.cubic),
-      });
-      formContentTranslateY.value = withTiming(200, {
-        duration: 300,
-        easing: Easing.out(Easing.cubic),
-      });
-      formContentOpacity.value = withTiming(0, {
-        duration: 300,
-        easing: Easing.out(Easing.cubic),
-      });
-      setIsFormExpanded(false);
-    } else {
-      // Formu aç
-      expandForm();
-    }
-  };
-
   // Klavye durumunu dinle
   useEffect(() => {
     const keyboardDidShowListener = Keyboard.addListener("keyboardDidShow", (e) => {
@@ -378,10 +198,21 @@ export default function AuthScreen() {
       "User not found": "auth.errors.userNotFound",
       "Unsupported provider: missing OAuth secret": "auth.errors.appleMissingOAuthSecret",
       "missing OAuth secret": "auth.errors.missingOAuthSecret",
+      "redirect url is not allowed": "auth.errors.redirectUrlNotAllowed",
+      "Redirect URL is not allowed": "auth.errors.redirectUrlNotAllowed",
+      "Invalid Redirect URL": "auth.errors.redirectUrlNotAllowed",
+      "Email rate limit exceeded": "auth.errors.emailRateLimitExceeded",
+      "For security purposes, you can only request this once every 60 seconds": "auth.errors.emailRateLimitExceeded",
     };
 
     const key = errorKeyMap[errorMessage];
     if (key) return t(key);
+    if (errorMessage.toLowerCase().includes("redirect") && errorMessage.toLowerCase().includes("url")) {
+      return t("auth.errors.redirectUrlNotAllowed");
+    }
+    if (errorMessage.toLowerCase().includes("rate limit") || errorMessage.toLowerCase().includes("60 seconds")) {
+      return t("auth.errors.emailRateLimitExceeded");
+    }
 
     // Bilinmeyen hata: TR'de başlık ekle, EN'de mesajı olduğu gibi göster
     if (currentLanguage === "tr") return `${t("general.error")}: ${errorMessage}`;
@@ -400,6 +231,8 @@ export default function AuthScreen() {
   const handlePostLogin = async (userId: string, userEmail?: string | null) => {
     // Kullanıcı ID'sini AsyncStorage içine kaydet
     await AsyncStorage.setItem("userId", userId);
+    // Giriş sayfasında zaten sözleşme onayı alındı; Mesajlar sayfasında tekrar modal gösterme
+    await AsyncStorage.setItem(`ugc_messaging_agreed_${userId}`, "1");
 
     // Kullanıcının bilgilerini çek
     const { data: userInfo, error: userError } = await supabase
@@ -652,7 +485,14 @@ export default function AuthScreen() {
       if (isLogin) {
         ({ data, error } = await supabase.auth.signInWithPassword({ email, password }));
       } else {
-        const redirectUrl = Linking.createURL("/email-confirmed");
+        // E-posta doğrulama linki tarayıcıda açılır; web callback hash'i alıp uygulamaya yönlendirir.
+        const webBaseUrl = (Constants.expoConfig as any)?.extra?.webBaseUrl;
+        const redirectUrl =
+          Platform.OS === "web"
+            ? Linking.createURL("auth/callback")
+            : webBaseUrl
+              ? `${webBaseUrl.replace(/\/$/, "")}/auth/callback.html`
+              : Linking.createURL("/email-confirmed");
         ({ data, error } = await supabase.auth.signUp({
           email,
           password,
@@ -702,6 +542,40 @@ export default function AuthScreen() {
     } catch (error: any) {
       setIsLoading(false);
       Alert.alert(t("general.error"), translateError(error?.message || t("auth.unknownError")));
+    }
+  };
+
+  const handleForgotPassword = async () => {
+    const trimmedEmail = email.trim();
+    if (!trimmedEmail) {
+      Alert.alert(t("general.error"), t("auth.forgotPasswordEnterEmail"));
+      return;
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(trimmedEmail)) {
+      Alert.alert(t("general.error"), t("auth.invalidEmail"));
+      return;
+    }
+    setIsLoading(true);
+    try {
+      // Native'de hash fragment mobilde kaybolduğu için önce web sayfamıza yönlendiriyoruz.
+      // Web sayfası hash'i okuyup myapp://auth/callback?access_token=... olarak uygulamaya yönlendirir.
+      const webBaseUrl = (Constants.expoConfig as any)?.extra?.webBaseUrl;
+      const redirectTo =
+        Platform.OS === "web"
+          ? Linking.createURL("auth/callback")
+          : webBaseUrl
+            ? `${webBaseUrl.replace(/\/$/, "")}/auth/callback.html`
+            : getOAuthRedirectUri();
+      const { error } = await supabase.auth.resetPasswordForEmail(trimmedEmail, { redirectTo });
+      if (error) throw error;
+      Alert.alert(t("general.success"), t("auth.forgotPasswordSuccess"));
+    } catch (error: any) {
+      const errMsg = error?.message || "";
+      const msg = errMsg ? translateError(errMsg) : t("auth.forgotPasswordError");
+      Alert.alert(t("general.error"), msg);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -973,259 +847,20 @@ export default function AuthScreen() {
             </View>
           </View>
           
-          {/* Uygulamayı tanıtan slider (5 slide) */}
-          <View
-            className="flex-1 pt-2"
-            style={{ height: introHeight, paddingHorizontal: 5 }}
-          >
-            <View
-              style={{ flex: 1 }}
-              onLayout={(e) => {
-                // paddingHorizontal: 5 olduğu için içerik genişliği = layout.width
-                const w = e.nativeEvent.layout.width;
-                if (w && Math.abs(w - introWidth) > 1) {
-                  setIntroWidth(w);
-                  introWidthSV.value = w;
-                }
+          {/* Beyaz alan - kenarlıksız, tüm alanı kaplayan giriş formu */}
+          <View style={{ flex: 1, backgroundColor: '#ffffff' }}>
+            <ScrollView
+              contentContainerStyle={{ 
+                flexGrow: 1, 
+                minHeight: Math.max(400, SCREEN_HEIGHT - 90 - 80),
+                paddingBottom: Platform.OS === 'web' ? 48 : (Platform.OS === 'ios' ? 40 : Math.max(insets.bottom, 40)) 
               }}
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={true}
             >
-            <View className="bg-white rounded-2xl overflow-hidden shadow-sm" style={{ flex: 1, position: 'relative' }}>
-              <Animated.FlatList
-                ref={introListRef}
-                data={INTRO_SLIDES as any}
-                horizontal
-                pagingEnabled
-                showsHorizontalScrollIndicator={false}
-                keyExtractor={(it: any) => it.key}
-                onScroll={introScrollHandler}
-                scrollEventThrottle={16}
-                style={{ flex: 1 }}
-                onMomentumScrollEnd={(e) => {
-                  const x = e.nativeEvent.contentOffset.x;
-                  const idx = introWidth > 0 ? Math.round(x / introWidth) : 0;
-                  const clamped = Math.max(0, Math.min(idx, INTRO_SLIDES.length - 1));
-                  setIntroIndex(clamped);
-                  activeDotX.value = withTiming(clamped * (DOT_SIZE + DOT_GAP), { duration: 180 });
-                }}
-                renderItem={({ item, index }: any) => (
-                  <View style={{ width: introWidth, flex: 1 }}>
-                    <Image
-                      source={item.image}
-                      // Tüm slidelarda biraz küçült: kapalı giriş formunun altına taşmasın
-                      style={{ width: '80%', height: '80%', alignSelf: 'center', marginTop: 6 }}
-                      resizeMode="contain"
-                    />
-
-                    {/* Sol boşlukta: önceki slide'a geç (2. slide'dan itibaren) */}
-                    {index > 0 && (
-                      <TouchableOpacity
-                        activeOpacity={0.7}
-                        onPress={() => {
-                          const offset = (index - 1) * introWidth;
-                          runOnUI((x: number) => {
-                            'worklet';
-                            scrollTo(introListRef, x, 0, true);
-                          })(offset);
-                        }}
-                        style={{
-                          position: 'absolute',
-                          left: 8,
-                          top: 12,
-                          width: 32,
-                          height: 32,
-                          borderRadius: 16,
-                          backgroundColor: 'rgba(22, 163, 74, 0.25)',
-                          justifyContent: 'center',
-                          alignItems: 'center',
-                          zIndex: 5,
-                        }}
-                      >
-                        <Ionicons name="chevron-back" size={20} color="#16a34a" />
-                      </TouchableOpacity>
-                    )}
-
-                    {/* Sağ boşlukta: sonraki slide'a geç (son slide hariç) */}
-                    {index < INTRO_SLIDES.length - 1 && (
-                      <TouchableOpacity
-                        activeOpacity={0.7}
-                        onPress={() => {
-                          const offset = (index + 1) * introWidth;
-                          runOnUI((x: number) => {
-                            'worklet';
-                            scrollTo(introListRef, x, 0, true);
-                          })(offset);
-                        }}
-                        style={{
-                          position: 'absolute',
-                          right: 8,
-                          top: 12,
-                          width: 32,
-                          height: 32,
-                          borderRadius: 16,
-                          backgroundColor: 'rgba(22, 163, 74, 0.25)',
-                          justifyContent: 'center',
-                          alignItems: 'center',
-                          zIndex: 5,
-                        }}
-                      >
-                        <Ionicons name="chevron-forward" size={20} color="#16a34a" />
-                      </TouchableOpacity>
-                    )}
-
-                    <View
-                      style={{
-                        position: 'absolute',
-                        left: 0,
-                        right: 0,
-                        bottom: 12,
-                        paddingHorizontal: 14,
-                        paddingVertical: 12,
-                        zIndex: 2,
-                      }}
-                    >
-                      <Text style={{ fontSize: 18, fontWeight: '800', color: '#065f46' }} numberOfLines={1}>
-                        {t(item.titleKey)}
-                      </Text>
-                      <Text style={{ color: '#374151', marginTop: 2 }} numberOfLines={2}>
-                        {t(item.subtitleKey)}
-                      </Text>
-                    </View>
-                  </View>
-                )}
-              />
-
-            </View>
-            </View>
-          </View>
-        </ScrollView>
-
-        {/* Pagination dots (formun hemen üstünde sabit) */}
-        <View
-          pointerEvents="none"
-          style={{
-            position: 'absolute',
-            left: 0,
-            right: 0,
-            bottom: MIN_FORM_HEIGHT + 2,
-            alignItems: 'center',
-            zIndex: 15,
-          }}
-        >
-          <View
-            style={{
-              backgroundColor: 'rgba(255,255,255,0.95)',
-              borderRadius: 999,
-              paddingHorizontal: 10,
-              paddingVertical: 6,
-              borderWidth: 2,
-              borderColor: '#16a34a',
-              ...(Platform.OS === 'android'
-                ? { elevation: 6 }
-                : {
-                    shadowColor: '#000',
-                    shadowOpacity: 0.18,
-                    shadowRadius: 8,
-                    shadowOffset: { width: 0, height: 3 },
-                  }),
-            }}
-          >
-            <View style={{ width: dotsWidth, height: DOT_SIZE, position: 'relative' }}>
-              <View style={{ flexDirection: 'row' }}>
-                {INTRO_SLIDES.map((s, idx) => (
-                  <View
-                    key={s.key}
-                    style={{
-                      width: DOT_SIZE,
-                      height: DOT_SIZE,
-                      borderRadius: DOT_SIZE / 2,
-                      backgroundColor: 'rgba(0,0,0,0.22)',
-                      marginRight: idx === INTRO_SLIDES.length - 1 ? 0 : DOT_GAP,
-                    }}
-                  />
-                ))}
-              </View>
-              <Animated.View
-                style={[
-                  {
-                    position: 'absolute',
-                    left: 0,
-                    top: 0,
-                    width: DOT_SIZE,
-                    height: DOT_SIZE,
-                    borderRadius: DOT_SIZE / 2,
-                    backgroundColor: '#16a34a',
-                  },
-                  activeDotStyle,
-                ]}
-              />
-            </View>
-          </View>
-        </View>
-
-        {/* Giriş Formu - ScrollView dışında, altta sabit - Animasyonlu */}
-        <Animated.View 
-            className="bg-white rounded-t-3xl shadow-2xl"
-            style={[
-              formContainerAnimatedStyle,
-              { 
-                position: 'absolute',
-                // Android gesture navigation: alttan yukarı "home" swipe ile çakışmayı azaltmak için
-                // formu ekranın en altına sıfır yapıştırmıyoruz (klavye açıkken gap yok).
-                bottom:
-                  Platform.OS === 'ios'
-                    ? keyboardHeight
-                    : Platform.OS === 'android'
-                      ? (keyboardVisible ? 0 : Math.max(insets.bottom, 32))
-                      : 0,
-                left: 0,
-                right: 0,
-                zIndex: 20,
-                // Web'de (özellikle Animated.View + NativeWind) className'deki bg-white bazen uygulanmıyor.
-                // Bu yüzden arka planı inline garanti ediyoruz.
-                backgroundColor: '#ffffff',
-                // Ayarlar modalındaki gibi çerçeve
-                borderTopLeftRadius: 24,
-                borderTopRightRadius: 24,
-                borderTopWidth: 4,
-                borderTopColor: '#16a34a',
-                borderLeftWidth: 2,
-                borderRightWidth: 2,
-                borderLeftColor: '#16a34a',
-                borderRightColor: '#16a34a',
-                // Üst çizgiye gölge etkisi (container shadow)
-                shadowColor: '#000',
-                shadowOffset: { width: 0, height: -6 },
-                shadowOpacity: 0.35,
-                shadowRadius: 12,
-                elevation: 12,
-                // Web'de burada 30px boşluk kalıyordu; web için paddingBottom'u kaldır.
-                paddingBottom:
-                  Platform.OS === 'web'
-                    ? 0
-                    : Platform.OS === 'ios'
-                      ? 30
-                      : (keyboardVisible ? 0 : Math.max(insets.bottom, 24)),
-              }
-            ]}
-          >
-          {/* İçerik (köşeleri düzgün kırpmak için içeride overflow hidden) */}
-          <View style={{ flex: 1, overflow: 'hidden', borderTopLeftRadius: 24, borderTopRightRadius: 24 }}>
-          <View
-            style={{
-              paddingHorizontal: 24,
-              paddingTop: isFormExpanded ? 16 : 12,
-              paddingBottom: Platform.OS === 'ios' && keyboardVisible && isFormExpanded ? 10 : 0,
-            }}
-          >
-              {/* Drag alanı: sadece üst başlık/handle bölgesi.
-                  Android'de alttan yukarı sistem gesture'ı (home) ile çakışmayı engeller. */}
-              <GestureDetector gesture={panGesture}>
-                <View>
-                  {/* Drag indicator */}
-                  <View className="w-12 h-1 bg-gray-300 rounded-full self-center mb-2" />
-                  
-                  {/* Logo ve Başlık - Her zaman görünür */}
-                  <View className="items-center" style={{ marginBottom: isFormExpanded ? 12 : 0, width: '100%', position: 'relative' }}>
+              <View style={{ paddingHorizontal: 24, paddingTop: 24, paddingBottom: 32, flex: 1 }}>
+                  {/* Logo ve Başlık */}
+                  <View className="items-center" style={{ marginBottom: 28, width: '100%', position: 'relative' }}>
                       {/* Dil seçimi (tek buton + açılır menü) */}
                       <View style={{ position: 'absolute', right: 0, top: 0, alignItems: 'flex-end', zIndex: 50 }}>
                         <TouchableOpacity
@@ -1290,8 +925,8 @@ export default function AuthScreen() {
                         )}
                       </View>
 
-                    <Pressable onPress={toggleForm} style={{ width: '100%', alignItems: 'center' }}>
-                      <Text className="text-2xl font-bold text-gray-800" style={{ marginTop: isFormExpanded ? 0 : 5 }}>
+                    <View style={{ width: '100%', alignItems: 'center' }}>
+                      <Text className="text-2xl font-bold text-gray-800" style={{ marginTop: 5 }}>
                         {isLogin ? t('auth.welcomeTitle') : t('auth.joinTitle')}
                       </Text>
                       <Text className="text-gray-700 mt-1">
@@ -1304,15 +939,13 @@ export default function AuthScreen() {
                           t('auth.subtitleSignup')
                         )}
                       </Text>
-                    </Pressable>
+                    </View>
                   </View>
-                </View>
-              </GestureDetector>
 
-              {/* Form içeriği - Animasyonla yukarı kayacak */}
-              <Animated.View style={formContentAnimatedStyle}>
+              {/* Form içeriği */}
+              <View>
               {/* E-Posta Girişi */}
-              <View className="mb-3">
+              <View style={{ marginBottom: 16 }}>
                 <View className="flex-row items-center bg-gray-100 rounded-xl px-4 py-3">
                   <Ionicons name="mail-outline" size={20} color="#6B7280" />
                   <TextInput
@@ -1329,12 +962,7 @@ export default function AuthScreen() {
                     returnKeyType="next"
                     blurOnSubmit={false}
                     onSubmitEditing={() => passwordInputRef.current?.focus()}
-                    onFocus={() => {
-                      // iOS'ta input'a tıklandığında formu genişlet
-                      if (Platform.OS === 'ios' && !isFormExpanded) {
-                        expandForm();
-                      }
-                    }}
+                    onFocus={() => {}}
                     onBlur={() => {
                       // Android'de input focus kaybettiğinde klavye durumunu kontrol et
                       if (Platform.OS === 'android') {
@@ -1349,7 +977,7 @@ export default function AuthScreen() {
               </View>
 
               {/* Şifre Girişi */}
-              <View className="mb-4">
+              <View style={{ marginBottom: 8 }}>
                 <View className="flex-row items-center bg-gray-100 rounded-xl px-4 py-3">
                   <Ionicons name="lock-closed-outline" size={20} color="#6B7280" />
                   <TextInput
@@ -1366,12 +994,7 @@ export default function AuthScreen() {
                     returnKeyType="done"
                     blurOnSubmit={false}
                     onSubmitEditing={handleAuth}
-                    onFocus={() => {
-                      // iOS'ta input'a tıklandığında formu genişlet
-                      if (Platform.OS === 'ios' && !isFormExpanded) {
-                        expandForm();
-                      }
-                    }}
+                    onFocus={() => {}}
                     onBlur={() => {
                       // Android'de input focus kaybettiğinde klavye durumunu kontrol et
                       if (Platform.OS === 'android') {
@@ -1392,10 +1015,23 @@ export default function AuthScreen() {
                 </View>
               </View>
 
+              {/* Şifremi Unuttum - sadece giriş modunda */}
+              {isLogin && (
+                <TouchableOpacity
+                  onPress={handleForgotPassword}
+                  disabled={isLoading}
+                  style={{ alignSelf: 'flex-end', marginBottom: 16, marginTop: -4 }}
+                >
+                  <Text className="text-green-700 font-semibold text-sm">
+                    {t('auth.forgotPassword')}
+                  </Text>
+                </TouchableOpacity>
+              )}
+
               {/* Kullanıcı Sözleşmesi ve Topluluk İlkeleri checkbox */}
               <Pressable
                 onPress={() => setAgreedToTerms((prev) => !prev)}
-                style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: 12, marginTop: 4 }}
+                style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: 20, marginTop: 12 }}
               >
                 <View style={{ width: 22, height: 22, borderWidth: 2, borderColor: agreedToTerms ? '#16a34a' : '#9ca3af', borderRadius: 4, alignItems: 'center', justifyContent: 'center', marginRight: 10, marginTop: 2 }}>
                   {agreedToTerms && <Ionicons name="checkmark" size={16} color="#16a34a" />}
@@ -1418,7 +1054,7 @@ export default function AuthScreen() {
                 className="bg-green-700 py-4 rounded-xl flex-row items-center justify-center"
                 onPress={handleAuth}
                 disabled={isLoading}
-                style={({ pressed }) => pressed && { opacity: 0.8 }}
+                style={({ pressed }) => ({ marginBottom: 8, ...(pressed && { opacity: 0.8 }) })}
               >
                 {isLoading ? (
                   <ActivityIndicator color="white" />
@@ -1436,16 +1072,13 @@ export default function AuthScreen() {
               <TouchableOpacity 
                 className="mb-0" 
                 style={{ 
-                  marginTop: Platform.OS === 'ios' && keyboardVisible ? 15 : (Platform.OS === 'android' && keyboardVisible ? 24 : 12),
-                  // Web'de form açılınca (isFormExpanded) altta gereksiz boşluk oluşuyor; sadece web'de azalt.
+                  marginTop: Platform.OS === 'ios' && keyboardVisible ? 15 : (Platform.OS === 'android' && keyboardVisible ? 24 : 20),
                   paddingBottom:
                     Platform.OS === 'ios' && keyboardVisible
                       ? 8
                       : Platform.OS === 'android' && keyboardVisible
                         ? 0
-                        : Platform.OS === 'web' && isFormExpanded
-                          ? 0
-                          : 12
+                        : 12
                 }}
                 onPress={() => setIsLogin(!isLogin)}
               >
@@ -1466,7 +1099,7 @@ export default function AuthScreen() {
 
               {/* Sosyal Giriş Butonları (Kayıt/Giriş metninin altında) */}
               {isLogin && (
-                <View className="mt-4">
+                <View style={{ marginTop: 28 }}>
                   <View
                     className="flex-row items-center"
                     style={{ marginBottom: Platform.OS === "android" ? 16 : 32 }}
@@ -1526,10 +1159,11 @@ export default function AuthScreen() {
                   </Text>
                 </View>
               )}
-              </Animated.View>
-          </View>
-          </View>
-          </Animated.View>
+              </View>
+            </View>
+          </ScrollView>
+        </View>
+        </ScrollView>
       </KeyboardAvoidingView>
 
       <PolicyModal

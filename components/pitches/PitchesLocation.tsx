@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { Text, TextInput, Pressable, View } from "react-native";
 import { useLanguage } from "@/contexts/LanguageContext";
 
@@ -7,10 +8,10 @@ interface PitchesLocationProps {
   getLocation: (showAlertOnError?: boolean) => void | Promise<void>;
 }
 
-export default function PitchesLocation({ locationText, setLocationText, getLocation }: PitchesLocationProps) {
+function PitchesLocationInner({ locationText, setLocationText, getLocation }: PitchesLocationProps) {
   const { t } = useLanguage();
   return (
-    <View className="p-4 bg-white">
+    <View className="p-4 bg-white" collapsable={false}>
       <Text className="text-lg font-bold mb-2 text-green-700 text-center">{t('pitches.listPitchesByLocation')}</Text>
       <View className="flex-row items-center space-x-2">
         <TextInput
@@ -26,3 +27,5 @@ export default function PitchesLocation({ locationText, setLocationText, getLoca
     </View>
   );
 }
+
+export default memo(PitchesLocationInner);

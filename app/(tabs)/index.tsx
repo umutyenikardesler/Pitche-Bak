@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback, useMemo } from 'react';
 import { View, Dimensions, Modal, TouchableOpacity, DeviceEventEmitter, Platform, Animated } from "react-native";
 import { GestureDetector, Gesture } from "react-native-gesture-handler";
 import { runOnJS } from "react-native-reanimated";
-import { useRouter, useFocusEffect, useLocalSearchParams } from "expo-router";
+import { useRouter, useFocusEffect, useLocalSearchParams, useNavigation } from "expo-router";
 import { supabase } from '@/services/supabase';
 import haversine from 'haversine';
 import * as Location from 'expo-location';
@@ -14,6 +14,7 @@ import { useGuestAuthAlert } from '@/contexts/GuestAuthModalContext';
 import IndexCondition from '@/components/index/IndexCondition';
 import MyMatches from '@/components/index/MyMatches';
 import OtherMatches from '@/components/index/OtherMatches';
+import GuestLanding from '@/components/guest/GuestLanding';
 import MatchDetails from '@/components/index/MatchDetails';
 import ProfilePreview from '@/components/index/ProfilePreview';
 import { Match } from '@/components/index/types';
@@ -21,6 +22,7 @@ import { Match } from '@/components/index/types';
 export default function Index() {
   const { isGuest } = useAuth();
   const { showGuestAuthAlert } = useGuestAuthAlert();
+  const [guestContinued, setGuestContinued] = useState(false);
   const [futureMatches, setFutureMatches] = useState<Match[]>([]);
   const [otherMatches, setOtherMatches] = useState<Match[]>([]);
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
@@ -28,6 +30,7 @@ export default function Index() {
   const [totalMatchCount, setTotalMatchCount] = useState(0);
   const [myMatchesHeight, setMyMatchesHeight] = useState(0); // Yüksekliği state olarak tut
   const router = useRouter();
+  const navigation = useNavigation();
   const screenWidth = Dimensions.get('window').width;
   // Detay ekranı için yatay animasyon değeri (0: ekranda, +width: sağa çıkmış)
   const [detailTranslateX] = useState(new Animated.Value(0));
@@ -405,16 +408,19 @@ export default function Index() {
       });
 
       // Diğer maçlar için de profil resimlerini güncelle + mesafeyi hesapla
+      // Misafir kullanıcılar Storage'a erişemez (401 -> JSON parse hatası), DB'deki resmi kullan
       const updatedOtherMatches = await Promise.all(
         filteredOtherMatches?.map(async (item) => {
           let updatedProfileImage: string | null = null;
           const originalProfileImage = Array.isArray(item.users) ? item.users[0]?.profile_image : (item.users as any)?.profile_image;
           
-          // Güvenli şekilde profil resmini al (storage'dan en güncel)
-          if (Array.isArray(item.users) && item.users[0]?.id) {
-            updatedProfileImage = await fetchLatestProfileImage(item.users[0].id);
-          } else if (item.users && typeof item.users === 'object' && 'id' in item.users) {
-            updatedProfileImage = await fetchLatestProfileImage((item.users as any).id);
+          // Sadece giriş yapmış kullanıcılar için Storage'dan güncel resim al (misafir 401 alır)
+          if (!isGuestUser) {
+            if (Array.isArray(item.users) && item.users[0]?.id) {
+              updatedProfileImage = await fetchLatestProfileImage(item.users[0].id);
+            } else if (item.users && typeof item.users === 'object' && 'id' in item.users) {
+              updatedProfileImage = await fetchLatestProfileImage((item.users as any).id);
+            }
           }
           // fetchLatestProfileImage null dönerse (misafir vb.) DB'deki profile_image kullan
           const finalProfileImage = updatedProfileImage ?? originalProfileImage ?? null;
@@ -496,6 +502,16 @@ export default function Index() {
       }
     });
 
+  // Misafir index'te soldan sağa çekince landing'e geri dön
+  const guestBackGesture = Gesture.Pan()
+    .activeOffsetX(20)
+    .failOffsetY([-10, 10])
+    .onEnd((event) => {
+      if (event.translationX > 80 && Math.abs(event.translationY) < 80) {
+        runOnJS(setGuestContinued)(false);
+      }
+    });
+
   useEffect(() => {
     // Component mount olduğunda yükseklikleri ayarla
     const timer = setTimeout(() => {
@@ -554,6 +570,21 @@ export default function Index() {
     return () => clearInterval(interval);
   }, [fetchMatches]);
 
+  // Misafir landing'deyken tab header'ı gizle (Ana Sayfa, logo, bildirim) - halı saha yukarı dayansın
+  useEffect(() => {
+    if (isGuest && !guestContinued) {
+      navigation.setOptions({ headerShown: false });
+    } else {
+      navigation.setOptions({ headerShown: true });
+    }
+    return () => { navigation.setOptions({ headerShown: true }); };
+  }, [isGuest, guestContinued, navigation]);
+
+  // Misafir: önce landing (header + slider + Misafir olarak devam et), tıklayınca mevcut index içeriği
+  if (isGuest && !guestContinued) {
+    return <GuestLanding onContinue={() => setGuestContinued(true)} />;
+  }
+
   return (
     <View className="flex-1">
       {profileModalVisible && (
@@ -583,28 +614,42 @@ export default function Index() {
             />
           </Animated.View>
         </GestureDetector>
-      ) : (
-        <View className="flex-1">
-          {!isGuest && <IndexCondition totalMatchCount={totalMatchCount} />}
-
-          {/* MyMatches - sadece giriş yapmış kullanıcı için */}
-          {!isGuest && (
-            <View 
-              style={{
-                height: myMatchesHeight === 0 ? undefined : myMatchesHeight,
-                overflow: Platform.OS === 'web' && futureMatches.length > 0 ? 'hidden' : undefined,
-              }}>
-              <MyMatches
-                matches={futureMatches}
+      ) : isGuest ? (
+        <GestureDetector gesture={guestBackGesture}>
+          <View className="flex-1">
+            {/* OtherMatches - misafir için */}
+            <View style={{ flex: 1 }}>
+              <OtherMatches
+                matches={otherMatches}
                 refreshing={refreshing}
                 onRefresh={fetchMatches}
                 onSelectMatch={handleSelectMatch}
                 onCreateMatch={handleCreateMatch}
+                isGuest={isGuest}
               />
             </View>
-          )}
+          </View>
+        </GestureDetector>
+      ) : (
+        <View className="flex-1">
+          <IndexCondition totalMatchCount={totalMatchCount} />
 
-          {/* OtherMatches - misafir ve giriş yapmış herkes için */}
+          {/* MyMatches - sadece giriş yapmış kullanıcı için */}
+          <View 
+            style={{
+              height: myMatchesHeight === 0 ? undefined : myMatchesHeight,
+              overflow: Platform.OS === 'web' && futureMatches.length > 0 ? 'hidden' : undefined,
+            }}>
+            <MyMatches
+              matches={futureMatches}
+              refreshing={refreshing}
+              onRefresh={fetchMatches}
+              onSelectMatch={handleSelectMatch}
+              onCreateMatch={handleCreateMatch}
+            />
+          </View>
+
+          {/* OtherMatches - giriş yapmış kullanıcı için */}
           <View style={{ flex: 1 }}>
             <OtherMatches
               matches={otherMatches}
