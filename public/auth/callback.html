@@ -3,42 +3,145 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Yönlendiriliyor — SahayaBak</title>
+  <title>E-posta doğrulandı — SahayaBak</title>
   <style>
     body { font-family: system-ui, sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; background: #f3f4f6; color: #374151; }
     .box { text-align: center; padding: 2rem; }
+    .success { color: #16a34a; font-weight: 600; font-size: 1.1rem; margin-bottom: 0.5rem; }
     .spinner { width: 40px; height: 40px; border: 3px solid #e5e7eb; border-top-color: #16a34a; border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 1rem; }
     @keyframes spin { to { transform: rotate(360deg); } }
   </style>
 </head>
 <body>
   <div class="box">
+    <p class="success" id="msg">Bağlantı işleniyor...</p>
     <div class="spinner"></div>
     <p>Uygulamaya yönlendiriliyorsunuz...</p>
+    <button id="openApp" style="display:none; margin-top:14px; background:#16a34a; color:#fff; border:none; border-radius:12px; padding:12px 16px; font-weight:700; cursor:pointer;">
+      Uygulamayı Aç
+    </button>
+    <p id="hint" style="display:none; margin-top:10px; font-size:0.9rem; color:#6b7280;">
+      Otomatik açılmazsa bu butona dokunun. iOS’ta bazen tarayıcı güvenlik nedeniyle otomatik yönlendirmeyi engelleyebilir.
+    </p>
   </div>
   <script>
-    (function() {
-      function tryRedirect() {
-        var hash = window.location.hash.slice(1);
-        if (hash && hash.indexOf('access_token=') !== -1 && hash.indexOf('refresh_token=') !== -1) {
-          var encoded = encodeURIComponent(hash);
-          window.location.href = 'myapp://auth/callback?d=' + encoded;
-          return;
-        }
+    (function () {
+      function showError() {
         document.querySelector('.box').innerHTML =
           '<p style="color:#dc2626; margin-bottom:1rem;">Bağlantı bilgisi alınamadı.</p>' +
           '<p style="font-size:0.9rem; color:#6b7280; margin-bottom:1rem;">E-posta uygulamasının tarayıcısı linki düzgün işleyemeyebilir. Lütfen:</p>' +
-          '<ul style="text-align:left; max-width:280px; margin:0 auto 1rem; color:#4b5563; font-size:0.9rem;">' +
+          '<ul style="text-align:left; max-width:300px; margin:0 auto 1rem; color:#4b5563; font-size:0.9rem;">' +
           '<li>Linke tekrar tıklayın, veya</li>' +
-          '<li>Linki kopyalayıp Chrome / Safari\'de açın</li>' +
+          '<li>Linki kopyalayıp Safari / Chrome’da açın</li>' +
           '</ul>' +
           '<p style="font-size:0.85rem; color:#9ca3af;">Çoğu durumda linke ikinci kez tıklamak sorunu çözer.</p>';
       }
-      if (window.location.hash) {
-        tryRedirect();
-      } else {
-        setTimeout(tryRedirect, 150);
+
+      function getPayload() {
+        var query = window.location.search ? new URLSearchParams(window.location.search) : new URLSearchParams();
+        var hashStr = (window.location.hash || '').replace(/^#/, '');
+        var hash = hashStr ? new URLSearchParams(hashStr) : new URLSearchParams();
+
+        // Destek: d=encodedFragment
+        var d = query.get('d');
+        if (d) {
+          try {
+            var decoded = decodeURIComponent(d);
+            hash = new URLSearchParams(decoded);
+            hashStr = decoded;
+          } catch (e) {
+            // ignore
+          }
+        }
+
+        var authType = hash.get('type') || query.get('type') || '';
+        var email = query.get('e') || '';
+
+        var accessToken = hash.get('access_token') || query.get('access_token') || '';
+        var refreshToken = hash.get('refresh_token') || query.get('refresh_token') || '';
+        var code = query.get('code') || hash.get('code') || '';
+
+        if (accessToken && refreshToken) {
+          // Fragment yoksa (tokenlar query'de geldiyse) fragmenti üret
+          var fragment = hashStr;
+          if (!fragment || fragment.indexOf('access_token=') === -1 || fragment.indexOf('refresh_token=') === -1) {
+            var keys = ['access_token', 'refresh_token', 'token_type', 'expires_in', 'expires_at', 'provider_token', 'provider_refresh_token', 'type'];
+            var parts = [];
+            for (var i = 0; i < keys.length; i++) {
+              var k = keys[i];
+              var v = hash.get(k) || query.get(k);
+              if (v) parts.push(k + '=' + encodeURIComponent(v));
+            }
+            fragment = parts.join('&');
+          }
+          return { kind: 'tokens', fragment: fragment, email: email, authType: authType };
+        }
+
+        if (code) {
+          return { kind: 'code', code: code, email: email, authType: authType };
+        }
+
+        return null;
       }
+
+      function updateMessage(authType) {
+        var msgEl = document.getElementById('msg');
+        if (!msgEl) return;
+        if (authType === 'recovery') {
+          msgEl.innerText = 'Şifre sıfırlama isteği onaylandı.';
+          document.title = 'Şifre Sıfırla — SahayaBak';
+        } else {
+          msgEl.innerText = 'E-posta adresiniz doğrulandı.';
+          document.title = 'E-posta doğrulandı — SahayaBak';
+        }
+      }
+
+      function buildDeepLink(payload) {
+        var qs = new URLSearchParams();
+        if (payload.email) qs.set('e', payload.email);
+        if (payload.authType) qs.set('type', payload.authType);
+
+        var base = 'myapp://auth/callback' + (qs.toString() ? ('?' + qs.toString()) : '');
+        if (payload.kind === 'tokens') return base + '#' + payload.fragment;
+        if (payload.kind === 'code') return base + (qs.toString() ? '&' : '?') + 'code=' + encodeURIComponent(payload.code);
+        return base;
+      }
+
+      function openApp(url) {
+        try {
+          window.location.href = url;
+        } catch (e) {
+          // ignore
+        }
+      }
+
+      function main() {
+        var payload = getPayload();
+        if (!payload) {
+          showError();
+          return;
+        }
+
+        updateMessage(payload.authType);
+        var deepLink = buildDeepLink(payload);
+
+        var btn = document.getElementById('openApp');
+        var hint = document.getElementById('hint');
+        if (btn) {
+          btn.onclick = function () { openApp(deepLink); };
+        }
+
+        // Otomatik yönlendirme
+        setTimeout(function () { openApp(deepLink); }, 500);
+
+        // iOS bazen otomatiği bloklar → buton göster
+        setTimeout(function () {
+          if (btn) btn.style.display = 'inline-block';
+          if (hint) hint.style.display = 'block';
+        }, 1200);
+      }
+
+      main();
     })();
   </script>
 </body>

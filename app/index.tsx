@@ -24,11 +24,12 @@ export default function Index() {
           console.log("Session error:", error.message);
         }
         
-        setTarget("/(tabs)");
+        const user = data?.session?.user ?? null;
+        setTarget(user ? "/(tabs)" : "/landing");
       } catch (error) {
         if (!isMounted) return;
         console.log("Auth check error:", error);
-        setTarget("/(tabs)");
+        setTarget("/landing");
       } finally {
         if (isMounted) {
           setIsLoading(false);

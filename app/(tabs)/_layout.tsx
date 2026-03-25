@@ -20,6 +20,7 @@ export default function TabsLayout() {
   const tabPressTimers = useRef<Record<string, NodeJS.Timeout>>({});
   const tabPressCounts = useRef<Record<string, number>>({});
   const isWeb = Platform.OS === 'web';
+  const isIos = Platform.OS === 'ios';
 
   // CustomHeader başlık tıklaması için fonksiyon
   const handleTitlePress = () => {
@@ -29,12 +30,18 @@ export default function TabsLayout() {
   };
 
   // Tab bar stilleri
+  // iOS: eski hali (sadece safe area). Android: ek alttan iç boşluk.
+  const tabBarBaseHeight = 52;
+  const tabBarBottomInset = Math.max(insets.bottom, 8);
+  const tabBarInnerBottomAndroid = 12;
+  const tabBarExtraBottom = isWeb ? 0 : isIos ? 0 : tabBarInnerBottomAndroid;
   const tabBarStyles = StyleSheet.create({
     tabBar: {
       backgroundColor: "#ffffff",
-      // Web'de tab bar çok uzuyordu (Android branch'ine düşüyordu). Web için ayrı ölçüler veriyoruz.
-      height: Platform.OS === 'ios' ? 52 + insets.bottom : (isWeb ? 84 : 120),
-      paddingBottom: Platform.OS === 'ios' ? Math.max(insets.bottom, 8) : (isWeb ? 10 : 68),
+      height: isWeb ? 84 : tabBarBaseHeight + tabBarBottomInset + tabBarExtraBottom,
+      paddingBottom: isWeb ? 10 : tabBarBottomInset + tabBarExtraBottom,
+      // marginBottom verme: altta gri şerit (arka plan görünür)
+      marginBottom: 0,
       paddingTop: isWeb ? 6 : 8,
       elevation: 8,
       shadowColor: '#000',
@@ -375,6 +382,21 @@ export default function TabsLayout() {
             />
           ),
           href: null,
+        }}
+      />
+
+      {/* Tab bar'da görünmesin (Landing -> Misafir akışı için) */}
+      <Tabs.Screen
+        name="guest-landing"
+        options={{
+          href: null,
+          headerShown: false,
+          tabBarStyle: tabBarStyles.tabBar,
+          tabBarBackground: () => (
+            <View style={tabBarStyles.tabBarBg} pointerEvents="none">
+              <View style={tabBarStyles.tabBarTopLine} />
+            </View>
+          ),
         }}
       />
     </Tabs>

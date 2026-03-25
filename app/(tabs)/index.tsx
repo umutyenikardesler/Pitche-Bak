@@ -14,7 +14,6 @@ import { useGuestAuthAlert } from '@/contexts/GuestAuthModalContext';
 import IndexCondition from '@/components/index/IndexCondition';
 import MyMatches from '@/components/index/MyMatches';
 import OtherMatches from '@/components/index/OtherMatches';
-import GuestLanding from '@/components/guest/GuestLanding';
 import MatchDetails from '@/components/index/MatchDetails';
 import ProfilePreview from '@/components/index/ProfilePreview';
 import { Match } from '@/components/index/types';
@@ -22,7 +21,7 @@ import { Match } from '@/components/index/types';
 export default function Index() {
   const { isGuest } = useAuth();
   const { showGuestAuthAlert } = useGuestAuthAlert();
-  const [guestContinued, setGuestContinued] = useState(false);
+  // Misafir landing artık /guest-landing route'unda; burada hep doğrudan içerik gösterilir.
   const [futureMatches, setFutureMatches] = useState<Match[]>([]);
   const [otherMatches, setOtherMatches] = useState<Match[]>([]);
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
@@ -206,6 +205,13 @@ export default function Index() {
   // URL parametrelerini dinleyin
   const params = useLocalSearchParams();
   const userId = params.userId as string | undefined;
+  // Landing ekranından misafir olarak geldiğimizde (guest=1), parametreyi tek seferlik temizle.
+  const guestParam = params.guest as string | undefined;
+  useEffect(() => {
+    if (guestParam === "1") {
+      router.setParams({ guest: undefined });
+    }
+  }, [guestParam, router]);
 
   useEffect(() => {
     if (userId && userId !== 'undefined') {
@@ -502,15 +508,6 @@ export default function Index() {
       }
     });
 
-  // Misafir index'te soldan sağa çekince landing'e geri dön
-  const guestBackGesture = Gesture.Pan()
-    .activeOffsetX(20)
-    .failOffsetY([-10, 10])
-    .onEnd((event) => {
-      if (event.translationX > 80 && Math.abs(event.translationY) < 80) {
-        runOnJS(setGuestContinued)(false);
-      }
-    });
 
   useEffect(() => {
     // Component mount olduğunda yükseklikleri ayarla
@@ -570,20 +567,7 @@ export default function Index() {
     return () => clearInterval(interval);
   }, [fetchMatches]);
 
-  // Misafir landing'deyken tab header'ı gizle (Ana Sayfa, logo, bildirim) - halı saha yukarı dayansın
-  useEffect(() => {
-    if (isGuest && !guestContinued) {
-      navigation.setOptions({ headerShown: false });
-    } else {
-      navigation.setOptions({ headerShown: true });
-    }
-    return () => { navigation.setOptions({ headerShown: true }); };
-  }, [isGuest, guestContinued, navigation]);
-
-  // Misafir: önce landing (header + slider + Misafir olarak devam et), tıklayınca mevcut index içeriği
-  if (isGuest && !guestContinued) {
-    return <GuestLanding onContinue={() => setGuestContinued(true)} />;
-  }
+  // Misafir landing artık ayrı bir route: /landing
 
   return (
     <View className="flex-1">
@@ -615,21 +599,19 @@ export default function Index() {
           </Animated.View>
         </GestureDetector>
       ) : isGuest ? (
-        <GestureDetector gesture={guestBackGesture}>
-          <View className="flex-1">
-            {/* OtherMatches - misafir için */}
-            <View style={{ flex: 1 }}>
-              <OtherMatches
-                matches={otherMatches}
-                refreshing={refreshing}
-                onRefresh={fetchMatches}
-                onSelectMatch={handleSelectMatch}
-                onCreateMatch={handleCreateMatch}
-                isGuest={isGuest}
-              />
-            </View>
+        <View className="flex-1">
+          {/* OtherMatches - misafir için */}
+          <View style={{ flex: 1 }}>
+            <OtherMatches
+              matches={otherMatches}
+              refreshing={refreshing}
+              onRefresh={fetchMatches}
+              onSelectMatch={handleSelectMatch}
+              onCreateMatch={handleCreateMatch}
+              isGuest={isGuest}
+            />
           </View>
-        </GestureDetector>
+        </View>
       ) : (
         <View className="flex-1">
           <IndexCondition totalMatchCount={totalMatchCount} />

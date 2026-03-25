@@ -1,30 +1,13 @@
-import { useState } from "react";
-import { View, Text, TouchableOpacity, Image, Dimensions, Platform } from "react-native";
+import { View, Text, TouchableOpacity, Platform } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import Animated, {
-  useSharedValue,
   useAnimatedStyle,
-  useAnimatedScrollHandler,
   useFrameCallback,
-  withTiming,
-  scrollTo,
-  runOnUI,
-  useAnimatedRef,
+  useSharedValue,
 } from "react-native-reanimated";
 import { useLanguage } from "@/contexts/LanguageContext";
 
-const INTRO_SLIDES = [
-  { key: "s1", image: require("@/assets/images/screenShot/slide1.png"), titleKey: "auth.slide1.title", subtitleKey: "auth.slide1.subtitle" },
-  { key: "s2", image: require("@/assets/images/screenShot/slide2.png"), titleKey: "auth.slide2.title", subtitleKey: "auth.slide2.subtitle" },
-  { key: "s3", image: require("@/assets/images/screenShot/slide3.png"), titleKey: "auth.slide3.title", subtitleKey: "auth.slide3.subtitle" },
-  { key: "s4", image: require("@/assets/images/screenShot/slide4.png"), titleKey: "auth.slide4.title", subtitleKey: "auth.slide4.subtitle" },
-  { key: "s5", image: require("@/assets/images/screenShot/slide5.png"), titleKey: "auth.slide5.title", subtitleKey: "auth.slide5.subtitle" },
-  { key: "s6", image: require("@/assets/images/screenShot/slide6.png"), titleKey: "auth.slide6.title", subtitleKey: "auth.slide6.subtitle" },
-] as const;
-
-const DOT_SIZE = 8;
-const DOT_GAP = 8;
 const FIELD_HEIGHT = 90;
 const BALL_SIZE = 12;
 const BALL_PADDING = 6;
@@ -35,20 +18,13 @@ interface GuestLandingProps {
 
 export default function GuestLanding({ onContinue }: GuestLandingProps) {
   const { t } = useLanguage();
-  const [introIndex, setIntroIndex] = useState(0);
-  const [introWidth, setIntroWidth] = useState(Dimensions.get("window").width);
-
-  const introListRef = useAnimatedRef<Animated.FlatList<any>>();
-  const introScrollX = useSharedValue(0);
-  const activeDotX = useSharedValue(0);
   const headerWidthSV = useSharedValue(0);
   const ballX = useSharedValue(0);
   const ballY = useSharedValue(0);
   const ballVX = useSharedValue(0);
   const ballVY = useSharedValue(0);
   const ballRot = useSharedValue(0);
-
-  const dotsWidth = INTRO_SLIDES.length * DOT_SIZE + (INTRO_SLIDES.length - 1) * DOT_GAP;
+  // (state placeholder yok)
 
   const rand = (min: number, max: number) => {
     "worklet";
@@ -117,16 +93,6 @@ export default function GuestLanding({ onContinue }: GuestLandingProps) {
     opacity: headerWidthSV.value > 0 ? 1 : 0,
   }));
 
-  const activeDotStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: activeDotX.value }],
-  }));
-
-  const introScrollHandler = useAnimatedScrollHandler({
-    onScroll: (event) => {
-      introScrollX.value = event.contentOffset.x;
-    },
-  });
-
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "#f3f4f6" }} edges={["top"]}>
       {/* Header - Halı saha (normal giriş sayfası gibi üst boşluk) */}
@@ -183,164 +149,80 @@ export default function GuestLanding({ onContinue }: GuestLandingProps) {
         </View>
       </View>
 
-      {/* Slider - beyaz alan header ile footer arasını kapsar, kenarlıksız */}
-      <View
-        style={{ flex: 1, backgroundColor: "#ffffff", paddingTop: 6 }}
-        onLayout={(e) => {
-          const w = e.nativeEvent.layout.width;
-          if (w && Math.abs(w - introWidth) > 1) setIntroWidth(w);
-        }}
-      >
-        <Animated.FlatList
-          ref={introListRef}
-          data={INTRO_SLIDES as any}
-          horizontal
-          pagingEnabled
-          showsHorizontalScrollIndicator={false}
-          keyExtractor={(it: any) => it.key}
-          onScroll={introScrollHandler}
-          scrollEventThrottle={16}
-          style={{ flex: 1 }}
-          onMomentumScrollEnd={(e) => {
-            const x = e.nativeEvent.contentOffset.x;
-            const idx = introWidth > 0 ? Math.round(x / introWidth) : 0;
-            const clamped = Math.max(0, Math.min(idx, INTRO_SLIDES.length - 1));
-            setIntroIndex(clamped);
-            activeDotX.value = withTiming(clamped * (DOT_SIZE + DOT_GAP), { duration: 180 });
-          }}
-          renderItem={({ item, index }: any) => (
-            <View style={{ width: introWidth, flex: 1 }}>
-              <Image
-                    source={item.image}
-                    style={{ width: '89%', height: '89%', alignSelf: 'center', marginTop: 6 }}
-                    resizeMode="contain"
-                  />
-
-              {/* Sol boşlukta - auth ile aynı: position absolute, left: 8, top: 12 */}
-              {index > 0 && (
-                <TouchableOpacity
-                  activeOpacity={0.7}
-                  onPress={() => {
-                    runOnUI((x: number) => {
-                      "worklet";
-                      scrollTo(introListRef, x, 0, true);
-                    })((index - 1) * introWidth);
-                  }}
-                  style={{
-                    position: "absolute",
-                    left: 18,
-                    top: 6,
-                    width: 32,
-                    height: 32,
-                    borderRadius: 16,
-                    backgroundColor: "rgba(22, 163, 74, 0.25)",
-                    justifyContent: "center",
-                    alignItems: "center",
-                    zIndex: 5,
-                  }}
-                >
-                  <Ionicons name="chevron-back" size={20} color="#16a34a" />
-                </TouchableOpacity>
-              )}
-
-              {/* Sağ boşlukta - auth ile aynı: position absolute, right: 8, top: 12 */}
-              {index < INTRO_SLIDES.length - 1 ? (
-                <TouchableOpacity
-                  activeOpacity={0.7}
-                  onPress={() => {
-                    runOnUI((x: number) => {
-                      "worklet";
-                      scrollTo(introListRef, x, 0, true);
-                    })((index + 1) * introWidth);
-                  }}
-                  style={{
-                    position: "absolute",
-                    right: 18,
-                    top: 6,
-                    width: 32,
-                    height: 32,
-                    borderRadius: 16,
-                    backgroundColor: "rgba(22, 163, 74, 0.25)",
-                    justifyContent: "center",
-                    alignItems: "center",
-                    zIndex: 5,
-                  }}
-                >
-                  <Ionicons name="chevron-forward" size={20} color="#16a34a" />
-                </TouchableOpacity>
-              ) : (
-                <>
-                  <TouchableOpacity
-                    activeOpacity={0.7}
-                    onPress={onContinue}
-                    style={{
-                      position: "absolute",
-                      right: 18,
-                      top: 6,
-                      width: 32,
-                      height: 32,
-                      borderRadius: 16,
-                      backgroundColor: "rgba(22, 163, 74, 0.25)",
-                      justifyContent: "center",
-                      alignItems: "center",
-                      zIndex: 5,
-                    }}
-                  >
-                    <Ionicons name="chevron-forward" size={20} color="#16a34a" />
-                  </TouchableOpacity>
-                  <View style={{ position: "absolute", right: 8, bottom: 60, width: 48, alignItems: "center", zIndex: 5 }}>
-                    <TouchableOpacity
-                      activeOpacity={0.7}
-                      onPress={onContinue}
-                      style={{ justifyContent: "center", alignItems: "center", backgroundColor: "#16a34a", borderRadius: 10, paddingVertical: 12, paddingHorizontal: 10 }}
-                    >
-                      <View style={{ flexDirection: "column", alignItems: "center" }}>
-                        {t("auth.guestContinue").split("").map((char, i) =>
-                          char === " " ? (
-                            <View key={`s-${i}`} style={{ height: 6 }} />
-                          ) : (
-                            <Text key={i} style={{ fontSize: 14, fontWeight: "700", color: "white", lineHeight: 18 }}>{char}</Text>
-                          )
-                        )}
-                      </View>
-                    </TouchableOpacity>
-                  </View>
-                </>
-              )}
-              {/* Alt metin overlay (açıklama) */}
-              <View style={{ position: "absolute", left: 0, right: 0, bottom: 4, paddingHorizontal: 10, paddingTop: 2, paddingBottom: 6, zIndex: 2, alignItems: "center", pointerEvents: "none" }}>
-                <Text style={{ fontSize: 18, fontWeight: "800", color: "#065f46", textAlign: "center" }} numberOfLines={1}>{t(item.titleKey)}</Text>
-                <Text style={{ color: "#374151", marginTop: 2, textAlign: "center" }} numberOfLines={2}>{t(item.subtitleKey)}</Text>
-              </View>
-            </View>
-          )}
-        />
-
-        {/* Pagination dots - beyaz alanın içinde */}
-        <View style={{ paddingTop: 0, paddingBottom: 4, paddingHorizontal: 6, alignItems: "center" }}>
-          <View
-            style={{
-              backgroundColor: "rgba(255,255,255,0.95)",
-              borderRadius: 999,
-              paddingHorizontal: 10,
-              paddingVertical: 6,
-              borderWidth: 2,
-              borderColor: "#16a34a",
-              ...(Platform.OS === "android" ? { elevation: 6 } : { shadowColor: "#000", shadowOpacity: 0.18, shadowRadius: 8, shadowOffset: { width: 0, height: 3 } }),
-            }}
-          >
-            <View style={{ width: dotsWidth, height: DOT_SIZE, position: "relative" }}>
-              <View style={{ flexDirection: "row" }}>
-                {INTRO_SLIDES.map((s, idx) => (
-                  <View key={s.key} style={{ width: DOT_SIZE, height: DOT_SIZE, borderRadius: DOT_SIZE / 2, backgroundColor: "rgba(0,0,0,0.22)", marginRight: idx === INTRO_SLIDES.length - 1 ? 0 : DOT_GAP }} />
-                ))}
-              </View>
-              <Animated.View
-                style={[{ position: "absolute", left: 0, top: 0, width: DOT_SIZE, height: DOT_SIZE, borderRadius: DOT_SIZE / 2, backgroundColor: "#16a34a" }, activeDotStyle]}
-              />
-            </View>
-          </View>
+      {/* İçerik - slider yerine misafir açıklaması */}
+      <View style={{ flex: 1, backgroundColor: "#ffffff", paddingHorizontal: 16, paddingTop: 18, paddingBottom: 18 }}>
+        <View style={{ paddingHorizontal: 4 }}>
+          <Text style={{ fontSize: 18, fontWeight: "900", color: "#065f46", textAlign: "center" }}>
+            {t("guest.landing.title")}
+          </Text>
+          <Text style={{ marginTop: 8, color: "#374151", textAlign: "center", fontSize: 14, lineHeight: 20 }}>
+            {t("guest.landing.subtitle")}
+          </Text>
         </View>
+
+        <View style={{ marginTop: 16, flexDirection: "row", flexWrap: "wrap", gap: 10 }}>
+          {[
+            { icon: "football-outline" as const, text: t("guest.landing.item1") },
+            { icon: "map-outline" as const, text: t("guest.landing.item2") },
+            { icon: "people-outline" as const, text: t("guest.landing.item3") },
+            { icon: "information-circle-outline" as const, text: t("guest.landing.item4") },
+            { icon: "funnel-outline" as const, text: t("guest.landing.item5") },
+            { icon: "lock-closed-outline" as const, text: t("guest.landing.item6") },
+          ].map((it, idx) => (
+            <View
+              key={idx}
+              style={{
+                width: "48%",
+                backgroundColor: "#ffffff",
+                borderRadius: 16,
+                borderWidth: 1,
+                borderColor: "rgba(22, 163, 74, 0.22)",
+                padding: 12,
+                alignItems: "center",
+                ...(Platform.OS === "android"
+                  ? { elevation: 3 }
+                  : { shadowColor: "#000", shadowOpacity: 0.08, shadowRadius: 10, shadowOffset: { width: 0, height: 4 } }),
+              }}
+            >
+              <View
+                style={{
+                  width: 34,
+                  height: 34,
+                  borderRadius: 17,
+                  backgroundColor: "rgba(22, 163, 74, 0.14)",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  borderWidth: 1,
+                  borderColor: "rgba(22, 163, 74, 0.22)",
+                }}
+              >
+                <Ionicons name={it.icon} size={18} color="#16a34a" />
+              </View>
+              <Text style={{ marginTop: 10, color: "#111827", fontSize: 14, fontWeight: "800", lineHeight: 20, textAlign: "center" }}>
+                {it.text}
+              </Text>
+            </View>
+          ))}
+        </View>
+
+        <View style={{ flex: 1 }} />
+
+        <TouchableOpacity
+          activeOpacity={0.9}
+          onPress={onContinue}
+          style={{
+            backgroundColor: "#16a34a",
+            borderRadius: 14,
+            paddingVertical: 14,
+            alignItems: "center",
+            ...(Platform.OS === "android" ? { elevation: 6 } : { shadowColor: "#000", shadowOpacity: 0.18, shadowRadius: 10, shadowOffset: { width: 0, height: 4 } }),
+          }}
+        >
+          <Text style={{ color: "white", fontWeight: "900", fontSize: 16 }}>{t("guest.landing.start")}</Text>
+        </TouchableOpacity>
+
+        {/* Tab bar için biraz boşluk */}
+        <View style={{ height: 18 }} />
       </View>
     </SafeAreaView>
   );

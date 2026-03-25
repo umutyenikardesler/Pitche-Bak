@@ -16,18 +16,46 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   const refresh = async () => {
-    const { data: { user: u } } = await supabase.auth.getUser();
-    setUser(u ?? null);
+    try {
+      const { data, error } = await supabase.auth.getUser();
+      if (error) {
+        // Eğer refresh token hatası alırsak (geçersiz veya silinmişse), oturumu yerelde temizle
+        if (error.message.includes("Refresh Token") || error.status === 400 || error.status === 401) {
+          console.log("Geçersiz refresh token, oturum temizleniyor...");
+          await supabase.auth.signOut();
+        }
+        setUser(null);
+      } else {
+        setUser(data.user ?? null);
+      }
+    } catch (e) {
+      console.error("Auth refresh exception:", e);
+      setUser(null);
+    }
   };
 
   useEffect(() => {
-    refresh().finally(() => setIsLoading(false));
+    let mounted = true;
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
+    refresh().finally(() => {
+      if (mounted) setIsLoading(false);
     });
 
-    return () => subscription.unsubscribe();
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (!mounted) return;
+      
+      // TOKEN_REFRESH_FAILED gibi durumlarda setUser(null) yap
+      if (event === 'SIGNED_OUT' || (event as any) === 'TOKEN_REFRESH_FAILED') {
+        setUser(null);
+      } else {
+        setUser(session?.user ?? null);
+      }
+    });
+
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   return (

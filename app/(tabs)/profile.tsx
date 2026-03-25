@@ -600,14 +600,40 @@ export default function Profile() {
       return;
     }
 
-    const { data: userInfo, error } = await supabase
+    let { data: userInfo, error } = await supabase
       .from("users")
       .select("*")
       .eq("id", userIdToFetch)
       .single();
 
-    if (error) {
-      console.error("Kullanıcı bilgileri alınamadı:", error); // Log eklendi
+    // PGRST116 = satır bulunamadı; trigger atlamış olabilir, fallback olarak oluştur (sadece kendi profili için)
+    const isOwnProfile = !searchParams.userId;
+    if (error?.code === "PGRST116" && isOwnProfile) {
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      if (authUser?.id === userIdToFetch) {
+        const { error: insertErr } = await supabase.from("users").upsert(
+          [{
+            id: authUser.id,
+            email: authUser.email ?? "",
+            name: "Yeni Kullanıcı",
+            surname: "",
+            age: null,
+            height: null,
+            weight: null,
+            description: "",
+            created_at: new Date().toISOString(),
+          }],
+          { onConflict: "id" }
+        );
+        if (!insertErr) {
+          const res = await supabase.from("users").select("*").eq("id", userIdToFetch).single();
+          userInfo = res.data as typeof userInfo;
+          error = res.error;
+        }
+      }
+    }
+    if (error || !userInfo) {
+      console.error("Kullanıcı bilgileri alınamadı:", error);
       return;
     }
 

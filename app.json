@@ -22,6 +22,7 @@
       }
     },
     "android": {
+      "label": "SahayaBak",
       "config": {
         "googleMaps": {
           "apiKey": "AIzaSyC9VGm56IFnVAYEYKoPnPt3eGJ3_NMwPB4"

@@ -1,12 +1,14 @@
-import { useRef, useState, useEffect } from "react";
-import { View, Text, TextInput, TouchableOpacity, Alert, KeyboardAvoidingView, Platform, Pressable, ActivityIndicator, ScrollView, Keyboard, Dimensions } from "react-native";
+import { useRef, useState, useEffect, useCallback } from "react";
+import { View, Text, TextInput, TouchableOpacity, Alert, KeyboardAvoidingView, Platform, Pressable, ActivityIndicator, ScrollView, Keyboard, Dimensions, BackHandler } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
-import { useRouter } from "expo-router";
+import { useRouter, useLocalSearchParams, useNavigation } from "expo-router";
+import { useFocusEffect } from "@react-navigation/native";
 import { supabase } from "@/services/supabase";
 import * as Linking from "expo-linking";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Ionicons } from "@expo/vector-icons";
 import Animated, { useSharedValue, useAnimatedStyle, useFrameCallback, runOnJS } from "react-native-reanimated";
+import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import * as WebBrowser from "expo-web-browser";
 import { makeRedirectUri } from "expo-auth-session";
 import * as QueryParams from "expo-auth-session/build/QueryParams";
@@ -14,20 +16,37 @@ import * as AppleAuthentication from "expo-apple-authentication";
 import Constants from "expo-constants";
 import * as Crypto from "expo-crypto";
 import { useLanguage } from "@/contexts/LanguageContext";
+import {
+  AUTH_REDIRECT_TO_LOGIN_AFTER_VERIFY_KEY,
+  PENDING_VERIFICATION_EMAIL_KEY,
+} from "@/lib/authVerification";
 import PolicyModal from "@/components/modals/PolicyModal";
 import type { PolicyKey } from "@/constants/policies";
+import { getLastNonAuthRoute } from "@/lib/lastNonAuthRoute";
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 WebBrowser.maybeCompleteAuthSession();
 
+function decodeSearchParam(s: string): string {
+  try {
+    return decodeURIComponent(s).trim();
+  } catch {
+    return s.trim();
+  }
+}
+
 export default function AuthScreen() {
   const router = useRouter();
+  const navigation = useNavigation();
+  const params = useLocalSearchParams<{ afterVerify?: string | string[]; e?: string | string[]; type?: string | string[]; from?: string | string[] }>();
   const insets = useSafeAreaInsets();
   const { currentLanguage, changeLanguage, t } = useLanguage();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLogin, setIsLogin] = useState(true);
+  const [showAfterVerifyHint, setShowAfterVerifyHint] = useState(false);
+  const [isRecoveryMode, setIsRecoveryMode] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isOAuthLoading, setIsOAuthLoading] = useState<"google" | "apple" | null>(null);
@@ -40,6 +59,49 @@ export default function AuthScreen() {
   const [policyModalKey, setPolicyModalKey] = useState<PolicyKey | null>(null);
 
   const passwordInputRef = useRef<TextInput>(null);
+
+  // Native-stack'te beforeRemove ile prevent etmek uyarı üretebiliyor.
+  // Bu yüzden native swipe/back'i kapatıp kendi geri davranışımızı uyguluyoruz.
+  const isLeavingRef = useRef(false);
+  const getBackTarget = useCallback(() => {
+    const rawFrom = params.from;
+    const from =
+      typeof rawFrom === "string"
+        ? decodeSearchParam(rawFrom)
+        : Array.isArray(rawFrom) && rawFrom[0]
+          ? decodeSearchParam(rawFrom[0])
+          : "";
+    return from || getLastNonAuthRoute() || "/(tabs)?guest=1";
+  }, [params.from]);
+
+  const goBackToOrigin = useCallback(() => {
+    if (isLeavingRef.current) return;
+    isLeavingRef.current = true;
+    router.replace(getBackTarget() as any);
+  }, [getBackTarget, router]);
+
+  useEffect(() => {
+    navigation.setOptions({
+      gestureEnabled: false,
+    });
+  }, [navigation]);
+
+  useEffect(() => {
+    const sub = BackHandler.addEventListener("hardwareBackPress", () => {
+      goBackToOrigin();
+      return true;
+    });
+    return () => sub.remove();
+  }, [goBackToOrigin]);
+
+  const backSwipeGesture = Gesture.Pan()
+    .activeOffsetX(18)
+    .failOffsetY([-12, 12])
+    .onEnd((event) => {
+      if (event.translationX > 90 && Math.abs(event.translationY) < 80) {
+        runOnJS(goBackToOrigin)();
+      }
+    });
 
   // Header halı saha içinde gezen top animasyonu
   const FIELD_HEIGHT = 90;
@@ -229,6 +291,8 @@ export default function AuthScreen() {
   };
 
   const handlePostLogin = async (userId: string, userEmail?: string | null) => {
+    await AsyncStorage.removeItem(PENDING_VERIFICATION_EMAIL_KEY);
+    setShowAfterVerifyHint(false);
     // Kullanıcı ID'sini AsyncStorage içine kaydet
     await AsyncStorage.setItem("userId", userId);
     // Giriş sayfasında zaten sözleşme onayı alındı; Mesajlar sayfasında tekrar modal gösterme
@@ -292,6 +356,48 @@ export default function AuthScreen() {
       .then(setAppleAvailable)
       .catch(() => setAppleAvailable(false));
   }, []);
+
+  const resolveAndSetEmail = useCallback(async () => {
+    const raw = params.afterVerify;
+    const fromQuery = raw === "1" || (Array.isArray(raw) && raw[0] === "1");
+    const redirectFlag = await AsyncStorage.getItem(AUTH_REDIRECT_TO_LOGIN_AFTER_VERIFY_KEY);
+    const fromStorageFlag = redirectFlag === "1";
+    if (!fromQuery && !fromStorageFlag) return;
+
+    const rawE = params.e;
+    const rawType = params.type;
+    const isRecovery = rawType === "recovery" || (Array.isArray(rawType) && rawType[0] === "recovery");
+    
+    const fromUrl =
+      typeof rawE === "string"
+        ? decodeSearchParam(rawE)
+        : Array.isArray(rawE) && rawE[0]
+          ? decodeSearchParam(rawE[0])
+          : "";
+    const stored = (await AsyncStorage.getItem(PENDING_VERIFICATION_EMAIL_KEY))?.trim() ?? "";
+    const resolvedEmail = fromUrl || stored;
+
+    if (resolvedEmail) setEmail(resolvedEmail);
+    setIsLogin(true);
+    setAgreedToTerms(true);
+    setShowAfterVerifyHint(true);
+    setIsRecoveryMode(isRecovery);
+
+    if (fromStorageFlag) {
+      await AsyncStorage.removeItem(AUTH_REDIRECT_TO_LOGIN_AFTER_VERIFY_KEY);
+    }
+  }, [params.afterVerify, params.e]);
+
+  useEffect(() => {
+    resolveAndSetEmail();
+  }, [resolveAndSetEmail]);
+
+  // E-posta doğrulama sonrası giriş: bayrak + e-posta.
+  useFocusEffect(
+    useCallback(() => {
+      resolveAndSetEmail();
+    }, [resolveAndSetEmail])
+  );
 
   const getOAuthRedirectUri = () => {
     // Supabase Auth -> URL Configuration -> Additional Redirect URLs içine eklenmeli.
@@ -487,12 +593,18 @@ export default function AuthScreen() {
       } else {
         // E-posta doğrulama linki tarayıcıda açılır; web callback hash'i alıp uygulamaya yönlendirir.
         const webBaseUrl = (Constants.expoConfig as any)?.extra?.webBaseUrl;
-        const redirectUrl =
+        const eVal = email.trim();
+        let redirectUrl =
           Platform.OS === "web"
             ? Linking.createURL("auth/callback")
             : webBaseUrl
               ? `${webBaseUrl.replace(/\/$/, "")}/auth/callback.html`
               : Linking.createURL("/email-confirmed");
+
+        if (eVal) {
+          redirectUrl += (redirectUrl.includes("?") ? "&" : "?") + `e=${encodeURIComponent(eVal)}`;
+        }
+
         ({ data, error } = await supabase.auth.signUp({
           email,
           password,
@@ -529,13 +641,23 @@ export default function AuthScreen() {
 
       if (error) throw error;
 
+      // Kayıt sonrası doğrulama akışı: e-posta her zaman saklansın (data.user yoksa bile formdaki email)
+      if (!isLogin) {
+        const signupEmail = (data?.user?.email ?? email).trim();
+        if (signupEmail) {
+          await AsyncStorage.setItem(PENDING_VERIFICATION_EMAIL_KEY, signupEmail);
+        }
+        // Kayıt sonrası e-posta doğrulaması beklenirken yerel oturumu temizle
+        // Bu sayede AuthContext kullanıcıyı hemen "giriş yapmış" görmez.
+        await supabase.auth.signOut();
+      }
+
       console.log("Auth başarılı, isLogin:", isLogin, "data:", data);
       
       if (isLogin && data?.user) {
         console.log("Login başarılı, user:", data.user.id);
         await handlePostLogin(data.user.id, data.user.email);
       } else {
-        // Kayıt başarılı
         setIsLoading(false);
         Alert.alert(t("general.success"), t("auth.signupSuccessVerifyEmail"));
       }
@@ -580,13 +702,14 @@ export default function AuthScreen() {
   };
 
   return (
-    // ÖNEMLİ: NativeWind herhangi bir sebeple çalışmasa bile ekranın "0 yükseklik" kalmaması için
-    // kritik layout değerlerini inline style ile garanti ediyoruz. (Beyaz ekranı keser)
-    <SafeAreaView
-      className="flex-1 bg-gray-100"
-      style={{ flex: 1, backgroundColor: "#f3f4f6" }}
-      edges={["top"]}
-    >
+    <GestureDetector gesture={backSwipeGesture}>
+      {/* ÖNEMLİ: NativeWind herhangi bir sebeple çalışmasa bile ekranın "0 yükseklik" kalmaması için
+          kritik layout değerlerini inline style ile garanti ediyoruz. (Beyaz ekranı keser) */}
+      <SafeAreaView
+        className="flex-1 bg-gray-100"
+        style={{ flex: 1, backgroundColor: "#f3f4f6" }}
+        edges={["top"]}
+      >
       <KeyboardAvoidingView 
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -929,6 +1052,27 @@ export default function AuthScreen() {
                       <Text className="text-2xl font-bold text-gray-800" style={{ marginTop: 5 }}>
                         {isLogin ? t('auth.welcomeTitle') : t('auth.joinTitle')}
                       </Text>
+                      {showAfterVerifyHint ? (
+                        <View
+                          style={{
+                            marginTop: 12,
+                            paddingHorizontal: 14,
+                            paddingVertical: 10,
+                            backgroundColor: "#dcfce7",
+                            borderRadius: 12,
+                            borderWidth: 1,
+                            borderColor: "#86efac",
+                            width: "100%",
+                            maxWidth: 400,
+                          }}
+                        >
+                          <Text style={{ color: "#166534", fontSize: 14, textAlign: "center", fontWeight: "600" }}>
+                            {isRecoveryMode 
+                              ? t("auth.passwordResetSuccessHint") 
+                              : t("auth.afterVerifySignInHint")}
+                          </Text>
+                        </View>
+                      ) : null}
                       <Text className="text-gray-700 mt-1">
                         {isLogin ? (
                           <>
@@ -1171,6 +1315,7 @@ export default function AuthScreen() {
         onClose={() => setPolicyModalKey(null)}
         policyKey={policyModalKey}
       />
-    </SafeAreaView>
+      </SafeAreaView>
+    </GestureDetector>
   );
 }

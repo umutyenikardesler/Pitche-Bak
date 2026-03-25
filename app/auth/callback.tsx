@@ -8,6 +8,12 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Ionicons } from "@expo/vector-icons";
 import * as QueryParams from "expo-auth-session/build/QueryParams";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { getAndClearPendingAuthUrl } from "@/lib/pendingAuthUrl";
+import {
+  AUTH_REDIRECT_TO_LOGIN_AFTER_VERIFY_KEY,
+  PENDING_VERIFICATION_EMAIL_KEY,
+} from "@/lib/authVerification";
+import { getEmailFromAccessToken } from "@/lib/jwtPayload";
 
 function parseHashParams(url: string): Record<string, string> {
   try {
@@ -21,28 +27,47 @@ function parseHashParams(url: string): Record<string, string> {
 }
 
 function parseFragment(fragment: string): Record<string, string> {
-  return Object.fromEntries(
-    fragment.split("&").map((p) => {
-      const eq = p.indexOf("=");
-      const k = eq > 0 ? p.substring(0, eq) : p;
-      const v = eq > 0 ? decodeURIComponent((p.substring(eq + 1) || "").replace(/\+/g, " ")) : "";
-      return [k, v];
-    })
-  );
+  const out: Record<string, string> = {};
+  for (const p of fragment.split("&")) {
+    const eq = p.indexOf("=");
+    if (eq <= 0) continue;
+    const k = p.substring(0, eq);
+    const encoded = p.substring(eq + 1) || "";
+    const isJwtParam = k === "access_token" || k === "refresh_token" || k === "provider_token";
+    let v: string;
+    if (isJwtParam) {
+      try {
+        v = decodeURIComponent(encoded);
+      } catch {
+        v = encoded;
+      }
+    } else {
+      try {
+        v = decodeURIComponent(encoded.replace(/\+/g, " "));
+      } catch {
+        v = encoded;
+      }
+    }
+    out[k] = v;
+  }
+  return out;
 }
 
 function parseUrlParams(url: string): Record<string, string> {
-  // Web callback.html tek parametreyle yönlendiriyor: ?d=encodeURIComponent(hash)
-  let params: Record<string, string> = {};
+  const hashParams = parseHashParams(url);
+  let queryParams: Record<string, string> = {};
+  
   try {
     const query = QueryParams.getQueryParams(url);
-    params = (query.params as Record<string, string>) || {};
+    queryParams = (query.params as Record<string, string>) || {};
   } catch {
-    // getQueryParams custom scheme'de bazen hata verebilir, manuel parse dene
     const qStart = url.indexOf("?");
+    const hStart = url.indexOf("#");
+    const qEnd = hStart > qStart ? hStart : url.length;
+    
     if (qStart >= 0) {
-      const qs = url.substring(qStart + 1);
-      params = Object.fromEntries(
+      const qs = url.substring(qStart + 1, qEnd);
+      queryParams = Object.fromEntries(
         qs.split("&").map((p) => {
           const eq = p.indexOf("=");
           const k = eq > 0 ? decodeURIComponent(p.substring(0, eq)) : p;
@@ -52,17 +77,17 @@ function parseUrlParams(url: string): Record<string, string> {
       );
     }
   }
-  const encodedData = params.d;
+
+  // d = encoded hash (web callback.html'den)
+  const encodedData = queryParams.d || hashParams.d;
   if (encodedData) {
     try {
       const decoded = decodeURIComponent(encodedData);
-      return parseFragment(decoded);
-    } catch {
-      // fallback
-    }
+      return { ...queryParams, ...hashParams, ...parseFragment(decoded) };
+    } catch { /* ignore */ }
   }
-  const hashParams = parseHashParams(url);
-  return Object.keys(hashParams).length ? hashParams : params;
+
+  return { ...queryParams, ...hashParams };
 }
 
 export default function AuthCallbackScreen() {
@@ -73,10 +98,40 @@ export default function AuthCallbackScreen() {
   const [errorHint, setErrorHint] = useState<string | null>(null);
   const [callbackType, setCallbackType] = useState<"recovery" | "signup" | "">("");
 
+  /** Query string güvenilir olmayabilir; bayrak + JWT'den e-posta ile giriş ekranını doldurur */
+  const goToLoginAfterVerify = async (url: string | null) => {
+    await AsyncStorage.setItem(AUTH_REDIRECT_TO_LOGIN_AFTER_VERIFY_KEY, "1");
+    let isRecovery = false;
+    if (url) {
+      try {
+        const p = parseUrlParams(url);
+        if (p.type === "recovery") isRecovery = true;
+        
+        // access_token varsa JWT içinden email'i çıkar
+        if (p.access_token) {
+          const em = getEmailFromAccessToken(p.access_token);
+          if (em) await AsyncStorage.setItem(PENDING_VERIFICATION_EMAIL_KEY, em);
+        } 
+        // URL içinde doğrudan e-posta parametresi varsa onu kullan (web'den gelen e=...)
+        if (p.e) {
+          await AsyncStorage.setItem(PENDING_VERIFICATION_EMAIL_KEY, p.e);
+        }
+      } catch {
+        /* ignore */
+      }
+    }
+    // E-posta AsyncStorage ile bazen giriş ekranına taşınmıyor; query ile de ilet
+    const pending = (await AsyncStorage.getItem(PENDING_VERIFICATION_EMAIL_KEY))?.trim() ?? "";
+    const q = new URLSearchParams();
+    q.set("afterVerify", "1");
+    if (isRecovery) q.set("type", "recovery");
+    if (pending) q.set("e", pending);
+    router.replace(`/auth?${q.toString()}` as any);
+  };
+
   const processUrl = async (url: string | null) => {
     if (!url) {
-      setStatus("error");
-      setErrorMessage(t("auth.unknownError"));
+      await goToLoginAfterVerify(null);
       return;
     }
 
@@ -90,38 +145,53 @@ export default function AuthCallbackScreen() {
       if (code) {
         const { data: exchanged, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
         if (exchangeError) throw exchangeError;
-        if (exchanged?.session?.user?.id) {
-          const uid = exchanged.session.user.id;
-          await AsyncStorage.setItem("userId", uid);
-          // OAuth ile giriş: kullanıcı auth sayfasında sözleşmeyi kabul etmiş olmalı (buton açılmadan önce zorunlu)
-          await AsyncStorage.setItem(`ugc_messaging_agreed_${uid}`, "1");
+        if (type === "recovery") {
+          const em = exchanged?.session?.user?.email ?? "";
+          router.replace(`/auth/reset-password?type=recovery&e=${encodeURIComponent(em)}` as any);
+          return;
         }
+
+        const uid = exchanged?.session?.user?.id;
+        if (!uid) {
+          await goToLoginAfterVerify(url);
+          return;
+        }
+        await AsyncStorage.removeItem(PENDING_VERIFICATION_EMAIL_KEY);
+        await AsyncStorage.setItem("userId", uid);
+        await AsyncStorage.setItem(`ugc_messaging_agreed_${uid}`, "1");
       } else if (access_token && refresh_token) {
         const { data, error } = await supabase.auth.setSession({ access_token, refresh_token });
         if (error) throw error;
-        if (data?.user?.id) {
-          const uid = data.user.id;
-          await AsyncStorage.setItem("userId", uid);
-          // OAuth veya email doğrulama: auth sayfasında sözleşme kabul edilmiş
-          if (type !== "recovery") {
-            await AsyncStorage.setItem(`ugc_messaging_agreed_${uid}`, "1");
-          }
+        if (type === "recovery") {
+          const em = data?.user?.email ?? "";
+          router.replace(`/auth/reset-password?type=recovery&e=${encodeURIComponent(em)}` as any);
+          return;
         }
+
+        const uid = data?.user?.id;
+        if (!uid) {
+          await goToLoginAfterVerify(url);
+          return;
+        }
+        await AsyncStorage.removeItem(PENDING_VERIFICATION_EMAIL_KEY);
+        await AsyncStorage.setItem("userId", uid);
+        await AsyncStorage.setItem(`ugc_messaging_agreed_${uid}`, "1");
       } else {
-        setStatus("error");
-        setErrorMessage(t("auth.userInfoMissing"));
-        setErrorHint(t("auth.userInfoMissingHint"));
+        await goToLoginAfterVerify(url);
         return;
       }
 
-      // recovery: şifre sıfırlama; signup/email: e-posta doğrulama
       setCallbackType((type === "recovery" ? "recovery" : type === "signup" || type === "email" ? "signup" : "") as "recovery" | "signup" | "");
       setStatus("success");
       return;
     } catch (err: any) {
-      setStatus("error");
-      setErrorMessage(err?.message || t("auth.unknownError"));
-      setErrorHint(null);
+      if (type === "recovery") {
+        setStatus("error");
+        setErrorMessage(err?.message || t("auth.unknownError"));
+        setErrorHint(null);
+        return;
+      }
+      await goToLoginAfterVerify(url);
     }
   };
 
@@ -152,19 +222,24 @@ export default function AuthCallbackScreen() {
         processUrl(url);
       } else {
         resolved = true;
-        setStatus("error");
-        setErrorMessage(t("auth.userInfoMissing"));
-        setErrorHint(t("auth.userInfoMissingHint"));
+        void goToLoginAfterVerify(null);
       }
     };
 
     let resolved = false;
     const showNoUrlError = () => {
       if (resolved) return;
-      setStatus("error");
-      setErrorMessage(t("auth.userInfoMissing"));
-      setErrorHint(t("auth.userInfoMissingHint"));
+      resolved = true;
+      void goToLoginAfterVerify(null);
     };
+
+    // Önce root listener'dan gelen pending URL'i kontrol et (arka plandan açıldıysa)
+    const pending = getAndClearPendingAuthUrl();
+    if (pending) {
+      resolved = true;
+      handleUrl(pending);
+      return;
+    }
 
     Linking.getInitialURL().then((url) => {
       if (url) {
@@ -172,7 +247,7 @@ export default function AuthCallbackScreen() {
         handleUrl(url);
       } else {
         // Bazı cihazlarda deep link URL'si gecikmeyle geliyor; kısa süre bekleyip tekrar dene
-        const tid = setTimeout(showNoUrlError, 2000);
+        const tid = setTimeout(showNoUrlError, 1000);
         setTimeout(() => {
           if (resolved) return;
           Linking.getInitialURL().then((retry) => {
@@ -182,7 +257,7 @@ export default function AuthCallbackScreen() {
               handleUrl(retry);
             }
           });
-        }, 800);
+        }, 500);
       }
     });
 

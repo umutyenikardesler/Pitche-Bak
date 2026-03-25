@@ -423,6 +423,8 @@ const translations = {
     'auth.invalidEmail': 'Geçersiz e-posta formatı.',
     'auth.passwordMin': 'Şifre en az 6 karakter olmalıdır.',
     'auth.signupSuccessVerifyEmail': 'Kayıt başarılı! E-postanızı doğrulamanız gerekmektedir. E-postadaki linke tıklarken "Chrome\'da aç" veya "Safari\'de aç" seçeneğini tercih edin.',
+    'auth.afterVerifySignInHint': 'E-postanız onaylandı. Kayıt olurken kullandığınız şifre ile giriş yapın.',
+    'auth.passwordResetSuccessHint': 'Şifre sıfırlama isteğiniz onaylandı. Şimdi yeni bir şifre belirleyerek giriş yapabilirsiniz.',
     'auth.signInCancelled': 'Giriş iptal edildi.',
     'auth.userInfoMissing': 'Kullanıcı bilgisi alınamadı.',
     'auth.userInfoMissingHint': 'E-postadaki doğrulama linkine tekrar tıklayın. Linki Chrome veya Safari\'de açarsanız genelde çalışır.',
@@ -445,6 +447,17 @@ const translations = {
     'auth.guestNotifications': 'Bildirimleri görmek için önce giriş yapmalısınız',
     'auth.guestJoinMatch': 'Maça katılmak için önce giriş yapmalısınız',
     'auth.guestRedirectNotice': 'Giriş sayfasına yönlendiriliyorsunuz...',
+
+    // Guest landing (tabs)
+    'guest.landing.title': 'Misafir Modu',
+    'guest.landing.subtitle': 'Misafir olarak uygulamayı keşfedebilirsin. Bazı özellikler için giriş gerekir.',
+    'guest.landing.item1': 'Yakınındaki maçları görüntüle',
+    'guest.landing.item2': 'Sahaları ve detaylarını incele',
+    'guest.landing.item3': 'Maç detaylarını ve oyuncu profillerini gör',
+    'guest.landing.item4': 'Maç oluşturma ve mesajlaşma için giriş yap',
+    'guest.landing.item5': 'Maçları filtrele ve konuma göre sırala',
+    'guest.landing.item6': 'Profil Bilgilerini Doldurmak İçin giriş Yap',
+    'guest.landing.start': 'Başla',
     
     // Maç
     'match.createSuccess': 'Tebrikler 🎉\nMaçınız başarılı bir şekilde oluşturulmuştur.',
@@ -881,6 +894,8 @@ const translations = {
     'auth.invalidEmail': 'Invalid email format.',
     'auth.passwordMin': 'Password must be at least 6 characters.',
     'auth.signupSuccessVerifyEmail': 'Sign-up successful! Please verify your email. When clicking the link, choose "Open in Chrome" or "Open in Safari" for best results.',
+    'auth.afterVerifySignInHint': 'Your email is verified. Sign in with the password you used when registering.',
+    'auth.passwordResetSuccessHint': 'Your password reset request has been approved. You can now set a new password and sign in.',
     'auth.signInCancelled': 'Sign-in cancelled.',
     'auth.userInfoMissing': "Couldn't retrieve user information.",
     'auth.userInfoMissingHint': 'Try clicking the verification link again. Opening the link in Chrome or Safari usually works.',
@@ -903,6 +918,17 @@ const translations = {
     'auth.guestNotifications': 'You must sign in first to view notifications',
     'auth.guestJoinMatch': 'You must sign in first to join a match',
     'auth.guestRedirectNotice': 'Redirecting to sign in page...',
+
+    // Guest landing (tabs)
+    'guest.landing.title': 'Guest Mode',
+    'guest.landing.subtitle': 'Explore the app as a guest. Some features require signing in.',
+    'guest.landing.item1': 'Browse nearby matches',
+    'guest.landing.item2': 'Explore pitches and their details',
+    'guest.landing.item3': 'View match details and player profiles',
+    'guest.landing.item4': 'Sign in to create matches and send messages',
+    'guest.landing.item5': 'Filter matches and sort by distance',
+    'guest.landing.item6': 'Sign in to complete your profile',
+    'guest.landing.start': 'Start',
     
     // Match
     'match.createSuccess': 'Congratulations 🎉\nYour match has been created successfully.',
