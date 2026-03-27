@@ -14,6 +14,8 @@ import {
   PENDING_VERIFICATION_EMAIL_KEY,
 } from "@/lib/authVerification";
 import { getEmailFromAccessToken } from "@/lib/jwtPayload";
+import { getLastNonAuthRoute } from "@/lib/lastNonAuthRoute";
+import { lockAuthCallbackFor } from "@/lib/authCallbackLock";
 
 function parseHashParams(url: string): Record<string, string> {
   try {
@@ -100,6 +102,11 @@ export default function AuthCallbackScreen() {
 
   /** Query string güvenilir olmayabilir; bayrak + JWT'den e-posta ile giriş ekranını doldurur */
   const goToLoginAfterVerify = async (url: string | null) => {
+    if (!url) {
+      const from = getLastNonAuthRoute() || "/landing";
+      router.replace(`/auth?from=${encodeURIComponent(from)}` as any);
+      return;
+    }
     await AsyncStorage.setItem(AUTH_REDIRECT_TO_LOGIN_AFTER_VERIFY_KEY, "1");
     let isRecovery = false;
     if (url) {
@@ -126,12 +133,16 @@ export default function AuthCallbackScreen() {
     q.set("afterVerify", "1");
     if (isRecovery) q.set("type", "recovery");
     if (pending) q.set("e", pending);
+    const from = getLastNonAuthRoute() || "/landing";
+    q.set("from", from);
     router.replace(`/auth?${q.toString()}` as any);
   };
 
   const processUrl = async (url: string | null) => {
     if (!url) {
-      await goToLoginAfterVerify(null);
+      setStatus("error");
+      setErrorMessage(t("auth.userInfoMissing"));
+      setErrorHint(t("auth.userInfoMissingHint"));
       return;
     }
 
@@ -141,48 +152,74 @@ export default function AuthCallbackScreen() {
     const refresh_token = params.refresh_token;
     const type = params.type;
 
+    // URL'de e-posta geldiyse en başta sakla (signup doğrulamada input doldurmak için)
+    if (params.e) {
+      try {
+        await AsyncStorage.setItem(PENDING_VERIFICATION_EMAIL_KEY, params.e);
+      } catch {
+        // ignore
+      }
+    }
+
     try {
+      // Şifre kurtarma: session gerekli (updateUser için)
+      if (type === "recovery") {
+        // Eski doğrulama bayrağı recovery akışına karışmasın
+        try {
+          await AsyncStorage.removeItem(AUTH_REDIRECT_TO_LOGIN_AFTER_VERIFY_KEY);
+        } catch {
+          // ignore
+        }
+        if (code) {
+          const { data: exchanged, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+          if (exchangeError) throw exchangeError;
+          const em = (params.e || exchanged?.session?.user?.email || "").trim();
+          if (em) await AsyncStorage.setItem(PENDING_VERIFICATION_EMAIL_KEY, em);
+          lockAuthCallbackFor(8000);
+          router.replace(`/auth/reset-password?type=recovery&e=${encodeURIComponent(em)}` as any);
+          return;
+        }
+        if (access_token && refresh_token) {
+          const { data, error } = await supabase.auth.setSession({ access_token, refresh_token });
+          if (error) throw error;
+          const em = (params.e || data?.user?.email || "").trim();
+          if (em) await AsyncStorage.setItem(PENDING_VERIFICATION_EMAIL_KEY, em);
+          lockAuthCallbackFor(8000);
+          router.replace(`/auth/reset-password?type=recovery&e=${encodeURIComponent(em)}` as any);
+          return;
+        }
+        // Recovery link'i token/code getirmediyse login'e atmak yerine hata göster
+        setStatus("error");
+        setErrorMessage(t("auth.userInfoMissing"));
+        setErrorHint(t("auth.userInfoMissingHint"));
+        return;
+      }
+
+      // E-posta doğrulama (signup/email): kullanıcıyı oturum açmış saymayalım.
+      // Code varsa e-posta almak için exchange edip ardından signOut ile session'ı temizliyoruz.
       if (code) {
         const { data: exchanged, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
         if (exchangeError) throw exchangeError;
-        if (type === "recovery") {
-          const em = exchanged?.session?.user?.email ?? "";
-          router.replace(`/auth/reset-password?type=recovery&e=${encodeURIComponent(em)}` as any);
-          return;
+        const em = exchanged?.session?.user?.email ?? "";
+        if (em) await AsyncStorage.setItem(PENDING_VERIFICATION_EMAIL_KEY, em);
+        try {
+          await supabase.auth.signOut();
+        } catch {
+          /* ignore */
         }
-
-        const uid = exchanged?.session?.user?.id;
-        if (!uid) {
-          await goToLoginAfterVerify(url);
-          return;
-        }
-        await AsyncStorage.removeItem(PENDING_VERIFICATION_EMAIL_KEY);
-        await AsyncStorage.setItem("userId", uid);
-        await AsyncStorage.setItem(`ugc_messaging_agreed_${uid}`, "1");
-      } else if (access_token && refresh_token) {
-        const { data, error } = await supabase.auth.setSession({ access_token, refresh_token });
-        if (error) throw error;
-        if (type === "recovery") {
-          const em = data?.user?.email ?? "";
-          router.replace(`/auth/reset-password?type=recovery&e=${encodeURIComponent(em)}` as any);
-          return;
-        }
-
-        const uid = data?.user?.id;
-        if (!uid) {
-          await goToLoginAfterVerify(url);
-          return;
-        }
-        await AsyncStorage.removeItem(PENDING_VERIFICATION_EMAIL_KEY);
-        await AsyncStorage.setItem("userId", uid);
-        await AsyncStorage.setItem(`ugc_messaging_agreed_${uid}`, "1");
-      } else {
         await goToLoginAfterVerify(url);
         return;
       }
 
-      setCallbackType((type === "recovery" ? "recovery" : type === "signup" || type === "email" ? "signup" : "") as "recovery" | "signup" | "");
-      setStatus("success");
+      // Tokenlar varsa e-postayı JWT'den alıp login ekranına yönlendir (session kurma yok)
+      if (access_token) {
+        const em = getEmailFromAccessToken(access_token);
+        if (em) await AsyncStorage.setItem(PENDING_VERIFICATION_EMAIL_KEY, em);
+        await goToLoginAfterVerify(url);
+        return;
+      }
+
+      await goToLoginAfterVerify(url);
       return;
     } catch (err: any) {
       if (type === "recovery") {
@@ -219,10 +256,14 @@ export default function AuthCallbackScreen() {
     const handleUrl = (url: string | null) => {
       if (url && (url.includes("auth/callback") || url.includes("access_token") || url.includes("code="))) {
         resolved = true;
+        // Bazı cihazlarda deep link birden fazla kez gelir; işleme başladığımız anda kilitle
+        lockAuthCallbackFor(8000);
         processUrl(url);
       } else {
         resolved = true;
-        void goToLoginAfterVerify(null);
+        setStatus("error");
+        setErrorMessage(t("auth.userInfoMissing"));
+        setErrorHint(t("auth.userInfoMissingHint"));
       }
     };
 
@@ -230,7 +271,9 @@ export default function AuthCallbackScreen() {
     const showNoUrlError = () => {
       if (resolved) return;
       resolved = true;
-      void goToLoginAfterVerify(null);
+      setStatus("error");
+      setErrorMessage(t("auth.userInfoMissing"));
+      setErrorHint(t("auth.userInfoMissingHint"));
     };
 
     // Önce root listener'dan gelen pending URL'i kontrol et (arka plandan açıldıysa)

@@ -2,8 +2,12 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Alert, Platform, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { supabase } from "@/services/supabase";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { lockAuthCallbackFor } from "@/lib/authCallbackLock";
+import { AUTH_REDIRECT_TO_LOGIN_AFTER_VERIFY_KEY, PENDING_VERIFICATION_EMAIL_KEY } from "@/lib/authVerification";
+import { Ionicons } from "@expo/vector-icons";
 
 export default function ResetPasswordScreen() {
   const router = useRouter();
@@ -12,26 +16,48 @@ export default function ResetPasswordScreen() {
   const [loading, setLoading] = useState(false);
   const [newPassword, setNewPassword] = useState("");
   const [confirm, setConfirm] = useState("");
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [hasSession, setHasSession] = useState<boolean | null>(null);
   const didUpdateRef = useRef(false);
 
-  const email = useMemo(() => {
+  const emailFromParams = useMemo(() => {
     const raw = params.e;
     if (typeof raw === "string") return raw;
     if (Array.isArray(raw) && raw[0]) return raw[0];
     return "";
   }, [params.e]);
+  const [resolvedEmail, setResolvedEmail] = useState(emailFromParams);
 
   useEffect(() => {
     let mounted = true;
+    // Reset ekranındayken gelebilecek tekrar deep link'leri bloke et
+    lockAuthCallbackFor(8000);
+    // Eski doğrulama bayrağı recovery akışına karışmasın
+    void AsyncStorage.removeItem(AUTH_REDIRECT_TO_LOGIN_AFTER_VERIFY_KEY);
     supabase.auth.getSession().then(({ data }) => {
       if (!mounted) return;
       setHasSession(!!data.session);
     });
+    // URL'den e-posta gelmediyse session'dan çek (login ekranında prefill için)
+    if (!emailFromParams) {
+      supabase.auth
+        .getUser()
+        .then(async ({ data }) => {
+          if (!mounted) return;
+          const em = data?.user?.email?.trim() ?? "";
+          if (!em) return;
+          setResolvedEmail(em);
+          await AsyncStorage.setItem(PENDING_VERIFICATION_EMAIL_KEY, em);
+        })
+        .catch(() => {});
+    } else {
+      void AsyncStorage.setItem(PENDING_VERIFICATION_EMAIL_KEY, emailFromParams);
+    }
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [emailFromParams]);
 
   // Kullanıcı şifreyi güncellemeden bu ekrandan çıkarsa recovery session'ı kalmasın
   useEffect(() => {
@@ -74,7 +100,9 @@ export default function ResetPasswordScreen() {
       const q = new URLSearchParams();
       q.set("afterVerify", "1");
       q.set("type", "recovery");
-      if (email) q.set("e", email);
+      q.set("recoveryDone", "1");
+      const em = (resolvedEmail || emailFromParams || "").trim();
+      if (em) q.set("e", em);
       router.replace(`/auth?${q.toString()}` as any);
     } catch (e: any) {
       Alert.alert(t("general.error"), e?.message || t("auth.unknownError"));
@@ -114,26 +142,60 @@ export default function ResetPasswordScreen() {
           </Text>
 
           <View style={{ marginTop: 16, gap: 10 }}>
-            <View style={{ backgroundColor: "#f3f4f6", borderRadius: 12, paddingHorizontal: 12, paddingVertical: Platform.OS === "ios" ? 12 : 8 }}>
+            <View
+              style={{
+                backgroundColor: "#f3f4f6",
+                borderRadius: 12,
+                paddingHorizontal: 12,
+                paddingVertical: Platform.OS === "ios" ? 12 : 8,
+                flexDirection: "row",
+                alignItems: "center",
+              }}
+            >
               <TextInput
                 placeholder={t("settings.account.newPasswordLabel")}
                 placeholderTextColor="#9ca3af"
-                secureTextEntry
+                secureTextEntry={!showNewPassword}
                 value={newPassword}
                 onChangeText={setNewPassword}
-                style={{ color: "#111827" }}
+                style={{ color: "#111827", flex: 1, paddingRight: 10 }}
               />
+              <TouchableOpacity
+                onPress={() => setShowNewPassword((v) => !v)}
+                accessibilityRole="button"
+                accessibilityLabel={showNewPassword ? t("settings.hidePassword") : t("settings.showPassword")}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              >
+                <Ionicons name={showNewPassword ? "eye-off-outline" : "eye-outline"} size={20} color="#6b7280" />
+              </TouchableOpacity>
             </View>
 
-            <View style={{ backgroundColor: "#f3f4f6", borderRadius: 12, paddingHorizontal: 12, paddingVertical: Platform.OS === "ios" ? 12 : 8 }}>
+            <View
+              style={{
+                backgroundColor: "#f3f4f6",
+                borderRadius: 12,
+                paddingHorizontal: 12,
+                paddingVertical: Platform.OS === "ios" ? 12 : 8,
+                flexDirection: "row",
+                alignItems: "center",
+              }}
+            >
               <TextInput
                 placeholder={t("settings.account.newPasswordConfirmLabel")}
                 placeholderTextColor="#9ca3af"
-                secureTextEntry
+                secureTextEntry={!showConfirmPassword}
                 value={confirm}
                 onChangeText={setConfirm}
-                style={{ color: "#111827" }}
+                style={{ color: "#111827", flex: 1, paddingRight: 10 }}
               />
+              <TouchableOpacity
+                onPress={() => setShowConfirmPassword((v) => !v)}
+                accessibilityRole="button"
+                accessibilityLabel={showConfirmPassword ? t("settings.hidePassword") : t("settings.showPassword")}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              >
+                <Ionicons name={showConfirmPassword ? "eye-off-outline" : "eye-outline"} size={20} color="#6b7280" />
+              </TouchableOpacity>
             </View>
           </View>
 

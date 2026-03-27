@@ -13,6 +13,7 @@ import { GuestAuthModalProvider } from '@/contexts/GuestAuthModalContext';
 import AnalyticsProvider from '@/components/AnalyticsProvider';
 import { setPendingAuthUrl } from '@/lib/pendingAuthUrl';
 import { setLastNonAuthRoute } from "@/lib/lastNonAuthRoute";
+import { isAuthCallbackLocked, lockAuthCallbackFor } from "@/lib/authCallbackLock";
 
 // Sadece belirli logları ignore et, tüm logları değil
 LogBox.ignoreLogs([
@@ -30,16 +31,19 @@ export default function RootLayout() {
     let lastAt = 0;
     const sub = Linking.addEventListener("url", (e) => {
       if (!e.url) return;
+      if (isAuthCallbackLocked()) return;
       // Reset-password ekranındayken duplicate deep link gelirse kullanıcı yazarken ekrandan atmasın
       if (pathname?.startsWith("/auth/reset-password")) return;
 
-      // Bazı tarayıcılar aynı deep link'i 2 kere tetikleyebilir → debounce
+      // Bazı tarayıcılar deep link'i 2 kez tetikleyebilir → debounce (URL farklı bile olsa)
       const now = Date.now();
-      if (lastUrl === e.url && now - lastAt < 2000) return;
+      if (now - lastAt < 2000) return;
       lastUrl = e.url;
       lastAt = now;
 
       if (e.url.includes("auth/callback") || e.url.includes("access_token") || e.url.includes("code=")) {
+        // Aynı deep link bazen 2 kez gelir → root seviyesinde hemen kilitle
+        lockAuthCallbackFor(8000);
         setPendingAuthUrl(e.url);
         router.replace("/auth/callback" as any);
       }

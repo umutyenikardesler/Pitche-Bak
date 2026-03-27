@@ -39,7 +39,13 @@ function decodeSearchParam(s: string): string {
 export default function AuthScreen() {
   const router = useRouter();
   const navigation = useNavigation();
-  const params = useLocalSearchParams<{ afterVerify?: string | string[]; e?: string | string[]; type?: string | string[]; from?: string | string[] }>();
+  const params = useLocalSearchParams<{
+    afterVerify?: string | string[];
+    e?: string | string[];
+    type?: string | string[];
+    from?: string | string[];
+    recoveryDone?: string | string[];
+  }>();
   const insets = useSafeAreaInsets();
   const { currentLanguage, changeLanguage, t } = useLanguage();
   const [email, setEmail] = useState("");
@@ -47,6 +53,7 @@ export default function AuthScreen() {
   const [isLogin, setIsLogin] = useState(true);
   const [showAfterVerifyHint, setShowAfterVerifyHint] = useState(false);
   const [isRecoveryMode, setIsRecoveryMode] = useState(false);
+  const [isRecoveryDone, setIsRecoveryDone] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isOAuthLoading, setIsOAuthLoading] = useState<"google" | "apple" | null>(null);
@@ -367,6 +374,8 @@ export default function AuthScreen() {
     const rawE = params.e;
     const rawType = params.type;
     const isRecovery = rawType === "recovery" || (Array.isArray(rawType) && rawType[0] === "recovery");
+    const rawDone = params.recoveryDone;
+    const recoveryDone = rawDone === "1" || (Array.isArray(rawDone) && rawDone[0] === "1");
     
     const fromUrl =
       typeof rawE === "string"
@@ -377,16 +386,40 @@ export default function AuthScreen() {
     const stored = (await AsyncStorage.getItem(PENDING_VERIFICATION_EMAIL_KEY))?.trim() ?? "";
     const resolvedEmail = fromUrl || stored;
 
-    if (resolvedEmail) setEmail(resolvedEmail);
+    if (resolvedEmail) {
+      setEmail(resolvedEmail);
+    } else {
+      // Son çare: mevcut session varsa e-postayı Supabase'den oku (oturum açmaz, sadece okur)
+      try {
+        const { data } = await supabase.auth.getUser();
+        const em = data?.user?.email?.trim() ?? "";
+        if (em) {
+          setEmail(em);
+          await AsyncStorage.setItem(PENDING_VERIFICATION_EMAIL_KEY, em);
+        }
+      } catch {
+        // ignore
+      }
+    }
+
+    // E-posta doğrulama sonrası kullanıcıyı oturum açmış sayma; e-postayı çözdükten sonra session varsa temizle
+    if (!isRecovery) {
+      try {
+        await supabase.auth.signOut();
+      } catch {
+        // ignore
+      }
+    }
     setIsLogin(true);
     setAgreedToTerms(true);
     setShowAfterVerifyHint(true);
     setIsRecoveryMode(isRecovery);
+    setIsRecoveryDone(isRecovery && recoveryDone);
 
     if (fromStorageFlag) {
       await AsyncStorage.removeItem(AUTH_REDIRECT_TO_LOGIN_AFTER_VERIFY_KEY);
     }
-  }, [params.afterVerify, params.e]);
+  }, [params.afterVerify, params.e, params.type, params.recoveryDone]);
 
   useEffect(() => {
     resolveAndSetEmail();
@@ -1067,8 +1100,10 @@ export default function AuthScreen() {
                           }}
                         >
                           <Text style={{ color: "#166534", fontSize: 14, textAlign: "center", fontWeight: "600" }}>
-                            {isRecoveryMode 
-                              ? t("auth.passwordResetSuccessHint") 
+                            {isRecoveryMode
+                              ? (isRecoveryDone
+                                  ? t("auth.passwordResetCompletedHint")
+                                  : t("auth.passwordResetSuccessHint"))
                               : t("auth.afterVerifySignInHint")}
                           </Text>
                         </View>

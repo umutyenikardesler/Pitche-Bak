@@ -131,14 +131,14 @@
           btn.onclick = function () { openApp(deepLink); };
         }
 
-        // Otomatik yönlendirme
-        setTimeout(function () { openApp(deepLink); }, 500);
+        // Otomatik yönlendirme (iOS izin alert'i metni kapatmasın diye geciktir)
+        setTimeout(function () { openApp(deepLink); }, 2000);
 
         // iOS bazen otomatiği bloklar → buton göster
         setTimeout(function () {
           if (btn) btn.style.display = 'inline-block';
           if (hint) hint.style.display = 'block';
-        }, 1200);
+        }, 2400);
       }
 
       main();
