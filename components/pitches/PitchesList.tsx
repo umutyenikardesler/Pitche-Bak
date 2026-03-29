@@ -127,11 +127,16 @@ export default function PitchesList({ pitches, selectedPitch, setSelectedPitch, 
   const hasPhone = !!pitchPhone;
 
   const openPriceEdit = () => {
+    if (isGuest) return;
     setEditPriceValue(String(selectedPitch?.price ?? ''));
     setPriceEditVisible(true);
   };
 
   const handleSavePrice = async () => {
+    if (isGuest) {
+      setPriceEditVisible(false);
+      return;
+    }
     const num = parseInt(editPriceValue.replace(/\D/g, ''), 10);
     if (isNaN(num) || num < 0) {
       Alert.alert('', t('pitches.priceInvalid'));
@@ -281,12 +286,16 @@ export default function PitchesList({ pitches, selectedPitch, setSelectedPitch, 
                           <Text className="pl-2 text-gray-700 font-semibold">
                             {selectedPitch.price} ₺
                           </Text>
-                          <TouchableOpacity onPress={() => setPriceInfoVisible(true)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} style={{ marginLeft: 4 }}>
-                            <Ionicons name="information-circle-outline" size={20} color="#6b7280" />
-                          </TouchableOpacity>
-                          <TouchableOpacity onPress={openPriceEdit} style={{ marginLeft: 6, paddingHorizontal: 8, paddingVertical: 4, backgroundColor: '#e5e7eb', borderRadius: 6 }}>
-                            <Text style={{ fontSize: 12, fontWeight: '600', color: '#374151' }}>{t('pitches.editPrice')}</Text>
-                          </TouchableOpacity>
+                          {!isGuest ? (
+                            <TouchableOpacity onPress={() => setPriceInfoVisible(true)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} style={{ marginLeft: 4 }}>
+                              <Ionicons name="information-circle-outline" size={20} color="#6b7280" />
+                            </TouchableOpacity>
+                          ) : null}
+                          {!isGuest ? (
+                            <TouchableOpacity onPress={openPriceEdit} style={{ marginLeft: 6, paddingHorizontal: 8, paddingVertical: 4, backgroundColor: '#e5e7eb', borderRadius: 6 }}>
+                              <Text style={{ fontSize: 12, fontWeight: '600', color: '#374151' }}>{t('pitches.editPrice')}</Text>
+                            </TouchableOpacity>
+                          ) : null}
                         </View>
                       </View>
                     </View>

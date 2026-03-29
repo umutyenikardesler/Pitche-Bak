@@ -123,6 +123,11 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
   };
 
   const screenHeight = Dimensions.get('window').height;
+  const screenWidth = Dimensions.get('window').width;
+  // iPhone 15 gibi cihazlarda (393dp) "küçük ekran" davranışı isteniyor
+  const isCompact = screenWidth <= 430;
+  const districtModalWidth = isCompact ? '30%' : '40%';
+  const pitchModalWidth = isCompact ? '50%' : '60%'; // büyük ekranda max %50
 
   const renderDistrictModal = () => {
     if (!showDistrictModal) return null;
@@ -137,7 +142,13 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
         <View className="flex-1 justify-center items-center bg-black/50">
           <View
             className="bg-white rounded-lg p-4"
-            style={{ width: '85%', maxHeight: screenHeight * 0.75 }}
+            style={{
+              width: districtModalWidth,
+              minWidth: isCompact ? 0 : 180,
+              maxWidth: isCompact ? undefined : 320,
+              maxHeight: screenHeight * 0.75,
+              alignSelf: 'center',
+            }}
           >
             <FlatList
               data={districts as District[]}
@@ -183,7 +194,14 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
         <View className="flex-1 justify-center items-center bg-black/50">
           <View
             className="bg-white rounded-lg p-4"
-            style={{ width: '85%', maxHeight: screenHeight * 0.75, overflow: 'hidden' }}
+            style={{
+              width: pitchModalWidth,
+              minWidth: isCompact ? 0 : 240,
+              maxWidth: isCompact ? undefined : 420,
+              maxHeight: screenHeight * 0.75,
+              overflow: 'hidden',
+              alignSelf: 'center',
+            }}
           >
             <FlatList
               data={pitches as Pitch[]}

@@ -14,6 +14,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { supabase } from "@/services/supabase";
 import { blockUser } from "@/services/blocks";
 import { useState, useEffect, useCallback } from "react";
+import { usePathname, useRouter } from "expo-router";
 import { useLanguage } from "@/contexts/LanguageContext";
 import "@/global.css";
 import ProfileStatus from "@/components/profile/ProfileStatus";
@@ -51,6 +52,8 @@ export default function ProfilePreview({
   onClose,
   userId,
 }: ProfilePreviewProps) {
+  const router = useRouter();
+  const pathname = usePathname();
   const { t } = useLanguage();
   const [userData, setUserData] = useState<UserData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -408,7 +411,20 @@ export default function ProfilePreview({
         data: { user },
       } = await supabase.auth.getUser();
       if (!user) {
-        Alert.alert(t("general.error"), t("profile.userSessionNotFound"));
+        const msg = `${t("profile.userSessionNotFound")}\n\nGiriş yaptıktan sonra takip edebilirsiniz.`;
+        Alert.alert(t("general.error"), msg, [
+          {
+            text: "Giriş Yap",
+            onPress: () => {
+              try {
+                handleClose();
+              } catch {}
+              const from = pathname || "/(tabs)?guest=1";
+              router.push(`/auth?from=${encodeURIComponent(from)}` as any);
+            },
+          },
+          { text: t("general.cancel"), style: "cancel" },
+        ]);
         return;
       }
 
@@ -647,26 +663,44 @@ export default function ProfilePreview({
             activeOpacity={1}
           />
           
-          <View className="rounded-2xl w-11/12 h-3/4 overflow-hidden">
+          <View className="rounded-2xl w-11/12 h-3/4 overflow-hidden" style={{ position: "relative" }}>
+            {/* Sağ üst: kapatma butonu (alt siyah alana basma sorununa fallback) */}
+            <TouchableOpacity
+              onPress={handleClose}
+              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+              style={{
+                position: "absolute",
+                top: 0,
+                right: 0,
+                zIndex: 100,
+                width: 34,
+                height: 34,
+                borderRadius: 17,
+                backgroundColor: "#ef4444",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+              accessibilityRole="button"
+              accessibilityLabel="Close profile modal"
+              activeOpacity={0.85}
+            >
+              <Ionicons name="close" size={20} color="#ffffff" />
+            </TouchableOpacity>
             <ScrollView
               className="flex-1"
               scrollEnabled={!listModalVisible}
               nestedScrollEnabled={true}
               contentContainerStyle={{ flexGrow: 1, minHeight: '100%' }}
             >
-              <TouchableOpacity 
-                activeOpacity={1}
-                onPress={handleClose}
-                style={{ flex: 1 }}
-              >
+              <View style={{ flex: 1 }}>
                 <View className="pt-8" style={{ flex: 1 }}>
                 <TouchableOpacity 
                   activeOpacity={1}
                   onPress={(e) => e.stopPropagation()}
                 >
-                <View className="flex flex-row bg-white rounded-lg shadow-lg px-4 py-2 mb-2">
+                <View className="flex flex-row bg-white rounded-lg shadow-lg px-2 py-1 mb-2 mt-3">
                   {/* Profil Resmi */}
-                  <View className="w-1/4 py-2">
+                  <View className="w-1/5">
                     <TouchableOpacity
                       onPress={() => setImageModalVisible(true)}
                       activeOpacity={0.8}
@@ -677,46 +711,46 @@ export default function ProfilePreview({
                             ? { uri: userData.profile_image }
                             : require("@/assets/images/ball.png")
                         }
-                        className="rounded-full mx-auto"
-                        style={{ width: 90, height: 90, resizeMode: "contain" }}
+                        className="rounded-full my-3 mx-1"
+                        style={{ width: 80, height: 80, resizeMode: "contain" }}
                       />
                     </TouchableOpacity>
                   </View>
 
                   {/* Bilgiler */}
-                  <View className="w-3/4 pl-6">
-                    <Text className="font-semibold text-lg text-green-700 my-1">
+                  <View className="flex-1 ml-6 px-1">
+                    <Text className="font-semibold text-lg text-green-700 mt-1">
                       {userData?.name || t("profile.noName")}{" "}
                       {userData?.surname || ""}
                     </Text>
 
                     <View className="flex-row flex-wrap justify-between mb-1">
-                      <Text className="text-wrap font-semibold">
+                      <Text className="text-wrap font-semibold" style={{ lineHeight: 20 }}>
                         {t("profile.age")}:
                       </Text>
-                      <Text className="text-green-600 font-semibold">
+                      <Text className="text-green-600 font-semibold" style={{ lineHeight: 20 }}>
                         {" "}
                         {userData?.age || "-"}{" "}
                       </Text>
-                      <Text className="font-semibold">
+                      <Text className="font-semibold" style={{ lineHeight: 20 }}>
                         {t("profile.height")}:
                       </Text>
-                      <Text className="text-green-600 font-semibold">
+                      <Text className="text-green-600 font-semibold" style={{ lineHeight: 20 }}>
                         {" "}
                         {userData?.height || "-"} {t("units.cm")} {" "}
                       </Text>
-                      <Text className="font-semibold">
+                      <Text className="font-semibold" style={{ lineHeight: 20 }}>
                         {t("profile.weight")}:
                       </Text>
-                      <Text className="text-green-600 font-semibold">
+                      <Text className="text-green-600 font-semibold" style={{ lineHeight: 20 }}>
                         {" "}
                         {userData?.weight || "-"} {t("units.kg")} {" "}
                       </Text>
-                      <Text className="text-wrap font-semibold mb-1">
-                        <Text className="font-semibold">
+                      <Text className="text-wrap font-semibold mb-1" style={{ lineHeight: 20 }}>
+                        <Text className="font-semibold" style={{ lineHeight: 20 }}>
                           {t("profile.position")}:
                         </Text>
-                        <Text className="text-green-600 font-semibold mb-1">
+                        <Text className="text-green-600 font-semibold mb-1" style={{ lineHeight: 20 }}>
                           {" "}
                           {userData?.description ||
                             t("profile.noDescription")}{" "}
@@ -726,36 +760,48 @@ export default function ProfilePreview({
 
                     {/* Takip Et / Takip İsteğini Geri Çek Butonu */}
                     {isFollowing && followStatus === "accepted" ? (
-                      <View className="flex-row space-x-2">
+                      <View className="flex-row gap-2" style={{ alignItems: "center" }}>
                         <TouchableOpacity
-                          className="flex-1 bg-green-700 px-4 py-2 rounded"
+                          className="flex-1 bg-green-700 px-1 py-2 rounded"
+                          style={{ minWidth: 0 }}
                           onPress={handleUnfollow}
                         >
-                          <Text className="text-center font-bold text-white">
+                          <Text
+                            className="text-center font-bold text-white"
+                            numberOfLines={1}
+                            ellipsizeMode="tail"
+                            style={{ flexShrink: 1, fontSize: 11.5 }}
+                          >
                             {t("profilePreview.youAreFollowing")}
                           </Text>
                         </TouchableOpacity>
                         {currentUserId && currentUserId !== userId && (
                           <TouchableOpacity
-                            className="px-4 py-2 rounded border border-red-500"
+                            className="px-2 py-2 rounded border border-red-500"
                             onPress={handleBlockUser}
                           >
-                            <Text className="text-center font-bold text-red-600">
+                            <Text className="text-center font-bold text-red-600" numberOfLines={1} style={{ fontSize: 11.5 }}>
                               {t("profile.blockUser")}
                             </Text>
                           </TouchableOpacity>
                         )}
                       </View>
                     ) : (
-                      <View className="flex-row gap-2">
+                      <View className="flex-row gap-2" style={{ alignItems: "center" }}>
                         <TouchableOpacity
                           onPress={handleFollow}
-                          className={`flex-1 px-4 py-2 rounded ${
+                          className={`flex-1 px-2 py-2 rounded ${
                             isFollowing ? "bg-gray-400" : "bg-green-700"
                           }`}
                           disabled={isFollowing}
+                          style={{ minWidth: 0 }}
                         >
-                          <Text className="font-bold text-white text-center">
+                          <Text
+                            className="font-bold text-white text-center"
+                            numberOfLines={1}
+                            ellipsizeMode="tail"
+                            style={{ flexShrink: 1, fontSize: 11.5 }}
+                          >
                             {isFollowing
                               ? t("profilePreview.followRequestPending")
                               : wasRejected
@@ -765,10 +811,10 @@ export default function ProfilePreview({
                         </TouchableOpacity>
                         {currentUserId && currentUserId !== userId && (
                           <TouchableOpacity
-                            className="px-4 py-2 rounded border border-red-500"
+                            className="px-2 py-2 rounded border border-red-500"
                             onPress={handleBlockUser}
                           >
-                            <Text className="text-center font-bold text-red-600">
+                            <Text className="text-center font-bold text-red-600" numberOfLines={1} style={{ fontSize: 11.5 }}>
                               {t("profile.blockUser")}
                             </Text>
                           </TouchableOpacity>
@@ -793,12 +839,12 @@ export default function ProfilePreview({
                     <ProfileCondition matchCount={matchCount} />
 
                     {/* ProfileMatches bileşeni */}
-                    {userData && <ProfileMatches userData={userData} />}
+                    {userData && <ProfileMatches userData={userData} mode="modal" />}
                   </View>
                 )}
                 </TouchableOpacity>
                 </View>
-              </TouchableOpacity>
+              </View>
               
               {/* Takipçi/Takip Edilen Listesi Modal - Ana modal içinde */}
               {listModalVisible && (

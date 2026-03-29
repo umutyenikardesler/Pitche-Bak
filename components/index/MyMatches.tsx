@@ -16,7 +16,8 @@ interface MyMatchesProps {
 const formatTitle = (text: string) => {
   if (!text) return "";
   const formattedText = text.charAt(0).toUpperCase() + text.slice(1);
-  return formattedText.length > 23 ? formattedText.slice(0, 23) + "..." : formattedText;
+  // Başlığı burada zorla kesmeyelim; Text içinde ellipsis ile sığdıracağız.
+  return formattedText;
 };
 
 export default function MyMatches({ matches, refreshing, onRefresh, onSelectMatch, onCreateMatch }: MyMatchesProps) {
@@ -72,7 +73,26 @@ export default function MyMatches({ matches, refreshing, onRefresh, onSelectMatc
   const renderMatch = ({ item }: { item: Match }) => (
     <TouchableOpacity onPress={() => onSelectMatch(item)}>
       <View className="bg-white rounded-lg mx-4 my-1 p-1 shadow-lg">
-        <View className="flex-row items-center justify-between">
+        <View className="flex-row items-center justify-between" style={{ position: "relative" }}>
+          {/* Maç oynanıyor etiketi: başlık alanının üstüne binebilir (tam görünsün) */}
+          {isMatchCurrentlyPlaying(item) ? (
+            <Animated.Text
+              className="text-white py-0.5 px-1.5 bg-green-600 font-bold text-sm rounded-md"
+              style={[
+                animatedStyle,
+                {
+                  position: "absolute",
+                  top: 2,
+                  right: 6,
+                  zIndex: 50,
+                  elevation: 2,
+                },
+              ]}
+              numberOfLines={1}
+            >
+              {t("home.matchPlaying")} ⚽
+            </Animated.Text>
+          ) : null}
           {/* Profil Resmi */}
           <View className="w-1/5 flex justify-center p-1 py-1.5">
             <Image
@@ -86,19 +106,16 @@ export default function MyMatches({ matches, refreshing, onRefresh, onSelectMatc
             />
           </View>
           {/* Maç Bilgileri */}
-          <View className="w-4/6 flex justify-center -mt-2 -ml-4">
-            <View className="flex-row items-center">
-              <Text className="text-lg text-green-700 font-semibold flex-1">
+          <View className="w-4/6 flex justify-center -mt-2 ml-2">
+            <View className="flex-row items-center" style={{ width: "100%" }}>
+              <Text
+                className="text-lg text-green-700 font-semibold"
+                numberOfLines={1}
+                ellipsizeMode="tail"
+                style={{ flex: 1, minWidth: 0, paddingRight: 8 }}
+              >
                 {formatTitle(item.title)}
               </Text>
-              {isMatchCurrentlyPlaying(item) && (
-                <Animated.Text 
-                  className="text-white py-0.5 px-1.5 bg-green-600 font-bold text-sm rounded-md ml-auto"
-                  style={animatedStyle}
-                >
-                  {t('home.matchPlaying')} ⚽
-                </Animated.Text>
-              )}
             </View>
 
             <View className="text-gray-700 text-md flex-row items-center">
@@ -124,8 +141,29 @@ export default function MyMatches({ matches, refreshing, onRefresh, onSelectMatc
           </View>
 
           {/* Sağda Chevron İkonu */}
-          <View className="mr-1">
-            <Ionicons name="chevron-forward-outline" size={20} color="green" />
+          <View
+            style={{
+              width: 44,
+              minWidth: 44,
+              marginRight: 4,
+              paddingVertical: 6,
+              alignSelf: "stretch",
+              // Çocukların (özellikle ok alanının) tam genişliği kullanması için
+              alignItems: "stretch",
+            }}
+          >
+            {/* Üst alan: Maç oynanıyor */}
+            <View style={{ flex: 1, justifyContent: "flex-start", alignItems: "flex-end" }}>
+              {/* boş */}
+            </View>
+
+            {/* Orta alan: ok her zaman ortada */}
+            <View style={{ flex: 1, justifyContent: "center", alignItems: "flex-end", marginRight: 5 }}>
+              <Ionicons name="chevron-forward-outline" size={20} color="green" />
+            </View>
+
+            {/* Alt alan: boş */}
+            <View style={{ flex: 1 }} />
           </View>
 
         </View>

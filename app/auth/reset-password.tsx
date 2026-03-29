@@ -1,5 +1,16 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Alert, Platform, Text, TextInput, TouchableOpacity, View } from "react-native";
+import {
+  Alert,
+  Keyboard,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  TouchableWithoutFeedback,
+  View,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -8,6 +19,7 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { lockAuthCallbackFor } from "@/lib/authCallbackLock";
 import { AUTH_REDIRECT_TO_LOGIN_AFTER_VERIFY_KEY, PENDING_VERIFICATION_EMAIL_KEY } from "@/lib/authVerification";
 import { Ionicons } from "@expo/vector-icons";
+import { getPasswordChecks, getPasswordViolations } from "@/lib/passwordPolicy";
 
 export default function ResetPasswordScreen() {
   const router = useRouter();
@@ -20,6 +32,7 @@ export default function ResetPasswordScreen() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [hasSession, setHasSession] = useState<boolean | null>(null);
   const didUpdateRef = useRef(false);
+  const passwordChecks = useMemo(() => getPasswordChecks(newPassword), [newPassword]);
 
   const emailFromParams = useMemo(() => {
     const raw = params.e;
@@ -72,8 +85,16 @@ export default function ResetPasswordScreen() {
   }, [params.type]);
 
   const submit = async () => {
-    if (!newPassword || newPassword.length < 6) {
-      Alert.alert(t("general.error"), t("settings.passwordMin"));
+    const violations = getPasswordViolations(newPassword);
+    if (violations.length > 0) {
+      Alert.alert(
+        t("general.error"),
+        [
+          "Şifreniz en az 8 karakter olmalıdır.",
+          "En az 1 büyük harf, 1 küçük harf, sembol ve sayılardan oluşmalıdır.",
+          "Ardaşık sayılar olmamalıdır.",
+        ].join("\n")
+      );
       return;
     }
     if (newPassword !== confirm) {
@@ -132,85 +153,138 @@ export default function ResetPasswordScreen() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "#f3f4f6" }} edges={["top"]}>
-      <View style={{ padding: 18, flex: 1, justifyContent: "center" }}>
-        <View style={{ backgroundColor: "#ffffff", borderRadius: 16, padding: 16, borderWidth: 1, borderColor: "#e5e7eb" }}>
-          <Text style={{ fontSize: 20, fontWeight: "900", color: "#065f46", textAlign: "center" }}>
-            {t("auth.passwordResetSuccess")}
-          </Text>
-          <Text style={{ marginTop: 8, color: "#4b5563", textAlign: "center" }}>
-            {t("auth.passwordResetSuccessSubtitle")}
-          </Text>
-
-          <View style={{ marginTop: 16, gap: 10 }}>
-            <View
-              style={{
-                backgroundColor: "#f3f4f6",
-                borderRadius: 12,
-                paddingHorizontal: 12,
-                paddingVertical: Platform.OS === "ios" ? 12 : 8,
-                flexDirection: "row",
-                alignItems: "center",
-              }}
-            >
-              <TextInput
-                placeholder={t("settings.account.newPasswordLabel")}
-                placeholderTextColor="#9ca3af"
-                secureTextEntry={!showNewPassword}
-                value={newPassword}
-                onChangeText={setNewPassword}
-                style={{ color: "#111827", flex: 1, paddingRight: 10 }}
-              />
-              <TouchableOpacity
-                onPress={() => setShowNewPassword((v) => !v)}
-                accessibilityRole="button"
-                accessibilityLabel={showNewPassword ? t("settings.hidePassword") : t("settings.showPassword")}
-                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-              >
-                <Ionicons name={showNewPassword ? "eye-off-outline" : "eye-outline"} size={20} color="#6b7280" />
-              </TouchableOpacity>
-            </View>
-
-            <View
-              style={{
-                backgroundColor: "#f3f4f6",
-                borderRadius: 12,
-                paddingHorizontal: 12,
-                paddingVertical: Platform.OS === "ios" ? 12 : 8,
-                flexDirection: "row",
-                alignItems: "center",
-              }}
-            >
-              <TextInput
-                placeholder={t("settings.account.newPasswordConfirmLabel")}
-                placeholderTextColor="#9ca3af"
-                secureTextEntry={!showConfirmPassword}
-                value={confirm}
-                onChangeText={setConfirm}
-                style={{ color: "#111827", flex: 1, paddingRight: 10 }}
-              />
-              <TouchableOpacity
-                onPress={() => setShowConfirmPassword((v) => !v)}
-                accessibilityRole="button"
-                accessibilityLabel={showConfirmPassword ? t("settings.hidePassword") : t("settings.showPassword")}
-                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-              >
-                <Ionicons name={showConfirmPassword ? "eye-off-outline" : "eye-outline"} size={20} color="#6b7280" />
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          <TouchableOpacity
-            activeOpacity={0.9}
-            onPress={submit}
-            disabled={loading}
-            style={{ marginTop: 14, backgroundColor: "#16a34a", borderRadius: 14, paddingVertical: 14, alignItems: "center", opacity: loading ? 0.7 : 1 }}
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 60 : 24}
+      >
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+          <ScrollView
+            contentContainerStyle={{ flexGrow: 1, padding: 18, justifyContent: "center" }}
+            keyboardShouldPersistTaps="handled"
           >
-            <Text style={{ color: "#ffffff", fontWeight: "900", fontSize: 16 }}>
-              {t("guest.landing.start")}
-            </Text>
-          </TouchableOpacity>
-        </View>
-      </View>
+            <View style={{ backgroundColor: "#ffffff", borderRadius: 16, padding: 16, borderWidth: 1, borderColor: "#e5e7eb" }}>
+              <Text style={{ fontSize: 20, fontWeight: "900", color: "#065f46", textAlign: "center" }}>
+                {t("auth.passwordResetSuccess")}
+              </Text>
+              <Text style={{ marginTop: 8, color: "#4b5563", textAlign: "center" }}>
+                {t("auth.passwordResetSuccessSubtitle")}
+              </Text>
+
+              <View style={{ marginTop: 16, gap: 10 }}>
+                <View
+                  style={{
+                    backgroundColor: "#f3f4f6",
+                    borderRadius: 12,
+                    paddingHorizontal: 12,
+                    paddingVertical: Platform.OS === "ios" ? 12 : 8,
+                    flexDirection: "row",
+                    alignItems: "center",
+                  }}
+                >
+                  <TextInput
+                    placeholder={t("settings.account.newPasswordLabel")}
+                    placeholderTextColor="#9ca3af"
+                    secureTextEntry={!showNewPassword}
+                    value={newPassword}
+                    onChangeText={setNewPassword}
+                    style={{ color: "#111827", flex: 1, paddingRight: 10 }}
+                  />
+                  <TouchableOpacity
+                    onPress={() => setShowNewPassword((v) => !v)}
+                    accessibilityRole="button"
+                    accessibilityLabel={showNewPassword ? t("settings.hidePassword") : t("settings.showPassword")}
+                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                  >
+                    <Ionicons name={showNewPassword ? "eye-off-outline" : "eye-outline"} size={20} color="#6b7280" />
+                  </TouchableOpacity>
+                </View>
+
+                <View
+                  style={{
+                    backgroundColor: "#f3f4f6",
+                    borderRadius: 12,
+                    paddingHorizontal: 12,
+                    paddingVertical: Platform.OS === "ios" ? 12 : 8,
+                    flexDirection: "row",
+                    alignItems: "center",
+                  }}
+                >
+                  <TextInput
+                    placeholder={t("settings.account.newPasswordConfirmLabel")}
+                    placeholderTextColor="#9ca3af"
+                    secureTextEntry={!showConfirmPassword}
+                    value={confirm}
+                    onChangeText={setConfirm}
+                    style={{ color: "#111827", flex: 1, paddingRight: 10 }}
+                  />
+                  <TouchableOpacity
+                    onPress={() => setShowConfirmPassword((v) => !v)}
+                    accessibilityRole="button"
+                    accessibilityLabel={showConfirmPassword ? t("settings.hidePassword") : t("settings.showPassword")}
+                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                  >
+                    <Ionicons name={showConfirmPassword ? "eye-off-outline" : "eye-outline"} size={20} color="#6b7280" />
+                  </TouchableOpacity>
+                </View>
+
+            <View style={{ marginTop: 8 }}>
+              <View style={{ flexDirection: "row", flexWrap: "wrap" }}>
+                {[
+                  { ok: passwordChecks.min8, text: "En az 8 karakter olmalı" },
+                  { ok: passwordChecks.upper, text: "En az 1 büyük harf içermeli" },
+                  { ok: passwordChecks.lower, text: "En az 1 küçük harf içermeli" },
+                  { ok: passwordChecks.digit, text: "En az 1 sayı içermeli" },
+                  { ok: passwordChecks.symbol, text: "En az 1 sembol içermeli" },
+                  { ok: passwordChecks.noSequentialNumbers, text: "Ardaşık sayı olmayacaktır" },
+                ].map((it, idx) => (
+                  <View
+                    key={idx}
+                    style={{
+                      width: "50%",
+                      flexDirection: "row",
+                      alignItems: "center",
+                      gap: 6,
+                      marginBottom: 4,
+                    }}
+                  >
+                    <Ionicons
+                      name={it.ok ? "checkmark-circle" : "close-circle-outline"}
+                      size={14}
+                      color={it.ok ? "#16a34a" : "#dc2626"}
+                    />
+                    <Text
+                      style={{
+                        color: it.ok ? "#16a34a" : "#dc2626",
+                        fontSize: 12,
+                        lineHeight: 18,
+                        flexShrink: 1,
+                      }}
+                      numberOfLines={1}
+                      ellipsizeMode="tail"
+                    >
+                      {it.text}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            </View>
+              </View>
+
+              <TouchableOpacity
+                activeOpacity={0.9}
+                onPress={submit}
+                disabled={loading}
+                style={{ marginTop: 14, backgroundColor: "#16a34a", borderRadius: 14, paddingVertical: 14, alignItems: "center", opacity: loading ? 0.7 : 1 }}
+              >
+                <Text style={{ color: "#ffffff", fontWeight: "900", fontSize: 16 }}>
+                  {t("guest.landing.start")}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </ScrollView>
+        </TouchableWithoutFeedback>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }

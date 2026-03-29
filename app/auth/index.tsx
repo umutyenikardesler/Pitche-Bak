@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect, useCallback } from "react";
+import { useRef, useState, useEffect, useCallback, useMemo } from "react";
 import { View, Text, TextInput, TouchableOpacity, Alert, KeyboardAvoidingView, Platform, Pressable, ActivityIndicator, ScrollView, Keyboard, Dimensions, BackHandler } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter, useLocalSearchParams, useNavigation } from "expo-router";
@@ -16,6 +16,7 @@ import * as AppleAuthentication from "expo-apple-authentication";
 import Constants from "expo-constants";
 import * as Crypto from "expo-crypto";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { getPasswordChecks, getPasswordViolations } from "@/lib/passwordPolicy";
 import {
   AUTH_REDIRECT_TO_LOGIN_AFTER_VERIFY_KEY,
   PENDING_VERIFICATION_EMAIL_KEY,
@@ -66,6 +67,8 @@ export default function AuthScreen() {
   const [policyModalKey, setPolicyModalKey] = useState<PolicyKey | null>(null);
 
   const passwordInputRef = useRef<TextInput>(null);
+
+  const passwordChecks = useMemo(() => getPasswordChecks(password), [password]);
 
   // Native-stack'te beforeRemove ile prevent etmek uyarı üretebiliyor.
   // Bu yüzden native swipe/back'i kapatıp kendi geri davranışımızı uyguluyoruz.
@@ -612,8 +615,23 @@ export default function AuthScreen() {
       return Alert.alert(t("general.error"), t("auth.invalidEmail"));
     }
 
-    if (password.length < 6) {
-      return Alert.alert(t("general.error"), t("auth.passwordMin"));
+    if (!isLogin) {
+      const violations = getPasswordViolations(password);
+      if (violations.length > 0) {
+        return Alert.alert(
+          t("general.error"),
+          [
+            "Şifreniz en az 8 karakter olmalıdır.",
+            "En az 1 büyük harf, 1 küçük harf, sembol ve sayılardan oluşmalıdır.",
+            "Ardaşık sayılar olmamalıdır.",
+          ].join("\n")
+        );
+      }
+    } else {
+      // login'de sadece minimum kontrol (eski davranış)
+      if (password.length < 6) {
+        return Alert.alert(t("general.error"), t("auth.passwordMin"));
+      }
     }
 
     setIsLoading(true);
@@ -711,6 +729,87 @@ export default function AuthScreen() {
       Alert.alert(t("general.error"), t("auth.invalidEmail"));
       return;
     }
+
+    const RATE_WINDOW_MS = 60 * 60 * 1000; // 1 hour
+    const RATE_MAX = 2; // Supabase rate limit: 2 emails/hour (project setting)
+    const MIN_SPACING_MS = 60 * 1000; // some flows also enforce ~60s spacing
+    const rlKey = `rate_limit:reset_password:${trimmedEmail.toLowerCase()}`;
+
+    const formatRemaining = (ms: number) => {
+      const s = Math.max(0, Math.ceil(ms / 1000));
+      const h = Math.floor(s / 3600);
+      const m = Math.floor((s % 3600) / 60);
+      const sec = s % 60;
+      if (currentLanguage === "en") {
+        if (h > 0) return `${h}h ${m}m`;
+        if (m > 0) return `${m}m ${sec}s`;
+        return `${sec}s`;
+      }
+      // tr
+      if (h > 0) return `${h} saat ${m} dk`;
+      if (m > 0) return `${m} dk ${sec} sn`;
+      return `${sec} sn`;
+    };
+
+    const isEmailRateLimitError = (msg: string) => {
+      const s = (msg || "").toLowerCase();
+      return s.includes("rate limit") || s.includes("60 seconds") || s.includes("email rate limit exceeded");
+    };
+
+    const readAttempts = async (): Promise<number[]> => {
+      try {
+        const raw = await AsyncStorage.getItem(rlKey);
+        const arr = raw ? (JSON.parse(raw) as any[]) : [];
+        const nums = arr
+          .map((x) => (typeof x === "number" ? x : typeof x === "string" ? parseInt(x, 10) : NaN))
+          .filter((n) => Number.isFinite(n)) as number[];
+        nums.sort((a, b) => a - b);
+        return nums;
+      } catch {
+        return [];
+      }
+    };
+
+    const writeAttempts = async (attempts: number[]) => {
+      try {
+        await AsyncStorage.setItem(rlKey, JSON.stringify(attempts));
+      } catch {
+        // ignore
+      }
+    };
+
+    const prune = (attempts: number[], now: number) =>
+      attempts.filter((ts) => ts >= now - RATE_WINDOW_MS).sort((a, b) => a - b);
+
+    const computeRemainingMs = (attempts: number[], now: number) => {
+      const pruned = prune(attempts, now);
+      // hourly limit
+      if (pruned.length >= RATE_MAX) {
+        return pruned[0] + RATE_WINDOW_MS - now;
+      }
+      // short spacing
+      if (pruned.length >= 1) {
+        const last = pruned[pruned.length - 1];
+        const rem = last + MIN_SPACING_MS - now;
+        if (rem > 0) return rem;
+      }
+      return 0;
+    };
+
+    // Client-side: show exact remaining time for this device/email
+    const now = Date.now();
+    const attemptsBefore = await readAttempts();
+    const remBefore = computeRemainingMs(attemptsBefore, now);
+    if (remBefore > 0) {
+      const timeText = formatRemaining(remBefore);
+      const msg =
+        currentLanguage === "en"
+          ? `Too many attempts. Please try again in ${timeText}.`
+          : `Çok fazla deneme yaptınız. Güvenlik nedeniyle ${timeText} sonra tekrar deneyin.`;
+      Alert.alert(t("general.error"), msg);
+      return;
+    }
+
     setIsLoading(true);
     try {
       // Native'de hash fragment mobilde kaybolduğu için önce web sayfamıza yönlendiriyoruz.
@@ -724,11 +823,26 @@ export default function AuthScreen() {
             : getOAuthRedirectUri();
       const { error } = await supabase.auth.resetPasswordForEmail(trimmedEmail, { redirectTo });
       if (error) throw error;
+      // record successful request time for remaining-time messaging
+      const after = prune([...attemptsBefore, now], now);
+      await writeAttempts(after);
       Alert.alert(t("general.success"), t("auth.forgotPasswordSuccess"));
     } catch (error: any) {
       const errMsg = error?.message || "";
-      const msg = errMsg ? translateError(errMsg) : t("auth.forgotPasswordError");
-      Alert.alert(t("general.error"), msg);
+      if (isEmailRateLimitError(errMsg)) {
+        const attempts = prune([...attemptsBefore, now], now);
+        await writeAttempts(attempts);
+        const rem = computeRemainingMs(attempts, now);
+        const timeText = rem > 0 ? formatRemaining(rem) : (currentLanguage === "en" ? "a while" : "bir süre");
+        const msg =
+          currentLanguage === "en"
+            ? `Too many attempts. Please try again in ${timeText}.`
+            : `Çok fazla deneme yaptınız. Güvenlik nedeniyle ${timeText} sonra tekrar deneyin.`;
+        Alert.alert(t("general.error"), msg);
+      } else {
+        const msg = errMsg ? translateError(errMsg) : t("auth.forgotPasswordError");
+        Alert.alert(t("general.error"), msg);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -1016,7 +1130,7 @@ export default function AuthScreen() {
             >
               <View style={{ paddingHorizontal: 24, paddingTop: 24, paddingBottom: 32, flex: 1 }}>
                   {/* Logo ve Başlık */}
-                  <View className="items-center" style={{ marginBottom: 28, width: '100%', position: 'relative' }}>
+                  <View className="items-center" style={{ marginBottom: 18, width: '100%', position: 'relative' }}>
                       {/* Dil seçimi (tek buton + açılır menü) */}
                       <View style={{ position: 'absolute', right: 0, top: 0, alignItems: 'flex-end', zIndex: 50 }}>
                         <TouchableOpacity
@@ -1082,13 +1196,13 @@ export default function AuthScreen() {
                       </View>
 
                     <View style={{ width: '100%', alignItems: 'center' }}>
-                      <Text className="text-2xl font-bold text-gray-800" style={{ marginTop: 5 }}>
+                      <Text className="text-2xl font-bold text-gray-800">
                         {isLogin ? t('auth.welcomeTitle') : t('auth.joinTitle')}
                       </Text>
                       {showAfterVerifyHint ? (
                         <View
                           style={{
-                            marginTop: 12,
+                            marginTop: 6,
                             paddingHorizontal: 14,
                             paddingVertical: 10,
                             backgroundColor: "#dcfce7",
@@ -1124,7 +1238,7 @@ export default function AuthScreen() {
               {/* Form içeriği */}
               <View>
               {/* E-Posta Girişi */}
-              <View style={{ marginBottom: 16 }}>
+              <View style={{ marginBottom: 8 }}>
                 <View className="flex-row items-center bg-gray-100 rounded-xl px-4 py-3">
                   <Ionicons name="mail-outline" size={20} color="#6B7280" />
                   <TextInput
@@ -1194,6 +1308,51 @@ export default function AuthScreen() {
                 </View>
               </View>
 
+              {/* Kayıt modunda şifre kriterleri */}
+              {!isLogin && (
+                <View style={{ marginBottom: 10, marginTop: 2 }}>
+                  <View style={{ flexDirection: "row", flexWrap: "wrap" }}>
+                    {[
+                      { ok: passwordChecks.min8, text: "En az 8 karakter olmalı" },
+                      { ok: passwordChecks.upper, text: "En az 1 büyük harf içermeli" },
+                      { ok: passwordChecks.lower, text: "En az 1 küçük harf içermeli" },
+                      { ok: passwordChecks.digit, text: "En az 1 sayı içermeli" },
+                      { ok: passwordChecks.symbol, text: "En az 1 sembol içermeli" },
+                      { ok: passwordChecks.noSequentialNumbers, text: "Ardaşık sayı olmayacaktır" },
+                    ].map((it, idx) => (
+                      <View
+                        key={idx}
+                        style={{
+                          width: "50%",
+                          flexDirection: "row",
+                          alignItems: "center",
+                          gap: 6,
+                          marginBottom: 4,
+                        }}
+                      >
+                        <Ionicons
+                          name={it.ok ? "checkmark-circle" : "close-circle-outline"}
+                          size={14}
+                          color={it.ok ? "#16a34a" : "#dc2626"}
+                        />
+                        <Text
+                          style={{
+                            color: it.ok ? "#16a34a" : "#dc2626",
+                            fontSize: 12,
+                            lineHeight: 18,
+                            flexShrink: 1,
+                          }}
+                          numberOfLines={1}
+                          ellipsizeMode="tail"
+                        >
+                          {it.text}
+                        </Text>
+                      </View>
+                    ))}
+                  </View>
+                </View>
+              )}
+
               {/* Şifremi Unuttum - sadece giriş modunda */}
               {isLogin && (
                 <TouchableOpacity
@@ -1210,7 +1369,7 @@ export default function AuthScreen() {
               {/* Kullanıcı Sözleşmesi ve Topluluk İlkeleri checkbox */}
               <Pressable
                 onPress={() => setAgreedToTerms((prev) => !prev)}
-                style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: 20, marginTop: 12 }}
+                style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: 20, marginTop: 3 }}
               >
                 <View style={{ width: 22, height: 22, borderWidth: 2, borderColor: agreedToTerms ? '#16a34a' : '#9ca3af', borderRadius: 4, alignItems: 'center', justifyContent: 'center', marginRight: 10, marginTop: 2 }}>
                   {agreedToTerms && <Ionicons name="checkmark" size={16} color="#16a34a" />}

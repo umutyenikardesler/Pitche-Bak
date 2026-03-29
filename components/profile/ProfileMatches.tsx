@@ -23,9 +23,17 @@ type Props = {
   userData: { id: string } | null;
   refreshing?: boolean;
   onRefresh?: () => void;
+  // Profile ekranında eski davranış (sabit yükseklik + kendi scroll'u).
+  // Modal içinde nested scroll sorun çıkardığı için modal modunda iç scroll kullanılmaz.
+  mode?: "profile" | "modal";
 };
 
-export default function ProfileMatches({ userData, refreshing = false, onRefresh }: Props) {
+export default function ProfileMatches({
+  userData,
+  refreshing = false,
+  onRefresh,
+  mode = "profile",
+}: Props) {
   const { t } = useLanguage();
   const [loading, setLoading] = useState(true);
   const [matches, setMatches] = useState<Match[]>([]);
@@ -90,7 +98,11 @@ export default function ProfileMatches({ userData, refreshing = false, onRefresh
   return (
     <View
       className="flex mb-2"
-      style={{ height: Dimensions.get('window').height * (Platform.OS === 'ios' ? 0.389 : 0.378) }}
+      style={
+        mode === "profile"
+          ? { height: Dimensions.get("window").height * (Platform.OS === "ios" ? 0.380 : 0.378) }
+          : undefined
+      }
     >
       {/* Maç Listesi ve İçeriği */}
       <View className="flex-row justify-center items-center my-2">
@@ -99,45 +111,73 @@ export default function ProfileMatches({ userData, refreshing = false, onRefresh
       </View>
 
       {/* Maç Listesi */}
-      <View className="flex-1 mb-2">
+      <View className={mode === "profile" ? "flex-1 mb-2" : "mb-2"}>
         {loading ? (
           <Text className="text-center mb-4 text-gray-500">{t('general.loading')}</Text>
         ) : matches.length > 0 ? (
-          <ScrollView
-            className="mb-2 h-auto"
-            style={{ marginBottom: 0 }}
-            nestedScrollEnabled={true}
-            refreshControl={
-              <RefreshControl 
-                refreshing={refreshing} 
-                onRefresh={handleRefresh}
-                colors={["#16a34a"]} // Android için yeşil renk
-                tintColor="#16a34a" // iOS için yeşil renk
-              />
-            }
-          >
-            {matches.map((item) => (
-              <View key={item.id.toString()} className="bg-gray-100 rounded-lg p-2 mx-4 mt-1 mb-1 shadow-sm justify-center items-center">
-                <Text className="text-green-700 font-bold mb-1">{item.title}</Text>
-                <View className="text-gray-700 text-md flex-row items-center">
-                  <Ionicons name="calendar-outline" size={18} color="black" />
-                  <Text className="pl-2 font-semibold">
-                    {item.formattedDate}
-                    {"  →"}
-                  </Text>
-                  <Text className="pl-2 font-bold text-green-600">{item.startFormatted}-{item.endFormatted}</Text>
+          mode === "profile" ? (
+            <ScrollView
+              className="mb-2 h-auto"
+              style={{ marginBottom: 0 }}
+              nestedScrollEnabled={true}
+              scrollEventThrottle={16}
+              refreshControl={
+                <RefreshControl 
+                  refreshing={refreshing} 
+                  onRefresh={handleRefresh}
+                  colors={["#16a34a"]}
+                  tintColor="#16a34a"
+                />
+              }
+            >
+              {matches.map((item) => (
+                <View key={item.id.toString()} className="bg-gray-100 rounded-lg p-2 mx-4 mt-1 mb-1 shadow-sm justify-center items-center">
+                  <Text className="text-green-700 font-bold mb-1">{item.title}</Text>
+                  <View className="text-gray-700 text-md flex-row items-center">
+                    <Ionicons name="calendar-outline" size={18} color="black" />
+                    <Text className="pl-2 font-semibold">
+                      {item.formattedDate}
+                      {"  →"}
+                    </Text>
+                    <Text className="pl-2 font-bold text-green-600">{item.startFormatted}-{item.endFormatted}</Text>
+                  </View>
+                  <View className="text-gray-700 text-md flex-row items-center pt-1">
+                    <Ionicons name="location-outline" size={18} color="black" />
+                    <Text className="pl-2 font-semibold">
+                      {item.pitches?.districts?.name ?? ""}
+                      {"  →"}
+                    </Text>
+                    <Text className="pl-2 font-bold text-green-700">{item.pitches?.name ?? ""}</Text>
+                  </View>
                 </View>
-                <View className="text-gray-700 text-md flex-row items-center pt-1">
-                  <Ionicons name="location-outline" size={18} color="black" />
-                  <Text className="pl-2 font-semibold">
-                    {item.pitches?.districts?.name ?? ""}
-                    {"  →"}
-                  </Text>
-                  <Text className="pl-2 font-bold text-green-700">{item.pitches?.name ?? ""}</Text>
+              ))}
+            </ScrollView>
+          ) : (
+            // Modal modunda: inner ScrollView YOK (nested scroll iOS'ta kilitleniyor)
+            <View style={{ marginBottom: 0 }}>
+              {matches.map((item) => (
+                <View key={item.id.toString()} className="bg-gray-100 rounded-lg p-2 mx-4 mt-1 mb-1 shadow-sm justify-center items-center">
+                  <Text className="text-green-700 font-bold mb-1">{item.title}</Text>
+                  <View className="text-gray-700 text-md flex-row items-center">
+                    <Ionicons name="calendar-outline" size={18} color="black" />
+                    <Text className="pl-2 font-semibold">
+                      {item.formattedDate}
+                      {"  →"}
+                    </Text>
+                    <Text className="pl-2 font-bold text-green-600">{item.startFormatted}-{item.endFormatted}</Text>
+                  </View>
+                  <View className="text-gray-700 text-md flex-row items-center pt-1">
+                    <Ionicons name="location-outline" size={18} color="black" />
+                    <Text className="pl-2 font-semibold">
+                      {item.pitches?.districts?.name ?? ""}
+                      {"  →"}
+                    </Text>
+                    <Text className="pl-2 font-bold text-green-700">{item.pitches?.name ?? ""}</Text>
+                  </View>
                 </View>
-              </View>
-            ))}
-          </ScrollView>
+              ))}
+            </View>
+          )
         ) : (
           <Text className="text-center mb-4 text-gray-500">Henüz maç oluşturmadınız!</Text>
         )}

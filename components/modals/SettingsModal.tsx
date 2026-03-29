@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   Modal,
   View,
@@ -19,6 +19,7 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { supabase } from "@/services/supabase";
 import PolicyModal from "./PolicyModal";
 import { POLICY_KEYS, PolicyKey } from "@/constants/policies";
+import { getPasswordChecks, getPasswordViolations } from "@/lib/passwordPolicy";
 
 interface SettingsModalProps {
   visible: boolean;
@@ -61,6 +62,8 @@ export default function SettingsModal({
   const [storeUrl, setStoreUrl] = useState<string | null>(null);
   const [updateAvailable, setUpdateAvailable] = useState<boolean | null>(null);
   const [updateCheckError, setUpdateCheckError] = useState<string | null>(null);
+
+  const passwordChecks = useMemo(() => getPasswordChecks(newPassword), [newPassword]);
 
   const appName = Constants.expoConfig?.name ?? "Uygulama";
   const appVersion =
@@ -256,8 +259,16 @@ export default function SettingsModal({
   };
 
   const handleUpdatePassword = async () => {
-    if (!newPassword || newPassword.length < 6) {
-      Alert.alert(t("general.error"), t("settings.passwordMin"));
+    const violations = getPasswordViolations(newPassword);
+    if (violations.length > 0) {
+      Alert.alert(
+        t("general.error"),
+        [
+          "Şifreniz en az 8 karakter olmalıdır.",
+          "En az 1 büyük harf, 1 küçük harf, sembol ve sayılardan oluşmalıdır.",
+          "Ardaşık sayılar olmamalıdır.",
+        ].join("\n")
+      );
       return;
     }
     if (newPassword !== newPasswordConfirm) {
@@ -620,6 +631,48 @@ export default function SettingsModal({
                             color="#16a34a"
                           />
                         </TouchableOpacity>
+                      </View>
+
+                      <View style={{ marginTop: 8 }}>
+                        <View style={{ flexDirection: "row", flexWrap: "wrap" }}>
+                          {[
+                            { ok: passwordChecks.min8, text: "En az 8 karakter olmalı" },
+                            { ok: passwordChecks.upper, text: "En az 1 büyük harf içermeli" },
+                            { ok: passwordChecks.lower, text: "En az 1 küçük harf içermeli" },
+                            { ok: passwordChecks.digit, text: "En az 1 sayı içermeli" },
+                            { ok: passwordChecks.symbol, text: "En az 1 sembol içermeli" },
+                            { ok: passwordChecks.noSequentialNumbers, text: "Ardaşık sayı olmayacaktır" },
+                          ].map((it, idx) => (
+                            <View
+                              key={idx}
+                              style={{
+                                width: "50%",
+                                flexDirection: "row",
+                                alignItems: "center",
+                                gap: 6,
+                                marginBottom: 4,
+                              }}
+                            >
+                              <Ionicons
+                                name={it.ok ? "checkmark-circle" : "close-circle-outline"}
+                                size={14}
+                                color={it.ok ? "#16a34a" : "#dc2626"}
+                              />
+                              <Text
+                                style={{
+                                  color: it.ok ? "#16a34a" : "#dc2626",
+                                  fontSize: 12,
+                                  lineHeight: 18,
+                                  flexShrink: 1,
+                                }}
+                                numberOfLines={1}
+                                ellipsizeMode="tail"
+                              >
+                                {it.text}
+                              </Text>
+                            </View>
+                          ))}
+                        </View>
                       </View>
 
                       <View className="flex-row mt-3">

@@ -444,7 +444,7 @@ const translations = {
     'auth.errors.emailNotConfirmed': 'E-posta adresinizi doğrulamanız gerekiyor.',
     'auth.errors.userNotFound': 'Kullanıcı bulunamadı.',
     'auth.errors.redirectUrlNotAllowed': 'Yönlendirme adresi Supabase\'de tanımlı değil. Supabase Dashboard → Authentication → URL Configuration → Redirect URLs bölümüne https://sahayabak.com/auth/callback.html ekleyin.',
-    'auth.errors.emailRateLimitExceeded': 'Çok fazla deneme yaptınız. Güvenlik nedeniyle bir süre sonra tekrar deneyin (yaklaşık 1 dakika).',
+    'auth.errors.emailRateLimitExceeded': 'Çok fazla deneme yaptınız. Güvenlik nedeniyle bir süre sonra tekrar deneyin.',
     'auth.errors.appleMissingOAuthSecret': "Apple ile giriş için Supabase'de Apple OAuth ayarlarında 'Client secret' eksik. Supabase Dashboard → Auth → Providers → Apple kısmına Services ID ve Secret girmeniz gerekiyor.",
     'auth.errors.missingOAuthSecret': 'OAuth için gerekli secret eksik. Supabase Dashboard → Auth → Providers kısmında ilgili sağlayıcı için Client secret tanımlayın.',
     'auth.guestCreateMatch': 'Maç oluşturmak için önce giriş yapmalısınız',

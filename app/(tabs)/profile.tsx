@@ -72,6 +72,7 @@ export default function Profile() {
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [settingsModalVisible, setSettingsModalVisible] = useState(false);
   const [logoutModalVisible, setLogoutModalVisible] = useState(false);
+  const [logoutLoading, setLogoutLoading] = useState(false);
   const isLoggingOutRef = useRef(false);
 
   // Modal state'ini debug et
@@ -965,15 +966,27 @@ export default function Profile() {
   };
 
   const confirmLogout = async (): Promise<void> => {
-    setLogoutModalVisible(false);
+    if (logoutLoading) return;
+    setLogoutLoading(true);
     isLoggingOutRef.current = true;
-    const { error } = await supabase.auth.signOut();
-    if (error) {
+    // Modal kapansın; kullanıcı "bekleme" ekranında kalmasın
+    setLogoutModalVisible(false);
+
+    try {
+      // Hızlı çıkış: önce local session'ı temizle (anında etki)
+      try {
+        await supabase.auth.signOut({ scope: "local" } as any);
+      } catch {
+        // Eski sürümlerde scope yoksa fallback
+        await supabase.auth.signOut();
+      }
+
+      // Çıkış anında index'e uğramadan direkt Landing'e git
+      router.replace("/landing" as any);
+    } catch (error) {
       isLoggingOutRef.current = false;
+      setLogoutLoading(false);
       Alert.alert("Çıkış Yapılamadı", "Bir hata oluştu.");
-    } else {
-      router.replace("/(tabs)");
-      setTimeout(() => router.push("/auth"), 50);
     }
   };
 
@@ -1251,18 +1264,22 @@ export default function Profile() {
               </Text>
               <View className="flex-row justify-between">
                 <TouchableOpacity
-                  onPress={() => setLogoutModalVisible(false)}
+                  onPress={() => (logoutLoading ? null : setLogoutModalVisible(false))}
+                  disabled={logoutLoading}
                   className="flex-1 mr-2 py-3 rounded-lg"
-                  style={{ backgroundColor: '#aaa' }}
+                  style={{ backgroundColor: '#aaa', opacity: logoutLoading ? 0.6 : 1 }}
                 >
                   <Text className="text-white font-bold text-center">İptal Et</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   onPress={confirmLogout}
+                  disabled={logoutLoading}
                   className="flex-1 ml-2 py-3 rounded-lg"
-                  style={{ backgroundColor: 'green' }}
+                  style={{ backgroundColor: 'green', opacity: logoutLoading ? 0.7 : 1 }}
                 >
-                  <Text className="text-white font-bold text-center">Çıkış Yap</Text>
+                  <Text className="text-white font-bold text-center">
+                    {logoutLoading ? "Çıkış yapılıyor..." : "Çıkış Yap"}
+                  </Text>
                 </TouchableOpacity>
               </View>
             </View>
