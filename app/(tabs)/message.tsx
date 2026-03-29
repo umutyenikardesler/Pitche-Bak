@@ -28,6 +28,10 @@ interface MatchChatSummary extends BaseChatSummary {
   title: string;
   date: string;
   time: string;
+  // Son mesaj zamanı (varsa). Yoksa sıralamada maç tarihi/saatine fallback yapılır.
+  lastAt?: string | null;
+  // Sohbeti listeye ekleten event zamanı (join_request kabul bildirimi)
+  createdAt?: string | null;
   pitches?: { name?: string; districts?: { name?: string } } | null;
 }
 
@@ -134,6 +138,7 @@ export default function Messages() {
             owner_profile_image: n.sender.profile_image || null,
             pitches: n.match?.pitches || null,
             unreadCount: unreadMap.get(key) || 0,
+            createdAt: typeof n.created_at === "string" ? n.created_at : null,
           };
         });
 
@@ -158,15 +163,29 @@ export default function Messages() {
       }
 
       const dmMetaByUser = new Map<string, { lastMessage: string | null; lastAt: string | null; match_id: string | null }>();
+      const lastAtByMatchChatKey = new Map<string, string>(); // `${otherId}-m-${matchId}` => lastAt
+      const lastAtByPartnerId = new Map<string, string>(); // `${otherId}` => lastAt (match_id olsun/olmasın)
       (recentMsgs || []).forEach((m: any) => {
         const otherId = m.sender_id === user.id ? m.recipient_id : m.sender_id;
         if (!otherId || otherId === user.id || blockedIds.has(otherId)) return;
+        const at = typeof m.created_at === "string" ? m.created_at : null;
+        // Partner bazında en yeni mesaj zamanı (recentMsgs DESC olduğu için ilk gördüğümüz en yenidir)
+        if (at && !lastAtByPartnerId.has(otherId)) {
+          lastAtByPartnerId.set(otherId, at);
+        }
+        // Match sohbetleri için lastAt (maç id'li mesajlar)
+        if (m.match_id && at) {
+          const key = `${otherId}-m-${m.match_id}`;
+          if (!lastAtByMatchChatKey.has(key)) {
+            lastAtByMatchChatKey.set(key, at);
+          }
+        }
         // Aynı partner için match sohbeti zaten varsa listede iki kere göstermeyelim
         if (matchPartnerIds.has(otherId)) return;
         if (!dmMetaByUser.has(otherId)) {
           dmMetaByUser.set(otherId, {
             lastMessage: typeof m.content === 'string' ? m.content : null,
-            lastAt: typeof m.created_at === 'string' ? m.created_at : null,
+            lastAt: at,
             match_id: m.match_id ?? null,
           });
         }
@@ -205,48 +224,6 @@ export default function Messages() {
         };
       });
 
-      // Sohbetleri sıralama:
-      // 1) Mesaj gelen (unreadCount > 0) sohbetler üstte
-      // 2) Maç tarihi geçmiş olanlar altta
-      // 3) Kalanları en yakın maç tarihi/saatine göre (en yakın üstte)
-      const now = new Date();
-
-      const sortedMatches = [...uniqueMatchSummaries].sort((a, b) => {
-        const unreadA = (a.unreadCount ?? 0) > 0 ? 1 : 0;
-        const unreadB = (b.unreadCount ?? 0) > 0 ? 1 : 0;
-        if (unreadA !== unreadB) {
-          return unreadB - unreadA; // unread olanlar önce
-        }
-
-        const startA = new Date(`${a.date}T${a.time}`);
-        const endA = new Date(startA.getTime() + 60 * 60 * 1000); // +1 saat
-        const startB = new Date(`${b.date}T${b.time}`);
-        const endB = new Date(startB.getTime() + 60 * 60 * 1000);
-
-        const pastA = endA < now ? 1 : 0;
-        const pastB = endB < now ? 1 : 0;
-        if (pastA !== pastB) {
-          return pastA - pastB; // gelecekteki maçlar önce
-        }
-
-        // Tarih/saat karşılaştırması (en yakın maç üstte)
-        if (startA.getTime() !== startB.getTime()) {
-          return startA.getTime() - startB.getTime();
-        }
-
-        return 0;
-      });
-
-      const sortedDMs = [...dmSummaries].sort((a, b) => {
-        const unreadA = (a.unreadCount ?? 0) > 0 ? 1 : 0;
-        const unreadB = (b.unreadCount ?? 0) > 0 ? 1 : 0;
-        if (unreadA !== unreadB) return unreadB - unreadA;
-        const ta = a.lastAt ? new Date(a.lastAt).getTime() : 0;
-        const tb = b.lastAt ? new Date(b.lastAt).getTime() : 0;
-        return tb - ta; // son mesaj en üstte
-      });
-
-      const allSorted = [...sortedDMs, ...sortedMatches];
       const hiddenRaw = await AsyncStorage.getItem(`hidden_chats_${user.id}`);
       const pinnedRaw = await AsyncStorage.getItem(`pinned_chats_${user.id}`);
       const hiddenSet = new Set<string>((hiddenRaw ? JSON.parse(hiddenRaw) : []) || []);
@@ -255,9 +232,89 @@ export default function Messages() {
       const getKey = (it: ChatSummary) =>
         it.kind === "match" ? `${it.owner_id}-m-${it.id}` : `${it.owner_id}-d-${(it as DirectChatSummary).match_id ?? "x"}`;
 
-      const filtered = allSorted.filter((it) => !hiddenSet.has(getKey(it)));
-      const pinnedFirst = [...filtered.filter((it) => pinnedSet.has(getKey(it))), ...filtered.filter((it) => !pinnedSet.has(getKey(it)))];
-      setItems(pinnedFirst);
+      const matchWithLastAt: MatchChatSummary[] = uniqueMatchSummaries.map((m) => {
+        const k = `${m.owner_id}-m-${m.id}`;
+        // Sadece gerçek son mesaj zamanını tut.
+        // Mesaj yoksa sıralama fallback'i maç tarihi/saatine göre yapılacak.
+        // Not: Chat ekranı match_id ile filtrelemediği için, match_id'li mesaj yoksa partner'ın en yeni mesaj zamanını kullanıyoruz.
+        const matchLastAt = lastAtByMatchChatKey.get(k) ?? null;
+        const partnerLastAt = lastAtByPartnerId.get(m.owner_id) ?? null;
+
+        const toTsSafe = (s: string | null) => {
+          if (!s) return 0;
+          const t = new Date(s).getTime();
+          return Number.isFinite(t) ? t : 0;
+        };
+        // Chat ekranı match_id ile filtrelemediği için "en son mesaj" bazında en güncel olanı seç
+        const lastAt = toTsSafe(partnerLastAt) > toTsSafe(matchLastAt) ? partnerLastAt : matchLastAt;
+        return { ...m, lastAt };
+      });
+
+      const allChats: ChatSummary[] = [...dmSummaries, ...matchWithLastAt];
+      const filtered = allChats.filter((it) => !hiddenSet.has(getKey(it)));
+
+      const toTs = (s: string | null | undefined) => {
+        if (!s) return 0;
+        const t = new Date(s).getTime();
+        return Number.isFinite(t) ? t : 0;
+      };
+
+      const parseMatchStartTs = (dateStr: string, timeStr: string): number => {
+        const dRaw = (dateStr || "").trim();
+        const tRaw = (timeStr || "").trim();
+        // Bazı verilerde saat "16.17.00" gibi gelebiliyor → normalize et
+        const tNorm = tRaw.includes(".") && !tRaw.includes(":") ? tRaw.replace(/\./g, ":") : tRaw;
+
+        const tParts = (tNorm || "").split(":").map((x) => Number(x));
+        const hh = Number.isFinite(tParts[0]) ? tParts[0] : 0;
+        const mm = Number.isFinite(tParts[1]) ? tParts[1] : 0;
+
+        // 1) ISO: 2026-03-29 + 16:17
+        const iso = new Date(`${dRaw}T${tNorm}`);
+        if (Number.isFinite(iso.getTime())) return iso.getTime();
+
+        // 2) Date-only parse + set time
+        const d1 = new Date(dRaw);
+        if (Number.isFinite(d1.getTime())) {
+          d1.setHours(hh, mm, 0, 0);
+          return d1.getTime();
+        }
+
+        // 3) TR format: 29.03.2026
+        if (dRaw.includes(".")) {
+          const [dd, mo, yy] = dRaw.split(".").map((x) => Number(x));
+          if (Number.isFinite(dd) && Number.isFinite(mo) && Number.isFinite(yy)) {
+            const d2 = new Date(yy, mo - 1, dd, hh, mm, 0, 0);
+            if (Number.isFinite(d2.getTime())) return d2.getTime();
+          }
+        }
+
+        return 0;
+      };
+
+      const getSortTs = (it: ChatSummary): number => {
+        if (it.kind === "direct") return toTs(it.lastAt);
+        const mt = it as MatchChatSummary;
+        const lastMsgTs = toTs(mt.lastAt);
+        if (lastMsgTs) return lastMsgTs;
+        const matchStartTs = parseMatchStartTs(mt.date, mt.time);
+        if (matchStartTs) return matchStartTs;
+        return toTs(mt.createdAt);
+      };
+
+      const byRecentDesc = (a: ChatSummary, b: ChatSummary) => getSortTs(b) - getSortTs(a);
+
+      // İstenen davranış: sabitlenmiş sohbet yoksa en son mesaj/etkileşim en üstte.
+      // Sabitlenmiş varsa: pinned üstte, kendi içinde yine en son etkileşim en üstte.
+      const ordered =
+        pinnedSet.size > 0
+          ? [
+              ...filtered.filter((it) => pinnedSet.has(getKey(it))).sort(byRecentDesc),
+              ...filtered.filter((it) => !pinnedSet.has(getKey(it))).sort(byRecentDesc),
+            ]
+          : [...filtered].sort(byRecentDesc);
+
+      setItems(ordered);
       setPinnedChatKeys(pinnedSet);
     } catch (e) {
       console.error('[Messages] fetchChats error:', e);
@@ -423,11 +480,16 @@ export default function Messages() {
     });
   }, [router, screenWidth, translateX]);
 
-  const swipeGesture = Gesture.Pan().onEnd((event) => {
-    if (event.translationX > 80) {
-      runOnJS(handleSwipeBack)();
-    }
-  });
+  // Pull-to-refresh çalışabilsin diye sadece sol kenardan başlatılan yatay swipe'ı yakala
+  const swipeGesture = Gesture.Pan()
+    .hitSlop({ left: 0, width: 24 })
+    .activeOffsetX(20)
+    .failOffsetY([-10, 10])
+    .onEnd((event) => {
+      if (event.translationX > 80) {
+        runOnJS(handleSwipeBack)();
+      }
+    });
 
   // Realtime: C kullanıcısı Messages ekranındayken A'dan gelen yeni mesajlarda sohbet listesini anlık güncelle
   useEffect(() => {
@@ -465,9 +527,20 @@ export default function Messages() {
   const renderItem = ({ item }: { item: ChatSummary }) => {
     const hasUnread = (item.unreadCount ?? 0) > 0;
     const isPinned = pinnedChatKeys.has(getChatKey(item));
+    const unreadText = (n: number | undefined) => {
+      const v = typeof n === 'number' ? n : 0;
+      if (v <= 0) return '';
+      return v > 99 ? '99+' : String(v);
+    };
+    const formatDateTimeTr = (iso: string) => {
+      const d = new Date(iso);
+      const t = d.getTime();
+      if (!Number.isFinite(t)) return '';
+      return `${d.toLocaleDateString("tr-TR")} - ${d.toLocaleTimeString("tr-TR")}`;
+    };
 
     if (item.kind === "direct") {
-      const lastAtText = item.lastAt ? new Date(item.lastAt).toLocaleString("tr-TR") : '';
+      const lastAtText = item.lastAt ? formatDateTimeTr(item.lastAt) : '';
       const preview = (item.lastMessage || '').trim();
       const previewText = preview.length ? (preview.length > 42 ? `${preview.slice(0, 42)}…` : preview) : (t('messages.directMessage') || 'Direkt mesaj');
 
@@ -476,7 +549,7 @@ export default function Messages() {
 
       return (
         <View
-          className={`bg-white rounded-lg mx-4 my-1 p-1 shadow-lg ${hasUnread ? '' : 'opacity-60'}`}
+          className="bg-white rounded-lg mx-4 my-1 p-1 shadow-lg"
           style={isPinned ? { borderWidth: 2, borderColor: '#16a34a' } : undefined}
         >
           <TouchableOpacity activeOpacity={0.8} onPress={() => router.push({ pathname: '/message/chat', params })} className="flex-row items-center">
@@ -492,16 +565,9 @@ export default function Messages() {
             {/* Orta bilgi alanı - flex-1 ile kalan alanı doldurur */}
             <View className="flex-1 flex justify-center -mt-2 ml-2 min-w-0">
               <View className="flex-row items-center justify-between">
-                <Text className={`text-lg font-semibold ${hasUnread ? 'text-green-700' : 'text-gray-500'}`} numberOfLines={1}>
+                <Text className={`text-lg font-semibold ${hasUnread ? 'text-green-600' : 'text-gray-700'}`} numberOfLines={1}>
                   {item.owner_name} {item.owner_surname}
                 </Text>
-                {hasUnread && (
-                  <View className="ml-2 px-2 py-0.5 rounded-full bg-red-500">
-                    <Text className="text-xs font-bold text-white">
-                      {item.unreadCount}
-                    </Text>
-                  </View>
-                )}
               </View>
 
               <View className="text-gray-700 text-md flex-row items-center">
@@ -517,15 +583,66 @@ export default function Messages() {
               )}
             </View>
 
-            {/* 3 nokta + sabitlenmişse altlı üstlü, değilse ortalı */}
-            <TouchableOpacity onPress={() => setChatOptionsItem(item)} style={{ paddingVertical: 8, paddingLeft: 8, paddingRight: 2, marginLeft: 20, alignSelf: isPinned ? 'flex-end' : 'center', marginBottom: isPinned ? 4 : 0 }} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-              <View style={{ alignItems: 'center', justifyContent: 'center' }}>
-                {isPinned && (
-                  <MaterialCommunityIcons name="pin" size={24} color="#047857" style={{ marginBottom: 6, transform: [{ rotate: '25deg' }] }} />
+            {/* Sağ aksiyon kolonu: üst (pin+rozet) / orta (3 nokta) / alt (boş) */}
+            <View
+              style={{
+                width: '10%',
+                minWidth: 48,
+                maxWidth: 64,
+                marginLeft: 8,
+                marginRight: 5,
+                paddingVertical: 8,
+                alignSelf: 'stretch',
+                // Sağ hizalama çalışsın diye stretch
+                alignItems: 'stretch',
+                justifyContent: 'space-between',
+              }}
+            >
+              {/* Üst alan (rozet/pin her zaman sağda hizalı) */}
+              <View
+                style={{
+                  minHeight: 20,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'flex-end',
+                  paddingRight: 1,
+                  paddingBottom: 5,
+                  gap: 1,
+                }}
+              >
+                {hasUnread && (
+                  <View
+                    style={{
+                      minWidth: 22,
+                      height: 22,
+                      paddingHorizontal: 6,
+                      borderRadius: 11,
+                      backgroundColor: 'red',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <Text style={{ color: '#ffffff', fontSize: 11, fontWeight: '800' }}>{unreadText(item.unreadCount)}</Text>
+                  </View>
                 )}
-                <Ionicons name="ellipsis-vertical" size={22} color="#059669" />
+                {isPinned && (
+                  <MaterialCommunityIcons name="pin" size={24} color="#047857" style={{ transform: [{ rotate: '25deg' }] }} />
+                )}
               </View>
-            </TouchableOpacity>
+
+              {/* Orta alan (3 nokta her zaman ortada) */}
+              <TouchableOpacity
+                onPress={() => setChatOptionsItem(item)}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                // Sağa yaslı + soldan biraz iç boşluk
+                style={{ paddingLeft: 6, paddingRight: 0, paddingVertical: 2, alignSelf: 'flex-end' }}
+              >
+                <Ionicons name="ellipsis-vertical" size={22} color="#059669" />
+              </TouchableOpacity>
+
+              {/* Alt alan (boş) */}
+              <View style={{ minHeight: 22 }} />
+            </View>
           </TouchableOpacity>
         </View>
       );
@@ -535,10 +652,11 @@ export default function Messages() {
     const [hours, minutes] = item.time.split(":").map(Number);
     const startFormatted = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
     const endFormatted = `${String((hours + 1)).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+    const lastAtText = item.lastAt ? formatDateTimeTr(item.lastAt) : '';
 
     return (
       <View
-        className={`bg-white rounded-lg mx-4 my-1 p-1 shadow-lg ${hasUnread ? '' : 'opacity-60'}`}
+        className="bg-white rounded-lg mx-4 my-1 p-2 shadow-lg"
         style={isPinned ? { borderWidth: 2, borderColor: '#16a34a' } : undefined}
       >
         <TouchableOpacity
@@ -547,7 +665,7 @@ export default function Messages() {
           className="flex-row items-center"
         >
           {/* Profil Resmi */}
-          <View className="w-1/5 flex justify-center p-1 py-1.5">
+          <View className="w-1/5 flex justify-center p-1 py-2">
             <Image
               source={item.owner_profile_image ? { uri: item.owner_profile_image } : require('@/assets/images/ball.png')}
               className="rounded-full mx-auto"
@@ -556,18 +674,11 @@ export default function Messages() {
           </View>
 
           {/* Orta bilgi alanı - flex-1 ile kalan alanı doldurur */}
-          <View className="flex-1 flex justify-center -mt-2 ml-2 min-w-0">
+          <View className="flex-1 flex justify-center ml-2 min-w-0" style={{ paddingTop: 0, paddingBottom: 2 }}>
             <View className="flex-row items-center justify-between">
-              <Text className={`text-lg font-semibold ${hasUnread ? 'text-green-700' : 'text-gray-500'}`} numberOfLines={1}>
+              <Text className={`text-lg font-semibold ${hasUnread ? 'text-green-700' : 'text-gray-700'}`} numberOfLines={1}>
                 {item.owner_name} {item.owner_surname}
               </Text>
-              {hasUnread && (
-                <View className="ml-2 px-2 py-0.5 rounded-full bg-red-500">
-                  <Text className="text-xs font-bold text-white">
-                    {item.unreadCount}
-                  </Text>
-                </View>
-              )}
             </View>
 
             <View className="text-gray-700 text-md flex-row items-center">
@@ -581,17 +692,77 @@ export default function Messages() {
               <Text className="pl-2 font-semibold"> {(item.pitches?.districts?.name || 'Bilinmiyor')} →</Text>
               <Text className="pl-2 font-bold text-green-700"> {item.pitches?.name || 'Bilinmiyor'} </Text>
             </View>
+
+            {!!lastAtText && (
+              <View className="text-gray-700 text-md flex-row items-center pt-1">
+                <Ionicons name="time-outline" size={18} color="black" />
+                <Text className="pl-2 font-semibold"> {lastAtText} </Text>
+              </View>
+            )}
           </View>
 
-          {/* 3 nokta + sabitlenmişse altlı üstlü, değilse ortalı */}
-          <TouchableOpacity onPress={() => setChatOptionsItem(item)} style={{ paddingVertical: 8, paddingLeft: 8, paddingRight: 2, marginLeft: 20, alignSelf: isPinned ? 'flex-end' : 'center', marginBottom: isPinned ? 4 : 0 }} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-            <View style={{ alignItems: 'center', justifyContent: 'center' }}>
-              {isPinned && (
-                <MaterialCommunityIcons name="pin" size={24} color="#047857" style={{ marginBottom: 6, transform: [{ rotate: '25deg' }] }} />
-              )}
-              <Ionicons name="ellipsis-vertical" size={22} color="#059669" />
+          {/* Sağ aksiyon kolonu: üst (pin+rozet) / orta (3 nokta) / alt (boş) */}
+          <View
+            style={{
+              width: '10%',
+              minWidth: 48,
+              maxWidth: 64,
+              marginLeft: 8,
+              marginRight: 0,
+              paddingVertical: 2,
+              alignSelf: 'stretch',
+              // Sağ hizalama çalışsın diye stretch
+              alignItems: 'stretch',
+            }}
+          >
+            {/* Üst alan: rozet + pin (pinned olsun/olmasın üstte kalsın) */}
+            <View
+              style={{
+                flex: 1,
+                minHeight: 0,
+                justifyContent: 'flex-start',
+                alignItems: 'flex-end',
+                paddingRight: 0, // sağdan 3px boşluk
+                paddingBottom: isPinned ? 0 : 0, // pinned ise altına 5px boşluk
+              }}
+            >
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 1 }}>
+                {hasUnread && (
+                  <View
+                    style={{
+                      minWidth: 20,
+                      height: 20,
+                      paddingHorizontal: 6,
+                      borderRadius: 11,
+                      backgroundColor: 'red',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <Text style={{ color: '#ffffff', fontSize: 11, fontWeight: '800' }}>{unreadText(item.unreadCount)}</Text>
+                  </View>
+                )}
+                {isPinned && (
+                  <MaterialCommunityIcons name="pin" size={24} color="#047857" style={{ transform: [{ rotate: '25deg' }] }} />
+                )}
+              </View>
             </View>
-          </TouchableOpacity>
+
+            {/* Orta alan: 3 nokta hep ortada */}
+            <View style={{ flex: 1, minHeight: 0, justifyContent: 'center', alignItems: 'flex-end' }}>
+              <TouchableOpacity
+                onPress={() => setChatOptionsItem(item)}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                // Sağa yaslı + soldan biraz iç boşluk
+                style={{ paddingLeft: 6, paddingRight: isPinned ? 0 : 2, marginBottom: isPinned ? 12 : 4 }}
+              >
+                <Ionicons name="ellipsis-vertical" size={22} color="#059669" />
+              </TouchableOpacity>
+            </View>
+
+            {/* Alt alan (boş) */}
+            <View style={{ flex: 1, minHeight: 0 }} />
+          </View>
         </TouchableOpacity>
       </View>
     );
@@ -635,15 +806,10 @@ export default function Messages() {
         data={items}
         keyExtractor={(it) => `${it.kind}-${it.owner_id}-${it.kind === 'match' ? it.id : 'dm'}`}
         renderItem={renderItem}
-        contentContainerStyle={{ paddingBottom: 16, paddingTop: 8 }}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            colors={['#16a34a']}
-            tintColor="#16a34a"
-          />
-        }
+        contentContainerStyle={{ paddingBottom: 16, paddingTop: 8, flexGrow: 1 }}
+        refreshing={refreshing}
+        onRefresh={onRefresh}
+        alwaysBounceVertical
       />
     );
   }

@@ -93,11 +93,29 @@ export default function RootLayout() {
                     borderColor: '#e5e7eb',
                   }}
                 >
-                  <Stack screenOptions={{ headerShown: false }} />
+                  <Stack screenOptions={{ headerShown: false }}>
+                    <Stack.Screen
+                      name="(tabs)"
+                      options={{
+                        // Giriş yaptıktan sonra tabs kök ekranından Landing'e swipe-back olmasın
+                        // (detay ekranlar kendi stack'inde geri dönebilmeli)
+                        gestureEnabled: false,
+                      }}
+                    />
+                  </Stack>
                 </View>
               </View>
             ) : (
-              <Stack screenOptions={{ headerShown: false }} />
+              <Stack screenOptions={{ headerShown: false }}>
+                <Stack.Screen
+                  name="(tabs)"
+                  options={{
+                    // Giriş yaptıktan sonra tabs kök ekranından Landing'e swipe-back olmasın
+                    // (detay ekranlar kendi stack'inde geri dönebilmeli)
+                    gestureEnabled: false,
+                  }}
+                />
+              </Stack>
             )}
           </SafeAreaProvider>
         </GestureHandlerRootView>

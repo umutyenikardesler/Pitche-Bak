@@ -42,6 +42,7 @@ export default function Notifications() {
     const {
         handleMarkAsRead,
         handleFollowRequest,
+        handleFollowBack,
         handleJoinRequest,
     } = useNotificationHandlers(setNotifications);
 
@@ -70,6 +71,7 @@ export default function Notifications() {
             <NotificationList
                 groupedNotifications={groupedNotifications}
                 onFollowRequest={handleFollowRequest}
+                onFollowBack={handleFollowBack}
                 onJoinRequest={handleJoinRequest}
                 onMarkAsRead={handleMarkAsRead}
                 onProfilePress={handleProfilePress}

@@ -1250,6 +1250,7 @@ export default function AuthScreen() {
               {/* Kayıt / Giriş arasında geçiş */}
               <TouchableOpacity 
                 className="mb-0" 
+                activeOpacity={0.85}
                 style={{ 
                   marginTop: Platform.OS === 'ios' && keyboardVisible ? 15 : (Platform.OS === 'android' && keyboardVisible ? 24 : 20),
                   paddingBottom:
@@ -1261,16 +1262,20 @@ export default function AuthScreen() {
                 }}
                 onPress={() => setIsLogin(!isLogin)}
               >
-                <Text className="text-center text-gray-600">
+                <Text className="text-center text-gray-800" style={{ opacity: 1 }}>
                   {isLogin ? (
                     <>
                       {t('auth.noAccountQuestion')}{' '}
-                      <Text className="text-green-700 font-semibold">{t('auth.signUpLink')}</Text>
+                      <Text className="text-green-700 font-semibold" style={{ opacity: 1 }}>
+                        {t('auth.signUpLink')}
+                      </Text>
                     </>
                   ) : (
                     <>
                       {t('auth.haveAccountQuestion')}{' '}
-                      <Text className="text-green-700 font-semibold">{t('auth.signInLink')}</Text>
+                      <Text className="text-green-700 font-semibold" style={{ opacity: 1 }}>
+                        {t('auth.signInLink')}
+                      </Text>
                     </>
                   )}
                 </Text>

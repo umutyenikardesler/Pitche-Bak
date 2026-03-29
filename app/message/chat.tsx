@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { memo, useEffect, useState, useCallback, useRef } from 'react';
 import { View, Text, FlatList, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, InteractionManager, Alert, Pressable, Modal } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { supabase } from '@/services/supabase';
@@ -10,6 +10,8 @@ import { useNotification } from '@/components/NotificationContext';
 import { containsBannedWord } from '@/constants/bannedWords';
 import { getBlockedUserIds, blockUser } from '@/services/blocks';
 import { reportContent, hasUserReportedContent } from '@/services/contentReports';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import Animated, { Extrapolation, interpolate, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 
 interface MsgItem {
   id: string;
@@ -19,6 +21,125 @@ interface MsgItem {
   created_at: string;
   match_id?: string | null;
 }
+
+function formatDateTimeTr(iso: string): string {
+  const d = new Date(iso);
+  const t = d.getTime();
+  if (!Number.isFinite(t)) return '';
+  const nowYear = new Date().getFullYear();
+  const y = d.getFullYear();
+  const day = d.getDate();
+  const month = d.toLocaleDateString('tr-TR', { month: 'long' });
+  const time = d
+    .toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit', hour12: false })
+    .replace(':', '.');
+  // Bu yıl ise yılı gizle: "29 Mart 14.04"
+  // Farklı yıl ise: "29 Mart 2025 14.04"
+  return y === nowYear ? `${day} ${month} - ${time}` : `${day} ${month} ${y} - ${time}`;
+}
+
+function clamp(n: number, min: number, max: number) {
+  'worklet';
+  return Math.min(max, Math.max(min, n));
+}
+
+const MessageRow = memo(function MessageRow({
+  item,
+  mine,
+  revealX,
+  onReport,
+  onOpenOptions,
+}: {
+  item: MsgItem;
+  mine: boolean;
+  revealX: any;
+  onReport: (item: MsgItem) => void;
+  onOpenOptions: (item: MsgItem) => void;
+}) {
+  const ts = formatDateTimeTr(item.created_at);
+  const MAX_REVEAL = 120;
+
+  const tsStyle = useAnimatedStyle(() => {
+    const x = clamp(revealX.value, 0, MAX_REVEAL);
+    const opacity = interpolate(x, [0, 12, 34], [0, 0.25, 1], Extrapolation.CLAMP);
+    return { opacity };
+  }, [revealX]);
+
+  const rowStyle = useAnimatedStyle(() => {
+    const x = clamp(revealX.value, 0, MAX_REVEAL);
+    return {
+      transform: [{ translateX: -x }],
+    };
+  }, [revealX]);
+
+  return (
+    <View style={{ paddingHorizontal: 12, paddingVertical: 6 }}>
+      <View style={{ position: 'relative', minHeight: 28 }}>
+        <Animated.View
+          style={[
+            {
+              position: 'absolute',
+              right: 0,
+              top: 0,
+              bottom: 0,
+              justifyContent: 'center',
+              paddingRight: 2,
+            },
+            tsStyle,
+          ]}
+          pointerEvents="none"
+        >
+          <Text style={{ fontSize: 12, color: '#16a34a', fontWeight: '600' }}>{ts}</Text>
+        </Animated.View>
+
+        <Animated.View
+          style={[
+            {
+              alignSelf: mine ? 'flex-end' : 'flex-start',
+              flexDirection: 'row',
+              justifyContent: mine ? 'flex-end' : 'flex-start',
+              alignItems: 'center',
+              gap: 2,
+              maxWidth: '85%',
+            },
+            rowStyle,
+          ]}
+        >
+          <Pressable onLongPress={() => (!mine ? onReport(item) : undefined)}>
+            <View
+              style={{
+                backgroundColor: mine ? '#16a34a' : '#e5e7eb',
+                borderRadius: 12,
+                paddingHorizontal: 12,
+                paddingVertical: 8,
+                ...(!mine && { borderWidth: 2, borderColor: '#16a34a' }),
+              }}
+            >
+              <Text style={{ color: mine ? 'white' : '#111827' }}>{item.content}</Text>
+            </View>
+          </Pressable>
+
+          {!mine && (
+            <TouchableOpacity
+              onPress={() => onOpenOptions(item)}
+              style={{
+                alignSelf: 'center',
+                padding: 6,
+                backgroundColor: '#fff',
+                borderRadius: 6,
+                borderWidth: 2,
+                borderColor: '#16a34a',
+              }}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <Ionicons name="ellipsis-horizontal" size={16} color="#16a34a" />
+            </TouchableOpacity>
+          )}
+        </Animated.View>
+      </View>
+    </View>
+  );
+});
 
 export default function ChatScreen() {
   const { to, matchId, name } = useLocalSearchParams<{ to: string; matchId?: string; name?: string }>();
@@ -35,6 +156,7 @@ export default function ChatScreen() {
   const [headerMenuVisible, setHeaderMenuVisible] = useState(false);
   const [messageOptionsItem, setMessageOptionsItem] = useState<MsgItem | null>(null);
   const listRef = useRef<FlatList<MsgItem>>(null);
+  const revealX = useSharedValue(0); // sağdan sola çekince timestamp görünür
 
   const normParam = useCallback((p: any): string | undefined => {
     const v = Array.isArray(p) ? p[0] : p;
@@ -124,12 +246,19 @@ export default function ChatScreen() {
         .update({ is_read: true })
         .eq('type', 'direct_message')
         .eq('user_id', user.id)
-        .eq('sender_id', recip);
-      if (mId) q = q.eq('match_id', mId);
+        .eq('sender_id', recip)
+        .eq('is_read', false);
+
+      // Chat ekranı şu an match_id'ye göre sohbetleri ayırmıyor.
+      // Bu yüzden match sohbetindeyken de, match_id null olan (eski) bildirimleri de temizleyelim ki tab badge takılı kalmasın.
+      if (mId) {
+        q = q.or(`match_id.eq.${mId},match_id.is.null`);
+      }
+
       await q;
       try { 
         // Bildirim context'inde direct_message unread sayısını yeniden hesapla
-        refreshNotifications?.(); 
+        await (refreshNotifications?.() as any);
         // Ve mesaj ikonundaki badge'i anında temizle
         clearMessageBadge?.();
       } catch {}
@@ -325,43 +454,22 @@ export default function ChatScreen() {
   const renderItem = ({ item }: { item: MsgItem }) => {
     const mine = item.sender_id === me;
     return (
-      <View style={{ paddingHorizontal: 12, paddingVertical: 6, alignItems: mine ? 'flex-end' : 'flex-start', flexDirection: 'row', justifyContent: mine ? 'flex-end' : 'flex-start', gap: 2 }}>
-        <Pressable
-          style={{ maxWidth: '85%' }}
-          onLongPress={() => {
-            if (!mine) {
-              Alert.alert(
-                t('chat.reportMessage'),
-                item.content?.slice(0, 80) + (item.content && item.content.length > 80 ? '...' : ''),
-                [
-                  { text: t('general.cancel'), style: 'cancel' },
-                  { text: t('chat.reportMessage'), onPress: () => openReportModal(item) },
-                ]
-              );
-            }
-          }}
-        >
-          <View style={{
-            backgroundColor: mine ? '#16a34a' : '#e5e7eb',
-            borderRadius: 12,
-            paddingHorizontal: 12,
-            paddingVertical: 8,
-            ...(!mine && { borderWidth: 2, borderColor: '#16a34a' }),
-          }}>
-            <Text style={{ color: mine ? 'white' : '#111827' }}>{item.content}</Text>
-          </View>
-        </Pressable>
-        {/* Görünür ... menüsü (Apple UGC: flag objectionable content) */}
-        {!mine && (
-          <TouchableOpacity
-            onPress={() => setMessageOptionsItem(item)}
-            style={{ alignSelf: 'center', padding: 6, backgroundColor: '#fff', borderRadius: 6, borderWidth: 2, borderColor: '#16a34a' }}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          >
-            <Ionicons name="ellipsis-horizontal" size={16} color="#16a34a" />
-          </TouchableOpacity>
-        )}
-      </View>
+      <MessageRow
+        item={item}
+        mine={mine}
+        revealX={revealX}
+        onReport={(it) => {
+          Alert.alert(
+            t('chat.reportMessage'),
+            it.content?.slice(0, 80) + (it.content && it.content.length > 80 ? '...' : ''),
+            [
+              { text: t('general.cancel'), style: 'cancel' },
+              { text: t('chat.reportMessage'), onPress: () => openReportModal(it) },
+            ]
+          );
+        }}
+        onOpenOptions={(it) => setMessageOptionsItem(it)}
+      />
     );
   };
 
@@ -404,14 +512,35 @@ export default function ChatScreen() {
           }}
         />
         <View style={{ flex: 1 }}>
-          <FlatList
-            ref={listRef}
-            data={messages}
-            keyExtractor={(m) => m.id}
-            renderItem={renderItem}
-            contentContainerStyle={{ paddingVertical: 8, paddingBottom: Math.max(60, insets.bottom + 8) }}
-            onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: true })}
-          />
+          <GestureDetector
+            gesture={Gesture.Pan()
+              .activeOffsetX([-18, 18])
+              .failOffsetY([-10, 10])
+              .onUpdate((e) => {
+                if (e.translationX < 0) {
+                  revealX.value = clamp(-e.translationX, 0, 120);
+                } else {
+                  revealX.value = 0;
+                }
+              })
+              .onEnd(() => {
+                revealX.value = withTiming(0, { duration: 180 });
+              })
+              .onFinalize(() => {
+                revealX.value = withTiming(0, { duration: 180 });
+              })}
+          >
+            <View style={{ flex: 1 }}>
+              <FlatList
+                ref={listRef}
+                data={messages}
+                keyExtractor={(m) => m.id}
+                renderItem={renderItem}
+                contentContainerStyle={{ paddingVertical: 8, paddingBottom: Math.max(60, insets.bottom + 8) }}
+                onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: true })}
+              />
+            </View>
+          </GestureDetector>
           {/* Mesaj balonu 3 nokta → Sohbet Seçenekleri modalı */}
           <Modal visible={!!messageOptionsItem} transparent animationType="fade">
             <Pressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 24 }} onPress={() => setMessageOptionsItem(null)}>

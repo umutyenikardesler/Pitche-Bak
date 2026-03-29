@@ -80,13 +80,16 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
-    // Tüm okunmamış bildirimleri (direct_message hariç) okundu olarak işaretle
+    // Action gerektiren bildirimleri (follow_request/join_request) otomatik okundu yapma.
+    // Yoksa "Kabul Et / Reddet" butonları kayboluyor ve kullanıcı aksiyonu veremiyor.
     await supabase
       .from('notifications')
       .update({ is_read: true })
       .eq('user_id', user.id)
       .eq('is_read', false)
-      .neq('type', 'direct_message');
+      .neq('type', 'direct_message')
+      .neq('type', 'follow_request')
+      .neq('type', 'join_request');
 
     // Sayaçları güncelle
     await fetchCount();

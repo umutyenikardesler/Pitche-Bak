@@ -238,6 +238,11 @@ const translations = {
     'notifications.userFallback': 'Kullanıcı',
     'notifications.toast.accepted': 'İstek kabul edildi',
     'notifications.toast.rejected': 'İstek reddedildi',
+    'notifications.toast.followRequestSent': 'Takip isteği gönderildi',
+    'notifications.followBack': 'Sen de Takip Et',
+    'notifications.followBackSent': 'Takip isteğin gönderildi',
+    'notifications.followBackFollowing': 'Sen de takip ediyorsun',
+    'notifications.followBackAlreadySent': 'Takip isteği zaten gönderilmiş',
     'notifications.actionCompleted': 'İşlem tamamlandı',
 
     // Takip isteği geri bildirimleri (follow_request) - sadece bunun EN çevirisini kullanacağız
@@ -710,6 +715,11 @@ const translations = {
     'notifications.userFallback': 'User',
     'notifications.toast.accepted': 'Request accepted',
     'notifications.toast.rejected': 'Request rejected',
+    'notifications.toast.followRequestSent': 'Follow request sent',
+    'notifications.followBack': 'Follow back',
+    'notifications.followBackSent': 'Follow request sent',
+    'notifications.followBackFollowing': 'You are following too',
+    'notifications.followBackAlreadySent': 'Follow request already sent',
     'notifications.actionCompleted': 'Action completed',
 
     // Follow request feedbacks (follow_request)

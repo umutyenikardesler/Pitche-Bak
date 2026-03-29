@@ -9,6 +9,7 @@ import DirectMessageNotification from './DirectMessageNotification';
 interface NotificationListProps {
     groupedNotifications: NotificationGroup[];
     onFollowRequest: (notification: Notification, action: 'accept' | 'reject') => void;
+    onFollowBack: (notification: Notification) => Promise<'sent' | 'already'>;
     onJoinRequest: (notification: Notification, action: 'accept' | 'reject') => void;
     onMarkAsRead: (notification: Notification) => void;
     onProfilePress: (userId: string) => void;
@@ -19,6 +20,7 @@ interface NotificationListProps {
 export default function NotificationList({
     groupedNotifications,
     onFollowRequest,
+    onFollowBack,
     onJoinRequest,
     onMarkAsRead,
     onProfilePress,
@@ -34,6 +36,7 @@ export default function NotificationList({
                     item={item}
                     onAccept={(item) => onFollowRequest(item, 'accept')}
                     onReject={(item) => onFollowRequest(item, 'reject')}
+                    onFollowBack={() => onFollowBack(item)}
                     onProfilePress={onProfilePress}
                     onMarkAsRead={onMarkAsRead}
                 />

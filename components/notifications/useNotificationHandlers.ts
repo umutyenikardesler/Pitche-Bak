@@ -172,6 +172,79 @@ export const useNotificationHandlers = (
         }
     }, [setNotifications, refresh, t]);
 
+    // Kullanıcı birini takip etmeye başladığında "Sen de takip et" aksiyonu
+    const handleFollowBack = useCallback(async (notification: Notification): Promise<'sent' | 'already'> => {
+        try {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) return 'already';
+            if (!notification?.sender_id) return 'already';
+
+            // Zaten takip isteği var mı?
+            const { data: existing, error: existingError } = await supabase
+                .from('follow_requests')
+                .select('status')
+                .eq('follower_id', user.id)
+                .eq('following_id', notification.sender_id)
+                .maybeSingle();
+
+            if (existingError) {
+                console.error('[Notifications] follow back existing check error:', existingError);
+            }
+
+            if (existing?.status) {
+                try { (global as any).toast?.show?.(t('profile.alreadyFollowingOrRequested')); } catch (_) {}
+                return 'already';
+            }
+
+            // Takip isteğini oluştur
+            const { error: insertErr } = await supabase
+                .from('follow_requests')
+                .insert({
+                    follower_id: user.id,
+                    following_id: notification.sender_id,
+                    status: 'pending',
+                } as any);
+
+            if (insertErr) throw insertErr;
+
+            // Karşı tarafa follow_request bildirimi oluştur (bu adım başarısız olursa kullanıcı "gönderildi" görmesin)
+            const { data: currentUserData, error: meErr } = await supabase
+                .from('users')
+                .select('name, surname')
+                .eq('id', user.id)
+                .single();
+
+            if (meErr) {
+                console.error('[Notifications] follow back sender data fetch error:', meErr);
+            }
+
+            const senderName = currentUserData
+                ? `${(currentUserData as any).name || ''} ${(currentUserData as any).surname || ''}`.trim()
+                : t('notifications.userFallback');
+
+            const { error: notifErr } = await supabase.from('notifications').insert({
+                user_id: notification.sender_id,
+                sender_id: user.id,
+                type: 'follow_request',
+                message: `${senderName} ${t('notifications.sentFollowRequest')}`,
+                is_read: false,
+            } as any);
+
+            if (notifErr) {
+                console.error('[Notifications] follow back notification insert error:', notifErr);
+                throw notifErr;
+            }
+
+            refresh();
+            try { (global as any).toast?.show?.(t('notifications.toast.followRequestSent')); } catch (_) {}
+            return 'sent';
+        } catch (error) {
+            console.error(t('profile.followRequestError'), error);
+            try { (global as any).toast?.show?.(t('profile.followRequestError')); } catch (_) {}
+            return 'already';
+        }
+    }, [refresh, t]);
+
     const handleJoinRequest = useCallback(async (
         notification: Notification,
         action: 'accept' | 'reject'
@@ -370,6 +443,7 @@ export const useNotificationHandlers = (
     return {
         handleMarkAsRead,
         handleFollowRequest,
+        handleFollowBack,
         handleJoinRequest,
     };
 };

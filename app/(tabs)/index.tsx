@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback, useMemo } from 'react';
-import { View, Dimensions, Modal, TouchableOpacity, DeviceEventEmitter, Platform, Animated } from "react-native";
+import { View, Dimensions, Modal, TouchableOpacity, DeviceEventEmitter, Platform, Animated, BackHandler } from "react-native";
 import { GestureDetector, Gesture } from "react-native-gesture-handler";
 import { runOnJS } from "react-native-reanimated";
 import { useRouter, useFocusEffect, useLocalSearchParams, useNavigation } from "expo-router";
@@ -244,6 +244,29 @@ export default function Index() {
       detailTranslateX.setValue(0);
     });
   };
+
+  // Root index ekranından geri (Android) Landing'e dönmesin.
+  // Detay/Profil modalı açıksa önce onları kapat.
+  useFocusEffect(
+    useCallback(() => {
+      const sub = BackHandler.addEventListener("hardwareBackPress", () => {
+        if (selectedMatch) {
+          handleCloseDetail();
+          return true;
+        }
+        if (profileModalVisible) {
+          closeProfileModal();
+          return true;
+        }
+        if (!isGuest) {
+          BackHandler.exitApp();
+          return true;
+        }
+        return false;
+      });
+      return () => sub.remove();
+    }, [selectedMatch, profileModalVisible, closeProfileModal, isGuest])
+  );
 
   // CustomHeader başlık tıklaması ile modal'ları kapat
   useEffect(() => {
