@@ -80,8 +80,8 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
-    // Action gerektiren bildirimleri (follow_request/join_request) otomatik okundu yapma.
-    // Yoksa "Kabul Et / Reddet" butonları kayboluyor ve kullanıcı aksiyonu veremiyor.
+    // 1) Takip/Katılım isteği DIŞINDAKİ tüm bildirimleri okundu yap
+    // (Kabul/Reddet gibi aksiyon gerektiren bildirimleri etkilemeyelim)
     await supabase
       .from('notifications')
       .update({ is_read: true })
@@ -90,6 +90,69 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
       .neq('type', 'direct_message')
       .neq('type', 'follow_request')
       .neq('type', 'join_request');
+
+    // 2) follow_request / join_request içindeki FEEDBACK (sonuç) bildirimlerini otomatik okundu yap.
+    // SQL message filter'larına güvenmek yerine, önce satırları alıp JS tarafında ayıklayacağız.
+    try {
+      const { data: rows, error: rowsErr } = await supabase
+        .from('notifications')
+        .select('id, type, message')
+        .eq('user_id', user.id)
+        .eq('is_read', false)
+        .in('type', ['follow_request', 'join_request']);
+
+      if (rowsErr) {
+        console.log('[NotificationProvider] clearBadge feedback fetch error:', rowsErr);
+      } else {
+        const idsToMarkRead: string[] = [];
+
+        (rows || []).forEach((r: any) => {
+          const id = r?.id;
+          const type = r?.type;
+          const msg = String(r?.message || '');
+          const msgLower = msg.toLowerCase();
+
+          if (typeof id !== 'string' || !id) return;
+
+          if (type === 'follow_request') {
+            // Actionable follow request:
+            // TR: "... sana takip isteği gönderdi."
+            // EN: "... sent you a follow request."
+            const isActionable =
+              msgLower.includes('takip isteği gönderdi') ||
+              msgLower.includes('sent you a follow request');
+
+            // Geri dönüş/feedback (kabul-red / started following) ise otomatik oku
+            if (!isActionable) idsToMarkRead.push(id);
+            return;
+          }
+
+          if (type === 'join_request') {
+            // Actionable join request: "... pozisyonunda katılım isteği" (kabul/red içermez)
+            const isFeedback =
+              msgLower.includes('kabul edildiniz') ||
+              msgLower.includes('kabul edilmediniz') ||
+              msgLower.includes('reddedildi');
+
+            if (isFeedback) idsToMarkRead.push(id);
+            return;
+          }
+        });
+
+        if (idsToMarkRead.length > 0) {
+          const { error: updErr } = await supabase
+            .from('notifications')
+            .update({ is_read: true })
+            .in('id', idsToMarkRead);
+
+          if (updErr) {
+            console.log('[NotificationProvider] clearBadge feedback update error:', updErr);
+          }
+        }
+      }
+    } catch (e) {
+      console.log('[NotificationProvider] clearBadge feedback exception:', e);
+    }
 
     // Sayaçları güncelle
     await fetchCount();

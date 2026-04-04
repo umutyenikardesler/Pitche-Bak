@@ -30,6 +30,20 @@ export default function PositionList({
   const hasAnyRequest = sentRequests.length > 0;
   const hasAcceptedPosition = acceptedPosition || shownAcceptedPositions.size > 0;
   const orderedPositions: string[] = ['K', 'D', 'O', 'F'];
+  const shortLabel = (pos: string) => {
+    switch (pos) {
+      case 'K':
+        return 'KL';
+      case 'D':
+        return 'DF';
+      case 'O':
+        return 'OS';
+      case 'F':
+        return 'FV';
+      default:
+        return pos;
+    }
+  };
 
   return (
     <View className="flex-row max-w-full items-center justify-center flex-wrap">
@@ -55,7 +69,7 @@ export default function PositionList({
           return (
             <View key={`missing-${position}`} className="flex-row items-center mx-1 mb-2">
               <TouchableOpacity
-                className={`flex-row items-center border-solid border-2 rounded-full p-1.5 ${
+                className={`flex-row items-center border-solid border-2 rounded-full p-1 ${
                   isSent
                     ? 'border-green-500 bg-green-100'
                     : isAcceptedPosition
@@ -68,7 +82,7 @@ export default function PositionList({
                 disabled={isOwner || isLoading}
               >
                 <View
-                  className={`rounded-full py-1.5 px-1.5 ${
+                  className={`rounded-full py-1 px-1 ${
                     position === 'K'
                       ? 'bg-red-500'
                       : position === 'D'
@@ -78,9 +92,11 @@ export default function PositionList({
                       : 'bg-yellow-600'
                   }`}
                 >
-                  <Text className="text-white font-bold textlg px-2">{position}</Text>
+                  <Text className="text-white font-bold text-lg px-1.5">{shortLabel(position)}</Text>
                 </View>
-                <Text className="ml-1 font-semibold pr-1 text-lg">x {count}</Text>
+                <Text className="ml-1 pr-1 text-base">
+                  x <Text className="font-bold">{count}</Text>
+                </Text>
               </TouchableOpacity>
             </View>
           );
@@ -91,15 +107,15 @@ export default function PositionList({
           return (
             <View
               key={`completed-${position}`}
-              className="flex-row items-center mx-1 mb-2"
+              className="flex-row items-center mx-0.5 mb-2"
             >
               <TouchableOpacity
-                className="flex-row items-center border-solid border-2 border-green-600 bg-green-100 rounded-full p-1.5"
+                className="flex-row items-center border-solid border-2 border-green-600 bg-green-100 rounded-full p-1"
                 onPress={() => !isOwner && onPositionPress(position)}
                 disabled={isOwner || isLoading}
               >
                 <View
-                  className={`rounded-full py-1.5 px-1.5 ${
+                  className={`rounded-full py-1 px-1 ${
                     position === 'K'
                       ? 'bg-red-500'
                       : position === 'D'
@@ -109,9 +125,9 @@ export default function PositionList({
                       : 'bg-yellow-600'
                   }`}
                 >
-                  <Text className="text-white font-bold textlg px-1">{position}</Text>
+                  <Text className="text-white font-bold text-lg px-1">{shortLabel(position)}</Text>
                 </View>
-                <Text className="ml-1 font-semibold pr-1 text-lg text-green-700">
+                <Text className="ml-0.5 font-semibold pr-0.5 text-base text-green-700">
                   Dolu
                 </Text>
               </TouchableOpacity>

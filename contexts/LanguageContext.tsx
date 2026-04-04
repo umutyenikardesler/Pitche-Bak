@@ -269,6 +269,7 @@ const translations = {
     'general.reject': 'Reddet',
     'general.accept': 'Kabul Et',
     'general.sendMessage': 'Mesaj Gönder',
+    'general.openSettings': 'Ayarlar',
 
     'chat.profanityTitle': 'Yasaklı İçerik',
     'chat.profanityWarning': 'Bu mesaj gönderilemez. Küfür ve hakaret içeren ifadeler topluluk kurallarımıza aykırıdır. Sohbette saygılı iletişim kurulması gerekmektedir.',
@@ -352,7 +353,7 @@ const translations = {
 
     'settings.agreements.title': 'Sözleşmelerim',
     'settings.reports.title': 'Raporlarım',
-    'admin.reports.title': 'Şikayet Raporları',
+    'admin.reports.title': 'Raporlarım',
     'admin.reports.colNo': 'S/N',
     'admin.reports.colReporter': 'Şikayet Eden',
     'admin.reports.colReported': 'Şikayet Edilen',
@@ -746,6 +747,7 @@ const translations = {
     'general.reject': 'Reject',
     'general.accept': 'Accept',
     'general.sendMessage': 'Send Message',
+    'general.openSettings': 'Settings',
 
     'chat.profanityTitle': 'Prohibited Content',
     'chat.profanityWarning': 'This message cannot be sent. Profanity and offensive language violate our community guidelines. Please keep the conversation respectful.',

@@ -212,7 +212,9 @@ export default function PitchesList({ pitches, selectedPitch, setSelectedPitch, 
                         >
                           <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', alignItems: 'center', justifyContent: 'center' }}>
                             <View style={{ backgroundColor: 'white', borderRadius: 12, padding: 16, width: 280 }}>
-                              <Text style={{ fontWeight: '700', fontSize: 16, marginBottom: 10, textAlign: 'center' }}>Haritalarda aç</Text>
+                              <Text style={{ fontWeight: '800', fontSize: 16, marginBottom: 10, textAlign: 'center', color: '#16a34a' }}>
+                                Haritalarda aç
+                              </Text>
                               {Platform.OS === 'ios' ? (
                                 <TouchableOpacity onPress={openInAppleMaps} style={{ paddingVertical: 10 }}>
                                   <Text style={{ textAlign: 'center', fontWeight: '600' }}>Apple Haritalar</Text>
@@ -226,8 +228,20 @@ export default function PitchesList({ pitches, selectedPitch, setSelectedPitch, 
                                   <Text style={{ textAlign: 'center', fontWeight: '600' }}>Waze</Text>
                                 </TouchableOpacity>
                               ) : null}
-                              <TouchableOpacity onPress={() => setMapChooserVisible(false)} style={{ marginTop: 8, paddingVertical: 8 }}>
-                                <Text style={{ textAlign: 'center', color: '#666' }}>İptal</Text>
+                              <TouchableOpacity
+                                onPress={() => setMapChooserVisible(false)}
+                                style={{
+                                  marginTop: 10,
+                                  paddingVertical: 10,
+                                  backgroundColor: '#e5e7eb',
+                                  borderRadius: 10,
+                                  borderWidth: 1,
+                                  borderColor: '#9ca3af',
+                                }}
+                              >
+                                <Text style={{ textAlign: 'center', color: '#374151', fontWeight: '700' }}>
+                                  İptal
+                                </Text>
                               </TouchableOpacity>
                             </View>
                           </View>

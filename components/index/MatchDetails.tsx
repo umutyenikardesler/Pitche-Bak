@@ -293,7 +293,7 @@ export default function MatchDetails({ match, onClose, onOpenProfilePreview }: M
             {t('home.missingSquads')}
           </Text>
           <Text className="text-base font-semibold text-center mb-2">
-            ( Kaleci: <Text className="text-red-500 font-bold">K</Text>, Defans: <Text className="text-blue-700 font-bold">D</Text>, Orta Saha: <Text className="text-green-700 font-bold">O</Text>, Forvet: <Text className="text-yellow-600 font-bold">F</Text> )
+            ( Kaleci: <Text className="text-red-500 font-bold">KL</Text>, Defans: <Text className="text-blue-700 font-bold">DF</Text>, Orta Saha: <Text className="text-green-700 font-bold">OS</Text>, Forvet: <Text className="text-yellow-600 font-bold">FV</Text> )
           </Text>
         </View>
 

@@ -1,7 +1,6 @@
 import '@/global.css';
 import { Stack, usePathname, useGlobalSearchParams } from "expo-router";
-import { LogBox, Platform, View } from "react-native";
-import { Linking } from "react-native";
+import { LogBox, Platform, View, AppState, Linking } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { useRouter } from "expo-router";
@@ -14,6 +13,7 @@ import AnalyticsProvider from '@/components/AnalyticsProvider';
 import { setPendingAuthUrl } from '@/lib/pendingAuthUrl';
 import { setLastNonAuthRoute } from "@/lib/lastNonAuthRoute";
 import { isAuthCallbackLocked, lockAuthCallbackFor } from "@/lib/authCallbackLock";
+import { supabase } from "@/services/supabase";
 
 // Sadece belirli logları ignore et, tüm logları değil
 LogBox.ignoreLogs([
@@ -24,6 +24,83 @@ export default function RootLayout() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useGlobalSearchParams();
+
+  // Online kullanıcı sayısı için Realtime Presence.
+  // Not: "anlık aktif kullanıcı" sayısı bu kanala bağlı olan unique user sayısıdır.
+  useEffect(() => {
+    let channel: any = null;
+    let isMounted = true;
+    let currentUserId: string | null = null;
+    let appStateSub: any = null;
+
+    const teardown = () => {
+      try {
+        if (channel) supabase.removeChannel(channel);
+      } catch (_) {}
+      channel = null;
+    };
+
+    const setupForUser = async (userId: string) => {
+      teardown();
+      currentUserId = userId;
+      channel = supabase.channel("online-users", {
+        config: { presence: { key: userId } },
+      });
+
+      channel.subscribe(async (status: string) => {
+        if (!isMounted) return;
+        if (status !== "SUBSCRIBED") return;
+        try {
+          await channel.track({ online_at: new Date().toISOString() });
+        } catch (_) {}
+      });
+    };
+
+    (async () => {
+      try {
+        const { data } = await supabase.auth.getUser();
+        const userId = data?.user?.id ?? null;
+        if (!isMounted) return;
+        if (userId) {
+          await setupForUser(userId);
+        }
+      } catch (_) {}
+    })();
+
+    const { data: authSub } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      if (!isMounted) return;
+      const nextId = session?.user?.id ?? null;
+      if (nextId === currentUserId) return;
+      if (!nextId) {
+        currentUserId = null;
+        teardown();
+        return;
+      }
+      await setupForUser(nextId);
+    });
+
+    // App tekrar foreground olunca presence ping at (bazı cihazlarda bağlantı kesilebiliyor)
+    try {
+      appStateSub = AppState.addEventListener("change", async (st) => {
+        if (!isMounted) return;
+        if (st !== "active") return;
+        try {
+          if (channel) await channel.track({ online_at: new Date().toISOString() });
+        } catch (_) {}
+      });
+    } catch (_) {}
+
+    return () => {
+      isMounted = false;
+      try {
+        authSub?.subscription?.unsubscribe?.();
+      } catch (_) {}
+      try {
+        appStateSub?.remove?.();
+      } catch (_) {}
+      teardown();
+    };
+  }, []);
 
   // Arka plandayken gelen auth callback URL'sini yakala
   useEffect(() => {

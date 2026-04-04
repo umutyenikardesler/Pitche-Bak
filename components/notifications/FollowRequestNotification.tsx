@@ -1,8 +1,9 @@
-import { View, Text, TouchableOpacity, Image, ActivityIndicator } from "react-native";
+import { View, Text, TouchableOpacity, Image, ActivityIndicator, Alert } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useLanguage } from '@/contexts/LanguageContext';
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/services/supabase";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 interface FollowRequestNotificationProps {
     item: {
@@ -34,6 +35,8 @@ export default function FollowRequestNotification({
     const [followBackLoading, setFollowBackLoading] = useState(false);
     const [followBackStatus, setFollowBackStatus] = useState<"idle" | "pending" | "accepted">("idle");
     const [followBackPendingSource, setFollowBackPendingSource] = useState<"none" | "db" | "just_sent">("none");
+    const [followBackReady, setFollowBackReady] = useState<boolean>(() => false);
+    const followBackCacheKeyRef = useRef<string | null>(null);
     
     // Tarih ve saat formatlama - Database'deki saati olduğu gibi göster
     const created = new Date(item.created_at);
@@ -87,6 +90,27 @@ export default function FollowRequestNotification({
             const { data: { user } } = await supabase.auth.getUser();
             if (!mounted || !user) return;
 
+            const cacheKey = `follow_back_status:${user.id}:${item.sender_id}`;
+            followBackCacheKeyRef.current = cacheKey;
+
+            // Önce cache'i oku. (Özellikle accepted durumunda UI flicker'ı engeller)
+            try {
+                const cached = await AsyncStorage.getItem(cacheKey);
+                if (!mounted) return;
+                if (cached === "accepted") {
+                    setFollowBackStatus("accepted");
+                    setFollowBackPendingSource("none");
+                    setFollowBackReady(true);
+                } else if (cached === "pending") {
+                    setFollowBackStatus("pending");
+                    setFollowBackPendingSource("db");
+                    setFollowBackReady(true);
+                }
+                // cached yoksa READY yapmıyoruz; DB sonucunu bekleyeceğiz (yanlış label göstermemek için)
+            } catch (_) {
+                // sessiz geç
+            }
+
             const { data: fr } = await supabase
                 .from("follow_requests")
                 .select("status")
@@ -99,11 +123,21 @@ export default function FollowRequestNotification({
             if (st === "accepted") {
                 setFollowBackStatus("accepted");
                 setFollowBackPendingSource("none");
+                setFollowBackReady(true);
+                try { await AsyncStorage.setItem(cacheKey, "accepted"); } catch (_) {}
+            } else if (st === "pending") {
+                // DB'de gerçekten pending ise, kullanıcı geri geldiğinde de pending gösterelim.
+                setFollowBackStatus("pending");
+                setFollowBackPendingSource("db");
+                setFollowBackReady(true);
+                try { await AsyncStorage.setItem(cacheKey, "pending"); } catch (_) {}
             } else {
                 // NOT: pending'ı ekrana kendiliğinden yansıtma.
                 // Kullanıcı butona basmadıkça "Takip isteğin gönderildi/zaten gönderilmiş" görünmesin.
                 setFollowBackStatus("idle");
                 setFollowBackPendingSource("none");
+                setFollowBackReady(true);
+                try { await AsyncStorage.removeItem(cacheKey); } catch (_) {}
             }
 
             // realtime: karşı taraf kabul edince status accepted olsun
@@ -124,9 +158,27 @@ export default function FollowRequestNotification({
                         if (row.status === "accepted") {
                             setFollowBackStatus("accepted");
                             setFollowBackPendingSource("none");
+                            setFollowBackReady(true);
+                            try {
+                                const k = followBackCacheKeyRef.current;
+                                if (k) AsyncStorage.setItem(k, "accepted");
+                            } catch (_) {}
+                        } else if (row.status === "pending") {
+                            setFollowBackStatus("pending");
+                            setFollowBackPendingSource("db");
+                            setFollowBackReady(true);
+                            try {
+                                const k = followBackCacheKeyRef.current;
+                                if (k) AsyncStorage.setItem(k, "pending");
+                            } catch (_) {}
                         } else {
                             setFollowBackStatus("idle");
                             setFollowBackPendingSource("none");
+                            setFollowBackReady(true);
+                            try {
+                                const k = followBackCacheKeyRef.current;
+                                if (k) AsyncStorage.removeItem(k);
+                            } catch (_) {}
                         }
                     }
                 )
@@ -138,6 +190,137 @@ export default function FollowRequestNotification({
             if (channel) supabase.removeChannel(channel);
         };
     }, [isStartedFollowing, item.sender_id]);
+
+    // Eğer bu kart "started following" değilse buton zaten yok; ready'yi true tutalım.
+    useEffect(() => {
+        if (!isStartedFollowing) setFollowBackReady(true);
+    }, [isStartedFollowing]);
+
+    // Bazı ortamlarda realtime follow_requests UPDATE olayı düşmeyebiliyor.
+    // Bu yüzden kullanıcı "Sen de takip et"e bastıktan sonra kısa süreli polling yapıp
+    // karşı taraf kabul ettiğinde butonu "accepted" durumuna yükseltelim.
+    useEffect(() => {
+        let cancelled = false;
+        let timer: any = null;
+
+        const shouldPoll =
+            isStartedFollowing &&
+            followBackStatus === "pending" &&
+            !!item.sender_id;
+
+        if (!shouldPoll) return;
+
+        let attempts = 0;
+        const startedAt = Date.now();
+        const maxMs = 10 * 60 * 1000; // 10 dakika
+        const computeDelayMs = (n: number) => {
+            // 1-5: 2s, 6-12: 5s, sonrası: 10s
+            if (n <= 5) return 2000;
+            if (n <= 12) return 5000;
+            return 10000;
+        };
+
+        const tick = async () => {
+            attempts += 1;
+            try {
+                const { data: { user } } = await supabase.auth.getUser();
+                if (!user || cancelled) return;
+
+                const { data: fr } = await supabase
+                    .from("follow_requests")
+                    .select("status")
+                    .eq("follower_id", user.id)
+                    .eq("following_id", item.sender_id)
+                    .maybeSingle();
+
+                const st = (fr as any)?.status as string | undefined;
+                if (st === "accepted") {
+                    setFollowBackStatus("accepted");
+                    setFollowBackPendingSource("none");
+                    try {
+                        const k = followBackCacheKeyRef.current;
+                        if (k) await AsyncStorage.setItem(k, "accepted");
+                    } catch (_) {}
+                    return;
+                }
+            } catch (_) {
+                // sessiz geç
+            }
+
+            if (!cancelled && Date.now() - startedAt < maxMs) {
+                timer = setTimeout(tick, computeDelayMs(attempts));
+            }
+        };
+
+        timer = setTimeout(tick, 1200);
+
+        return () => {
+            cancelled = true;
+            if (timer) {
+                try { clearTimeout(timer); } catch (_) {}
+            }
+        };
+    }, [isStartedFollowing, followBackStatus, item.sender_id]);
+
+    // Ek güvenlik: follow-back isteği kabul edildiğinde, çoğu akışta karşı taraftan
+    // "accepted your follow request" tipinde bir notification INSERT edilir.
+    // follow_requests realtime/polling kaçırsa bile buradan butonu accepted'a yükseltelim.
+    useEffect(() => {
+        let mounted = true;
+        let channel: any = null;
+
+        const shouldListen =
+            isStartedFollowing &&
+            followBackStatus === "pending" &&
+            !!item.sender_id;
+
+        if (!shouldListen) return;
+
+        (async () => {
+            try {
+                const { data: { user } } = await supabase.auth.getUser();
+                if (!mounted || !user) return;
+
+                channel = supabase
+                    .channel(`follow-back-accept-notif-${user.id}-${item.sender_id}`)
+                    .on(
+                        "postgres_changes",
+                        {
+                            event: "INSERT",
+                            schema: "public",
+                            table: "notifications",
+                            filter: `user_id=eq.${user.id}`,
+                        },
+                        (payload: any) => {
+                            const row = payload?.new;
+                            if (!row) return;
+                            if (row.type !== "follow_request") return;
+                            if (row.sender_id !== item.sender_id) return;
+                            const m = String(row.message || "").toLowerCase();
+                            if (m.includes("takip isteğinizi kabul etti") || m.includes("accepted your follow request")) {
+                                setFollowBackStatus("accepted");
+                                setFollowBackPendingSource("none");
+                                setFollowBackReady(true);
+                                try {
+                                    const k = followBackCacheKeyRef.current;
+                                    if (k) AsyncStorage.setItem(k, "accepted");
+                                } catch (_) {}
+                            }
+                        }
+                    )
+                    .subscribe();
+            } catch (e) {
+                console.error("[FollowRequestNotification] accept-notif listen error:", e);
+            }
+        })();
+
+        return () => {
+            mounted = false;
+            if (channel) {
+                try { supabase.removeChannel(channel); } catch (_) {}
+            }
+        };
+    }, [isStartedFollowing, followBackStatus, item.sender_id]);
 
     return (
         <TouchableOpacity 
@@ -221,7 +404,7 @@ export default function FollowRequestNotification({
                         </Text>
 
                         {/* Kabul sonrası: "Sen de takip et" (aynı satırda, sağa dayalı) */}
-                        {isStartedFollowing && onFollowBack ? (
+                        {isStartedFollowing && onFollowBack && followBackReady ? (
                             <TouchableOpacity
                                 activeOpacity={0.85}
                                 disabled={followBackLoading || followBackStatus !== "idle"}
@@ -230,9 +413,28 @@ export default function FollowRequestNotification({
                                     if (followBackStatus !== "idle") return;
                                     setFollowBackLoading(true);
                                     try {
-                                        const res = await onFollowBack();
+                                        const timeoutMs = 12000;
+                                        const res = await Promise.race([
+                                            onFollowBack(),
+                                            new Promise<'sent' | 'already'>((_, reject) =>
+                                                setTimeout(() => reject(new Error("timeout")), timeoutMs)
+                                            ),
+                                        ]);
+
                                         setFollowBackStatus("pending");
                                         setFollowBackPendingSource(res === "sent" ? "just_sent" : "db");
+                                        try {
+                                            const k = followBackCacheKeyRef.current;
+                                            if (k) await AsyncStorage.setItem(k, "pending");
+                                        } catch (_) {}
+                                    } catch (e: any) {
+                                        console.error("[FollowRequestNotification] follow back error:", e);
+                                        Alert.alert(
+                                            t("general.error"),
+                                            t("profile.followRequestError")
+                                        );
+                                        setFollowBackStatus("idle");
+                                        setFollowBackPendingSource("none");
                                     } finally {
                                         setFollowBackLoading(false);
                                     }

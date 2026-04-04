@@ -101,7 +101,10 @@
         if (payload.email) qs.set('e', payload.email);
         if (payload.authType) qs.set('type', payload.authType);
 
-        var base = 'myapp://auth/callback' + (qs.toString() ? ('?' + qs.toString()) : '');
+        // Allow overriding scheme for dev builds: callback.html?s=myapp-dev
+        var query = window.location.search ? new URLSearchParams(window.location.search) : new URLSearchParams();
+        var scheme = query.get('s') || 'myapp';
+        var base = scheme + '://auth/callback' + (qs.toString() ? ('?' + qs.toString()) : '');
         if (payload.kind === 'tokens') return base + '#' + payload.fragment;
         if (payload.kind === 'code') return base + (qs.toString() ? '&' : '?') + 'code=' + encodeURIComponent(payload.code);
         return base;

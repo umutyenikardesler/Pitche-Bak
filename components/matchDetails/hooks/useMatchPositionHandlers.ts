@@ -1,6 +1,6 @@
 // MatchDetails position handlers hook'u
 import { useCallback } from 'react';
-import { Alert } from 'react-native';
+import { Alert, DeviceEventEmitter } from 'react-native';
 import { supabase } from '@/services/supabase';
 import { Match } from '@/components/index/types';
 import { getPositionName } from '../utils/getPositionName';
@@ -308,6 +308,11 @@ export const useMatchPositionHandlers = ({
         `${getPositionName(position)} pozisyonundaki katılımınız iptal edildi. Yeni pozisyon seçebilirsiniz.`,
         [{ text: "Tamam" }]
       );
+
+      // Index ekranındaki listeler (Seni Bekleyen / Kadrosu Eksik) anında güncellensin
+      try {
+        DeviceEventEmitter.emit('refreshIndexMatches');
+      } catch (_) {}
 
       setTimeout(() => {
         setIsCancellingPosition(false);

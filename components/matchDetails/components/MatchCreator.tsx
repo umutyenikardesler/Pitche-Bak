@@ -25,7 +25,7 @@ export default function MatchCreator({
   return (
     <View className="items-center my-4">
       <View className="flex-row max-w-full items-center justify-center">
-        <Text className="font-semibold">{t('home.matchCreatedBy')} </Text>
+        <Text className="font-bold">{t('home.matchCreatedBy')} </Text>
         <TouchableOpacity
           onPress={() => {
             if (onOpenProfilePreview) {
@@ -35,7 +35,7 @@ export default function MatchCreator({
             }
           }}
         >
-          <Text className="text-green-700 font-semibold">
+          <Text className="text-green-700 font-bold">
             {userName} {userSurname}
           </Text>
         </TouchableOpacity>

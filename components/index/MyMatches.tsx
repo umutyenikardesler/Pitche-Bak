@@ -206,7 +206,7 @@ export default function MyMatches({ matches, refreshing, onRefresh, onSelectMatc
           style={{ flex: 1, paddingTop: 3, paddingBottom: Platform.OS === 'web' ? 0 : 5 }}
           contentContainerStyle={{
             // Web'de listenin sonunda fazladan boşluk oluşuyordu; web için daha küçük padding.
-            paddingBottom: Platform.OS === 'web' ? 10 : (matches.length > 2 ? 35 : 0),
+            paddingBottom: Platform.OS === 'web' ? 10 : (matches.length > 2 ? 5 : 0),
           }} // 3+ maç varsa daha fazla padding
           scrollEnabled={matches.length > 2} // 3 veya daha fazla maç varsa scroll aktif
           showsVerticalScrollIndicator={matches.length > 2} // 3+ maç varsa scroll bar göster

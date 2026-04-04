@@ -1,5 +1,5 @@
 // Custom hook for notification data fetching and real-time updates
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useFocusEffect } from 'expo-router';
 import { supabase } from '@/services/supabase';
 import { useNotification } from '@/components/NotificationContext';
@@ -12,6 +12,11 @@ export const useNotifications = () => {
     const [refreshing, setRefreshing] = useState(false);
     const { refresh } = useNotification();
     const { t } = useLanguage();
+
+    // Realtime UPDATE/INSERT burst'lerinde UI kilitlenmesin diye fetch'i throttle edelim.
+    const fetchInFlightRef = useRef(false);
+    const fetchQueuedRef = useRef(false);
+    const fetchTimerRef = useRef<any>(null);
 
     const fetchNotifications = useCallback(async () => {
         try {
@@ -65,6 +70,52 @@ export const useNotifications = () => {
 
             // Sunucudan gelen anlık listeyi direkt state'e yaz (DB'de silinen bildirimler de UI'dan kalksın)
             setNotifications(formattedNotifications);
+
+            // Feedback bildirimlerini (kabul/red vb.) sayfaya girince otomatik okundu yap.
+            // Actionable olanlar: follow_request "… takip isteği gönderdi", join_request "... katılım isteği"
+            // Feedback olanlar: follow_request (actionable olmayan her şey), join_request (kabul/red içerenler)
+            const idsToMarkRead = (formattedNotifications || [])
+                .filter((n: any) => !n?.is_read)
+                .filter((n: any) => n?.type === 'follow_request' || n?.type === 'join_request')
+                .filter((n: any) => {
+                    const msg = String(n?.message || '');
+                    const msgLower = msg.toLowerCase();
+
+                    if (n.type === 'follow_request') {
+                        const isActionable =
+                            msgLower.includes('takip isteği gönderdi') ||
+                            msgLower.includes('sent you a follow request');
+                        return !isActionable;
+                    }
+
+                    if (n.type === 'join_request') {
+                        const isFeedback =
+                            msgLower.includes('kabul edildiniz') ||
+                            msgLower.includes('kabul edilmediniz') ||
+                            msgLower.includes('reddedildi');
+                        return isFeedback;
+                    }
+
+                    return false;
+                })
+                .map((n: any) => n?.id)
+                .filter((id: any) => typeof id === 'string' && id);
+
+            if (idsToMarkRead.length > 0) {
+                // DB'de okundu işaretle
+                const { error: updErr } = await supabase
+                    .from('notifications')
+                    .update({ is_read: true })
+                    .in('id', idsToMarkRead);
+
+                if (updErr) {
+                    console.error('[Notifications] auto-mark feedback read error:', updErr);
+                } else {
+                    // UI state'i de güncelle
+                    setNotifications(prev => prev.map(n => idsToMarkRead.includes(n.id) ? { ...n, is_read: true } : n));
+                    refresh();
+                }
+            }
         } catch (error) {
             console.error(t('notifications.loadingError'), error);
         } finally {
@@ -72,6 +123,29 @@ export const useNotifications = () => {
             setRefreshing(false);
         }
     }, [t]);
+
+    const scheduleFetch = useCallback(() => {
+        // Zaten planlandıysa tekrar planlama
+        if (fetchTimerRef.current) return;
+        fetchTimerRef.current = setTimeout(async () => {
+            fetchTimerRef.current = null;
+            if (fetchInFlightRef.current) {
+                fetchQueuedRef.current = true;
+                return;
+            }
+            fetchInFlightRef.current = true;
+            try {
+                await fetchNotifications();
+                refresh();
+            } finally {
+                fetchInFlightRef.current = false;
+                if (fetchQueuedRef.current) {
+                    fetchQueuedRef.current = false;
+                    scheduleFetch();
+                }
+            }
+        }, 350);
+    }, [fetchNotifications, refresh]);
 
     useFocusEffect(
         useCallback(() => {
@@ -99,11 +173,8 @@ export const useNotifications = () => {
                         table: 'notifications',
                         filter: `user_id=eq.${user.id}`
                     },
-                    async (payload: any) => {
-                        if (mounted) {
-                            await fetchNotifications();
-                            refresh();
-                        }
+                    () => {
+                        if (mounted) scheduleFetch();
                     }
                 )
                 .on(
@@ -114,11 +185,8 @@ export const useNotifications = () => {
                         table: 'notifications',
                         filter: `user_id=eq.${user.id}`
                     },
-                    async (payload: any) => {
-                        if (mounted) {
-                            await fetchNotifications();
-                            refresh();
-                        }
+                    () => {
+                        if (mounted) scheduleFetch();
                     }
                 )
                 .subscribe();
@@ -127,11 +195,15 @@ export const useNotifications = () => {
 
         return () => {
             mounted = false;
+            if (fetchTimerRef.current) {
+                try { clearTimeout(fetchTimerRef.current); } catch (_) {}
+                fetchTimerRef.current = null;
+            }
             if (channel) {
                 supabase.removeChannel(channel);
             }
         };
-    }, [fetchNotifications, refresh]);
+    }, [scheduleFetch]);
 
     const groupNotificationsByDate = useCallback(
         (notifications: Notification[]): NotificationGroup[] => {

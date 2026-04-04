@@ -33,10 +33,17 @@ export default function Notifications() {
         useCallback(() => {
             if (isGuest) {
                 showGuestAuthAlert(t('auth.guestNotifications'));
-            } else {
-                clearBadge();
+                return;
             }
-        }, [isGuest, showGuestAuthAlert, clearBadge, t])
+
+            // Badge sayısı anında güncellensin diye await edelim
+            (async () => {
+                try {
+                    await clearBadge();
+                    refresh();
+                } catch (_) {}
+            })();
+        }, [isGuest, showGuestAuthAlert, clearBadge, refresh, t])
     );
 
     const {

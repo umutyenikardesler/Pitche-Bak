@@ -11,6 +11,7 @@ export interface User {
   }
   
   export interface Pitch {
+    id?: string;
     name: string;
     address: string;
     price: string;

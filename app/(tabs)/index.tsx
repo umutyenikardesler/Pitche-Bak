@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { View, Dimensions, Modal, TouchableOpacity, DeviceEventEmitter, Platform, Animated, BackHandler } from "react-native";
 import { GestureDetector, Gesture } from "react-native-gesture-handler";
 import { runOnJS } from "react-native-reanimated";
@@ -169,34 +169,40 @@ export default function Index() {
   const itemHeight = 80; // Sabit maç yüksekliği (px)
   const headerHeight = 20; // "SENİ BEKLEYEN MAÇLAR" başlığı yüksekliği
   
-  // Yükseklik hesaplama fonksiyonu
-  const calculateHeight = useCallback(() => {
+  const futureMatchesLenRef = useRef<number>(0);
+  useEffect(() => {
+    futureMatchesLenRef.current = futureMatches.length;
+  }, [futureMatches.length]);
+
+  // Yükseklik hesaplama fonksiyonu (stabil, len parametresi ile)
+  const calculateHeightForLen = useCallback((len: number) => {
     const webExtraHeight = Platform.OS === 'web' ? 15 : 0;
     const calculatedHeight = (() => {
-      if (futureMatches.length === 0) {
+      if (len === 0) {
         // Android için daha fazla yükseklik gerekiyor
         const emptyStateHeight = Platform.OS === 'android' ? 100 : 90;
         return headerHeight + emptyStateHeight + 16; // Boş durum için başlık + buton + boşluk + mb-8 (32px)
       }
-      if (futureMatches.length === 1) return headerHeight + itemHeight + 22; // 1 maç + padding
-      if (futureMatches.length === 2) return headerHeight + (itemHeight * 2) + 25 + webExtraHeight; // 2 maç + padding (+web)
+      if (len === 1) return headerHeight + itemHeight + 22; // 1 maç + padding
+      if (len === 2) return headerHeight + (itemHeight * 2) + 27 + webExtraHeight; // 2 maç + padding (+web)
       // 3 veya daha fazla maç varsa 2 maç + daha fazla padding + header
-      return headerHeight + (itemHeight * 2) + 30 + webExtraHeight; // 80px padding ekledik (+web)
+      return headerHeight + (itemHeight * 2) + 30 + webExtraHeight; // 3+ maç: alt boşluğu azalt
     })();
     
-    console.log('Yükseklik hesaplandı:', calculatedHeight, 'Maç sayısı:', futureMatches.length, 'Platform:', Platform.OS);
-    setMyMatchesHeight(calculatedHeight);
-  }, [futureMatches.length, headerHeight, itemHeight]);
+    console.log('Yükseklik hesaplandı:', calculatedHeight, 'Maç sayısı:', len, 'Platform:', Platform.OS);
+    // Aynı değeri tekrar set etmeyelim (focus dönüşlerinde effect-loop yapmasın)
+    setMyMatchesHeight((prev) => (prev === calculatedHeight ? prev : calculatedHeight));
+  }, [headerHeight, itemHeight]);
 
   // Dimensions değişikliklerini dinle
   useEffect(() => {
     const subscription = Dimensions.addEventListener('change', () => {
       // Ekran boyutu değiştiğinde yükseklikleri yeniden hesapla
-      calculateHeight();
+      calculateHeightForLen(futureMatchesLenRef.current);
     });
 
     return () => subscription?.remove();
-  }, [calculateHeight]);
+  }, [calculateHeightForLen]);
 
   // State'leri ekleyin
   const [profileModalVisible, setProfileModalVisible] = useState(false);
@@ -321,8 +327,34 @@ export default function Index() {
     const { data: authData } = await supabase.auth.getUser();
     const loggedUserId = authData?.user?.id ?? null;
     const isGuestUser = !loggedUserId;
+    let acceptedJoinMatchIds: string[] = [];
+    let acceptedJoinSet = new Set<string>();
 
     if (!isGuestUser && loggedUserId) {
+      // Bu kullanıcının "kabul edildiniz" join_request bildirimlerinden maçları topla
+      // (SENİ BEKLEYEN MAÇLAR listesinde sadece kendi oluşturduğu maçlar değil, kabul aldığı maçlar da görünmeli)
+      try {
+        const { data: acceptedRows, error: acceptedErr } = await supabase
+          .from("notifications")
+          .select("match_id")
+          .eq("type", "join_request")
+          .eq("user_id", loggedUserId)
+          .not("match_id", "is", null)
+          .ilike("message", "%kabul edildiniz%");
+
+        if (acceptedErr) {
+          console.error("[Index] accepted join_request fetch error:", acceptedErr);
+        } else {
+          acceptedJoinMatchIds = (acceptedRows || [])
+            .map((r: any) => r?.match_id)
+            .filter((id: any) => typeof id === "string" && id);
+        }
+      } catch (e) {
+        console.error("[Index] accepted join_request exception:", e);
+      }
+
+      acceptedJoinSet = new Set<string>(acceptedJoinMatchIds);
+
       // Tüm maçları say (kondisyon için) - sadece giriş yapmış kullanıcı
       const { data: allMatchData, error: allMatchError } = await supabase
         .from("match")
@@ -338,15 +370,48 @@ export default function Index() {
         .from("match")
         .select(`
           id, title, time, date, prices, missing_groups, create_user, match_format,
-          pitches (name, address, price, phone, features, district_id, latitude, longitude, districts (name)),
+          pitches (id, name, address, price, phone, features, district_id, latitude, longitude, districts (name)),
           users (id, name, surname, profile_image)
         `)
         .eq("create_user", loggedUserId)
         .order("date", { ascending: true })
         .order("time", { ascending: true });
 
-      if (!matchError && matchData) {
-        const filteredMatches = matchData.filter((item) => {
+      // Katılım kabulü aldığım maçları çek (başkasının maçı) - sadece giriş yapmış kullanıcı
+      let acceptedMatchData: any[] = [];
+      if (acceptedJoinMatchIds.length > 0) {
+        const { data: accData, error: accErr } = await supabase
+          .from("match")
+          .select(`
+            id, title, time, date, prices, missing_groups, create_user, match_format,
+            pitches (id, name, address, price, phone, features, district_id, latitude, longitude, districts (name)),
+            users (id, name, surname, profile_image)
+          `)
+          .in("id", acceptedJoinMatchIds)
+          .neq("create_user", loggedUserId)
+          .order("date", { ascending: true })
+          .order("time", { ascending: true });
+
+        if (accErr) {
+          console.error("[Index] accepted matches fetch error:", accErr);
+        } else if (accData) {
+          acceptedMatchData = accData as any[];
+        }
+      }
+
+      if ((!matchError && matchData) || acceptedMatchData.length > 0) {
+        const merged = [
+          ...(matchData || []),
+          ...acceptedMatchData,
+        ].filter(Boolean);
+
+        // Dedup: aynı match id tek kez
+        const byId = new Map<string, any>();
+        merged.forEach((m: any) => {
+          if (m?.id) byId.set(String(m.id), m);
+        });
+
+        const filteredMatches = Array.from(byId.values()).filter((item) => {
         // Maç tarihini Date objesine çevir
         const matchDate = new Date(item.date);
         const matchDateStr = matchDate.toISOString().split('T')[0];
@@ -384,7 +449,7 @@ export default function Index() {
           return {
             ...item,
             users: Array.isArray(item.users) 
-              ? item.users.map(user => ({ ...user, profile_image: updatedProfileImage }))
+              ? item.users.map((user: any) => ({ ...user, profile_image: updatedProfileImage }))
               : { ...(item.users as any), profile_image: updatedProfileImage },
             formattedDate: new Date(item.date).toLocaleDateString("tr-TR"),
             startFormatted: `${item.time.split(":")[0]}:${item.time.split(":")[1]}`,
@@ -393,7 +458,14 @@ export default function Index() {
         }) || []
       );
 
-        setFutureMatches(updatedMatches);
+        // Sıralama: tarih/saat (yakın -> uzak)
+        const sorted = [...updatedMatches].sort((a: any, b: any) => {
+          const da = String(a.date || "").localeCompare(String(b.date || ""));
+          if (da !== 0) return da;
+          return String(a.time || "").localeCompare(String(b.time || ""));
+        });
+
+        setFutureMatches(sorted);
       }
     }
 
@@ -402,7 +474,7 @@ export default function Index() {
       .from("match")
       .select(`
         id, title, time, date, prices, missing_groups, create_user, match_format,
-        pitches (name, price, phone, address, features, district_id, latitude, longitude, districts (name)),
+        pitches (id, name, price, phone, address, features, district_id, latitude, longitude, districts (name)),
         users (id, name, surname, profile_image)
       `)
       .order("date", { ascending: true })
@@ -416,6 +488,10 @@ export default function Index() {
 
     if (!otherMatchError) {
       const filteredOtherMatches = otherMatchData?.filter((item) => {
+        // Eğer bu kullanıcı bu maça zaten kabul aldıysa "Kadrosu Eksik Maçlar" altında görünmesin
+        if (!isGuestUser && loggedUserId) {
+          if (acceptedJoinSet.has(String(item.id))) return false;
+        }
         // Maç tarihini Date objesine çevir
         const matchDate = new Date(item.date);
         const matchDateStr = matchDate.toISOString().split('T')[0];
@@ -503,6 +579,71 @@ export default function Index() {
     setRefreshing(false);
   }, []);
 
+  // MatchDetails içinde pozisyon iptal/kabul gibi durumlarda Index listesini yenile
+  useEffect(() => {
+    let timer: any = null;
+    const sub = DeviceEventEmitter.addListener('refreshIndexMatches', () => {
+      if (timer) {
+        try { clearTimeout(timer); } catch (_) {}
+      }
+      timer = setTimeout(() => {
+        fetchMatches();
+      }, 250);
+    });
+
+    return () => {
+      if (timer) {
+        try { clearTimeout(timer); } catch (_) {}
+      }
+      sub.remove();
+    };
+  }, [fetchMatches]);
+
+  // Bir kullanıcı bir maça kabul edildiğinde, Index'teki "Seni Bekleyen Maçlar" listesi anında güncellensin.
+  useEffect(() => {
+    let channel: any = null;
+    let isCancelled = false;
+
+    (async () => {
+      try {
+        const { data } = await supabase.auth.getUser();
+        const userId = data?.user?.id;
+        if (!userId || isCancelled) return;
+
+        channel = supabase
+          .channel(`index-join-request-${userId}`)
+          .on(
+            "postgres_changes",
+            {
+              event: "INSERT",
+              schema: "public",
+              table: "notifications",
+              filter: `user_id=eq.${userId}`,
+            },
+            (payload: any) => {
+              const row = payload?.new;
+              if (!row) return;
+              if (row.type !== "join_request") return;
+              if (!row.match_id) return;
+              const msg = String(row.message || "");
+              if (!msg.toLowerCase().includes("kabul edildiniz")) return;
+              fetchMatches();
+            }
+          )
+          .subscribe();
+      } catch (e) {
+        console.error("[Index] join_request subscription error:", e);
+      }
+    })();
+
+    return () => {
+      isCancelled = true;
+      try {
+        if (channel) supabase.removeChannel(channel);
+      } catch (_) {}
+    };
+  }, [fetchMatches]);
+
 
   const handleSelectMatch = (match: Match) => {
     // Maç detayını anında aç (eski davranış), animasyonu sadece kapanışta kullanıyoruz.
@@ -535,19 +676,16 @@ export default function Index() {
   useEffect(() => {
     // Component mount olduğunda yükseklikleri ayarla
     const timer = setTimeout(() => {
-      calculateHeight();
+      calculateHeightForLen(futureMatchesLenRef.current);
     }, 200);
     
     return () => clearTimeout(timer);
-  }, [calculateHeight]);
+  }, [calculateHeightForLen]);
 
-  // futureMatches değiştiğinde yüksekliği otomatik güncelle
+  // futureMatches sayısı değiştiğinde yüksekliği güncelle
   useEffect(() => {
-    if (futureMatches.length > 0 || myMatchesHeight === 0) {
-      console.log('futureMatches değişti, yükseklik güncelleniyor...');
-      calculateHeight();
-    }
-  }, [futureMatches.length, calculateHeight]);
+    calculateHeightForLen(futureMatches.length);
+  }, [futureMatches.length, calculateHeightForLen]);
 
   // Tab değişimlerini dinle - useFocusEffect ile
   useFocusEffect(
@@ -560,12 +698,17 @@ export default function Index() {
       setFutureMatches([]);
       setOtherMatches([]);
       setMyMatchesHeight(0);
+      // Eğer futureMatches zaten boşsa bile, MyMatches alanı çökmemeli.
+      // Boş state yüksekliğini hemen hesapla (aksi halde "Seni Bekleyen Maçlar" header kaybolabiliyor).
+      setTimeout(() => {
+        calculateHeightForLen(0);
+      }, 0);
       
       // Verileri yükle
       fetchMatches();
       
       return () => { };
-    }, [fetchMatches])
+    }, [fetchMatches, calculateHeightForLen])
   );
 
   useEffect(() => {

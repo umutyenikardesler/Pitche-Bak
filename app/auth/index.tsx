@@ -645,12 +645,16 @@ export default function AuthScreen() {
         // E-posta doğrulama linki tarayıcıda açılır; web callback hash'i alıp uygulamaya yönlendirir.
         const webBaseUrl = (Constants.expoConfig as any)?.extra?.webBaseUrl;
         const eVal = email.trim();
+        const scheme = ((Constants.expoConfig as any)?.scheme as string) || "myapp";
         let redirectUrl =
           Platform.OS === "web"
             ? Linking.createURL("auth/callback")
             : webBaseUrl
               ? `${webBaseUrl.replace(/\/$/, "")}/auth/callback.html`
               : Linking.createURL("/email-confirmed");
+
+        // dev/prod ayrımı: callback.html?s=myapp-dev → doğru uygulamayı açar
+        redirectUrl += (redirectUrl.includes("?") ? "&" : "?") + `s=${encodeURIComponent(scheme)}`;
 
         if (eVal) {
           redirectUrl += (redirectUrl.includes("?") ? "&" : "?") + `e=${encodeURIComponent(eVal)}`;
@@ -815,13 +819,16 @@ export default function AuthScreen() {
       // Native'de hash fragment mobilde kaybolduğu için önce web sayfamıza yönlendiriyoruz.
       // Web sayfası hash'i okuyup myapp://auth/callback?access_token=... olarak uygulamaya yönlendirir.
       const webBaseUrl = (Constants.expoConfig as any)?.extra?.webBaseUrl;
+      const scheme = ((Constants.expoConfig as any)?.scheme as string) || "myapp";
       const redirectTo =
         Platform.OS === "web"
           ? Linking.createURL("auth/callback")
           : webBaseUrl
             ? `${webBaseUrl.replace(/\/$/, "")}/auth/callback.html`
             : getOAuthRedirectUri();
-      const { error } = await supabase.auth.resetPasswordForEmail(trimmedEmail, { redirectTo });
+      // dev/prod ayrımı: callback.html?s=myapp-dev → doğru uygulamayı açar
+      const redirectToWithScheme = redirectTo + (redirectTo.includes("?") ? "&" : "?") + `s=${encodeURIComponent(scheme)}`;
+      const { error } = await supabase.auth.resetPasswordForEmail(trimmedEmail, { redirectTo: redirectToWithScheme });
       if (error) throw error;
       // record successful request time for remaining-time messaging
       const after = prune([...attemptsBefore, now], now);

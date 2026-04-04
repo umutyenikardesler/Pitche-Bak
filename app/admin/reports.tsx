@@ -35,6 +35,8 @@ export default function AdminReportsScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
+  const [totalUsers, setTotalUsers] = useState<number | null>(null);
+  const [activeUsers, setActiveUsers] = useState<number | null>(null);
 
   const loadReports = async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -48,14 +50,57 @@ export default function AdminReportsScreen() {
       return;
     }
     setIsAdmin(true);
-    const { data, error } = await fetchAdminReports();
-    if (!error && data) {
-      setReports(data);
-    }
+    const [{ data, error }, totalRes] = await Promise.all([
+      fetchAdminReports(),
+      supabase.from('users').select('*', { count: 'exact', head: true }),
+    ]);
+
+    if (!error && data) setReports(data);
+    setTotalUsers(totalRes.count ?? 0);
   };
 
   useEffect(() => {
     loadReports().finally(() => setLoading(false));
+  }, []);
+
+  // Online/aktif kullanıcı sayısı: Realtime Presence (online-users) kanalındaki unique key sayısı
+  useEffect(() => {
+    let mounted = true;
+    let channel: any = null;
+
+    (async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!mounted || !user) return;
+
+        channel = supabase.channel('online-users-admin', {
+          config: { presence: { key: user.id } },
+        });
+
+        channel.on('presence', { event: 'sync' }, () => {
+          try {
+            const state = channel.presenceState?.() || {};
+            const keys = Object.keys(state);
+            if (mounted) setActiveUsers(keys.length);
+          } catch (_) {}
+        });
+
+        channel.subscribe(async (status: string) => {
+          if (!mounted) return;
+          if (status !== 'SUBSCRIBED') return;
+          try {
+            await channel.track({ online_at: new Date().toISOString() });
+          } catch (_) {}
+        });
+      } catch (_) {}
+    })();
+
+    return () => {
+      mounted = false;
+      try {
+        if (channel) supabase.removeChannel(channel);
+      } catch (_) {}
+    };
   }, []);
 
   const onRefresh = async () => {
@@ -181,6 +226,39 @@ export default function AdminReportsScreen() {
             )}
           </View>
           </ScrollView>
+
+          {/* İstatistikler: 1 satır, 2 sütun */}
+          <View style={{ marginTop: 14, borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 10, overflow: 'hidden' }}>
+            <View style={{ flexDirection: 'row', backgroundColor: '#065f46' }}>
+              <View style={{ flex: 1, paddingVertical: 10, paddingHorizontal: 12, borderRightWidth: 1, borderRightColor: 'rgba(255,255,255,0.25)' }}>
+                <Text style={{ color: 'white', fontWeight: '800', fontSize: 12, textAlign: 'center' }}>
+                  Toplam Kullanıcı Sayısı
+                </Text>
+              </View>
+              <View style={{ flex: 1, paddingVertical: 10, paddingHorizontal: 12 }}>
+                <Text style={{ color: 'white', fontWeight: '800', fontSize: 12, textAlign: 'center' }}>
+                  Aktif Kullanıcı Sayısı
+                </Text>
+              </View>
+            </View>
+            <View style={{ flexDirection: 'row', backgroundColor: '#ffffff' }}>
+              <View style={{ flex: 1, paddingVertical: 12, paddingHorizontal: 12, borderRightWidth: 1, borderRightColor: '#e5e7eb' }}>
+                <Text style={{ color: '#111827', fontWeight: '800', fontSize: 18, textAlign: 'center' }}>
+                  {typeof totalUsers === 'number' ? totalUsers : '-'}
+                </Text>
+              </View>
+              <View style={{ flex: 1, paddingVertical: 12, paddingHorizontal: 12 }}>
+                <Text style={{ color: '#111827', fontWeight: '800', fontSize: 18, textAlign: 'center' }}>
+                  {typeof activeUsers === 'number' ? activeUsers : '-'}
+                </Text>
+              </View>
+            </View>
+            <View style={{ paddingHorizontal: 12, paddingVertical: 10, backgroundColor: '#f9fafb', borderTopWidth: 1, borderTopColor: '#e5e7eb' }}>
+              <Text style={{ color: '#6b7280', fontSize: 11, textAlign: 'center', lineHeight: 16 }}>
+                Aktif kullanıcı sayısı, uygulamada anlık olarak çevrimiçi olan kullanıcıların sayısıdır.
+              </Text>
+            </View>
+          </View>
         </ScrollView>
       )}
 
