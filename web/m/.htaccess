@@ -1,0 +1,13 @@
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /m/
+
+  # Eğer gerçek bir dosya/dizin ise dokunma
+  RewriteCond %{REQUEST_FILENAME} -f [OR]
+  RewriteCond %{REQUEST_FILENAME} -d
+  RewriteRule ^ - [L]
+
+  # /m/<hersey> -> /m/index.html (URL aynı kalır)
+  RewriteRule ^.*$ index.html [L]
+</IfModule>
+

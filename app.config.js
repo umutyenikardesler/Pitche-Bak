@@ -14,10 +14,14 @@ module.exports = () => {
   const name = isDev ? DEV_NAME : base.name;
   const scheme = isDev ? DEV_SCHEME : base.scheme;
 
+  const plugins = Array.isArray(base.plugins) ? base.plugins : [];
+  const hasBuildProps = plugins.some((p) => (Array.isArray(p) ? p[0] : p) === "expo-build-properties");
+
   return {
     ...base,
     name,
     scheme,
+    plugins: hasBuildProps ? plugins : [...plugins, "expo-build-properties"],
     ios: {
       ...base.ios,
       bundleIdentifier: isDev ? DEV_IOS_BUNDLE : base.ios?.bundleIdentifier,

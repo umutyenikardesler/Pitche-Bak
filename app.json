@@ -18,6 +18,8 @@
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "Yakınınızdaki sahaları göstermek ve konuma göre sıralamak için konumunuza ihtiyaç var.",
         "ITSAppUsesNonExemptEncryption": false,
+        "CFBundleDevelopmentRegion": "tr",
+        "CFBundleLocalizations": ["tr", "en"],
         "CFBundleDisplayName": "SahayaBak"
       }
     },
@@ -50,7 +52,22 @@
       "expo-font",
       "expo-secure-store",
       "expo-web-browser",
-      "expo-apple-authentication"
+      "expo-apple-authentication",
+      [
+        "react-native-share",
+        {
+          "ios": [
+            "fb",
+            "instagram",
+            "whatsapp"
+          ],
+          "android": [
+            "com.facebook.katana",
+            "com.instagram.android",
+            "com.whatsapp"
+          ]
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true

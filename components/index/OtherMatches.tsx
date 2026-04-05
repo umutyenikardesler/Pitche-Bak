@@ -5,6 +5,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { Match } from "./types";
 import { useLanguage } from "@/contexts/LanguageContext";
 import '@/global.css';
+import MatchShareModal from "@/components/share/MatchShareModal";
 
 interface OtherMatchesProps {
   matches: Match[];
@@ -28,6 +29,7 @@ export default function OtherMatches({ matches, refreshing, onRefresh, onSelectM
   const [sortMenuOpen, setSortMenuOpen] = useState(false);
   const [sortMode, setSortMode] = useState<"distance" | "datetime">("datetime");
   const [headerHeight, setHeaderHeight] = useState(48);
+  const [shareMatch, setShareMatch] = useState<Match | null>(null);
 
   // Maç listesi değiştiğinde görünür sayıyı resetle
   useEffect(() => {
@@ -74,10 +76,17 @@ export default function OtherMatches({ matches, refreshing, onRefresh, onSelectM
             />
           </View>
           {/* Maç Bilgileri */}
-          <View className="w-4/6 flex justify-center -mt-2 -ml-4">
-            <Text className="text-lg text-green-700 font-semibold">
-              {formatTitle(item.title)}
-            </Text>
+          <View className="w-4/6 flex justify-center -mt-2 ml-2">
+            <View className="flex-row items-center" style={{ width: "100%" }}>
+              <Text
+                className="text-lg text-green-700 font-semibold"
+                numberOfLines={1}
+                ellipsizeMode="tail"
+                style={{ flex: 1, minWidth: 0, paddingRight: 8 }}
+              >
+                {formatTitle(item.title)}
+              </Text>
+            </View>
 
             <View className="text-gray-700 text-md flex-row items-center">
               <Ionicons name="calendar-outline" size={18} color="black" />
@@ -100,9 +109,35 @@ export default function OtherMatches({ matches, refreshing, onRefresh, onSelectM
               <Text className="pl-2 font-bold text-green-700"> {Array.isArray(item.pitches) ? item.pitches[0]?.name : item.pitches?.name ?? 'Bilinmiyor'} </Text>
             </View>
           </View>
-          {/* Sağda Chevron İkonu */}
-          <View className="mr-1">
-            <Ionicons name="chevron-forward-outline" size={20} color="green" />
+          {/* Sağ ok alanı: dikeyde 3 bölüm (paylaş / ok / boş) */}
+          <View
+            style={{
+              width: 32,
+              minWidth: 32,
+              marginRight: 0,
+              paddingVertical: 3,
+              alignSelf: "stretch",
+              alignItems: "stretch",
+            }}
+          >
+            {/* Üst: Paylaş */}
+            <View style={{ flex: 1, justifyContent: "flex-start", alignItems: "flex-end" }}>
+              <TouchableOpacity
+                onPress={() => setShareMatch(item)}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                style={{ padding: 4, marginRight: 2 }}
+              >
+                <Ionicons name="share-social-outline" size={18} color="#16a34a" />
+              </TouchableOpacity>
+            </View>
+
+            {/* Orta: Ok */}
+            <View style={{ flex: 1, justifyContent: "center", alignItems: "flex-end", marginRight: 5 }}>
+              <Ionicons name="chevron-forward-outline" size={20} color="green" />
+            </View>
+
+            {/* Alt: boş */}
+            <View style={{ flex: 1 }} />
           </View>
         </View>
       </View>
@@ -272,6 +307,8 @@ export default function OtherMatches({ matches, refreshing, onRefresh, onSelectM
           }
         />
       )}
+
+      <MatchShareModal visible={!!shareMatch} match={shareMatch} onClose={() => setShareMatch(null)} />
     </View>
   );
 }

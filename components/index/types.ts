@@ -29,6 +29,7 @@ export interface User {
     time: string;
     date: string;
     prices: string;
+    share_url?: string;
     missing_groups: string[];
     create_user: string;
     match_format?: string; // '5-5', '6-6', '7-7'

@@ -1,9 +1,10 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { View, Text, FlatList, TouchableOpacity, Image, RefreshControl, Platform } from "react-native";
 import Animated, { useSharedValue, useAnimatedStyle, withRepeat, withTiming, Easing } from "react-native-reanimated";
 import { Ionicons } from "@expo/vector-icons";
 import { Match } from "./types";
 import { useLanguage } from "@/contexts/LanguageContext";
+import MatchShareModal from "@/components/share/MatchShareModal";
 
 interface MyMatchesProps {
   matches: Match[];
@@ -22,6 +23,7 @@ const formatTitle = (text: string) => {
 
 export default function MyMatches({ matches, refreshing, onRefresh, onSelectMatch, onCreateMatch }: MyMatchesProps) {
   const { t } = useLanguage();
+  const [shareMatch, setShareMatch] = useState<Match | null>(null);
   
   // react-native-reanimated ile yumuşak yanıp sönme animasyonu
   const opacity = useSharedValue(1);
@@ -143,18 +145,24 @@ export default function MyMatches({ matches, refreshing, onRefresh, onSelectMatc
           {/* Sağda Chevron İkonu */}
           <View
             style={{
-              width: 44,
-              minWidth: 44,
-              marginRight: 4,
-              paddingVertical: 6,
+              width: 32,
+              minWidth: 32,
+              marginRight: 0,
+              paddingVertical: 3,
               alignSelf: "stretch",
               // Çocukların (özellikle ok alanının) tam genişliği kullanması için
               alignItems: "stretch",
             }}
           >
-            {/* Üst alan: Maç oynanıyor */}
+            {/* Üst alan: Paylaş */}
             <View style={{ flex: 1, justifyContent: "flex-start", alignItems: "flex-end" }}>
-              {/* boş */}
+              <TouchableOpacity
+                onPress={() => setShareMatch(item)}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                style={{ padding: 4, marginRight: 2 }}
+              >
+                <Ionicons name="share-social-outline" size={18} color="#16a34a" />
+              </TouchableOpacity>
             </View>
 
             {/* Orta alan: ok her zaman ortada */}
@@ -216,6 +224,8 @@ export default function MyMatches({ matches, refreshing, onRefresh, onSelectMatc
           windowSize={5} // Performans için
         />
       )}
+
+      <MatchShareModal visible={!!shareMatch} match={shareMatch} onClose={() => setShareMatch(null)} />
     </View>
   );
 }
