@@ -1,4 +1,4 @@
-import { FlatList, RefreshControl, ScrollView, Text, TouchableOpacity, View, Platform, Linking, Modal, TextInput, Alert } from "react-native";
+import { FlatList, RefreshControl, ScrollView, Text, TouchableOpacity, View, Platform, Linking, Modal, TextInput, Alert, Pressable } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import PitchMap from "@/components/maps/PitchMap";
 import { useRouter } from "expo-router";
@@ -451,7 +451,12 @@ export default function PitchesList({ pitches, selectedPitch, setSelectedPitch, 
       data={pitches}
       keyExtractor={(item) => item.id.toString()}
       renderItem={({ item }) => (
-        <TouchableOpacity onPress={() => setSelectedPitch(item)}>
+        <Pressable
+          onPress={() => setSelectedPitch(item)}
+          // iOS'ta pull-to-refresh sırasında TouchableOpacity bazen "pressed" görünümünü takılı bırakabiliyor.
+          // Pressable ile basılı görsel efekt vermeyerek bu UX bug'ını engelliyoruz.
+          android_ripple={{ color: "rgba(22,163,74,0.10)" }}
+        >
           <View className="bg-white rounded-lg mx-4 mt-3 p-3 shadow-md">
             <View className="flex-row justify-between">
               <Text className="w-4/6 text-base font-semibold">{item.name}</Text>
@@ -459,7 +464,7 @@ export default function PitchesList({ pitches, selectedPitch, setSelectedPitch, 
               <Ionicons className="w-3 text-right" name="chevron-forward-outline" size={16} color="green" />
             </View>
           </View>
-        </TouchableOpacity>
+        </Pressable>
       )}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       contentContainerStyle={{ paddingBottom: 10 }}

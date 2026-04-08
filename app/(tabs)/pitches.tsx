@@ -69,35 +69,49 @@ export default function Pitches() {
     }
   };
 
-  const fetchPitches = useCallback(async (userLat?: number, userLon?: number) => {
-    setLoading(true);
-    const { data, error } = await supabase.from("pitches").select("*");
-    if (error) {
-      console.error(t('pitches.dataFetchError'), error);
-      setLoading(false);
-      setRefreshing(false);
-      return;
-    }
+  const fetchPitches = useCallback(
+    async (
+      userLat?: number,
+      userLon?: number,
+      opts?: {
+        showLoading?: boolean;
+      }
+    ) => {
+      const showLoading = opts?.showLoading !== false;
+      if (showLoading) setLoading(true);
 
-    if (userLat && userLon) {
-      const sorted = data
-        .map((pitch: any) => ({
-          ...pitch,
-          distance: haversine(
-            { latitude: userLat, longitude: userLon },
-            { latitude: pitch.latitude, longitude: pitch.longitude },
-            { unit: "km" }
-          ),
-        }))
-        .sort((a: any, b: any) => a.distance - b.distance);
-      setPitches(sorted);
-    } else {
-      setPitches(data);
-    }
+      try {
+        const { data, error } = await supabase.from("pitches").select("*");
+        if (error) {
+          console.error(t("pitches.dataFetchError"), error);
+          return;
+        }
 
-    setLoading(false);
-    setRefreshing(false);
-  }, [t]);
+        if (userLat != null && userLon != null) {
+          const sorted = (data || [])
+            .map((pitch: any) => ({
+              ...pitch,
+              distance: haversine(
+                { latitude: userLat, longitude: userLon },
+                { latitude: pitch.latitude, longitude: pitch.longitude },
+                { unit: "km" }
+              ),
+            }))
+            .sort((a: any, b: any) => a.distance - b.distance);
+          setPitches(sorted);
+        } else {
+          setPitches(data || []);
+        }
+      } catch (e) {
+        // Network request failed vb. durumda refresh/loading sonsuza kadar dönmesin.
+        console.error(t("pitches.dataFetchError"), e);
+      } finally {
+        if (showLoading) setLoading(false);
+        setRefreshing(false);
+      }
+    },
+    [t]
+  );
 
   const getLocation = useCallback(async (showAlertOnError: boolean = false) => {
     try {
@@ -389,7 +403,7 @@ export default function Pitches() {
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await fetchPitches(location?.latitude, location?.longitude);
+    await fetchPitches(location?.latitude, location?.longitude, { showLoading: false });
   };
 
   const handleCloseDetail = useCallback(() => {
