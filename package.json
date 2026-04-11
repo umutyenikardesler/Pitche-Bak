@@ -74,6 +74,7 @@
     "react-native-share": "^12.2.6",
     "react-native-spinkit": "^1.5.1",
     "react-native-url-polyfill": "^2.0.0",
+    "react-native-view-shot": "4.0.3",
     "react-native-web": "^0.21.0",
     "react-native-web-maps": "^0.1.0",
     "react-native-webview": "13.15.0",

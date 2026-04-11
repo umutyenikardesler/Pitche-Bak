@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Alert, Linking, Modal, Platform, Pressable, Text, TouchableOpacity, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Asset } from "expo-asset";
@@ -6,6 +6,7 @@ import Constants from "expo-constants";
 import * as FileSystem from "expo-file-system/legacy";
 import { Match } from "@/components/index/types";
 import { Share as NativeShare } from "react-native";
+import MatchShareCard from "@/components/share/MatchShareCard";
 
 type ShareTarget =
   | "whatsapp"
@@ -42,6 +43,22 @@ function safePitchName(m: Match): string {
 
 export default function MatchShareModal({ visible, match, onClose }: MatchShareModalProps) {
   const [busy, setBusy] = useState<ShareTarget | null>(null);
+  const [cardReadyKey, setCardReadyKey] = useState(0);
+  const cardRef = useRef<any>(null);
+
+  // `react-native-view-shot` native modül; dev-client rebuild yapılmadıysa app açılışta crash olmasın diye
+  // statik import yerine runtime require kullanıyoruz.
+  const viewShotLib = useMemo(() => {
+    try {
+      const mod = require("react-native-view-shot");
+      const ViewShotComp = mod?.default ?? mod;
+      const capture = mod?.captureRef;
+      if (!ViewShotComp || typeof capture !== "function") return null;
+      return { ViewShot: ViewShotComp, captureRef: capture as (ref: any, opts: any) => Promise<string> };
+    } catch {
+      return null;
+    }
+  }, []);
 
   const facebookAppId = useMemo(() => {
     const fromExtra = (Constants.expoConfig as any)?.extra?.facebookAppId;
@@ -104,6 +121,34 @@ export default function MatchShareModal({ visible, match, onClose }: MatchShareM
       .filter(Boolean)
       .join("\n");
   }, [match, shareUrl]);
+
+  // Story / post görselini dinamik üretmek için (maç bilgileri ile)
+  const [cardUri, setCardUri] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!visible) return;
+    setCardUri(null);
+    // her açılışta yeniden üret (link/saat değişmiş olabilir)
+    setCardReadyKey((k) => k + 1);
+  }, [visible, match?.id, shareUrl]);
+
+  const buildCardImageUri = async (): Promise<string> => {
+    if (!match) return await getShareImageUri();
+    // Eğer daha önce üretildiyse tekrar üretme
+    if (cardUri) return cardUri;
+
+    // ViewShot ref'ini almak için küçük bir hack: hidden ViewShot'ı querylemek yerine
+    // captureRef ile node referansını kullanacağız. Bu referansı aşağıda set ediyoruz.
+    if (!viewShotLib?.captureRef || !cardRef.current) return await getShareImageUri();
+
+    const uri = await viewShotLib.captureRef(cardRef.current, {
+      format: "png",
+      quality: 1,
+      result: "tmpfile",
+    });
+    setCardUri(uri);
+    return uri;
+  };
 
   const writeFallbackPng = async (): Promise<string> => {
     // 1x1 PNG (şeffaf) — network gerektirmez.
@@ -177,6 +222,7 @@ export default function MatchShareModal({ visible, match, onClose }: MatchShareM
       }
 
       const imageUrl = await getShareImageUri();
+      const storyCardUrl = await buildCardImageUri();
 
       if (target === "whatsapp") {
         try {
@@ -203,12 +249,21 @@ export default function MatchShareModal({ visible, match, onClose }: MatchShareM
           );
           return;
         }
+        if (!viewShotLib) {
+          Alert.alert(
+            "Güncelleme gerekli",
+            "Maç detay kartı ile hikaye paylaşımı için uygulamanın yeniden build edilmesi gerekiyor (react-native-view-shot)."
+          );
+          return;
+        }
         await ShareLib.shareSingle({
           social: ShareLib.Social.INSTAGRAM_STORIES,
           appId: facebookAppId,
-          backgroundImage: imageUrl,
+          backgroundImage: storyCardUrl,
           // Not: Instagram story'de metin her cihazda desteklenmez; linki kullanıcı ekleyebilir.
-          stickerImage: imageUrl,
+          stickerImage: storyCardUrl,
+          // iOS'ta bazı sürümlerde link burada "Attribution" olarak görünür; her cihazda tıklanabilir olmayabilir.
+          attributionURL: shareUrl,
           backgroundTopColor: "#16a34a",
           backgroundBottomColor: "#065f46",
         } as any);
@@ -217,9 +272,16 @@ export default function MatchShareModal({ visible, match, onClose }: MatchShareM
       }
 
       if (target === "instagram_post") {
+        if (!viewShotLib) {
+          Alert.alert(
+            "Güncelleme gerekli",
+            "Maç detay kartı ile paylaşım için uygulamanın yeniden build edilmesi gerekiyor (react-native-view-shot)."
+          );
+          return;
+        }
         await ShareLib.shareSingle({
           social: ShareLib.Social.INSTAGRAM,
-          url: imageUrl,
+          url: storyCardUrl,
           type: "image/png",
         } as any);
         onClose();
@@ -231,6 +293,13 @@ export default function MatchShareModal({ visible, match, onClose }: MatchShareM
           Alert.alert(
             "Eksik ayar",
             "Facebook Hikaye paylaşımı için Facebook App ID (appId) gerekiyor. app.json → expo.extra.facebookAppId ekleyip yeniden build almalısın."
+          );
+          return;
+        }
+        if (!viewShotLib) {
+          Alert.alert(
+            "Güncelleme gerekli",
+            "Maç detay kartı ile hikaye paylaşımı için uygulamanın yeniden build edilmesi gerekiyor (react-native-view-shot)."
           );
           return;
         }
@@ -246,8 +315,9 @@ export default function MatchShareModal({ visible, match, onClose }: MatchShareM
           ShareLib.shareSingle({
           social: (ShareLib.Social as any).FACEBOOK_STORIES,
           appId: facebookAppId,
-          backgroundImage: imageUrl,
-            stickerImage: imageUrl,
+            backgroundImage: storyCardUrl,
+            stickerImage: storyCardUrl,
+            attributionURL: shareUrl,
           backgroundTopColor: "#16a34a",
           backgroundBottomColor: "#065f46",
           } as any),
@@ -267,10 +337,17 @@ export default function MatchShareModal({ visible, match, onClose }: MatchShareM
           return;
         }
 
+        if (!viewShotLib) {
+          Alert.alert(
+            "Güncelleme gerekli",
+            "Maç detay kartı ile paylaşım için uygulamanın yeniden build edilmesi gerekiyor (react-native-view-shot)."
+          );
+          return;
+        }
         await withTimeout(
           ShareLib.shareSingle({
             social: ShareLib.Social.FACEBOOK,
-            url: imageUrl,
+            url: storyCardUrl,
             type: "image/png",
             message,
             quote: message,
@@ -306,6 +383,21 @@ export default function MatchShareModal({ visible, match, onClose }: MatchShareM
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+      {/* Hidden render target for share card screenshot */}
+      {match && viewShotLib ? (
+        <View style={{ position: "absolute", left: -9999, top: -9999, width: 1080, height: 1920, opacity: 0 }}>
+          <viewShotLib.ViewShot
+            ref={(r: any) => {
+              cardRef.current = r;
+            }}
+            options={{ format: "png", quality: 1, result: "tmpfile" }}
+            key={cardReadyKey}
+          >
+            <MatchShareCard match={match} shareUrl={shareUrl} />
+          </viewShotLib.ViewShot>
+        </View>
+      ) : null}
+
       <Pressable
         style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.45)", justifyContent: "center", padding: 18 }}
         onPress={onClose}
