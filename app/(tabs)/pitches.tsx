@@ -10,11 +10,21 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useLanguage } from "@/contexts/LanguageContext";
 import PitchesLocation from "@/components/pitches/PitchesLocation";
 import PitchesList from "@/components/pitches/PitchesList";
+import AdMobBanner from "@/components/ads/AdMobBanner";
+
+type PitchRow = {
+  id: string;
+  price?: any;
+  latitude?: number;
+  longitude?: number;
+  distance?: number;
+  [key: string]: any;
+};
 
 export default function Pitches() {
   const { t } = useLanguage();
-  const [pitches, setPitches] = useState<any[]>([]);
-  const [selectedPitch, setSelectedPitch] = useState<any>(null);
+  const [pitches, setPitches] = useState<PitchRow[]>([]);
+  const [selectedPitch, setSelectedPitch] = useState<PitchRow | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [location, setLocation] = useState<{ latitude: number; longitude: number } | null>(null);
@@ -412,7 +422,7 @@ export default function Pitches() {
 
   const handlePriceUpdated = useCallback((pitchId: string, newPrice: number) => {
     setPitches((prev) => prev.map((p) => (p.id === pitchId ? { ...p, price: newPrice } : p)));
-    setSelectedPitch((prev) => (prev && prev.id === pitchId ? { ...prev, price: newPrice } : prev));
+    setSelectedPitch((prev) => (prev?.id === pitchId ? { ...prev, price: newPrice } : prev));
   }, []);
 
   // Soldan sağa swipe ile saha detayından geri dön
@@ -460,6 +470,11 @@ export default function Pitches() {
               <PitchesLocation locationText={locationText} setLocationText={setLocationText} getLocation={getLocation} />
             </View>
           )}
+          {!selectedPitch ? (
+            <View style={{ marginTop: 8 }}>
+              <AdMobBanner />
+            </View>
+          ) : null}
           <PitchesList
           pitches={pitches}
           selectedPitch={selectedPitch}

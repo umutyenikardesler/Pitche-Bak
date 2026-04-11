@@ -20,7 +20,17 @@
         "ITSAppUsesNonExemptEncryption": false,
         "CFBundleDevelopmentRegion": "tr",
         "CFBundleLocalizations": ["tr", "en"],
-        "CFBundleDisplayName": "SahayaBak"
+        "CFBundleDisplayName": "SahayaBak",
+        "LSApplicationQueriesSchemes": [
+          "fb",
+          "fbapi",
+          "fbauth2",
+          "fb-messenger-api",
+          "fbshareextension",
+          "facebook-stories",
+          "instagram",
+          "whatsapp"
+        ]
       }
     },
     "android": {
@@ -77,7 +87,12 @@
       "eas": {
         "projectId": "bcaeff72-7e2a-4511-8ad1-73798a478d1a"
       },
-      "webBaseUrl": "https://sahayabak.com"
+      "webBaseUrl": "https://sahayabak.com",
+      "facebookAppId": "1885487315494376",
+      "admob": {
+        "bannerUnitIdIos": "ca-app-pub-1347758252118471/7078957007",
+        "bannerUnitIdAndroid": "ca-app-pub-1347758252118471/9999190850"
+      }
     }
   }
 }

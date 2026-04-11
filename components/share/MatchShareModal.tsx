@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from "react";
-import { Alert, Modal, Platform, Pressable, Text, TouchableOpacity, View } from "react-native";
+import { Alert, Linking, Modal, Platform, Pressable, Text, TouchableOpacity, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Asset } from "expo-asset";
 import Constants from "expo-constants";
@@ -58,22 +58,30 @@ export default function MatchShareModal({ visible, match, onClose }: MatchShareM
     // Bu link server tarafında myapp://match/<id> deep-link'e yönlendirecek.
     const baseUrl = match.share_url?.trim?.() || `https://sahayabak.com/m/${encodeURIComponent(match.id)}`;
 
-    // Dev/Prod fark etmeksizin, link hangi build'den paylaşıldıysa o build'in scheme'ini ekle.
-    // Böylece cihazda prod yoksa dev açılır; prod varsa prod açılır.
+    // Dev/Prod fark etmeksizin, link hangi build'den paylaşıldıysa o build'in scheme'ini yaz.
+    // Bazı dev-client durumlarında expoConfig yanlışlıkla prod (myapp) döndürebiliyor; o yüzden çoklu sinyal kullanıyoruz.
+    const appVariant = (Constants.expoConfig as any)?.extra?.appVariant; // app.config.js set ediyor (APP_VARIANT)
     const configScheme = (Constants.expoConfig as any)?.scheme;
-    // Dev-client + Metro'da ( __DEV__ === true ) manifest bazen prod config (myapp) döndürebiliyor.
-    // Bu durumda dev build'in scheme'i genelde myapp-dev olduğu için onu tercih ediyoruz.
+    const inferredScheme =
+      appVariant === "dev"
+        ? "myapp-dev"
+        : typeof configScheme === "string" && configScheme.length
+          ? configScheme
+          : "myapp";
     const scheme =
-      typeof configScheme === "string" && configScheme.length
-        ? (__DEV__ && configScheme === "myapp" ? "myapp-dev" : configScheme)
-        : (__DEV__ ? "myapp-dev" : "myapp");
-    if (typeof scheme === "string" && scheme.length) {
-      if (baseUrl.includes("s=")) return baseUrl;
+      // Dev'de güvenli fallback
+      __DEV__ && inferredScheme === "myapp" ? "myapp-dev" : inferredScheme;
+
+    // s paramını her zaman set/override et (eski paylaşımlarda s=myapp kalmış olabilir)
+    try {
+      const u = new URL(baseUrl);
+      u.searchParams.set("s", scheme);
+      return u.toString();
+    } catch {
       const joiner = baseUrl.includes("?") ? "&" : "?";
+      // URL parse edemiyorsak basitçe ekle (varsa da en sona ekler)
       return `${baseUrl}${joiner}s=${encodeURIComponent(scheme)}`;
     }
-
-    return baseUrl;
   }, [match?.id, match?.share_url]);
 
   const message = useMemo(() => {
@@ -118,6 +126,20 @@ export default function MatchShareModal({ visible, match, onClose }: MatchShareM
       return await writeFallbackPng();
     } catch {
       return await writeFallbackPng();
+    }
+  };
+
+  const withTimeout = async <T,>(p: Promise<T>, ms: number, label: string): Promise<T> => {
+    let timer: any;
+    try {
+      return await Promise.race([
+        p,
+        new Promise<T>((_, reject) => {
+          timer = setTimeout(() => reject(new Error(`${label} timeout`)), ms);
+        }),
+      ]);
+    } finally {
+      if (timer) clearTimeout(timer);
     }
   };
 
@@ -212,26 +234,50 @@ export default function MatchShareModal({ visible, match, onClose }: MatchShareM
           );
           return;
         }
-        await ShareLib.shareSingle({
+        // Facebook yüklü mü? (yüklü değilse iOS "cannot open URL" verir)
+        const canOpenFb = await Linking.canOpenURL("fb://").catch(() => false);
+        if (!canOpenFb) {
+          await NativeShare.share({ message });
+          onClose();
+          return;
+        }
+
+        await withTimeout(
+          ShareLib.shareSingle({
           social: (ShareLib.Social as any).FACEBOOK_STORIES,
           appId: facebookAppId,
           backgroundImage: imageUrl,
+            stickerImage: imageUrl,
           backgroundTopColor: "#16a34a",
           backgroundBottomColor: "#065f46",
-        } as any);
+          } as any),
+          12000,
+          "facebook_story"
+        );
         onClose();
         return;
       }
 
       if (target === "facebook_post") {
-        await ShareLib.shareSingle({
-          social: ShareLib.Social.FACEBOOK,
-          url: imageUrl,
-          type: "image/png",
-          message,
-          // Bazı cihazlarda message yerine quote daha iyi çalışabiliyor.
-          quote: message,
-        } as any);
+        // Facebook feed share iOS'ta bazı cihazlarda hiç dönmeyebiliyor (UI donmuş gibi görünür).
+        // En stabil yaklaşım: iOS share sheet'e düş.
+        if (Platform.OS === "ios") {
+          await NativeShare.share({ message });
+          onClose();
+          return;
+        }
+
+        await withTimeout(
+          ShareLib.shareSingle({
+            social: ShareLib.Social.FACEBOOK,
+            url: imageUrl,
+            type: "image/png",
+            message,
+            quote: message,
+          } as any),
+          12000,
+          "facebook_post"
+        );
         onClose();
         return;
       }
@@ -247,6 +293,8 @@ export default function MatchShareModal({ visible, match, onClose }: MatchShareM
         );
       } else if (msg.toLowerCase().includes("cancel")) {
         // kullanıcı kapattı
+      } else if (msg.toLowerCase().includes("cannot open url")) {
+        Alert.alert("Paylaşım başlatılamadı", "Facebook cihazda yüklü değil veya iOS paylaşım izni (scheme) eksik.");
       } else {
         Alert.alert("Hata", "Paylaşım başlatılamadı.");
         console.error("[MatchShareModal] share error:", e);

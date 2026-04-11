@@ -16,12 +16,27 @@ module.exports = () => {
 
   const plugins = Array.isArray(base.plugins) ? base.plugins : [];
   const hasBuildProps = plugins.some((p) => (Array.isArray(p) ? p[0] : p) === "expo-build-properties");
+  const hasGoogleMobileAds = plugins.some((p) => (Array.isArray(p) ? p[0] : p) === "react-native-google-mobile-ads");
 
   return {
     ...base,
     name,
     scheme,
-    plugins: hasBuildProps ? plugins : [...plugins, "expo-build-properties"],
+    plugins: [
+      ...(hasBuildProps ? plugins : [...plugins, "expo-build-properties"]),
+      ...(hasGoogleMobileAds
+        ? []
+        : [
+            [
+              "react-native-google-mobile-ads",
+              {
+                // Test App IDs (replace with your real AdMob App IDs for production)
+                androidAppId: "ca-app-pub-1347758252118471~3954100218",
+                iosAppId: "ca-app-pub-1347758252118471~1923786562",
+              },
+            ],
+          ]),
+    ],
     ios: {
       ...base.ios,
       bundleIdentifier: isDev ? DEV_IOS_BUNDLE : base.ios?.bundleIdentifier,

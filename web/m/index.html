@@ -106,9 +106,14 @@
           return;
         }
 
-        // Önemli: triple-slash kullanıyoruz ki "match" host değil path olsun.
-        // Böylece Expo Router route'u: /match/[id] doğru çözülür.
-        var deepLink = scheme() + ":///match/" + encodeURIComponent(id);
+        // Expo Router mevcut projede "myapp://auth/callback" şeklinde çalışıyor.
+        // Aynı formatla: myapp://match/<id>
+        var deepLink = scheme() + "://match/" + encodeURIComponent(id);
+
+        function isInAppBrowser() {
+          var ua = (navigator.userAgent || "").toLowerCase();
+          return ua.includes("fbav") || ua.includes("fban") || ua.includes("instagram");
+        }
 
         function openAppNow() {
           try {
@@ -116,10 +121,34 @@
           } catch (_) {}
         }
 
-        openAppNow();
+        function tryOpenApp() {
+          // Birkaç yöntemle dene (bazı in-app browser'lar custom scheme'i zayıf destekler)
+          openAppNow();
+          setTimeout(openAppNow, 250);
+          setTimeout(function () {
+            try {
+              var iframe = document.createElement("iframe");
+              iframe.style.display = "none";
+              iframe.src = deepLink;
+              document.body.appendChild(iframe);
+              setTimeout(function () {
+                try {
+                  document.body.removeChild(iframe);
+                } catch (_) {}
+              }, 1200);
+            } catch (_) {}
+          }, 600);
+        }
+
+        if (isInAppBrowser()) {
+          hint.innerText =
+            "Facebook/Instagram iç tarayıcısı bazen uygulama açmayı engeller. Olmazsa sağ üst menüden Safari/Chrome'da açıp tekrar deneyin.";
+        }
+
+        tryOpenApp();
         openBtn.style.display = "inline-block";
         hint.style.display = "block";
-        openBtn.addEventListener("click", openAppNow);
+        openBtn.addEventListener("click", tryOpenApp);
       })();
     </script>
   </body>
