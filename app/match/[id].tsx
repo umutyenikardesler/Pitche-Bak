@@ -45,7 +45,7 @@ export default function MatchDeepLinkScreen() {
           .from("match")
           .select(
             `
-              id, title, time, date, prices, missing_groups, create_user, match_format,
+              id, title, time, date, prices, share_url, share_code, share_short_url, missing_groups, create_user, match_format,
               pitches (id, name, address, price, phone, features, district_id, latitude, longitude, districts (name)),
               users (id, name, surname, profile_image)
             `

@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Alert, Linking, Modal, Platform, Pressable, Text, TouchableOpacity, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { Asset } from "expo-asset";
 import Constants from "expo-constants";
 import * as FileSystem from "expo-file-system/legacy";
 import { Match } from "@/components/index/types";
@@ -11,9 +10,7 @@ import MatchShareCard from "@/components/share/MatchShareCard";
 type ShareTarget =
   | "whatsapp"
   | "instagram_story"
-  | "instagram_post"
-  | "facebook_story"
-  | "facebook_post";
+  | "facebook_story";
 
 interface MatchShareModalProps {
   visible: boolean;
@@ -69,12 +66,7 @@ export default function MatchShareModal({ visible, match, onClose }: MatchShareM
     return id || envId || null;
   }, []);
 
-  const shareUrl = useMemo(() => {
-    if (!match?.id) return "https://sahayabak.com";
-    // Mesajlaşma uygulamalarında en güvenilir tıklanabilir link: https
-    // Bu link server tarafında myapp://match/<id> deep-link'e yönlendirecek.
-    const baseUrl = match.share_url?.trim?.() || `https://sahayabak.com/m/${encodeURIComponent(match.id)}`;
-
+  const shareScheme = useMemo(() => {
     // Dev/Prod fark etmeksizin, link hangi build'den paylaşıldıysa o build'in scheme'ini yaz.
     // Bazı dev-client durumlarında expoConfig yanlışlıkla prod (myapp) döndürebiliyor; o yüzden çoklu sinyal kullanıyoruz.
     const appVariant = (Constants.expoConfig as any)?.extra?.appVariant; // app.config.js set ediyor (APP_VARIANT)
@@ -85,21 +77,64 @@ export default function MatchShareModal({ visible, match, onClose }: MatchShareM
         : typeof configScheme === "string" && configScheme.length
           ? configScheme
           : "myapp";
-    const scheme =
-      // Dev'de güvenli fallback
-      __DEV__ && inferredScheme === "myapp" ? "myapp-dev" : inferredScheme;
+
+    // Dev'de güvenli fallback
+    return __DEV__ && inferredScheme === "myapp" ? "myapp-dev" : inferredScheme;
+  }, []);
+
+  const shareUrl = useMemo(() => {
+    if (!match?.id) return "https://sahayabak.com";
+    const shortCode = match.share_code?.trim?.();
+    const prefixedShortCode =
+      shortCode && shareScheme === "myapp-dev" ? `dev-${shortCode}` : shortCode || null;
+    const pathShortUrl = prefixedShortCode
+      ? `https://sahayabak.com/s/${encodeURIComponent(prefixedShortCode)}`
+      : null;
+    // Mesajlaşma uygulamalarında en güvenilir tıklanabilir link: https
+    // Bu link server tarafında myapp://match/<id> deep-link'e yönlendirecek.
+    const baseUrl =
+      pathShortUrl ||
+      match.share_short_url?.trim?.() ||
+      match.share_url?.trim?.() ||
+      `https://sahayabak.com/m/${encodeURIComponent(match.id)}`;
+
+    // Kısa linkte dev/prod ayrımı kodun içinde taşınıyor:
+    // - dev: /s/dev-xxxxxx
+    // - prod: /s/xxxxxx
+    // Bu yüzden aynı bilgiyi bir de ?s= ile eklemiyoruz.
+    if (pathShortUrl || match.share_short_url?.trim?.()) {
+      return baseUrl;
+    }
 
     // s paramını her zaman set/override et (eski paylaşımlarda s=myapp kalmış olabilir)
     try {
       const u = new URL(baseUrl);
-      u.searchParams.set("s", scheme);
+      u.searchParams.set("s", shareScheme);
       return u.toString();
     } catch {
       const joiner = baseUrl.includes("?") ? "&" : "?";
       // URL parse edemiyorsak basitçe ekle (varsa da en sona ekler)
-      return `${baseUrl}${joiner}s=${encodeURIComponent(scheme)}`;
+      return `${baseUrl}${joiner}s=${encodeURIComponent(shareScheme)}`;
     }
-  }, [match?.id, match?.share_url]);
+  }, [match?.id, match?.share_code, match?.share_short_url, match?.share_url, shareScheme]);
+
+  const displayShareUrl = useMemo(() => {
+    const shortCode = match?.share_code?.trim?.();
+    const prefixedShortCode =
+      shortCode && shareScheme === "myapp-dev" ? `dev-${shortCode}` : shortCode || null;
+    const raw =
+      (prefixedShortCode
+        ? `https://sahayabak.com/s/${encodeURIComponent(prefixedShortCode)}`
+        : null) ||
+      match?.share_short_url?.trim?.();
+    if (!raw) return "sahayabak.com";
+    try {
+      const u = new URL(raw);
+      return `${u.host}${u.pathname}`;
+    } catch {
+      return raw.replace(/^https?:\/\//, "");
+    }
+  }, [match?.share_code, match?.share_short_url, shareScheme]);
 
   const message = useMemo(() => {
     if (!match) return "";
@@ -133,13 +168,13 @@ export default function MatchShareModal({ visible, match, onClose }: MatchShareM
   }, [visible, match?.id, shareUrl]);
 
   const buildCardImageUri = async (): Promise<string> => {
-    if (!match) return await getShareImageUri();
+    if (!match) return await writeFallbackPng();
     // Eğer daha önce üretildiyse tekrar üretme
     if (cardUri) return cardUri;
 
     // ViewShot ref'ini almak için küçük bir hack: hidden ViewShot'ı querylemek yerine
     // captureRef ile node referansını kullanacağız. Bu referansı aşağıda set ediyoruz.
-    if (!viewShotLib?.captureRef || !cardRef.current) return await getShareImageUri();
+    if (!viewShotLib?.captureRef || !cardRef.current) return await writeFallbackPng();
 
     const uri = await viewShotLib.captureRef(cardRef.current, {
       format: "png",
@@ -157,21 +192,6 @@ export default function MatchShareModal({ visible, match, onClose }: MatchShareM
     const path = `${FileSystem.cacheDirectory}share-fallback.png`;
     await FileSystem.writeAsStringAsync(path, base64, { encoding: FileSystem.EncodingType.Base64 });
     return path;
-  };
-
-  const getShareImageUri = async (): Promise<string> => {
-    // Instagram/Facebook story/post genelde görsel ister. Uygulama logosunu paylaşım görseli olarak kullanıyoruz.
-    try {
-      const asset = Asset.fromModule(require("@/assets/images/logo.png"));
-      if (!asset.localUri) {
-        await asset.downloadAsync(); // dev'de packager'a istek atar; offline olursa hata verebilir
-      }
-      const uri = asset.localUri || asset.uri;
-      if (typeof uri === "string" && uri.length) return uri;
-      return await writeFallbackPng();
-    } catch {
-      return await writeFallbackPng();
-    }
   };
 
   const withTimeout = async <T,>(p: Promise<T>, ms: number, label: string): Promise<T> => {
@@ -221,7 +241,6 @@ export default function MatchShareModal({ visible, match, onClose }: MatchShareM
         return;
       }
 
-      const imageUrl = await getShareImageUri();
       const storyCardUrl = await buildCardImageUri();
 
       if (target === "whatsapp") {
@@ -260,29 +279,10 @@ export default function MatchShareModal({ visible, match, onClose }: MatchShareM
           social: ShareLib.Social.INSTAGRAM_STORIES,
           appId: facebookAppId,
           backgroundImage: storyCardUrl,
-          // Not: Instagram story'de metin her cihazda desteklenmez; linki kullanıcı ekleyebilir.
-          stickerImage: storyCardUrl,
           // iOS'ta bazı sürümlerde link burada "Attribution" olarak görünür; her cihazda tıklanabilir olmayabilir.
           attributionURL: shareUrl,
           backgroundTopColor: "#16a34a",
           backgroundBottomColor: "#065f46",
-        } as any);
-        onClose();
-        return;
-      }
-
-      if (target === "instagram_post") {
-        if (!viewShotLib) {
-          Alert.alert(
-            "Güncelleme gerekli",
-            "Maç detay kartı ile paylaşım için uygulamanın yeniden build edilmesi gerekiyor (react-native-view-shot)."
-          );
-          return;
-        }
-        await ShareLib.shareSingle({
-          social: ShareLib.Social.INSTAGRAM,
-          url: storyCardUrl,
-          type: "image/png",
         } as any);
         onClose();
         return;
@@ -316,7 +316,6 @@ export default function MatchShareModal({ visible, match, onClose }: MatchShareM
           social: (ShareLib.Social as any).FACEBOOK_STORIES,
           appId: facebookAppId,
             backgroundImage: storyCardUrl,
-            stickerImage: storyCardUrl,
             attributionURL: shareUrl,
           backgroundTopColor: "#16a34a",
           backgroundBottomColor: "#065f46",
@@ -328,36 +327,6 @@ export default function MatchShareModal({ visible, match, onClose }: MatchShareM
         return;
       }
 
-      if (target === "facebook_post") {
-        // Facebook feed share iOS'ta bazı cihazlarda hiç dönmeyebiliyor (UI donmuş gibi görünür).
-        // En stabil yaklaşım: iOS share sheet'e düş.
-        if (Platform.OS === "ios") {
-          await NativeShare.share({ message });
-          onClose();
-          return;
-        }
-
-        if (!viewShotLib) {
-          Alert.alert(
-            "Güncelleme gerekli",
-            "Maç detay kartı ile paylaşım için uygulamanın yeniden build edilmesi gerekiyor (react-native-view-shot)."
-          );
-          return;
-        }
-        await withTimeout(
-          ShareLib.shareSingle({
-            social: ShareLib.Social.FACEBOOK,
-            url: storyCardUrl,
-            type: "image/png",
-            message,
-            quote: message,
-          } as any),
-          12000,
-          "facebook_post"
-        );
-        onClose();
-        return;
-      }
     } catch (e: any) {
       const msg = String(e?.message || e || "");
       // react-native-share "not installed" hataları cihazdan cihaza değişiyor
@@ -393,7 +362,7 @@ export default function MatchShareModal({ visible, match, onClose }: MatchShareM
             options={{ format: "png", quality: 1, result: "tmpfile" }}
             key={cardReadyKey}
           >
-            <MatchShareCard match={match} shareUrl={shareUrl} />
+            <MatchShareCard match={match} shareUrl={shareUrl} displayUrl={displayShareUrl} />
           </viewShotLib.ViewShot>
         </View>
       ) : null}
@@ -437,17 +406,6 @@ export default function MatchShareModal({ visible, match, onClose }: MatchShareM
             </TouchableOpacity>
 
             <TouchableOpacity
-              onPress={() => run("instagram_post")}
-              disabled={busy != null}
-              style={{ flexDirection: "row", alignItems: "center", paddingVertical: 10, paddingHorizontal: 12, borderRadius: 12, backgroundColor: "rgba(234,88,12,0.10)" }}
-            >
-              <Ionicons name="image-outline" size={18} color="#ea580c" />
-              <Text style={{ marginLeft: 10, fontWeight: "800", color: "#111827" }}>
-                Instagram (Gönderi)
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
               onPress={() => run("facebook_story")}
               disabled={busy != null}
               style={{ flexDirection: "row", alignItems: "center", paddingVertical: 10, paddingHorizontal: 12, borderRadius: 12, backgroundColor: "rgba(37,99,235,0.10)" }}
@@ -458,20 +416,10 @@ export default function MatchShareModal({ visible, match, onClose }: MatchShareM
               </Text>
             </TouchableOpacity>
 
-            <TouchableOpacity
-              onPress={() => run("facebook_post")}
-              disabled={busy != null}
-              style={{ flexDirection: "row", alignItems: "center", paddingVertical: 10, paddingHorizontal: 12, borderRadius: 12, backgroundColor: "rgba(37,99,235,0.10)" }}
-            >
-              <Ionicons name="document-text-outline" size={18} color="#2563eb" />
-              <Text style={{ marginLeft: 10, fontWeight: "800", color: "#111827" }}>
-                Facebook (Gönderi)
-              </Text>
-            </TouchableOpacity>
           </View>
 
           <Text style={{ marginTop: 10, color: "#6b7280", fontSize: 11, lineHeight: 16 }}>
-            Not: Instagram/Facebook seçenekleri için uygulama cihazda yüklü olmalı.
+            Not: Instagram/Facebook hikaye seçenekleri için uygulama cihazda yüklü olmalı.
           </Text>
         </Pressable>
       </Pressable>

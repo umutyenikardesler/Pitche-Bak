@@ -147,10 +147,7 @@ export default function Messages() {
         index === self.findIndex(s => s.id === summary.id && s.owner_id === summary.owner_id)
       );
 
-      const matchPartnerIds = new Set(uniqueMatchSummaries.map(s => s.owner_id));
-
-      // Direkt mesaj sohbetlerini (match'siz) messages tablosundan türet
-      // Not: chat ekranı match_id'yi filtrelemiyor; bu yüzden sohbeti kullanıcı bazında topluyoruz.
+      // Direkt mesaj sohbetlerini sadece match_id'siz mesajlardan türet
       const { data: recentMsgs, error: msgError } = await supabase
         .from('messages')
         .select('id, sender_id, recipient_id, content, created_at, match_id')
@@ -162,31 +159,28 @@ export default function Messages() {
         console.error('[Messages] recent messages fetch error:', msgError);
       }
 
-      const dmMetaByUser = new Map<string, { lastMessage: string | null; lastAt: string | null; match_id: string | null }>();
+      const dmMetaByUser = new Map<string, { lastMessage: string | null; lastAt: string | null; match_id: null }>();
       const lastAtByMatchChatKey = new Map<string, string>(); // `${otherId}-m-${matchId}` => lastAt
-      const lastAtByPartnerId = new Map<string, string>(); // `${otherId}` => lastAt (match_id olsun/olmasın)
       (recentMsgs || []).forEach((m: any) => {
         const otherId = m.sender_id === user.id ? m.recipient_id : m.sender_id;
         if (!otherId || otherId === user.id || blockedIds.has(otherId)) return;
         const at = typeof m.created_at === "string" ? m.created_at : null;
-        // Partner bazında en yeni mesaj zamanı (recentMsgs DESC olduğu için ilk gördüğümüz en yenidir)
-        if (at && !lastAtByPartnerId.has(otherId)) {
-          lastAtByPartnerId.set(otherId, at);
-        }
-        // Match sohbetleri için lastAt (maç id'li mesajlar)
+
+        // Match sohbetleri için son mesaj zamanını match_id bazında tut
         if (m.match_id && at) {
           const key = `${otherId}-m-${m.match_id}`;
           if (!lastAtByMatchChatKey.has(key)) {
             lastAtByMatchChatKey.set(key, at);
           }
+          return;
         }
-        // Aynı partner için match sohbeti zaten varsa listede iki kere göstermeyelim
-        if (matchPartnerIds.has(otherId)) return;
+
+        // Direct sohbet kartı sadece match_id'siz mesajlardan üretilir
         if (!dmMetaByUser.has(otherId)) {
           dmMetaByUser.set(otherId, {
             lastMessage: typeof m.content === 'string' ? m.content : null,
             lastAt: at,
-            match_id: m.match_id ?? null,
+            match_id: null,
           });
         }
       });
@@ -234,20 +228,7 @@ export default function Messages() {
 
       const matchWithLastAt: MatchChatSummary[] = uniqueMatchSummaries.map((m) => {
         const k = `${m.owner_id}-m-${m.id}`;
-        // Sadece gerçek son mesaj zamanını tut.
-        // Mesaj yoksa sıralama fallback'i maç tarihi/saatine göre yapılacak.
-        // Not: Chat ekranı match_id ile filtrelemediği için, match_id'li mesaj yoksa partner'ın en yeni mesaj zamanını kullanıyoruz.
-        const matchLastAt = lastAtByMatchChatKey.get(k) ?? null;
-        const partnerLastAt = lastAtByPartnerId.get(m.owner_id) ?? null;
-
-        const toTsSafe = (s: string | null) => {
-          if (!s) return 0;
-          const t = new Date(s).getTime();
-          return Number.isFinite(t) ? t : 0;
-        };
-        // Chat ekranı match_id ile filtrelemediği için "en son mesaj" bazında en güncel olanı seç
-        const lastAt = toTsSafe(partnerLastAt) > toTsSafe(matchLastAt) ? partnerLastAt : matchLastAt;
-        return { ...m, lastAt };
+        return { ...m, lastAt: lastAtByMatchChatKey.get(k) ?? null };
       });
 
       const allChats: ChatSummary[] = [...dmSummaries, ...matchWithLastAt];

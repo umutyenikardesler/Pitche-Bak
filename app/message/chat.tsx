@@ -167,6 +167,24 @@ export default function ChatScreen() {
   }, []);
 
   const { refresh: refreshNotifications, clearMessageBadge } = useNotification();
+  const activeMatchId = normParam(matchId);
+
+  const isSameThread = useCallback(
+    (message: MsgItem, currentUserId: string, recipientId: string) => {
+      const participants =
+        (message.sender_id === currentUserId && message.recipient_id === recipientId) ||
+        (message.sender_id === recipientId && message.recipient_id === currentUserId);
+      if (!participants) return false;
+      return activeMatchId ? message.match_id === activeMatchId : !message.match_id;
+    },
+    [activeMatchId]
+  );
+
+  const scrollToBottom = useCallback((animated = false) => {
+    const run = () => listRef.current?.scrollToEnd({ animated });
+    requestAnimationFrame(() => requestAnimationFrame(run));
+    InteractionManager.runAfterInteractions(run);
+  }, []);
 
   // Resolve recipient id safely (avoid sending message to self)
   const resolveRecipientId = useCallback(async (currentUserId: string): Promise<string | null> => {
@@ -206,13 +224,14 @@ export default function ChatScreen() {
       return;
     }
 
-    // Her kullanıcı ile olan sohbet ayrı olmalı - sadece kullanıcı ID'lerine göre filtrele
-    // match_id'yi filtreleme kriteri olarak kullanma, çünkü her sohbet ayrı olmalı
-    const { data, error } = await supabase
+    let query = supabase
       .from('messages')
       .select('id, sender_id, recipient_id, content, created_at, match_id')
-      .or(`and(sender_id.eq.${user.id},recipient_id.eq.${recip}),and(sender_id.eq.${recip},recipient_id.eq.${user.id})`)
-      .order('created_at', { ascending: true });
+      .or(`and(sender_id.eq.${user.id},recipient_id.eq.${recip}),and(sender_id.eq.${recip},recipient_id.eq.${user.id})`);
+
+    query = activeMatchId ? query.eq('match_id', activeMatchId) : query.is('match_id', null);
+
+    const { data, error } = await query.order('created_at', { ascending: true });
 
     if (!error) {
       const rows = (data as MsgItem[]) || [];
@@ -220,12 +239,9 @@ export default function ChatScreen() {
       const filtered = blocked.size > 0 ? rows.filter((m) => !blocked.has(m.sender_id)) : rows;
       setMessages(filtered);
       setBlockedIds(blocked);
-      // Mesajlar yüklendikten hemen sonra listeyi en alta kaydır
-      setTimeout(() => {
-        listRef.current?.scrollToEnd({ animated: false });
-      }, 50);
+      scrollToBottom(false);
     }
-  }, [resolveRecipientId]);
+  }, [activeMatchId, resolveRecipientId, scrollToBottom]);
 
   // İlk açılışta mevcut mesajları yükle
   useEffect(() => {
@@ -241,7 +257,6 @@ export default function ChatScreen() {
       if (!mounted || !user) return;
       const recip = await resolveRecipientId(user.id);
       if (!mounted || !recip) return;
-      const mId = normParam(matchId);
       let q = supabase.from('notifications')
         .update({ is_read: true })
         .eq('type', 'direct_message')
@@ -249,11 +264,7 @@ export default function ChatScreen() {
         .eq('sender_id', recip)
         .eq('is_read', false);
 
-      // Chat ekranı şu an match_id'ye göre sohbetleri ayırmıyor.
-      // Bu yüzden match sohbetindeyken de, match_id null olan (eski) bildirimleri de temizleyelim ki tab badge takılı kalmasın.
-      if (mId) {
-        q = q.or(`match_id.eq.${mId},match_id.is.null`);
-      }
+      q = activeMatchId ? q.eq('match_id', activeMatchId) : q.is('match_id', null);
 
       await q;
       try { 
@@ -264,7 +275,7 @@ export default function ChatScreen() {
       } catch {}
     })();
     return () => { mounted = false; };
-  }, [resolveRecipientId, normParam, matchId]);
+  }, [activeMatchId, clearMessageBadge, refreshNotifications, resolveRecipientId]);
 
   // Realtime subscription: sadece ilgili sohbet (iki kullanıcı + match) insert'lerini dinle
   useEffect(() => {
@@ -275,19 +286,16 @@ export default function ChatScreen() {
       if (!mounted || !user) return;
       const recip = await resolveRecipientId(user.id);
       if (!mounted || !recip) return;
-      const matchIdStr = normParam(matchId);
-
       channel = supabase
-        .channel(`msg-${user.id}-${recip}`)
+        .channel(`msg-${user.id}-${recip}-${activeMatchId ?? 'dm'}`)
         .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, async (payload: any) => {
           const m = payload.new as MsgItem;
-          const participants = (m.sender_id === user.id && m.recipient_id === recip) || (m.sender_id === recip && m.recipient_id === user.id);
           const blocked = await getBlockedUserIds(user.id);
           const isBlocked = blocked.has(m.sender_id);
 
-          if (participants && !isBlocked) {
+          if (isSameThread(m, user.id, recip) && !isBlocked) {
             setMessages(prev => [...prev, m]);
-            setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 30);
+            scrollToBottom(true);
           }
         })
         .subscribe();
@@ -297,7 +305,7 @@ export default function ChatScreen() {
       mounted = false;
       if (channel) supabase.removeChannel(channel);
     };
-  }, [resolveRecipientId, normParam, matchId]);
+  }, [activeMatchId, isSameThread, resolveRecipientId, scrollToBottom]);
 
   const sendMessage = useCallback(async () => {
     // Boş mesajı gönderme
@@ -362,11 +370,11 @@ export default function ChatScreen() {
 
       setInput('');
       fetchMessages();
-      setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 50);
+      scrollToBottom(true);
     } catch (e) {
       console.error('[Chat] sendMessage unexpected error:', e);
     }
-  }, [input, matchId, fetchMessages, resolveRecipientId, t]);
+  }, [input, matchId, fetchMessages, resolveRecipientId, scrollToBottom, t]);
 
   const openReportUserModal = useCallback(() => {
     setHeaderMenuVisible(false);
@@ -537,7 +545,12 @@ export default function ChatScreen() {
                 keyExtractor={(m) => m.id}
                 renderItem={renderItem}
                 contentContainerStyle={{ paddingVertical: 8, paddingBottom: Math.max(60, insets.bottom + 8) }}
-                onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: true })}
+                onContentSizeChange={() => {
+                  if (messages.length > 0) scrollToBottom(false);
+                }}
+                onLayout={() => {
+                  if (messages.length > 0) scrollToBottom(false);
+                }}
               />
             </View>
           </GestureDetector>

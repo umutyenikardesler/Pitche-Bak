@@ -724,6 +724,7 @@ export default function AuthScreen() {
 
   const handleForgotPassword = async () => {
     const trimmedEmail = email.trim();
+    const normalizedEmail = trimmedEmail.toLowerCase();
     if (!trimmedEmail) {
       Alert.alert(t("general.error"), t("auth.forgotPasswordEnterEmail"));
       return;
@@ -816,6 +817,18 @@ export default function AuthScreen() {
 
     setIsLoading(true);
     try {
+      const { data: existingUser, error: existingUserError } = await supabase
+        .from("users")
+        .select("id")
+        .in("email", [trimmedEmail, normalizedEmail])
+        .maybeSingle();
+
+      if (existingUserError) throw existingUserError;
+      if (!existingUser) {
+        Alert.alert(t("general.error"), t("auth.forgotPasswordEmailNotFound"));
+        return;
+      }
+
       // Native'de hash fragment mobilde kaybolduğu için önce web sayfamıza yönlendiriyoruz.
       // Web sayfası hash'i okuyup myapp://auth/callback?access_token=... olarak uygulamaya yönlendirir.
       const webBaseUrl = (Constants.expoConfig as any)?.extra?.webBaseUrl;

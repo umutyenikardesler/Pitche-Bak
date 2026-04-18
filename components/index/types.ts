@@ -30,6 +30,8 @@ export interface User {
     date: string;
     prices: string;
     share_url?: string;
+    share_code?: string;
+    share_short_url?: string;
     missing_groups: string[];
     create_user: string;
     match_format?: string; // '5-5', '6-6', '7-7'

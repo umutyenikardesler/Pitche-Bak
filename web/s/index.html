@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="tr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Link hazırlanıyor — SahayaBak</title>
+    <style>
+      body {
+        font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 100vh;
+        margin: 0;
+        background: #f3f4f6;
+        color: #374151;
+      }
+      .box {
+        text-align: center;
+        padding: 24px;
+        max-width: 460px;
+      }
+      .title {
+        color: #16a34a;
+        font-weight: 900;
+        font-size: 1.05rem;
+        margin: 0 0 12px 0;
+      }
+      .spinner {
+        width: 38px;
+        height: 38px;
+        border: 3px solid #e5e7eb;
+        border-top-color: #16a34a;
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+        margin: 12px auto 14px;
+      }
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+      .error {
+        color: #dc2626;
+        font-weight: 800;
+        display: none;
+        margin-top: 12px;
+      }
+      .hint {
+        margin-top: 10px;
+        font-size: 0.9rem;
+        color: #6b7280;
+        line-height: 1.35;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="box">
+      <p class="title">Maç linki hazırlanıyor…</p>
+      <div class="spinner" aria-hidden="true"></div>
+      <p class="hint">Uygulama açılmadan önce maç bilgisi doğrulanıyor.</p>
+      <p id="error" class="error">Kısa link çözümlenemedi.</p>
+    </div>
+    <script>
+      (function () {
+        var SUPABASE_URL = "https://fqcjmrcnvrtqcytweyce.supabase.co";
+        var SUPABASE_ANON_KEY =
+          "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZxY2ptcmNudnJ0cWN5dHdleWNlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Mzg0MjgzNTEsImV4cCI6MjA1NDAwNDM1MX0.wikCIj1tRlJuF7NDRn913fWdq1riabtmUGUxNOezFVM";
+
+        function getCodeAndSchemeHint() {
+          var path = (window.location.pathname || "").replace(/\/+$/, "");
+          var m = path.match(/\/s\/([^\/]+)$/);
+          var rawCode = m && m[1] ? decodeURIComponent(m[1]) : "";
+
+          var qs = new URLSearchParams(window.location.search || "");
+          if (!rawCode) {
+            rawCode = qs.get("c") || qs.get("code") || "";
+          }
+
+          var normalizedCode = String(rawCode || "").trim();
+          var inferredScheme = "";
+          var lowerCode = normalizedCode.toLowerCase();
+
+          if (lowerCode.indexOf("dev-") === 0) {
+            inferredScheme = "myapp-dev";
+            normalizedCode = normalizedCode.slice(4);
+          } else if (lowerCode.indexOf("prod-") === 0) {
+            inferredScheme = "myapp";
+            normalizedCode = normalizedCode.slice(5);
+          }
+
+          return {
+            code: normalizedCode,
+            scheme: qs.get("s") || inferredScheme || "",
+          };
+        }
+
+        function showError(msg) {
+          var err = document.getElementById("error");
+          err.innerText = msg || "Kısa link çözümlenemedi.";
+          err.style.display = "block";
+        }
+
+        async function resolveShortCode(code) {
+          var url =
+            SUPABASE_URL +
+            "/rest/v1/match?select=id&share_code=eq." +
+            encodeURIComponent(code) +
+            "&limit=1";
+
+          var res = await fetch(url, {
+            headers: {
+              apikey: SUPABASE_ANON_KEY,
+              Authorization: "Bearer " + SUPABASE_ANON_KEY,
+            },
+          });
+
+          if (!res.ok) {
+            throw new Error("short link lookup failed");
+          }
+
+          var rows = await res.json();
+          if (!Array.isArray(rows) || !rows[0] || !rows[0].id) {
+            throw new Error("short link not found");
+          }
+
+          return rows[0].id;
+        }
+
+        (async function run() {
+          try {
+            var resolved = getCodeAndSchemeHint();
+            if (!resolved.code) {
+              showError("Kısa link kodu bulunamadı.");
+              return;
+            }
+
+            var matchId = await resolveShortCode(resolved.code);
+            var qs = new URLSearchParams(window.location.search || "");
+            qs.delete("c");
+            qs.delete("code");
+            if (resolved.scheme) {
+              qs.set("s", resolved.scheme);
+            }
+            var suffix = qs.toString();
+            window.location.replace("/m/" + encodeURIComponent(matchId) + (suffix ? "?" + suffix : ""));
+          } catch (_) {
+            showError("Kısa link çözümlenemedi.");
+          }
+        })();
+      })();
+    </script>
+  </body>
+</html>

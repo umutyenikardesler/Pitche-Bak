@@ -72,12 +72,15 @@ export default function MyMatches({ matches, refreshing, onRefresh, onSelectMatc
     return currentTime >= matchStartTime && currentTime < matchEndTime;
   };
 
-  const renderMatch = ({ item }: { item: Match }) => (
+  const renderMatch = ({ item }: { item: Match }) => {
+    const isPlaying = isMatchCurrentlyPlaying(item);
+
+    return (
     <TouchableOpacity onPress={() => onSelectMatch(item)}>
       <View className="bg-white rounded-lg mx-4 my-1 p-1 shadow-lg">
         <View className="flex-row items-center justify-between" style={{ position: "relative" }}>
           {/* Maç oynanıyor etiketi: başlık alanının üstüne binebilir (tam görünsün) */}
-          {isMatchCurrentlyPlaying(item) ? (
+          {isPlaying ? (
             <Animated.Text
               className="text-white py-0.5 px-1.5 bg-green-600 font-bold text-sm rounded-md"
               style={[
@@ -114,7 +117,7 @@ export default function MyMatches({ matches, refreshing, onRefresh, onSelectMatc
                 className="text-lg text-green-700 font-semibold"
                 numberOfLines={1}
                 ellipsizeMode="tail"
-                style={{ flex: 1, minWidth: 0, paddingRight: 8 }}
+                style={{ flex: 1, minWidth: 0, paddingRight: 8, marginBottom: 3 }}
               >
                 {formatTitle(item.title)}
               </Text>
@@ -155,18 +158,18 @@ export default function MyMatches({ matches, refreshing, onRefresh, onSelectMatc
             }}
           >
             {/* Üst alan: Paylaş */}
-            <View style={{ flex: 1, justifyContent: "flex-start", alignItems: "flex-end" }}>
+            <View style={{ flex: 1, justifyContent: "flex-start", alignItems: "flex-end", marginTop: -1 }}>
               <TouchableOpacity
                 onPress={() => setShareMatch(item)}
                 hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                style={{ padding: 4, marginRight: 2 }}
+                style={{ padding: 4, marginRight: 2, marginTop: isPlaying ? 18 : 0 }}
               >
                 <Ionicons name="share-social-outline" size={18} color="#16a34a" />
               </TouchableOpacity>
             </View>
 
             {/* Orta alan: ok her zaman ortada */}
-            <View style={{ flex: 1, justifyContent: "center", alignItems: "flex-end", marginRight: 5 }}>
+            <View style={{ flex: 1, justifyContent: "center", alignItems: "flex-end", marginRight: 5, marginTop: -5 }}>
               <Ionicons name="chevron-forward-outline" size={20} color="green" />
             </View>
 
@@ -177,7 +180,8 @@ export default function MyMatches({ matches, refreshing, onRefresh, onSelectMatc
         </View>
       </View>
     </TouchableOpacity>
-  );
+    );
+  };
 
   return (
     <View className="flex-1">
