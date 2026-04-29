@@ -63,7 +63,7 @@ export default function AdminReportsScreen() {
     loadReports().finally(() => setLoading(false));
   }, []);
 
-  // Online/aktif kullanıcı sayısı: Realtime Presence (online-users) kanalındaki unique key sayısı
+  // Online/aktif kullanıcı sayısı: uygulamanın genel presence kanalındaki unique key sayısı
   useEffect(() => {
     let mounted = true;
     let channel: any = null;
@@ -73,7 +73,7 @@ export default function AdminReportsScreen() {
         const { data: { user } } = await supabase.auth.getUser();
         if (!mounted || !user) return;
 
-        channel = supabase.channel('online-users-admin', {
+        channel = supabase.channel('online-users', {
           config: { presence: { key: user.id } },
         });
 
