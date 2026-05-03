@@ -12,7 +12,7 @@
       },
       "ios": {
         "image": "macos-sequoia-15.3-xcode-16.2",
-        "prebuildCommand": "printf 'export NODE_BINARY=$(command -v node)\\n' > ios/.xcode.env && printf 'export NODE_BINARY=$(command -v node)\\n' > ios/.xcode.env.local"
+        "prebuildCommand": "npx expo prebuild --non-interactive; printf 'export NODE_BINARY=$(command -v node)\\n' > ios/.xcode.env; printf 'export NODE_BINARY=$(command -v node)\\n' > ios/.xcode.env.local"
       }
     },
     "preview": {
@@ -23,14 +23,14 @@
       "developmentClient": false,
       "ios": {
         "image": "macos-sequoia-15.3-xcode-16.2",
-        "prebuildCommand": "printf 'export NODE_BINARY=$(command -v node)\\n' > ios/.xcode.env && printf 'export NODE_BINARY=$(command -v node)\\n' > ios/.xcode.env.local"
+        "prebuildCommand": "npx expo prebuild --non-interactive; printf 'export NODE_BINARY=$(command -v node)\\n' > ios/.xcode.env; printf 'export NODE_BINARY=$(command -v node)\\n' > ios/.xcode.env.local"
       }
     },
     "production": {
       "autoIncrement": true,
       "ios": {
         "image": "macos-sequoia-15.3-xcode-16.2",
-        "prebuildCommand": "printf 'export NODE_BINARY=$(command -v node)\\n' > ios/.xcode.env && printf 'export NODE_BINARY=$(command -v node)\\n' > ios/.xcode.env.local"
+        "prebuildCommand": "npx expo prebuild --non-interactive; printf 'export NODE_BINARY=$(command -v node)\\n' > ios/.xcode.env; printf 'export NODE_BINARY=$(command -v node)\\n' > ios/.xcode.env.local"
       }
     }
   },
