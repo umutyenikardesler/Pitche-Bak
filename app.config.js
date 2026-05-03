@@ -1,59 +1,31 @@
-// Dynamic Expo config to support multiple app variants (dev/prod).
-// Usage: set APP_VARIANT=dev in EAS build profile.
-const base = require("./app.json").expo;
+const base = require('./app.json').expo;
 
-const variant = (process.env.APP_VARIANT || "prod").toLowerCase();
-const isDev = variant === "dev";
+const variant = (process.env.APP_VARIANT || 'prod').toLowerCase();
+const isDev = variant === 'dev';
 
-const DEV_NAME = "SahayaBak Dev";
-const DEV_SCHEME = "myapp-dev";
-const DEV_IOS_BUNDLE = "com.tumurelsedrakiney.PitcheBak.dev";
-const DEV_ANDROID_PACKAGE = "com.tumurelsedrakiney.pitchebak.dev";
-
-module.exports = () => {
-  const name = isDev ? DEV_NAME : base.name;
-  const scheme = isDev ? DEV_SCHEME : base.scheme;
-
-  const plugins = Array.isArray(base.plugins) ? base.plugins : [];
-  const hasBuildProps = plugins.some((p) => (Array.isArray(p) ? p[0] : p) === "expo-build-properties");
-  const hasGoogleMobileAds = plugins.some((p) => (Array.isArray(p) ? p[0] : p) === "react-native-google-mobile-ads");
-
-  return {
-    ...base,
-    name,
-    scheme,
-    plugins: [
-      ...(hasBuildProps ? plugins : [...plugins, "expo-build-properties"]),
-      ...(hasGoogleMobileAds
-        ? []
-        : [
-            [
-              "react-native-google-mobile-ads",
-              {
-                // Test App IDs (replace with your real AdMob App IDs for production)
-                androidAppId: "ca-app-pub-1347758252118471~3954100218",
-                iosAppId: "ca-app-pub-1347758252118471~1923786562",
-              },
-            ],
-          ]),
-    ],
-    ios: {
-      ...base.ios,
-      bundleIdentifier: isDev ? DEV_IOS_BUNDLE : base.ios?.bundleIdentifier,
-      infoPlist: {
-        ...(base.ios?.infoPlist || {}),
-        CFBundleDisplayName: isDev ? DEV_NAME : (base.ios?.infoPlist?.CFBundleDisplayName || base.name),
-      },
+module.exports = () => ({
+  ...base,
+  name: isDev ? 'SahayaBak Dev' : 'SahayaBak',
+  ios: {
+    ...base.ios,
+    bundleIdentifier: isDev
+      ? 'com.tumurelsedrakiney.PitcheBak.dev'
+      : 'com.tumurelsedrakiney.PitcheBak',
+    infoPlist: {
+      ...(base.ios?.infoPlist || {}),
+      CFBundleDisplayName: isDev ? 'SahayaBak Dev' : 'SahayaBak',
     },
-    android: {
-      ...base.android,
-      package: isDev ? DEV_ANDROID_PACKAGE : base.android?.package,
-      label: isDev ? DEV_NAME : base.android?.label,
-    },
-    extra: {
-      ...(base.extra || {}),
-      appVariant: variant,
-    },
-  };
-};
+  },
+  android: {
+    ...base.android,
+    label: isDev ? 'SahayaBak Dev' : 'SahayaBak',
+    package: isDev
+      ? 'com.tumurelsedrakiney.pitchebak.dev'
+      : 'com.tumurelsedrakiney.pitchebak',
+  },
+  extra: {
+    ...(base.extra || {}),
+    appVariant: variant,
+  },
+});
 
