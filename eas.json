@@ -12,6 +12,7 @@
       },
       "ios": {
         "image": "macos-sequoia-15.3-xcode-16.2",
+        "bundleIdentifier": "com.tumurelsedrakiney.PitcheBak.dev",
         "prebuildCommand": "printf 'export NODE_BINARY=$(command -v node)\\n' > ios/.xcode.env && printf 'export NODE_BINARY=$(command -v node)\\n' > ios/.xcode.env.local && /usr/libexec/PlistBuddy -c 'Set :CFBundleDisplayName SahayaBak Dev' ios/SahayaBak/Info.plist"
       }
     },
