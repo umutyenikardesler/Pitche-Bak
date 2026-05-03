@@ -9,6 +9,10 @@
       "distribution": "internal",
       "env": {
         "APP_VARIANT": "dev"
+      },
+      "ios": {
+        "image": "macos-sequoia-15.3-xcode-16.2",
+        "prebuildCommand": "printf 'export NODE_BINARY=$(command -v node)\\n' > ios/.xcode.env && printf 'export NODE_BINARY=$(command -v node)\\n' > ios/.xcode.env.local"
       }
     },
     "preview": {
@@ -16,10 +20,18 @@
       "android": {
         "buildType": "apk"
       },
-      "developmentClient": false
+      "developmentClient": false,
+      "ios": {
+        "image": "macos-sequoia-15.3-xcode-16.2",
+        "prebuildCommand": "printf 'export NODE_BINARY=$(command -v node)\\n' > ios/.xcode.env && printf 'export NODE_BINARY=$(command -v node)\\n' > ios/.xcode.env.local"
+      }
     },
     "production": {
-      "autoIncrement": true
+      "autoIncrement": true,
+      "ios": {
+        "image": "macos-sequoia-15.3-xcode-16.2",
+        "prebuildCommand": "printf 'export NODE_BINARY=$(command -v node)\\n' > ios/.xcode.env && printf 'export NODE_BINARY=$(command -v node)\\n' > ios/.xcode.env.local"
+      }
     }
   },
   "submit": {
