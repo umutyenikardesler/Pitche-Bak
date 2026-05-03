@@ -19,9 +19,6 @@ export default function PitchesList({ pitches, selectedPitch, setSelectedPitch, 
   const [mapChooserVisible, setMapChooserVisible] = useState(false);
   const [availableMaps, setAvailableMaps] = useState<{ google: boolean; waze: boolean }>({ google: false, waze: false });
   const [priceInfoVisible, setPriceInfoVisible] = useState(false);
-  const [priceEditVisible, setPriceEditVisible] = useState(false);
-  const [editPriceValue, setEditPriceValue] = useState('');
-  const [priceUpdating, setPriceUpdating] = useState(false);
 
   // Yanıp sönme - opacity ile (layout etkilemez)
   const pulseOpacity = useSharedValue(1);
@@ -126,33 +123,6 @@ export default function PitchesList({ pitches, selectedPitch, setSelectedPitch, 
   const pitchPhone = selectedPitch?.phone || '';
   const hasPhone = !!pitchPhone;
 
-  const openPriceEdit = () => {
-    if (isGuest) return;
-    setEditPriceValue(String(selectedPitch?.price ?? ''));
-    setPriceEditVisible(true);
-  };
-
-  const handleSavePrice = async () => {
-    if (isGuest) {
-      setPriceEditVisible(false);
-      return;
-    }
-    const num = parseInt(editPriceValue.replace(/\D/g, ''), 10);
-    if (isNaN(num) || num < 0) {
-      Alert.alert('', t('pitches.priceInvalid'));
-      return;
-    }
-    if (!selectedPitch?.id) return;
-    setPriceUpdating(true);
-    const { error } = await supabase.from('pitches').update({ price: num }).eq('id', selectedPitch.id);
-    setPriceUpdating(false);
-    setPriceEditVisible(false);
-    if (!error && onPriceUpdated) {
-      onPriceUpdated(selectedPitch.id, num);
-    } else if (error) {
-      Alert.alert(t('general.error'), error.message || t('pitches.priceUpdateFailed'));
-    }
-  };
 
   if (selectedPitch) {
     return (
@@ -305,11 +275,6 @@ export default function PitchesList({ pitches, selectedPitch, setSelectedPitch, 
                               <Ionicons name="information-circle-outline" size={20} color="#6b7280" />
                             </TouchableOpacity>
                           ) : null}
-                          {!isGuest ? (
-                            <TouchableOpacity onPress={openPriceEdit} style={{ marginLeft: 6, paddingHorizontal: 8, paddingVertical: 4, backgroundColor: '#e5e7eb', borderRadius: 6 }}>
-                              <Text style={{ fontSize: 12, fontWeight: '600', color: '#374151' }}>{t('pitches.editPrice')}</Text>
-                            </TouchableOpacity>
-                          ) : null}
                         </View>
                       </View>
                     </View>
@@ -418,29 +383,6 @@ export default function PitchesList({ pitches, selectedPitch, setSelectedPitch, 
               </TouchableOpacity>
             </Modal>
 
-            {/* Saha ücreti düzenleme modalı */}
-            <Modal visible={priceEditVisible} transparent animationType="fade">
-              <TouchableOpacity style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 24 }} activeOpacity={1} onPress={() => !priceUpdating && setPriceEditVisible(false)}>
-                <TouchableOpacity activeOpacity={1} onPress={(e) => e.stopPropagation()} style={{ backgroundColor: 'white', borderRadius: 12, padding: 20 }}>
-                  <Text style={{ fontSize: 16, fontWeight: '600', marginBottom: 12, textAlign: 'center' }}>{t('pitches.editPriceTitle')}</Text>
-                  <TextInput
-                    value={editPriceValue}
-                    onChangeText={setEditPriceValue}
-                    keyboardType="numeric"
-                    placeholder="0"
-                    style={{ borderWidth: 1, borderColor: '#d1d5db', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10, fontSize: 16, marginBottom: 16 }}
-                  />
-                  <View style={{ flexDirection: 'row', gap: 12 }}>
-                    <TouchableOpacity onPress={() => setPriceEditVisible(false)} style={{ flex: 1, paddingVertical: 10, backgroundColor: '#e5e7eb', borderRadius: 8, alignItems: 'center' }}>
-                      <Text style={{ color: '#374151', fontWeight: '600' }}>{t('general.cancel')}</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity onPress={handleSavePrice} disabled={priceUpdating} style={{ flex: 1, paddingVertical: 10, backgroundColor: '#16a34a', borderRadius: 8, alignItems: 'center' }}>
-                      <Text style={{ color: 'white', fontWeight: '600' }}>{priceUpdating ? '...' : t('general.save')}</Text>
-                    </TouchableOpacity>
-                  </View>
-                </TouchableOpacity>
-              </TouchableOpacity>
-            </Modal>
           </>
       </View>
     );

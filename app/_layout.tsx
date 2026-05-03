@@ -14,6 +14,7 @@ import { setPendingAuthUrl } from '@/lib/pendingAuthUrl';
 import { setLastNonAuthRoute } from "@/lib/lastNonAuthRoute";
 import { isAuthCallbackLocked, lockAuthCallbackFor } from "@/lib/authCallbackLock";
 import { supabase } from "@/services/supabase";
+import { registerPushToken, unregisterPushToken } from "@/services/pushNotifications";
 
 // Sadece belirli logları ignore et, tüm logları değil
 LogBox.ignoreLogs([
@@ -63,6 +64,8 @@ export default function RootLayout() {
         if (!isMounted) return;
         if (userId) {
           await setupForUser(userId);
+          // Uygulama ilk açıldığında token kaydet
+          try { await registerPushToken(userId); } catch (_) {}
         }
       } catch (_) {}
     })();
@@ -72,11 +75,17 @@ export default function RootLayout() {
       const nextId = session?.user?.id ?? null;
       if (nextId === currentUserId) return;
       if (!nextId) {
+        // Çıkış yapıldı — push token'ı sil
+        if (currentUserId) {
+          try { await unregisterPushToken(currentUserId); } catch (_) {}
+        }
         currentUserId = null;
         teardown();
         return;
       }
       await setupForUser(nextId);
+      // Giriş yapıldı — push token'ı kaydet
+      try { await registerPushToken(nextId); } catch (_) {}
     });
 
     // App tekrar foreground olunca presence ping at (bazı cihazlarda bağlantı kesilebiliyor)

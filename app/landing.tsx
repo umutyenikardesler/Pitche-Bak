@@ -1,5 +1,5 @@
 import { View, Text, TouchableOpacity, Image, Dimensions, Platform } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import Animated, {
   useAnimatedRef,
   useAnimatedScrollHandler,
@@ -33,6 +33,7 @@ const BALL_PADDING = 6;
 export default function LandingScreen() {
   const router = useRouter();
   const { currentLanguage, changeLanguage, t } = useLanguage();
+  const insets = useSafeAreaInsets();
   const [introWidth, setIntroWidth] = useState(Dimensions.get("window").width);
   const [languageMenuOpen, setLanguageMenuOpen] = useState(false);
 
@@ -48,6 +49,11 @@ export default function LandingScreen() {
   const [introIndex, setIntroIndex] = useState(0);
 
   const dotsWidth = INTRO_SLIDES.length * DOT_SIZE + (INTRO_SLIDES.length - 1) * DOT_GAP;
+  const introImageHeight = Platform.OS === "android" ? "83%" : "88%";
+  const ctaBottomPadding =
+    Platform.OS === "android"
+      ? (insets.bottom > 0 ? insets.bottom + 8 : 0)
+      : Math.max(insets.bottom, 8);
 
   const rand = (min: number, max: number) => {
     "worklet";
@@ -123,7 +129,7 @@ export default function LandingScreen() {
   });
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#f3f4f6" }} edges={["top"]}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: "#ffffff" }} edges={["top"]}>
       {/* Header - halı saha */}
       <View
         style={{ height: FIELD_HEIGHT, position: "relative", overflow: "hidden", backgroundColor: "#15803d", paddingHorizontal: 8 }}
@@ -180,7 +186,7 @@ export default function LandingScreen() {
 
       {/* Slider */}
       <View
-        style={{ flex: 1, backgroundColor: "#ffffff", paddingTop: 6 }}
+        style={{ flex: 1, backgroundColor: "#ffffff", paddingTop: Platform.OS === "ios" ? 6 : 6 }}
         onLayout={(e) => {
           const w = e.nativeEvent.layout.width;
           if (w && Math.abs(w - introWidth) > 1) setIntroWidth(w);
@@ -205,7 +211,11 @@ export default function LandingScreen() {
           }}
           renderItem={({ item, index }: any) => (
             <View style={{ width: introWidth, flex: 1 }}>
-              <Image source={item.image} style={{ width: "89%", height: "89%", alignSelf: "center", marginTop: 6 }} resizeMode="contain" />
+              <Image
+                source={item.image}
+                style={{ width: "89%", height: introImageHeight, alignSelf: "center", marginTop: 4 }}
+                resizeMode="contain"
+              />
 
               {/* İlk slide: sol boşlukta dil bayrakları (Auth ekranındaki gibi) */}
               {index === 0 && (
@@ -325,7 +335,7 @@ export default function LandingScreen() {
                 </TouchableOpacity>
               )}
 
-              <View style={{ position: "absolute", left: 0, right: 0, bottom: 4, paddingHorizontal: 10, paddingTop: 2, paddingBottom: 6, zIndex: 2, alignItems: "center", pointerEvents: "none" }}>
+              <View style={{ position: "absolute", left: 0, right: 0, bottom: Platform.OS === "android" ? 0 : 6, paddingHorizontal: 10, paddingTop: 4, paddingBottom: Platform.OS === "android" ? 2 : 8, zIndex: 2, alignItems: "center", pointerEvents: "none" }}>
                 <Text style={{ fontSize: 18, fontWeight: "800", color: "#065f46", textAlign: "center" }} numberOfLines={1}>
                   {t(item.titleKey)}
                 </Text>
@@ -338,7 +348,7 @@ export default function LandingScreen() {
         />
 
         {/* Dots */}
-        <View style={{ paddingTop: 0, paddingBottom: 6, paddingHorizontal: 6, alignItems: "center" }}>
+        <View style={{ paddingTop: 2, paddingBottom: Platform.OS === "ios" ? 6 : 6, paddingHorizontal: 6, alignItems: "center" }}>
           <View
             style={{
               backgroundColor: "rgba(255,255,255,0.95)",
@@ -362,7 +372,7 @@ export default function LandingScreen() {
         </View>
 
         {/* Bottom CTAs */}
-        <View style={{ paddingHorizontal: 16, paddingBottom: 14, flexDirection: "row", gap: 10 }}>
+        <View style={{ paddingHorizontal: 16, paddingTop: Platform.OS === "ios" ? 6 : 2, paddingBottom: ctaBottomPadding, flexDirection: "row", gap: 10 }}>
           <TouchableOpacity
             activeOpacity={0.9}
             onPress={() => router.replace("/auth?from=%2Flanding" as any)}

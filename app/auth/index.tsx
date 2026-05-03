@@ -436,9 +436,7 @@ export default function AuthScreen() {
   );
 
   const getOAuthRedirectUri = () => {
-    // Supabase Auth -> URL Configuration -> Additional Redirect URLs içine eklenmeli.
-    // Dev-client / standalone için custom scheme ile doğru deep link üretmek için makeRedirectUri kullan.
-    // Web için expo-linking ile site URL üretmek daha doğru.
+    // AuthSession'ın dinleyeceği gerçek app deep link'i.
     if (Platform.OS === "web") return Linking.createURL("auth/callback");
 
     const scheme =
@@ -446,6 +444,26 @@ export default function AuthScreen() {
       (Constants.expoConfig as any)?.ios?.scheme ||
       (Constants.expoConfig as any)?.android?.scheme ||
       "myapp";
+
+    return makeRedirectUri({ scheme, path: "auth/callback" });
+  };
+
+  const getOAuthSupabaseRedirectUrl = () => {
+    // Native'de hash/query kaybını azaltmak için önce web callback sayfamıza dönüp
+    // oradan doğru scheme ile uygulamaya geri yönlendiriyoruz.
+    if (Platform.OS === "web") return Linking.createURL("auth/callback");
+
+    const webBaseUrl = (Constants.expoConfig as any)?.extra?.webBaseUrl;
+    const scheme =
+      (Constants.expoConfig as any)?.scheme ||
+      (Constants.expoConfig as any)?.ios?.scheme ||
+      (Constants.expoConfig as any)?.android?.scheme ||
+      "myapp";
+
+    if (webBaseUrl) {
+      const base = `${webBaseUrl.replace(/\/$/, "")}/auth/callback.html`;
+      return `${base}${base.includes("?") ? "&" : "?"}s=${encodeURIComponent(scheme)}`;
+    }
 
     return makeRedirectUri({ scheme, path: "auth/callback" });
   };
@@ -475,11 +493,12 @@ export default function AuthScreen() {
 
   const signInWithOAuth = async (provider: "google" | "apple") => {
     const redirectUri = getOAuthRedirectUri();
+    const supabaseRedirectTo = getOAuthSupabaseRedirectUrl();
 
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider,
       options: {
-        redirectTo: redirectUri,
+        redirectTo: supabaseRedirectTo,
         skipBrowserRedirect: true,
       },
     });
@@ -645,6 +664,7 @@ export default function AuthScreen() {
         // E-posta doğrulama linki tarayıcıda açılır; web callback hash'i alıp uygulamaya yönlendirir.
         const webBaseUrl = (Constants.expoConfig as any)?.extra?.webBaseUrl;
         const eVal = email.trim();
+        const normalizedEmail = eVal.toLowerCase();
         const scheme = ((Constants.expoConfig as any)?.scheme as string) || "myapp";
         let redirectUrl =
           Platform.OS === "web"
@@ -658,6 +678,30 @@ export default function AuthScreen() {
 
         if (eVal) {
           redirectUrl += (redirectUrl.includes("?") ? "&" : "?") + `e=${encodeURIComponent(eVal)}`;
+        }
+
+        // Kayıt öncesi users tablosunda aynı e-posta var mı kontrol et.
+        // Varsa kullanıcıyı yeni kayıt yerine şifre sıfırlamaya yönlendir.
+        const { data: existingUser, error: existingUserError } = await supabase
+          .from("users")
+          .select("id")
+          .ilike("email", normalizedEmail)
+          .limit(1)
+          .maybeSingle();
+
+        if (existingUserError) throw existingUserError;
+
+        if (existingUser) {
+          setIsLoading(false);
+          Alert.alert(
+            t("general.error"),
+            t("auth.signupEmailExistsResetHint"),
+            [
+              { text: t("general.cancel"), style: "cancel" },
+              { text: t("auth.forgotPassword"), onPress: () => handleForgotPassword() },
+            ]
+          );
+          return;
         }
 
         ({ data, error } = await supabase.auth.signUp({
@@ -1143,7 +1187,12 @@ export default function AuthScreen() {
               contentContainerStyle={{ 
                 flexGrow: 1, 
                 minHeight: Math.max(400, SCREEN_HEIGHT - 90 - 80),
-                paddingBottom: Platform.OS === 'web' ? 48 : (Platform.OS === 'ios' ? 40 : Math.max(insets.bottom, 40)) 
+                paddingBottom:
+                  Platform.OS === 'web'
+                    ? 48
+                    : Platform.OS === 'android'
+                      ? (insets.bottom > 0 ? insets.bottom + 8 : 0)
+                      : 0
               }}
               keyboardShouldPersistTaps="handled"
               showsVerticalScrollIndicator={true}

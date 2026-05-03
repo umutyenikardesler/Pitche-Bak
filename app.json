@@ -64,6 +64,14 @@
       "expo-web-browser",
       "expo-apple-authentication",
       [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/app.png",
+          "color": "#16a34a",
+          "sounds": []
+        }
+      ],
+      [
         "react-native-share",
         {
           "ios": [

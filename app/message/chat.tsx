@@ -49,12 +49,16 @@ const MessageRow = memo(function MessageRow({
   revealX,
   onReport,
   onOpenOptions,
+  onOpenMyOptions,
+  isDeleted,
 }: {
   item: MsgItem;
   mine: boolean;
   revealX: any;
   onReport: (item: MsgItem) => void;
   onOpenOptions: (item: MsgItem) => void;
+  onOpenMyOptions: (item: MsgItem) => void;
+  isDeleted?: boolean;
 }) {
   const ts = formatDateTimeTr(item.created_at);
   const MAX_REVEAL = 120;
@@ -71,6 +75,29 @@ const MessageRow = memo(function MessageRow({
       transform: [{ translateX: -x }],
     };
   }, [revealX]);
+
+  const ThreeDots = ({ color }: { color: string }) => (
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 1.5 }}>
+      {[0, 1, 2].map((i) => (
+        <View
+          key={i}
+          style={{
+            width: 7,
+            height: 7,
+            borderRadius: 4,
+            backgroundColor: '#ffffff',
+            borderWidth: 1.5,
+            borderColor: color,
+            shadowColor: '#ffffff',
+            shadowOffset: { width: 0, height: 0 },
+            shadowOpacity: 1,
+            shadowRadius: 5,
+            elevation: 6,
+          }}
+        />
+      ))}
+    </View>
+  );
 
   return (
     <View style={{ paddingHorizontal: 12, paddingVertical: 6 }}>
@@ -99,40 +126,49 @@ const MessageRow = memo(function MessageRow({
               flexDirection: 'row',
               justifyContent: mine ? 'flex-end' : 'flex-start',
               alignItems: 'center',
-              gap: 2,
+              gap: 4,
               maxWidth: '85%',
             },
             rowStyle,
           ]}
         >
+          {/* Own message: "..." button to the LEFT of the bubble */}
+          {mine && !isDeleted && (
+            <TouchableOpacity
+              onPress={() => onOpenMyOptions(item)}
+              style={{ alignSelf: 'center', padding: 4 }}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <ThreeDots color="#16a34a" />
+            </TouchableOpacity>
+          )}
+
           <Pressable onLongPress={() => (!mine ? onReport(item) : undefined)}>
             <View
               style={{
-                backgroundColor: mine ? '#16a34a' : '#e5e7eb',
+                backgroundColor: isDeleted ? '#d1d5db' : (mine ? '#16a34a' : '#e5e7eb'),
                 borderRadius: 12,
                 paddingHorizontal: 12,
                 paddingVertical: 8,
-                ...(!mine && { borderWidth: 2, borderColor: '#16a34a' }),
+                ...(!mine && !isDeleted && { borderWidth: 2, borderColor: '#16a34a' }),
               }}
             >
-              <Text style={{ color: mine ? 'white' : '#111827' }}>{item.content}</Text>
+              {isDeleted ? (
+                <Text style={{ color: '#6b7280', fontStyle: 'italic', fontSize: 14 }}>{item.content}</Text>
+              ) : (
+                <Text style={{ color: mine ? 'white' : '#111827' }}>{item.content}</Text>
+              )}
             </View>
           </Pressable>
 
-          {!mine && (
+          {/* Other person's message: "..." button to the RIGHT */}
+          {!mine && !isDeleted && (
             <TouchableOpacity
               onPress={() => onOpenOptions(item)}
-              style={{
-                alignSelf: 'center',
-                padding: 6,
-                backgroundColor: '#fff',
-                borderRadius: 6,
-                borderWidth: 2,
-                borderColor: '#16a34a',
-              }}
+              style={{ alignSelf: 'center', padding: 4 }}
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             >
-              <Ionicons name="ellipsis-horizontal" size={16} color="#16a34a" />
+              <ThreeDots color="#16a34a" />
             </TouchableOpacity>
           )}
         </Animated.View>
@@ -155,7 +191,13 @@ export default function ChatScreen() {
   const [reportNotes, setReportNotes] = useState('');
   const [headerMenuVisible, setHeaderMenuVisible] = useState(false);
   const [messageOptionsItem, setMessageOptionsItem] = useState<MsgItem | null>(null);
+  const [myOptionsItem, setMyOptionsItem] = useState<MsgItem | null>(null);
+  const [editModalItem, setEditModalItem] = useState<MsgItem | null>(null);
+  const [editInput, setEditInput] = useState('');
+  const [deletedIds, setDeletedIds] = useState<Set<string>>(new Set());
+  const [isSending, setIsSending] = useState(false);
   const listRef = useRef<FlatList<MsgItem>>(null);
+  const messagesRef = useRef<MsgItem[]>([]);
   const revealX = useSharedValue(0); // sağdan sola çekince timestamp görünür
 
   const normParam = useCallback((p: any): string | undefined => {
@@ -186,25 +228,29 @@ export default function ChatScreen() {
     InteractionManager.runAfterInteractions(run);
   }, []);
 
+  // messages state'i her değiştiğinde ref'i güncelle (fetchMessages'ın yeniden tetiklenmesini önler)
+  useEffect(() => {
+    messagesRef.current = messages;
+  }, [messages]);
+
   // Resolve recipient id safely (avoid sending message to self)
   const resolveRecipientId = useCallback(async (currentUserId: string): Promise<string | null> => {
     const toId = normParam(to);
-    
-    // En basit ve doğru çözüm: route ile gelen to parametresini kullan
-    // Messages sayfasından gelen to parametresi zaten doğru recipient ID'sini içeriyor
+
     if (toId && toId !== currentUserId) {
       return toId;
     }
 
-    // Fallback: Eğer geçmiş mesajlar varsa karşı tarafı son mesajdan çıkar
-    if (messages.length > 0) {
-      const last = messages[messages.length - 1];
+    // Fallback: messages ref üzerinden oku — state bağımlılığı olmadan
+    const current = messagesRef.current;
+    if (current.length > 0) {
+      const last = current[current.length - 1];
       const otherId = last.sender_id !== currentUserId ? last.sender_id : (last.recipient_id !== currentUserId ? last.recipient_id : undefined);
       if (otherId && otherId !== currentUserId) return otherId;
     }
 
     return null;
-  }, [to, messages]);
+  }, [to]); // messages bağımlılığı kaldırıldı → fetchMessages artık yeniden tetiklenmez
 
   const loadMe = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -293,8 +339,15 @@ export default function ChatScreen() {
           const blocked = await getBlockedUserIds(user.id);
           const isBlocked = blocked.has(m.sender_id);
 
+          // Kendi mesajlarımızı atla — optimistic update ile zaten ekledik
+          if (m.sender_id === user.id) return;
+
           if (isSameThread(m, user.id, recip) && !isBlocked) {
-            setMessages(prev => [...prev, m]);
+            setMessages(prev => {
+              // Aynı ID zaten varsa tekrar ekleme
+              if (prev.some(existing => existing.id === m.id)) return prev;
+              return [...prev, m];
+            });
             scrollToBottom(true);
           }
         })
@@ -308,8 +361,7 @@ export default function ChatScreen() {
   }, [activeMatchId, isSameThread, resolveRecipientId, scrollToBottom]);
 
   const sendMessage = useCallback(async () => {
-    // Boş mesajı gönderme
-    if (!input.trim()) return;
+    if (!input.trim() || isSending) return;
 
     // Yasaklı kelime kontrolü
     if (containsBannedWord(input)) {
@@ -317,40 +369,59 @@ export default function ChatScreen() {
       return;
     }
 
+    setIsSending(true);
+
+    const content = input.trim();
+    setInput('');
+
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!user) { setIsSending(false); return; }
 
-      // Hedef kullanıcıyı çöz
       const recip = await resolveRecipientId(user.id);
       if (!recip) {
         console.warn('[Chat] sendMessage: recipient could not be resolved');
+        setIsSending(false);
         return;
       }
 
-      const content = input.trim();
-
-      const payload: any = {
+      // Optimistic: mesajı anında ekrana düşür
+      const tempId = `temp-${Date.now()}`;
+      const optimisticMsg: MsgItem = {
+        id: tempId,
         sender_id: user.id,
         recipient_id: recip,
         content,
+        created_at: new Date().toISOString(),
+        match_id: activeMatchId ?? null,
       };
+      setMessages(prev => [...prev, optimisticMsg]);
+      scrollToBottom(true);
 
       const getParam2 = (p: any): string | undefined => {
         const v = Array.isArray(p) ? p[0] : p;
         return typeof v === 'string' && v && v !== 'undefined' && v !== 'null' ? v : undefined;
       };
       const matchIdStr = getParam2(matchId);
+
+      const payload: any = { sender_id: user.id, recipient_id: recip, content };
       if (matchIdStr) payload.match_id = matchIdStr;
 
-      const { error } = await supabase.from('messages').insert(payload);
+      const { data: inserted, error } = await supabase.from('messages').insert(payload).select('id').single();
       if (error) {
+        // Hata durumunda optimistic mesajı geri al
+        setMessages(prev => prev.filter(m => m.id !== tempId));
         console.error('[Chat] sendMessage insert error:', error);
+        setIsSending(false);
         return;
       }
 
-      // Alıcı için unread sayısını besleyecek direct_message bildirimi oluştur.
-      // created_at'ı DB default'una bırakıyoruz (UTC).
+      // Geçici ID'yi gerçek DB ID'siyle değiştir
+      if (inserted?.id) {
+        setMessages(prev => prev.map(m => m.id === tempId ? { ...m, id: inserted.id } : m));
+      }
+
+      // Alıcı için direct_message bildirimi oluştur
       try {
         const notifPayload: any = {
           user_id: recip,
@@ -360,21 +431,16 @@ export default function ChatScreen() {
           is_read: false,
         };
         if (matchIdStr) notifPayload.match_id = matchIdStr;
-        const { error: notifError } = await supabase.from('notifications').insert(notifPayload);
-        if (notifError) {
-          console.error('[Chat] direct_message notification insert error:', notifError);
-        }
+        await supabase.from('notifications').insert(notifPayload);
       } catch (e) {
         console.error('[Chat] direct_message notification unexpected error:', e);
       }
-
-      setInput('');
-      fetchMessages();
-      scrollToBottom(true);
     } catch (e) {
       console.error('[Chat] sendMessage unexpected error:', e);
+    } finally {
+      setIsSending(false);
     }
-  }, [input, matchId, fetchMessages, resolveRecipientId, scrollToBottom, t]);
+  }, [input, isSending, matchId, activeMatchId, resolveRecipientId, scrollToBottom, t]);
 
   const openReportUserModal = useCallback(() => {
     setHeaderMenuVisible(false);
@@ -459,13 +525,67 @@ export default function ChatScreen() {
     );
   }, [to, t, router]);
 
+  const handleDeleteMessage = useCallback(async () => {
+    if (!myOptionsItem) return;
+    const id = myOptionsItem.id;
+    setMyOptionsItem(null);
+    Alert.alert(
+      t('chat.deleteMessage'),
+      t('chat.deleteMessageConfirm'),
+      [
+        { text: t('general.cancel'), style: 'cancel' },
+        {
+          text: t('chat.deleteMessage'),
+          style: 'destructive',
+          onPress: async () => {
+            const { error } = await supabase.from('messages').delete().eq('id', id);
+            if (!error) {
+              setMessages(prev =>
+                prev.map(m =>
+                  m.id === id ? { ...m, content: t('chat.messageDeleted') } : m
+                )
+              );
+              setDeletedIds(prev => new Set([...prev, id]));
+            } else {
+              Alert.alert(t('general.error'), error.message);
+            }
+          },
+        },
+      ]
+    );
+  }, [myOptionsItem, t]);
+
+  const handleEditMessage = useCallback(async () => {
+    if (!editModalItem || !editInput.trim()) return;
+    const newContent = editInput.trim();
+    if (containsBannedWord(newContent)) {
+      Alert.alert(t('chat.profanityTitle'), t('chat.profanityWarning'));
+      return;
+    }
+    const { error } = await supabase
+      .from('messages')
+      .update({ content: newContent })
+      .eq('id', editModalItem.id);
+    if (!error) {
+      setMessages(prev =>
+        prev.map(m => m.id === editModalItem.id ? { ...m, content: newContent } : m)
+      );
+      setEditModalItem(null);
+      setEditInput('');
+    } else {
+      Alert.alert(t('general.error'), error.message);
+    }
+  }, [editModalItem, editInput, t]);
+
   const renderItem = ({ item }: { item: MsgItem }) => {
     const mine = item.sender_id === me;
+    const isDeleted = deletedIds.has(item.id);
     return (
       <MessageRow
         item={item}
         mine={mine}
         revealX={revealX}
+        isDeleted={isDeleted}
         onReport={(it) => {
           Alert.alert(
             t('chat.reportMessage'),
@@ -477,6 +597,7 @@ export default function ChatScreen() {
           );
         }}
         onOpenOptions={(it) => setMessageOptionsItem(it)}
+        onOpenMyOptions={(it) => setMyOptionsItem(it)}
       />
     );
   };
@@ -584,6 +705,80 @@ export default function ChatScreen() {
             </Pressable>
           </Modal>
 
+          {/* Kendi mesajım: sil / düzenle seçenekleri */}
+          <Modal visible={!!myOptionsItem} transparent animationType="fade">
+            <Pressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 24 }} onPress={() => setMyOptionsItem(null)}>
+              <Pressable style={{ backgroundColor: 'white', borderRadius: 16, padding: 20, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.15, shadowRadius: 12, elevation: 8 }} onPress={(e) => e.stopPropagation()}>
+                <Text style={{ fontSize: 18, fontWeight: '700', color: '#065f46', marginBottom: 16, textAlign: 'center' }}>{t('chat.myMessageOptions')}</Text>
+                <View style={{ gap: 6 }}>
+                  <TouchableOpacity
+                    activeOpacity={0.7}
+                    onPress={() => {
+                      const item = myOptionsItem;
+                      setMyOptionsItem(null);
+                      if (item) {
+                        setEditInput(item.content);
+                        setEditModalItem(item);
+                      }
+                    }}
+                    style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 12, paddingHorizontal: 14, backgroundColor: '#f0fdf4', borderRadius: 10 }}
+                  >
+                    <Text style={{ color: '#16a34a', fontWeight: '600', fontSize: 15 }}>{t('chat.editMessage')}</Text>
+                    <Ionicons name="pencil-outline" size={22} color="#16a34a" />
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    activeOpacity={0.7}
+                    onPress={handleDeleteMessage}
+                    style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 12, paddingHorizontal: 14, backgroundColor: '#fef2f2', borderRadius: 10 }}
+                  >
+                    <Text style={{ color: '#dc2626', fontWeight: '600', fontSize: 15 }}>{t('chat.deleteMessage')}</Text>
+                    <Ionicons name="trash-outline" size={22} color="#dc2626" />
+                  </TouchableOpacity>
+                </View>
+                <TouchableOpacity activeOpacity={0.8} onPress={() => setMyOptionsItem(null)} style={{ marginTop: 16, paddingVertical: 12, borderRadius: 10, backgroundColor: '#6b7280', alignItems: 'center' }}>
+                  <Text style={{ color: 'white', fontWeight: '600', fontSize: 15 }}>{t('general.cancel')}</Text>
+                </TouchableOpacity>
+              </Pressable>
+            </Pressable>
+          </Modal>
+
+          {/* Mesaj düzenleme modalı */}
+          <Modal visible={!!editModalItem} transparent animationType="none" onRequestClose={() => { setEditModalItem(null); setEditInput(''); }}>
+            <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }} keyboardVerticalOffset={0}>
+            <Pressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }} onPress={() => { setEditModalItem(null); setEditInput(''); }}>
+              <Pressable
+                style={{ backgroundColor: 'white', borderRadius: 20, margin: 16, padding: 20, paddingBottom: 20, shadowColor: '#000', shadowOffset: { width: 0, height: -2 }, shadowOpacity: 0.1, shadowRadius: 8, elevation: 8 }}
+                onPress={(e) => e.stopPropagation()}
+              >
+                <Text style={{ fontSize: 18, fontWeight: '700', color: '#065f46', marginBottom: 16, textAlign: 'center' }}>{t('chat.editMessageTitle')}</Text>
+                <TextInput
+                  value={editInput}
+                  onChangeText={setEditInput}
+                  multiline
+                  autoFocus
+                  style={{ borderWidth: 1, borderColor: '#d1d5db', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, minHeight: 80, textAlignVertical: 'top', fontSize: 15, color: '#111827', marginBottom: 16 }}
+                />
+                <View style={{ flexDirection: 'row', gap: 10 }}>
+                  <TouchableOpacity
+                    activeOpacity={0.8}
+                    onPress={() => { setEditModalItem(null); setEditInput(''); }}
+                    style={{ flex: 1, paddingVertical: 12, borderRadius: 10, backgroundColor: '#e5e7eb', alignItems: 'center' }}
+                  >
+                    <Text style={{ color: '#374151', fontWeight: '600', fontSize: 15 }}>{t('general.cancel')}</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    activeOpacity={0.8}
+                    onPress={handleEditMessage}
+                    style={{ flex: 1, paddingVertical: 12, borderRadius: 10, backgroundColor: '#16a34a', alignItems: 'center' }}
+                  >
+                    <Text style={{ color: 'white', fontWeight: '700', fontSize: 15 }}>{t('chat.editMessageSave')}</Text>
+                  </TouchableOpacity>
+                </View>
+              </Pressable>
+            </Pressable>
+            </KeyboardAvoidingView>
+          </Modal>
+
           {/* Header ... menüsü (Report / Block) - stille güncellendi */}
           <Modal visible={headerMenuVisible} transparent animationType="fade">
             <Pressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 24 }} onPress={() => setHeaderMenuVisible(false)}>
@@ -657,7 +852,11 @@ export default function ChatScreen() {
                 onChangeText={setInput}
                 style={{ flex: 1, borderWidth: 1, borderColor: '#d1d5db', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 8, marginRight: 8 }}
               />
-              <TouchableOpacity onPress={sendMessage} style={{ backgroundColor: '#16a34a', borderRadius: 8, paddingHorizontal: 16, justifyContent: 'center' }}>
+              <TouchableOpacity
+                onPress={sendMessage}
+                disabled={isSending}
+                style={{ backgroundColor: isSending ? '#86efac' : '#16a34a', borderRadius: 8, paddingHorizontal: 16, justifyContent: 'center' }}
+              >
                 <Text style={{ color: 'white', fontWeight: '700' }}>Gönder</Text>
               </TouchableOpacity>
             </View>

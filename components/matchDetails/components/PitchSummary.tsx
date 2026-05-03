@@ -10,11 +10,13 @@ import { useAuth } from '@/contexts/AuthContext';
 
 interface PitchSummaryProps {
   match: Match;
+  currentUserId?: string | null;
 }
 
-export default function PitchSummary({ match }: PitchSummaryProps) {
+export default function PitchSummary({ match, currentUserId }: PitchSummaryProps) {
   const { t } = useLanguage();
   const { isGuest } = useAuth();
+  const isMatchOwner = !!currentUserId && currentUserId === match.create_user;
   // "Halı Saha Özeti" başlangıçta açık gelsin (mobil + web)
   const [isExpanded, setIsExpanded] = useState(true);
   const [priceInfoVisible, setPriceInfoVisible] = useState(false);
@@ -109,14 +111,34 @@ export default function PitchSummary({ match }: PitchSummaryProps) {
       return;
     }
     setPriceUpdating(true);
-    const { error } = await supabase.from('pitches').update({ price: num }).eq('id', pitchId);
+    const { data: updated, error } = await supabase
+      .from('pitches')
+      .update({ price: num })
+      .eq('id', pitchId)
+      .select('id, price');
     setPriceUpdating(false);
     setPriceEditVisible(false);
     if (error) {
       Alert.alert(t('general.error'), error.message || t('pitches.priceUpdateFailed'));
       return;
     }
+    if (!updated || updated.length === 0) {
+      Alert.alert(t('general.error'), t('pitches.priceUpdateFailed'));
+      return;
+    }
     setLocalPrice(num);
+
+    // Maç tarihi henüz geçmediyse match.prices alanını da senkron tut
+    const matchDate = new Date(match.date);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    if (matchDate >= today) {
+      await supabase
+        .from('match')
+        .update({ prices: num })
+        .eq('id', match.id);
+    }
+
     try {
       DeviceEventEmitter.emit('pitchPriceUpdated', { matchId: match.id, pitchId, price: num });
     } catch (_) {}
@@ -270,7 +292,7 @@ export default function PitchSummary({ match }: PitchSummaryProps) {
                     <Ionicons name="information-circle-outline" size={20} color="#6b7280" />
                   </TouchableOpacity>
                 ) : null}
-                {!isGuest ? (
+                {isMatchOwner ? (
                   <TouchableOpacity
                     onPress={openPriceEdit}
                     style={{ marginLeft: 6, paddingHorizontal: 8, paddingVertical: 4, backgroundColor: '#e5e7eb', borderRadius: 6 }}

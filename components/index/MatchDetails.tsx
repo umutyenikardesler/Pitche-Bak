@@ -247,6 +247,17 @@ export default function MatchDetails({ match, onClose, onOpenProfilePreview }: M
     };
   }, [currentUserId, match.id, setCompletedPositions]);
 
+  // Pozisyon kabul edildiğinde kullanıcıyı ana sayfaya yönlendir
+  useEffect(() => {
+    if (!acceptedPosition || !currentUserId || currentUserId === match.create_user) return;
+
+    const timer = setTimeout(() => {
+      router.replace('/(tabs)' as any);
+    }, 2200);
+
+    return () => clearTimeout(timer);
+  }, [acceptedPosition, currentUserId, match.create_user, router]);
+
   // Red durumunu periyodik olarak kontrol et (realtime kaçarsa fallback)
   useEffect(() => {
     if (!currentUserId) return;
@@ -266,6 +277,7 @@ export default function MatchDetails({ match, onClose, onOpenProfilePreview }: M
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentUserId, match.id, acceptedPosition, sentRequests.length]);
 
+  const isOwner = currentUserId === match.create_user;
 
   return (
     <ScrollView
@@ -295,6 +307,16 @@ export default function MatchDetails({ match, onClose, onOpenProfilePreview }: M
           <Text className="text-base font-semibold text-center mb-2">
             ( Kaleci: <Text className="text-red-500 font-bold">KL</Text>, Defans: <Text className="text-blue-700 font-bold">DF</Text>, Orta Saha: <Text className="text-green-700 font-bold">OS</Text>, Forvet: <Text className="text-yellow-600 font-bold">FV</Text> )
           </Text>
+          {!isOwner && missingGroups.length > 0 && (
+            <View className="items-center mb-3 px-2">
+              <Text
+                className="text-xs text-gray-600 text-center"
+                numberOfLines={1}
+              >
+                Eksik pozisyona dokunarak katılım isteği gönder.
+              </Text>
+            </View>
+          )}
         </View>
 
         <PositionList
@@ -342,7 +364,7 @@ export default function MatchDetails({ match, onClose, onOpenProfilePreview }: M
 
         <Divider />
 
-        <PitchSummary match={match} />
+        <PitchSummary match={match} currentUserId={currentUserId} />
 
         {/* ScrollView için alt padding - butonun altında kalmaması için */}
         <View className="h-20"></View>

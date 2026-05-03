@@ -263,11 +263,21 @@ export default function OtherMatches({ matches, refreshing, onRefresh, onSelectM
         <View className='flex justify-center items-center py-4'>
           <Text className="text-center font-bold my-1">{t('home.noIncompleteSquadMatches')}</Text>
           <TouchableOpacity
-            className="text-center bg-green-600 text-white font-semibold rounded-md my-3 items-center self-center"
-            style={{ width: '40%' }}
+            className="bg-green-600 rounded-md my-3 items-center self-center"
+            style={{
+              alignSelf: 'center',
+              paddingHorizontal: 18,
+              paddingVertical: 14,
+              maxWidth: '92%',
+            }}
             onPress={onCreateMatch}
           >
-            <Text className="text-white font-semibold text-center p-4">
+            <Text
+              className="text-white font-semibold text-center"
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={0.9}
+            >
               {t('home.createMatchNow')}
             </Text>
           </TouchableOpacity>
