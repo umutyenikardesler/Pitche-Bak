@@ -1,6 +1,7 @@
 // Component for rendering grouped notifications
 import { View, Text, ScrollView, RefreshControl } from 'react-native';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useAppTheme } from '@/contexts/ThemeContext';
 import { Notification, NotificationGroup } from './notificationTypes';
 import FollowRequestNotification from './FollowRequestNotification';
 import JoinRequestNotification from './JoinRequestNotification';
@@ -28,6 +29,7 @@ export default function NotificationList({
     onRefresh,
 }: NotificationListProps) {
     const { t } = useLanguage();
+    const { colors } = useAppTheme();
 
     const renderNotification = ({ item }: { item: Notification }) => {
         if (item.type === 'follow_request') {
@@ -66,7 +68,7 @@ export default function NotificationList({
     if (groupedNotifications.length === 0) {
         return (
             <View className="flex-1 justify-center items-center mt-4">
-                <Text className="text-gray-500">{t('notifications.noNotificationsYet')}</Text>
+                <Text style={{ color: colors.textMuted }}>{t('notifications.noNotificationsYet')}</Text>
             </View>
         );
     }
@@ -79,14 +81,16 @@ export default function NotificationList({
                 <RefreshControl
                     refreshing={refreshing}
                     onRefresh={onRefresh}
+                    colors={[colors.primary]}
+                    tintColor={colors.primary}
                 />
             }
         >
             {groupedNotifications.map(([groupName, groupNotifications]) => (
                 <View key={groupName} className="mb-4">
                     {/* Grup başlığı */}
-                    <View className="px-4 py-2 bg-green-600">
-                        <Text className="text-sm font-bold text-white">{groupName}</Text>
+                    <View className="px-4 py-2" style={{ backgroundColor: colors.primary }}>
+                        <Text className="text-sm font-bold" style={{ color: colors.whiteText }}>{groupName}</Text>
                     </View>
                     
                     {/* Grup bildirimleri */}

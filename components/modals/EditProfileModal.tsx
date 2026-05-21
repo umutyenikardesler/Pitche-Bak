@@ -10,6 +10,7 @@ import {
   TouchableOpacity,
 } from "react-native";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useAppTheme } from "@/contexts/ThemeContext";
 
 interface UserDataType {
   id: string;
@@ -39,6 +40,7 @@ export default function EditProfileModal({
   isFirstLogin = false,
 }: EditProfileModalProps) {
   const { t } = useLanguage();
+  const { colors } = useAppTheme();
 
   // Modal kapandığında state temizle
   React.useEffect(() => {
@@ -77,7 +79,7 @@ export default function EditProfileModal({
       onRequestClose={isFirstLogin && !isFormComplete ? undefined : onClose}
     >
       <TouchableWithoutFeedback onPress={isFirstLogin && !isFormComplete ? undefined : onClose}>
-        <View className="flex-1 justify-center items-center bg-black/50">
+        <View className="flex-1 justify-center items-center" style={{ backgroundColor: colors.overlay }}>
           <KeyboardAvoidingView
             behavior={Platform.OS === "ios" ? "padding" : "height"}
             className="w-full"
@@ -90,84 +92,107 @@ export default function EditProfileModal({
               }}
             >
               <View
-                className="bg-white p-6 rounded-lg w-3/4"
+                className="p-6 rounded-lg w-3/4"
                 style={
-                  Platform.OS === "web"
-                    ? {
-                        width: "36%",
-                        minWidth: 320,
-                        maxWidth: 520,
-                        alignSelf: "center",
-                      }
-                    : undefined
+                  {
+                    backgroundColor: colors.surface,
+                    borderWidth: 1,
+                    borderColor: colors.primary,
+                    shadowColor: colors.primary,
+                    shadowOpacity: 0.35,
+                    shadowRadius: 14,
+                    shadowOffset: { width: 0, height: 0 },
+                    elevation: 8,
+                    ...(Platform.OS === "web"
+                      ? {
+                          width: "36%",
+                          minWidth: 320,
+                          maxWidth: 520,
+                          alignSelf: "center",
+                          boxShadow: `0 0 18px ${colors.primary}`,
+                        }
+                      : undefined),
+                  }
                 }
               >
-                <Text className="text-xl font-bold text-center text-green-700 mb-4">
+                <Text className="text-xl font-bold text-center mb-4" style={{ color: colors.primaryDark }}>
                   {t("profile.completePersonalInfo")}
                 </Text>
 
                 <View className="flex-row items-center mb-2">
-                  <Text className="text-green-700 font-bold w-20">{t("profile.field.name")}:</Text>
+                  <Text className="font-bold w-20" style={{ color: colors.primaryDark }}>{t("profile.field.name")}:</Text>
                   <TextInput
                     placeholder={t("profile.name")}
                     value={editUserData?.name || ""}
                     onChangeText={(text) => handleInputChange("name", text)}
-                    className="border border-gray-300 rounded p-2 flex-1 ml-2"
+                    className="rounded p-2 flex-1 ml-2"
+                    style={{ borderWidth: 1, borderColor: colors.inputBorder, backgroundColor: colors.inputBackground, color: colors.text }}
+                    placeholderTextColor={colors.textMuted}
                   />
                 </View>
                 
                 <View className="flex-row items-center mb-2">
-                  <Text className="text-green-700 font-bold w-20">{t("profile.field.surname")}:</Text>
+                  <Text className="font-bold w-20" style={{ color: colors.primaryDark }}>{t("profile.field.surname")}:</Text>
                   <TextInput
                     placeholder={t("profile.surname")}
                     value={editUserData?.surname || ""}
                     onChangeText={(text) => handleInputChange("surname", text)}
-                    className="border border-gray-300 rounded p-2 flex-1 ml-2"
+                    className="rounded p-2 flex-1 ml-2"
+                    style={{ borderWidth: 1, borderColor: colors.inputBorder, backgroundColor: colors.inputBackground, color: colors.text }}
+                    placeholderTextColor={colors.textMuted}
                   />
                 </View>
                 
                 <View className="flex-row items-center mb-2">
-                  <Text className="text-green-700 font-bold w-20">{t("profile.field.age")}:</Text>
+                  <Text className="font-bold w-20" style={{ color: colors.primaryDark }}>{t("profile.field.age")}:</Text>
                   <TextInput
                     placeholder={t("profile.age")}
                     value={editUserData?.age?.toString() || ""}
                     onChangeText={(text) => handleInputChange("age", text)}
-                    className="border border-gray-300 rounded p-2 flex-1 ml-2"
+                    className="rounded p-2 flex-1 ml-2"
+                    style={{ borderWidth: 1, borderColor: colors.inputBorder, backgroundColor: colors.inputBackground, color: colors.text }}
+                    placeholderTextColor={colors.textMuted}
                     keyboardType="numeric"
                   />
                 </View>
                 
                 <View className="flex-row items-center mb-2">
-                  <Text className="text-green-700 font-bold w-20">{t("profile.field.height")}:</Text>
+                  <Text className="font-bold w-20" style={{ color: colors.primaryDark }}>{t("profile.field.height")}:</Text>
                   <TextInput
                     placeholder={t("profile.height")}
                     value={editUserData?.height?.toString() || ""}
                     onChangeText={(text) => handleInputChange("height", text)}
-                    className="border border-gray-300 rounded p-2 flex-1 ml-2"
+                    className="rounded p-2 flex-1 ml-2"
+                    style={{ borderWidth: 1, borderColor: colors.inputBorder, backgroundColor: colors.inputBackground, color: colors.text }}
+                    placeholderTextColor={colors.textMuted}
                     keyboardType="numeric"
                   />
                 </View>
                 
                 <View className="flex-row items-center mb-2">
-                  <Text className="text-green-700 font-bold w-20">
+                  <Text className="font-bold w-20" style={{ color: colors.primaryDark }}>
                     {t("profile.field.weight")} ({t("units.kg")}):
                   </Text>
                   <TextInput
                     placeholder={t("profile.weight")}
                     value={editUserData?.weight?.toString() || ""}
                     onChangeText={(text) => handleInputChange("weight", text)}
-                    className="border border-gray-300 rounded p-2 flex-1 ml-2"
+                    className="rounded p-2 flex-1 ml-2"
+                    style={{ borderWidth: 1, borderColor: colors.inputBorder, backgroundColor: colors.inputBackground, color: colors.text }}
+                    placeholderTextColor={colors.textMuted}
                     keyboardType="numeric"
                   />
                 </View>
                 
                 <View className="flex-row items-center mb-2">
-                  <Text className="text-green-700 font-bold w-20">{t("profile.field.position")}:</Text>
+                  <Text className="font-bold w-20" style={{ color: colors.primaryDark }}>{t("profile.field.position")}:</Text>
                   <TextInput
                     placeholder={t("profile.description")}
                     value={editUserData?.description || ""}
                     onChangeText={(text) => handleInputChange("description", text)}
-                    className="border border-gray-300 rounded p-2 flex-1 ml-2"
+                    className="rounded p-2 flex-1 ml-2"
+                    style={{ borderWidth: 1, borderColor: colors.inputBorder, backgroundColor: colors.inputBackground, color: colors.text }}
+                    placeholderTextColor={colors.textMuted}
                     multiline
                   />
                 </View>
@@ -175,7 +200,8 @@ export default function EditProfileModal({
                 <View className="flex-row justify-between mt-3">
                   {!isFirstLogin && (
                     <TouchableOpacity
-                      className="bg-red-500 p-2 rounded-lg"
+                      className="p-2 rounded-lg"
+                      style={{ backgroundColor: colors.danger }}
                       onPress={onClose}
                     >
                       <Text className="text-white font-semibold text-lg px-8">
@@ -184,7 +210,8 @@ export default function EditProfileModal({
                     </TouchableOpacity>
                   )}
                   <TouchableOpacity
-                    className={`${isFirstLogin ? 'flex-1' : ''} bg-green-600 p-2 rounded-lg`}
+                    className={`${isFirstLogin ? 'flex-1' : ''} p-2 rounded-lg`}
+                    style={{ backgroundColor: colors.primary }}
                     onPress={onSave}
                   >
                     <Text className="text-white font-semibold text-lg text-center px-4">

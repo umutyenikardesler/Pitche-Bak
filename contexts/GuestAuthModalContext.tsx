@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useCallback, useEffect } fr
 import { Modal, View, Text } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useLanguage } from './LanguageContext';
+import { useAppTheme } from './ThemeContext';
 
 const REDIRECT_DELAY_MS = 2500;
 
@@ -14,6 +15,7 @@ const GuestAuthModalContext = createContext<GuestAuthModalContextType | undefine
 export function GuestAuthModalProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const { t } = useLanguage();
+  const { colors } = useAppTheme();
   const [visible, setVisible] = useState(false);
   const [message, setMessage] = useState('');
 
@@ -45,7 +47,7 @@ export function GuestAuthModalProvider({ children }: { children: React.ReactNode
         <View
           style={{
             flex: 1,
-            backgroundColor: 'rgba(0,0,0,0.5)',
+            backgroundColor: colors.overlay,
             justifyContent: 'center',
             alignItems: 'center',
             padding: 24,
@@ -53,7 +55,7 @@ export function GuestAuthModalProvider({ children }: { children: React.ReactNode
         >
           <View
             style={{
-              backgroundColor: 'white',
+              backgroundColor: colors.surface,
               borderRadius: 16,
               padding: 24,
               maxWidth: 320,
@@ -62,7 +64,7 @@ export function GuestAuthModalProvider({ children }: { children: React.ReactNode
           >
             <Text
               style={{
-                color: '#15803d',
+                color: colors.primaryDark,
                 fontSize: 16,
                 fontWeight: '600',
                 textAlign: 'center',
@@ -72,7 +74,7 @@ export function GuestAuthModalProvider({ children }: { children: React.ReactNode
             </Text>
             <Text
               style={{
-                color: '#6b7280',
+                color: colors.textMuted,
                 fontSize: 12,
                 marginTop: 12,
               }}

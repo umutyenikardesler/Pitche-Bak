@@ -6,12 +6,14 @@ import { supabase } from '@/services/supabase';
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useGuestAuthAlert } from "@/contexts/GuestAuthModalContext";
+import { useAppTheme } from "@/contexts/ThemeContext";
 import { FontAwesome } from '@expo/vector-icons';
 import Animated, { useAnimatedStyle, useSharedValue, withRepeat, withTiming, Easing } from 'react-native-reanimated';
 import { useEffect, useState } from 'react';
 
 export default function PitchesList({ pitches, selectedPitch, setSelectedPitch, handleCloseDetail, refreshing, onRefresh, onPriceUpdated }: any) {
   const { t } = useLanguage();
+  const { colors } = useAppTheme();
   const { isGuest } = useAuth();
   const { showGuestAuthAlert } = useGuestAuthAlert();
   const router = useRouter();
@@ -144,10 +146,13 @@ export default function PitchesList({ pitches, selectedPitch, setSelectedPitch, 
               alwaysBounceVertical={true}
               overScrollMode="auto"
             >
-              <View className="bg-white rounded-lg mx-4 mt-2 p-4 shadow-md mb-4" style={{ minHeight: '97%' }}>
+              <View
+                className="rounded-lg mx-4 mt-2 p-4 shadow-md mb-4"
+                style={{ minHeight: '97%', backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.primary }}
+              >
                 <View className="flex flex-col items-center flex-1 justify-between">
                   <View className="w-full flex-1">
-                    <Text className="text-xl font-bold text-green-700 text-center mb-2">{t('pitches.pitchSummary')}</Text>
+                    <Text className="text-xl font-bold text-center mb-2" style={{ color: colors.primaryDark }}>{t('pitches.pitchSummary')}</Text>
 
                     {selectedPitch.latitude && selectedPitch.longitude && (
                       <View
@@ -166,9 +171,9 @@ export default function PitchesList({ pitches, selectedPitch, setSelectedPitch, 
                           <View style={{ position: 'absolute', right: 8, bottom: 8 }}>
                             <TouchableOpacity
                               onPress={showMapChooser}
-                              style={{ backgroundColor: 'rgba(255,255,255,0.95)', paddingHorizontal: 10, paddingVertical: 8, borderRadius: 9999 }}
+                              style={{ backgroundColor: colors.surface, paddingHorizontal: 10, paddingVertical: 8, borderRadius: 9999, borderWidth: 1, borderColor: colors.primary }}
                             >
-                              <Text style={{ fontWeight: '700', color: '#111' }}>Haritalar uygulamasında Aç</Text>
+                              <Text style={{ fontWeight: '700', color: colors.text }}>Haritalar uygulamasında Aç</Text>
                             </TouchableOpacity>
                           </View>
                         ) : null}
@@ -180,22 +185,22 @@ export default function PitchesList({ pitches, selectedPitch, setSelectedPitch, 
                           animationType="fade"
                           onRequestClose={() => setMapChooserVisible(false)}
                         >
-                          <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', alignItems: 'center', justifyContent: 'center' }}>
-                            <View style={{ backgroundColor: 'white', borderRadius: 12, padding: 16, width: 280 }}>
-                              <Text style={{ fontWeight: '800', fontSize: 16, marginBottom: 10, textAlign: 'center', color: '#16a34a' }}>
+                          <View style={{ flex: 1, backgroundColor: colors.overlay, alignItems: 'center', justifyContent: 'center' }}>
+                            <View style={{ backgroundColor: colors.surface, borderRadius: 12, padding: 16, width: 280, borderWidth: 1, borderColor: colors.primary }}>
+                              <Text style={{ fontWeight: '800', fontSize: 16, marginBottom: 10, textAlign: 'center', color: colors.primary }}>
                                 Haritalarda aç
                               </Text>
                               {Platform.OS === 'ios' ? (
                                 <TouchableOpacity onPress={openInAppleMaps} style={{ paddingVertical: 10 }}>
-                                  <Text style={{ textAlign: 'center', fontWeight: '600' }}>Apple Haritalar</Text>
+                                  <Text style={{ textAlign: 'center', fontWeight: '600', color: colors.text }}>Apple Haritalar</Text>
                                 </TouchableOpacity>
                               ) : null}
                               <TouchableOpacity onPress={openInGoogleMaps} style={{ paddingVertical: 10 }}>
-                                <Text style={{ textAlign: 'center', fontWeight: '600' }}>Google Maps</Text>
+                                <Text style={{ textAlign: 'center', fontWeight: '600', color: colors.text }}>Google Maps</Text>
                               </TouchableOpacity>
                               {availableMaps.waze ? (
                                 <TouchableOpacity onPress={openInWaze} style={{ paddingVertical: 10 }}>
-                                  <Text style={{ textAlign: 'center', fontWeight: '600' }}>Waze</Text>
+                                  <Text style={{ textAlign: 'center', fontWeight: '600', color: colors.text }}>Waze</Text>
                                 </TouchableOpacity>
                               ) : null}
                               <TouchableOpacity
@@ -203,13 +208,13 @@ export default function PitchesList({ pitches, selectedPitch, setSelectedPitch, 
                                 style={{
                                   marginTop: 10,
                                   paddingVertical: 10,
-                                  backgroundColor: '#e5e7eb',
+                                  backgroundColor: colors.surfaceAlt,
                                   borderRadius: 10,
                                   borderWidth: 1,
-                                  borderColor: '#9ca3af',
+                                  borderColor: colors.border,
                                 }}
                               >
-                                <Text style={{ textAlign: 'center', color: '#374151', fontWeight: '700' }}>
+                                <Text style={{ textAlign: 'center', color: colors.text, fontWeight: '700' }}>
                                   İptal
                                 </Text>
                               </TouchableOpacity>
@@ -220,14 +225,14 @@ export default function PitchesList({ pitches, selectedPitch, setSelectedPitch, 
                     )}
 
                     <View>
-                      <Text className="h-7 text-xl text-green-700 font-semibold text-center mt-4">{selectedPitch.name}</Text>
+                      <Text className="h-7 text-xl font-semibold text-center mt-4" style={{ color: colors.primaryDark }}>{selectedPitch.name}</Text>
                     </View>
 
                     <View>
-                      <Text className="h-7 text-lg font-semibold text-green-700 text-center mt-4">{t('pitches.openAddress')}</Text>
+                      <Text className="h-7 text-lg font-semibold text-center mt-4" style={{ color: colors.primaryDark }}>{t('pitches.openAddress')}</Text>
                       <View className="flex-row justify-center items-center pt-1">
-                        <Ionicons name="location-outline" size={20} color="green" />
-                        <Text className="pl-2 text-gray-700 font-semibold">{selectedPitch.address}</Text>
+                        <Ionicons name="location-outline" size={20} color={colors.primary} />
+                        <Text className="pl-2 font-semibold" style={{ color: colors.text }}>{selectedPitch.address}</Text>
                       </View>
                     </View>
 
@@ -235,7 +240,7 @@ export default function PitchesList({ pitches, selectedPitch, setSelectedPitch, 
                     <View className="flex-row mt-3">
                       {/* Sol: Halı Saha Telefonu */}
                       <View className="w-1/2 pr-1">
-                        <Text className="h-7 text-lg font-semibold text-green-700 text-center my-2">
+                        <Text className="h-7 text-lg font-semibold text-center my-2" style={{ color: colors.primaryDark }}>
                           Halı Saha Telefonu
                         </Text>
                         {hasPhone ? (
@@ -244,16 +249,16 @@ export default function PitchesList({ pitches, selectedPitch, setSelectedPitch, 
                             activeOpacity={0.7}
                           >
                             <View className="flex-row justify-center items-center pt-1">
-                              <Ionicons name="call-outline" size={18} color="green" />
-                              <Text className="pl-2 text-gray-900 font-semibold">
+                              <Ionicons name="call-outline" size={18} color={colors.primary} />
+                              <Text className="pl-2 font-semibold" style={{ color: colors.text }}>
                                 {pitchPhone}
                               </Text>
                             </View>
                           </TouchableOpacity>
                         ) : (
                           <View className="flex-row justify-center items-center pt-1">
-                            <Ionicons name="call-outline" size={18} color="green" />
-                            <Text className="pl-2 text-gray-700 font-semibold">
+                            <Ionicons name="call-outline" size={18} color={colors.primary} />
+                            <Text className="pl-2 font-semibold" style={{ color: colors.textMuted }}>
                               Telefon bilgisi yok
                             </Text>
                           </View>
@@ -262,17 +267,17 @@ export default function PitchesList({ pitches, selectedPitch, setSelectedPitch, 
 
                       {/* Sağ: Saha Ücreti */}
                       <View className="w-1/2 pl-1">
-                        <Text className="h-7 text-lg font-semibold text-green-700 text-center my-2">
+                        <Text className="h-7 text-lg font-semibold text-center my-2" style={{ color: colors.primaryDark }}>
                           {t('pitches.pitchPrice')}
                         </Text>
                         <View className="flex-row justify-center items-center pt-1 flex-wrap">
-                          <Ionicons name="wallet-outline" size={18} color="green" />
-                          <Text className="pl-2 text-gray-700 font-semibold">
+                          <Ionicons name="wallet-outline" size={18} color={colors.primary} />
+                          <Text className="pl-2 font-semibold" style={{ color: colors.text }}>
                             {selectedPitch.price} ₺
                           </Text>
                           {!isGuest ? (
                             <TouchableOpacity onPress={() => setPriceInfoVisible(true)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} style={{ marginLeft: 4 }}>
-                              <Ionicons name="information-circle-outline" size={20} color="#6b7280" />
+                              <Ionicons name="information-circle-outline" size={20} color={colors.textMuted} />
                             </TouchableOpacity>
                           ) : null}
                         </View>
@@ -280,7 +285,7 @@ export default function PitchesList({ pitches, selectedPitch, setSelectedPitch, 
                     </View>
 
                     <View>
-                      <Text className="text-lg font-semibold text-green-700 text-center mt-3 mb-2">{t('pitches.pitchFeatures')}</Text>
+                      <Text className="text-lg font-semibold text-center mt-3 mb-2" style={{ color: colors.primaryDark }}>{t('pitches.pitchFeatures')}</Text>
                       <View className="flex-row flex-wrap justify-center">
                         {featuresArray.map((feature: string, index: number) => (
                           <View key={index} className={`${featuresArray.length === 1 ? 'w-auto' : 'w-1/2'}  mb-1`}>
@@ -316,7 +321,7 @@ export default function PitchesList({ pitches, selectedPitch, setSelectedPitch, 
               {/* Maç Oluştur - top işaretinin hemen üstünde, yan yana */}
               <View
                 style={{
-                  backgroundColor: '#fff',
+                  backgroundColor: colors.surface,
                   borderRadius: 20,
                   paddingHorizontal: 10,
                   paddingVertical: 6,
@@ -331,7 +336,7 @@ export default function PitchesList({ pitches, selectedPitch, setSelectedPitch, 
                 <Text
                   numberOfLines={1}
                   style={{
-                    color: '#16a34a',
+                    color: colors.primary,
                     fontSize: 13,
                     fontWeight: 'bold',
                   }}
@@ -371,12 +376,12 @@ export default function PitchesList({ pitches, selectedPitch, setSelectedPitch, 
 
             {/* Saha ücreti bilgi modalı */}
             <Modal visible={priceInfoVisible} transparent animationType="fade">
-              <TouchableOpacity style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 24 }} activeOpacity={1} onPress={() => setPriceInfoVisible(false)}>
-                <TouchableOpacity activeOpacity={1} onPress={(e) => e.stopPropagation()} style={{ backgroundColor: 'white', borderRadius: 12, padding: 20 }}>
-                  <Text style={{ fontSize: 13, color: '#374151', lineHeight: 20, textAlign: 'center' }}>
+              <TouchableOpacity style={{ flex: 1, backgroundColor: colors.overlay, justifyContent: 'center', padding: 24 }} activeOpacity={1} onPress={() => setPriceInfoVisible(false)}>
+                <TouchableOpacity activeOpacity={1} onPress={(e) => e.stopPropagation()} style={{ backgroundColor: colors.surface, borderRadius: 12, padding: 20, borderWidth: 1, borderColor: colors.primary }}>
+                  <Text style={{ fontSize: 13, color: colors.text, lineHeight: 20, textAlign: 'center' }}>
                     {t('pitches.priceDisclaimer')}
                   </Text>
-                  <TouchableOpacity onPress={() => setPriceInfoVisible(false)} style={{ marginTop: 16, paddingVertical: 10, backgroundColor: '#6b7280', borderRadius: 8, alignItems: 'center' }}>
+                  <TouchableOpacity onPress={() => setPriceInfoVisible(false)} style={{ marginTop: 16, paddingVertical: 10, backgroundColor: colors.surfaceAlt, borderRadius: 8, alignItems: 'center' }}>
                     <Text style={{ color: 'white', fontWeight: '600' }}>{t('general.close')}</Text>
                   </TouchableOpacity>
                 </TouchableOpacity>
@@ -399,16 +404,16 @@ export default function PitchesList({ pitches, selectedPitch, setSelectedPitch, 
           // Pressable ile basılı görsel efekt vermeyerek bu UX bug'ını engelliyoruz.
           android_ripple={{ color: "rgba(22,163,74,0.10)" }}
         >
-          <View className="bg-white rounded-lg mx-4 mt-3 p-3 shadow-md">
+          <View className="rounded-lg mx-4 mt-3 p-3 shadow-md" style={{ backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border }}>
             <View className="flex-row justify-between">
-              <Text className="w-4/6 text-base font-semibold">{item.name}</Text>
-              <Text className="w-1/6 text-right text-sm text-gray-500">{item.distance?.toFixed(2)} km</Text>
-              <Ionicons className="w-3 text-right" name="chevron-forward-outline" size={16} color="green" />
+              <Text className="w-4/6 text-base font-semibold" style={{ color: colors.text }}>{item.name}</Text>
+              <Text className="w-1/6 text-right text-sm" style={{ color: colors.textMuted }}>{item.distance?.toFixed(2)} km</Text>
+              <Ionicons className="w-3 text-right" name="chevron-forward-outline" size={16} color={colors.primary} />
             </View>
           </View>
         </Pressable>
       )}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.primary]} tintColor={colors.primary} />}
       contentContainerStyle={{ paddingBottom: 10 }}
       nestedScrollEnabled
     />

@@ -4,6 +4,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/services/supabase";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useAppTheme } from "@/contexts/ThemeContext";
 
 interface FollowRequestNotificationProps {
     item: {
@@ -32,6 +33,7 @@ export default function FollowRequestNotification({
     onMarkAsRead,
 }: FollowRequestNotificationProps) {
     const { t } = useLanguage();
+    const { colors } = useAppTheme();
     const [followBackLoading, setFollowBackLoading] = useState(false);
     const [followBackStatus, setFollowBackStatus] = useState<"idle" | "pending" | "accepted">("idle");
     const [followBackPendingSource, setFollowBackPendingSource] = useState<"none" | "db" | "just_sent">("none");
@@ -79,6 +81,12 @@ export default function FollowRequestNotification({
     };
 
     const isStartedFollowing = msg.includes('seni takip etmeye başladı') || msgLower.includes('started following');
+    const bodyTextColor = item.is_read ? colors.textMuted : colors.text;
+    const strongTextColor = colors.primaryDark;
+    const dateBadgeStyle = {
+        color: item.is_read ? colors.textMuted : colors.primaryDark,
+        backgroundColor: colors.surfaceAlt,
+    };
 
     // "Sen de takip et" durumunu DB'den oku + kabul edilince realtime ile güncelle
     useEffect(() => {
@@ -324,7 +332,8 @@ export default function FollowRequestNotification({
 
     return (
         <TouchableOpacity 
-            className="bg-white rounded-lg mx-4 mt-3 shadow-sm"
+            className="rounded-lg mx-4 mt-3 shadow-sm"
+            style={{ backgroundColor: colors.surface, borderWidth: 1, borderColor: item.is_read ? colors.border : colors.primary }}
             onPress={() => {
                 // Sonuç bildirimlerine tıklandığında okundu olarak işaretle
                 if (isResultMessage && !item.is_read) {
@@ -339,7 +348,20 @@ export default function FollowRequestNotification({
                 <View className="mr-3">
                     <Image
                         source={item.sender_profile_image ? { uri: item.sender_profile_image } : require('@/assets/images/ball.png')}
-                        style={{ width: 72, height: 72, borderRadius: 36, resizeMode: 'cover', opacity: item.is_read ? 0.6 : 1 }}
+                        style={{
+                            width: 72,
+                            height: 72,
+                            borderRadius: 36,
+                            borderWidth: 1,
+                            borderColor: colors.primary,
+                            shadowColor: colors.primary,
+                            shadowOpacity: 0.9,
+                            shadowRadius: 16,
+                            shadowOffset: { width: 0, height: 0 },
+                            elevation: 12,
+                            resizeMode: 'cover',
+                            opacity: item.is_read ? 0.6 : 1,
+                        }}
                     />
                 </View>
                 {/* Bildirim Metni */}
@@ -347,7 +369,7 @@ export default function FollowRequestNotification({
                     {isResultMessage ? (
                         <Text
                             className={`text-sm leading-5 ${item.is_read ? 'text-gray-500' : 'text-gray-700'}`}
-                            style={{ flexShrink: 1, flexWrap: 'wrap' }}
+                            style={{ flexShrink: 1, flexWrap: 'wrap', color: bodyTextColor }}
                             numberOfLines={2}
                         >
                             {(() => {
@@ -363,6 +385,7 @@ export default function FollowRequestNotification({
                                         {!!before && <Text>{before} </Text>}
                                         <Text
                                             className={`font-bold ${item.is_read ? 'text-gray-600' : 'text-green-700'}`}
+                                            style={{ color: strongTextColor }}
                                             onPress={() => onProfilePress?.(item.sender_id)}
                                         >
                                             {senderFullName}
@@ -376,12 +399,12 @@ export default function FollowRequestNotification({
                         // Normal takip isteği bildirimi
                         <Text
                             className={`mb-3 text-sm leading-5 ${item.is_read ? 'text-gray-500' : 'text-gray-700'}`}
-                            style={{ flexShrink: 1, flexWrap: 'wrap' }}
+                            style={{ flexShrink: 1, flexWrap: 'wrap', color: bodyTextColor }}
                             numberOfLines={2}
                             adjustsFontSizeToFit
                             minimumFontScale={0.88}
                         >
-                            <Text className={`font-bold ${item.is_read ? 'text-gray-600' : 'text-green-700'}`}>{item.sender_name} {item.sender_surname}</Text> {t('notifications.sentFollowRequest')}
+                            <Text className="font-bold" style={{ color: strongTextColor }}>{item.sender_name} {item.sender_surname}</Text> {t('notifications.sentFollowRequest')}
                         </Text>
                     )}
                 </View>
@@ -399,7 +422,7 @@ export default function FollowRequestNotification({
                             gap: 10,
                         }}
                     >
-                        <Text className={`text-xs font-bold px-2 py-1 rounded ${item.is_read ? 'text-gray-500 bg-gray-300' : 'text-green-700 bg-gray-200'}`}>
+                        <Text className="text-xs font-bold px-2 py-1 rounded" style={dateBadgeStyle}>
                             {formatted}
                         </Text>
 
@@ -483,7 +506,7 @@ export default function FollowRequestNotification({
                     // Normal takip isteği - tarih + butonlar
                     <View className="flex-row justify-between items-center">
                         <View className="mr-3">
-                            <Text className={`text-xs font-bold px-2 py-1 rounded ${item.is_read ? 'text-gray-500 bg-gray-300' : 'text-green-700 bg-gray-200'}`}>
+                            <Text className="text-xs font-bold px-2 py-1 rounded" style={dateBadgeStyle}>
                                 {formatted}
                             </Text>
                         </View>

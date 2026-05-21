@@ -1,5 +1,6 @@
 import { View, Text, TouchableOpacity } from "react-native";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useAppTheme } from "@/contexts/ThemeContext";
 
 interface ProfileStatusProps {
   matchCount?: number;
@@ -17,26 +18,27 @@ export default function ProfileStatus({
   onPressFollowing,
 }: ProfileStatusProps) {
   const { t } = useLanguage();
+  const { colors } = useAppTheme();
   return (
     <View className="flex-row justify-between mx-4 mb-1">
       <View className="">
         <View className="pb-1 px-6 items-center">
-          <Text className="font-bold text-xl"> {matchCount} </Text>
-          <Text className="font-bold text-green-700">{t('profile.matches')}</Text>
+          <Text className="font-bold text-xl" style={{ color: colors.text }}> {matchCount} </Text>
+          <Text className="font-bold" style={{ color: colors.primaryDark }}>{t('profile.matches')}</Text>
         </View>
       </View>
 
       <TouchableOpacity onPress={onPressFollowers}>
         <View className="pb-1 px-6 items-center">
-          <Text className="font-bold text-xl">{followerCount}</Text>
-          <Text className="font-bold text-green-700">{t('profile.followers')}</Text>
+          <Text className="font-bold text-xl" style={{ color: colors.text }}>{followerCount}</Text>
+          <Text className="font-bold" style={{ color: colors.primaryDark }}>{t('profile.followers')}</Text>
         </View>
       </TouchableOpacity>
 
       <TouchableOpacity onPress={onPressFollowing}>
         <View className="pb-1 px-6 items-center">
-          <Text className="font-bold text-xl">{followingCount}</Text>
-          <Text className="font-bold text-green-700">{t('profile.following')}</Text>
+          <Text className="font-bold text-xl" style={{ color: colors.text }}>{followingCount}</Text>
+          <Text className="font-bold" style={{ color: colors.primaryDark }}>{t('profile.following')}</Text>
         </View>
       </TouchableOpacity>
 

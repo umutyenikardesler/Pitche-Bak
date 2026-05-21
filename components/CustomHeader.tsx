@@ -5,6 +5,7 @@ import { useNavigation } from '@react-navigation/native';
 import { useNotification } from './NotificationContext';
 import { useRouter, usePathname } from 'expo-router';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useAppTheme } from '@/contexts/ThemeContext';
 
 // Add type for props
 interface CustomHeaderProps {
@@ -18,6 +19,7 @@ const CustomHeader = ({ title, showNotificationIcon = true, onTitlePress }: Cust
   const pathname = usePathname();
   const { badgeCount } = useNotification();
   const { t } = useLanguage();
+  const { colors, isDark } = useAppTheme();
   const { width: windowWidth } = useWindowDimensions();
   
   const handleNotificationsPress = () => {
@@ -44,6 +46,22 @@ const CustomHeader = ({ title, showNotificationIcon = true, onTitlePress }: Cust
     }
   };
 
+  const badgeStyle = {
+    position: 'absolute' as const,
+    top: -6,
+    right: -6,
+    backgroundColor: colors.danger,
+    borderRadius: 10,
+    minWidth: 18,
+    height: 18,
+    justifyContent: 'center' as const,
+    alignItems: 'center' as const,
+    paddingHorizontal: 4,
+    zIndex: 1,
+    borderWidth: 1,
+    borderColor: colors.surface,
+  };
+
   return (
     <View style={{ width: '100%' }}>
       {Platform.OS === 'web' ? (
@@ -58,7 +76,7 @@ const CustomHeader = ({ title, showNotificationIcon = true, onTitlePress }: Cust
                   <TouchableOpacity onPress={handleTitlePress} activeOpacity={0.7}>
                     <Text
                       numberOfLines={1}
-                      style={{ fontSize: 18, fontWeight: '800', color: '#15803d' }}
+                      style={{ fontSize: 18, fontWeight: '800', color: colors.primaryDark }}
                     >
                       {title}
                     </Text>
@@ -84,22 +102,10 @@ const CustomHeader = ({ title, showNotificationIcon = true, onTitlePress }: Cust
                 accessibilityLabel={t('general.notifications')}
                 accessibilityHint={t('general.notificationCount')}
               >
-                <Ionicons name="heart-outline" size={24} color="green" />
+                <Ionicons name="heart-outline" size={24} color={colors.primary} />
                 {badgeCount > 0 && (
                   <View
-                    style={{
-                      position: 'absolute',
-                      top: -6,
-                      right: -6,
-                      backgroundColor: 'red',
-                      borderRadius: 10,
-                      minWidth: 18,
-                      height: 18,
-                      justifyContent: 'center',
-                      alignItems: 'center',
-                      paddingHorizontal: 4,
-                      zIndex: 1,
-                    }}
+                    style={badgeStyle}
                   >
                     <Text
                       style={{ color: 'white', fontSize: 12, fontWeight: 'bold' }}
@@ -121,7 +127,7 @@ const CustomHeader = ({ title, showNotificationIcon = true, onTitlePress }: Cust
         <View className="flex-row justify-between items-center w-full -mx-0">
           {/* Sol: Başlık */}
           <TouchableOpacity onPress={handleTitlePress} activeOpacity={0.7}>
-            <Text className="text-lg font-bold text-green-700">{title}</Text>
+            <Text style={{ fontSize: 18, fontWeight: '700', color: colors.primaryDark }}>{title}</Text>
           </TouchableOpacity>
 
           {/* Orta: Logo (mutlak konumda ortalanmış) */}
@@ -149,22 +155,10 @@ const CustomHeader = ({ title, showNotificationIcon = true, onTitlePress }: Cust
                 accessibilityLabel={t('general.notifications')}
                 accessibilityHint={t('general.notificationCount')}
               >
-                <Ionicons name="heart-outline" size={24} color="green" />
+                <Ionicons name="heart-outline" size={24} color={colors.primary} />
                 {badgeCount > 0 && (
                   <View
-                    style={{
-                      position: 'absolute',
-                      top: -6,
-                      right: -6,
-                      backgroundColor: 'red',
-                      borderRadius: 10,
-                      minWidth: 18,
-                      height: 18,
-                      justifyContent: 'center',
-                      alignItems: 'center',
-                      paddingHorizontal: 4,
-                      zIndex: 1,
-                    }}
+                    style={badgeStyle}
                   >
                     <Text
                       style={{ color: 'white', fontSize: 12, fontWeight: 'bold' }}

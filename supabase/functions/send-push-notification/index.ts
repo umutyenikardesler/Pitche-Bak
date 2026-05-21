@@ -1,12 +1,8 @@
-// @ts-nocheck
 // Supabase Edge Function: send-push-notification
-// Tetikleyen: notifications tablosuna INSERT yapıldığında Supabase Database Webhook'u bu endpoint'i çağırır.
-//
-// Kurulum:
-//   Supabase Dashboard → Database → Webhooks → "Create a new hook"
-//   Table: notifications | Events: INSERT
-//   HTTP Request → URL: https://<project-ref>.supabase.co/functions/v1/send-push-notification
-//   Headers: Authorization: Bearer <service_role_key>
+// Tetikleyenler:
+//   1) notifications INSERT → pg_net DB trigger (migration)
+//   2) Client → supabase.functions.invoke (createNotification / triggerPushNotification)
+//   3) Supabase Dashboard Database Webhook (opsiyonel)
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
@@ -16,12 +12,14 @@ const EXPO_PUSH_URL = 'https://exp.host/--/api/v2/push/send';
 
 interface NotificationRow {
   id: string;
-  user_id: string;      // bildirimi alan kullanıcı
+  user_id: string;
   sender_id?: string;
   type: string;
   message?: string;
   match_id?: string;
+  position?: string;
   is_read: boolean;
+  created_at?: string;
 }
 
 interface WebhookPayload {
@@ -44,49 +42,77 @@ Deno.serve(async (req: Request) => {
   }
 
   const notification = payload.record;
-  if (!notification?.user_id) {
-    return new Response('Missing user_id', { status: 400 });
+  if (!notification?.id || !notification?.user_id) {
+    return new Response('Missing notification id or user_id', { status: 400 });
   }
 
   const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-  // Alıcının push token'larını çek
-  const { data: tokens, error } = await supabase
-    .from('push_tokens')
-    .select('token')
-    .eq('user_id', notification.user_id);
+  // Kaydın gerçekten DB'de olduğunu doğrula (sahte istekleri engelle)
+  const { data: stored, error: fetchError } = await supabase
+    .from('notifications')
+    .select('id, user_id, sender_id, type, message, match_id, position, is_read, created_at')
+    .eq('id', notification.id)
+    .single();
 
-  if (error || !tokens?.length) {
-    return new Response('No tokens found', { status: 200 });
+  if (fetchError || !stored) {
+    return new Response('Notification not found', { status: 404 });
   }
 
-  // Gönderen kullanıcı adını çek (opsiyonel, güzel görüntü için)
+  if (
+    stored.user_id !== notification.user_id ||
+    stored.type !== notification.type
+  ) {
+    return new Response('Notification mismatch', { status: 400 });
+  }
+
+  const { data: tokens, error: tokenError } = await supabase
+    .from('push_tokens')
+    .select('token')
+    .eq('user_id', stored.user_id);
+
+  if (tokenError) {
+    console.error('[Push] Token fetch error:', tokenError.message);
+    return new Response(JSON.stringify({ error: tokenError.message }), { status: 500 });
+  }
+
+  if (!tokens?.length) {
+    return new Response(JSON.stringify({ ok: true, sent: 0, reason: 'no_tokens' }), {
+      headers: { 'Content-Type': 'application/json' },
+      status: 200,
+    });
+  }
+
   let senderName = 'SahayaBak';
-  if (notification.sender_id) {
+  if (stored.sender_id) {
     const { data: sender } = await supabase
       .from('users')
       .select('name, surname')
-      .eq('id', notification.sender_id)
+      .eq('id', stored.sender_id)
       .single();
     if (sender?.name) {
       senderName = [sender.name, sender.surname].filter(Boolean).join(' ');
     }
   }
 
-  // Bildirim tipine göre başlık ve içerik belirle
-  const { title, body } = buildNotificationContent(notification.type, senderName, notification.message);
+  const { title, body } = buildNotificationContent(
+    stored.type,
+    senderName,
+    stored.message,
+    stored.position,
+  );
 
-  // Expo Push API'ye toplu gönderim
   const messages = tokens.map(({ token }) => ({
     to: token,
     title,
     body,
     sound: 'default',
+    priority: 'high',
     data: {
-      type: notification.type,
-      notificationId: notification.id,
-      matchId: notification.match_id ?? null,
-      senderId: notification.sender_id ?? null,
+      type: stored.type,
+      notificationId: stored.id,
+      matchId: stored.match_id ?? null,
+      senderId: stored.sender_id ?? null,
     },
     channelId: 'default',
   }));
@@ -101,38 +127,65 @@ Deno.serve(async (req: Request) => {
   });
 
   const result = await response.json();
-  return new Response(JSON.stringify(result), {
+  console.log('[Push] Expo response:', JSON.stringify(result));
+
+  return new Response(JSON.stringify({ ok: true, sent: messages.length, result }), {
     headers: { 'Content-Type': 'application/json' },
     status: 200,
   });
 });
 
-function buildNotificationContent(type: string, senderName: string, message?: string): { title: string; body: string } {
+function buildNotificationContent(
+  type: string,
+  senderName: string,
+  message?: string,
+  position?: string,
+): { title: string; body: string } {
   switch (type) {
     case 'direct_message':
       return {
         title: senderName,
-        body: message ? (message.length > 80 ? message.slice(0, 77) + '...' : message) : 'Yeni mesaj',
+        body: message
+          ? message.length > 80
+            ? message.slice(0, 77) + '...'
+            : message
+          : 'Yeni mesaj',
       };
     case 'follow_request':
+      if (message?.includes('kabul etti') || message?.toLowerCase().includes('accepted')) {
+        return {
+          title: 'SahayaBak',
+          body: `${senderName} takip isteğini kabul etti.`,
+        };
+      }
+      if (message?.includes('redded') || message?.toLowerCase().includes('reject')) {
+        return {
+          title: 'SahayaBak',
+          body: `${senderName} takip isteğini reddetti.`,
+        };
+      }
       return {
         title: 'SahayaBak',
         body: `${senderName} seni takip etmek istiyor.`,
       };
-    case 'follow_accepted':
+    case 'join_request':
+      if (message?.includes('kabul edildiniz') || message?.includes('kabul edildi')) {
+        return {
+          title: 'SahayaBak',
+          body: message.length > 100 ? message.slice(0, 97) + '...' : message,
+        };
+      }
+      if (message?.includes('kabul edilmediniz') || message?.includes('redded')) {
+        return {
+          title: 'SahayaBak',
+          body: message.length > 100 ? message.slice(0, 97) + '...' : message,
+        };
+      }
       return {
         title: 'SahayaBak',
-        body: `${senderName} takip isteğini kabul etti.`,
-      };
-    case 'position_request':
-      return {
-        title: 'SahayaBak',
-        body: `${senderName} maçına katılmak istiyor.`,
-      };
-    case 'position_accepted':
-      return {
-        title: 'SahayaBak',
-        body: 'Katılım isteğin kabul edildi! Maçını bekliyor.',
+        body: position
+          ? `${senderName} ${position} pozisyonunda katılım isteği gönderdi.`
+          : `${senderName} maçına katılmak istiyor.`,
       };
     default:
       return {

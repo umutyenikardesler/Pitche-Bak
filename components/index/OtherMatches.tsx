@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Ionicons } from "@expo/vector-icons";
 import { Match } from "./types";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useAppTheme } from "@/contexts/ThemeContext";
 import '@/global.css';
 import MatchShareModal from "@/components/share/MatchShareModal";
 
@@ -24,6 +25,7 @@ const formatTitle = (text: string) => {
 
 export default function OtherMatches({ matches, refreshing, onRefresh, onSelectMatch, onCreateMatch, isGuest }: OtherMatchesProps) {
   const { t } = useLanguage();
+  const { colors } = useAppTheme();
   const INITIAL_VISIBLE = 7;
   const [visibleCount, setVisibleCount] = useState(INITIAL_VISIBLE);
   const [sortMenuOpen, setSortMenuOpen] = useState(false);
@@ -61,7 +63,7 @@ export default function OtherMatches({ matches, refreshing, onRefresh, onSelectM
 
   const renderMatch = ({ item }: { item: Match }) => (
     <TouchableOpacity onPress={() => onSelectMatch(item)}>
-     <View className="bg-white rounded-lg mx-4 mt-1 p-1 shadow-lg">
+     <View className="rounded-lg mx-4 mt-1 p-1 shadow-lg" style={{ backgroundColor: colors.surface }}>
         <View className="flex-row items-center justify-between">
           {/* Profil Resmi */}
           <View className="w-1/5 flex justify-center p-1 py-1.5">
@@ -77,36 +79,44 @@ export default function OtherMatches({ matches, refreshing, onRefresh, onSelectM
           </View>
           {/* Maç Bilgileri */}
           <View className="w-4/6 flex justify-center -mt-2 ml-2">
-            <View className="flex-row items-center" style={{ width: "100%" }}>
+            <View className="flex-row items-center" style={{ width: "100%", marginTop: 5 }}>
               <Text
-                className="text-lg text-green-700 font-semibold"
+                className="text-lg font-semibold"
                 numberOfLines={1}
                 ellipsizeMode="tail"
-                style={{ flex: 1, minWidth: 0, paddingRight: 8 }}
+                style={{ flex: 1, minWidth: 0, paddingRight: 8, color: colors.primaryDark }}
               >
                 {formatTitle(item.title)}
               </Text>
             </View>
 
-            <View className="text-gray-700 text-md flex-row items-center">
-              <Ionicons name="calendar-outline" size={18} color="black" />
-              <Text className="pl-2 font-semibold"> {item.formattedDate} →</Text>
-              <Text className="pl-2 font-bold text-green-700"> {item.startFormatted}-{item.endFormatted} </Text>
+            <View className="text-md flex-row items-center">
+              <Ionicons name="calendar-outline" size={18} color={colors.icon} />
+              <Text className="pl-2 font-semibold" style={{ color: colors.text }}> {item.formattedDate} →</Text>
+              <Text className="pl-2 font-bold" style={{ color: colors.primaryDark }}> {item.startFormatted}-{item.endFormatted} </Text>
             </View>
 
-            <View className="text-gray-700 text-md flex-row items-center pt-1">
-              <Ionicons name="location" size={18} color="black" />
-              <Text className="pl-2 font-semibold"> {
-                Array.isArray(item.pitches) 
-                  ? (Array.isArray(item.pitches[0]?.districts) 
-                      ? item.pitches[0]?.districts[0]?.name 
-                      : item.pitches[0]?.districts?.name)
-                  : (Array.isArray(item.pitches?.districts) 
-                      ? item.pitches?.districts[0]?.name 
-                      : item.pitches?.districts?.name)
-                ?? 'Bilinmiyor'
-              } →</Text>
-              <Text className="pl-2 font-bold text-green-700"> {Array.isArray(item.pitches) ? item.pitches[0]?.name : item.pitches?.name ?? 'Bilinmiyor'} </Text>
+            <View className="text-md flex-row items-start pt-1" style={{ width: "100%" }}>
+              <Ionicons name="location" size={18} color={colors.icon} />
+              <View style={{ flex: 1, minWidth: 0, paddingRight: 8, paddingLeft: 10 }}>
+                <Text className="font-semibold" style={{ flexWrap: "wrap", color: colors.text }}>
+                  {
+                    Array.isArray(item.pitches)
+                      ? (Array.isArray(item.pitches[0]?.districts)
+                          ? item.pitches[0]?.districts[0]?.name
+                          : item.pitches[0]?.districts?.name)
+                      : (Array.isArray(item.pitches?.districts)
+                          ? item.pitches?.districts[0]?.name
+                          : item.pitches?.districts?.name)
+                    ?? 'Bilinmiyor'
+                  }{" "}
+                  →
+                  <Text className="font-bold" style={{ color: colors.primaryDark }}>
+                    {" "}
+                    {Array.isArray(item.pitches) ? item.pitches[0]?.name : item.pitches?.name ?? 'Bilinmiyor'}
+                  </Text>
+                </Text>
+              </View>
             </View>
           </View>
           {/* Sağ ok alanı: dikeyde 3 bölüm (paylaş / ok / boş) */}
@@ -127,13 +137,13 @@ export default function OtherMatches({ matches, refreshing, onRefresh, onSelectM
                 hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                 style={{ padding: 4, marginRight: 2 }}
               >
-                <Ionicons name="share-social-outline" size={18} color="#16a34a" />
+                <Ionicons name="share-social-outline" size={18} color={colors.primary} />
               </TouchableOpacity>
             </View>
 
             {/* Orta: Ok */}
             <View style={{ flex: 1, justifyContent: "center", alignItems: "flex-end", marginRight: 5 }}>
-              <Ionicons name="chevron-forward-outline" size={20} color="green" />
+              <Ionicons name="chevron-forward-outline" size={20} color={colors.primary} />
             </View>
 
             {/* Alt: boş */}
@@ -176,14 +186,14 @@ export default function OtherMatches({ matches, refreshing, onRefresh, onSelectM
             paddingHorizontal: 10,
             paddingVertical: 6,
             borderRadius: 10,
-            backgroundColor: "#ffffff",
+            backgroundColor: colors.surface,
             borderWidth: 1,
             borderColor: "rgba(255,255,255,0.85)",
             flexShrink: 0,
           }}
         >
-          <Ionicons name="options-outline" size={16} color="#16a34a" />
-          <Text style={{ color: "#16a34a", fontWeight: "900", marginLeft: 6, fontSize: 12 }}>
+          <Ionicons name="options-outline" size={16} color={colors.primary} />
+          <Text style={{ color: colors.primary, fontWeight: "900", marginLeft: 6, fontSize: 12 }}>
             {sortMode === "distance" ? t("home.sort.distanceShort") : t("home.sort.datetimeShort")}
           </Text>
         </TouchableOpacity>
@@ -261,7 +271,7 @@ export default function OtherMatches({ matches, refreshing, onRefresh, onSelectM
 
       {matches.length === 0 && !refreshing ? (
         <View className='flex justify-center items-center py-4'>
-          <Text className="text-center font-bold my-1">{t('home.noIncompleteSquadMatches')}</Text>
+          <Text className="text-center font-bold my-1" style={{ color: colors.text }}>{t('home.noIncompleteSquadMatches')}</Text>
           <TouchableOpacity
             className="bg-green-600 rounded-md my-3 items-center self-center"
             style={{
@@ -284,7 +294,7 @@ export default function OtherMatches({ matches, refreshing, onRefresh, onSelectM
         </View>
       ) : matches.length === 0 && refreshing ? (
         <View className='flex justify-center items-center py-4'>
-          <Text className="text-center font-bold text-gray-600">{t('home.matchesLoading')}</Text>
+          <Text className="text-center font-bold" style={{ color: colors.textMuted }}>{t('home.matchesLoading')}</Text>
         </View>
       ) : (
         <FlatList

@@ -9,6 +9,7 @@ import * as FileSystem from "expo-file-system/legacy";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useGuestAuthAlert } from '@/contexts/GuestAuthModalContext';
+import { useAppTheme } from "@/contexts/ThemeContext";
 
 import ProfileInfo from "@/components/profile/ProfileInfo";
 import ProfileStatus from "@/components/profile/ProfileStatus";
@@ -26,6 +27,7 @@ export default function Profile() {
   const { currentLanguage, changeLanguage, t } = useLanguage();
   const { isGuest } = useAuth();
   const { showGuestAuthAlert } = useGuestAuthAlert();
+  const { colors } = useAppTheme();
 
   useFocusEffect(
     useCallback(() => {
@@ -1125,9 +1127,9 @@ export default function Profile() {
 
   return (
     <ScrollView
-      style={{ flex: 1 }}
+      style={{ flex: 1, backgroundColor: colors.background }}
     >
-      <View className="bg-white rounded-lg m-3 p-1 shadow-lg flex-1">
+      <View className="rounded-lg m-3 p-1 shadow-lg flex-1" style={{ backgroundColor: colors.surface }}>
         <View className="flex-1">
           <ProfileInfo
             userData={userData}
@@ -1257,9 +1259,9 @@ export default function Profile() {
           animationType="fade"
           onRequestClose={() => setLogoutModalVisible(false)}
         >
-          <View className="flex-1 justify-center items-center" style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}>
-            <View className="bg-white rounded-xl p-6 mx-8 w-80">
-              <Text className="text-xl font-bold text-center text-gray-800 mb-6">
+          <View className="flex-1 justify-center items-center" style={{ backgroundColor: colors.overlay }}>
+            <View className="rounded-xl p-6 mx-8 w-80" style={{ backgroundColor: colors.surface }}>
+              <Text className="text-xl font-bold text-center mb-6" style={{ color: colors.text }}>
                 Çıkmak istediğinize emin misiniz?
               </Text>
               <View className="flex-row justify-between">
@@ -1267,15 +1269,15 @@ export default function Profile() {
                   onPress={() => (logoutLoading ? null : setLogoutModalVisible(false))}
                   disabled={logoutLoading}
                   className="flex-1 mr-2 py-3 rounded-lg"
-                  style={{ backgroundColor: '#aaa', opacity: logoutLoading ? 0.6 : 1 }}
+                  style={{ backgroundColor: colors.surfaceAlt, opacity: logoutLoading ? 0.6 : 1 }}
                 >
-                  <Text className="text-white font-bold text-center">İptal Et</Text>
+                  <Text className="font-bold text-center" style={{ color: colors.text }}>İptal Et</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   onPress={confirmLogout}
                   disabled={logoutLoading}
                   className="flex-1 ml-2 py-3 rounded-lg"
-                  style={{ backgroundColor: 'green', opacity: logoutLoading ? 0.7 : 1 }}
+                  style={{ backgroundColor: colors.primary, opacity: logoutLoading ? 0.7 : 1 }}
                 >
                   <Text className="text-white font-bold text-center">
                     {logoutLoading ? "Çıkış yapılıyor..." : "Çıkış Yap"}

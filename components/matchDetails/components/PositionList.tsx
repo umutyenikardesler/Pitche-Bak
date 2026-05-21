@@ -2,6 +2,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useAppTheme } from '@/contexts/ThemeContext';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -36,6 +37,7 @@ export default function PositionList({
   onPositionPress,
 }: PositionListProps) {
   const { t } = useLanguage();
+  const { colors, isDark } = useAppTheme();
   const isOwner = currentUserId === matchCreateUser;
   const hasAnyRequest = sentRequests.length > 0;
   const hasAcceptedPosition = acceptedPosition || shownAcceptedPositions.size > 0;
@@ -128,9 +130,9 @@ export default function PositionList({
                       ? 'border-green-500 bg-green-100'
                       : isAcceptedForThisPosition
                       ? 'border-blue-500 bg-blue-100'
-                      : 'border-green-600 bg-white'
+                      : 'border-green-600'
                   }`}
-                  style={{ overflow: 'hidden', position: 'relative' }}
+                  style={{ overflow: 'hidden', position: 'relative', backgroundColor: isSent ? '#dcfce7' : isAcceptedForThisPosition ? '#dbeafe' : colors.surfaceAlt }}
                   onLayout={(event) => {
                     const h = event.nativeEvent.layout.height;
                     if (h > 0 && h !== chipHeight) setChipHeight(h);
@@ -172,8 +174,8 @@ export default function PositionList({
                   >
                     <Text className="text-white font-bold text-lg px-1.5">{shortLabel(position)}</Text>
                   </View>
-                  <Text className="ml-1 mr-1 text-base">
-                    x <Text className="font-bold">{count}</Text>
+                  <Text className="ml-1 mr-1 text-base" style={{ color: (isSent || isAcceptedForThisPosition) && !isDark ? '#111827' : colors.text }}>
+                    x <Text className="font-bold" style={{ color: (isSent || isAcceptedForThisPosition) && !isDark ? '#111827' : colors.text }}>{count}</Text>
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -188,7 +190,8 @@ export default function PositionList({
               className="flex-row items-center mx-0.5 mb-2"
             >
               <TouchableOpacity
-                className="flex-row items-center border-solid border-2 border-green-600 bg-green-100 rounded-full p-1"
+                className="flex-row items-center border-solid border-2 border-green-600 rounded-full p-1"
+                style={{ backgroundColor: '#dcfce7' }}
                 onPress={() => !isOwner && onPositionPress(position)}
                 disabled={isOwner || isLoading}
               >

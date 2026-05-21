@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, FlatList, Switch, StyleSheet, Platform } from 'react-native';
-import { supabase } from '@/services/supabase';
+import React from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, Pressable } from 'react-native';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useAppTheme } from '@/contexts/ThemeContext';
 import '@/global.css';
 
 interface SquadSelectorProps {
@@ -13,6 +13,45 @@ interface SquadSelectorProps {
   setMatchFormat: (format: string) => void;
 }
 
+const SWITCH_WIDTH = 51;
+const SWITCH_HEIGHT = 31;
+const THUMB_SIZE = 25;
+const THUMB_PADDING = 3;
+
+const SquadSwitch = ({
+  value,
+  onValueChange,
+  primaryColor,
+}: {
+  value: boolean;
+  onValueChange: (next: boolean) => void;
+  primaryColor: string;
+}) => {
+  const thumbOffset = SWITCH_WIDTH - THUMB_SIZE - THUMB_PADDING * 2;
+
+  return (
+    <Pressable
+      onPress={() => onValueChange(!value)}
+      style={[
+        styles.switchTrack,
+        { backgroundColor: value ? primaryColor : '#bbf7d0' },
+      ]}
+      accessibilityRole="switch"
+      accessibilityState={{ checked: value }}
+    >
+      <View
+        style={[
+          styles.switchThumb,
+          {
+            borderColor: primaryColor,
+            transform: [{ translateX: value ? thumbOffset : 0 }],
+          },
+        ]}
+      />
+    </Pressable>
+  );
+};
+
 export const SquadSelector: React.FC<SquadSelectorProps> = ({
   isSquadIncomplete,
   setIsSquadIncomplete,
@@ -22,6 +61,7 @@ export const SquadSelector: React.FC<SquadSelectorProps> = ({
   setMatchFormat,
 }) => {
   const { t } = useLanguage();
+  const { colors } = useAppTheme();
 
   // Maç formatına göre maksimum sayıları belirle
   const getMaxCountForPosition = (position: string, format: string) => {
@@ -80,9 +120,36 @@ export const SquadSelector: React.FC<SquadSelectorProps> = ({
     }));
   };
 
-  const ItemSeparator = () => (
-    <View style={styles.separator} />
-  );
+  const renderCountButtons = (position: string) => {
+    const selectedCount = missingPositions[position]?.count;
+    const maxCount = getMaxCountForPosition(position, matchFormat);
+
+    return (
+      <View style={styles.countRow}>
+        {Array.from({ length: maxCount }, (_, i) => i + 1).map((item) => {
+          const isSelected = selectedCount === item;
+          return (
+            <TouchableOpacity
+              key={`${position}-${item}`}
+              style={[
+                styles.countButton,
+                {
+                  backgroundColor: isSelected ? colors.primary : '#d1d5db',
+                  borderColor: isSelected ? colors.primary : '#9ca3af',
+                },
+              ]}
+              activeOpacity={0.8}
+              onPress={() => handleCountChange(position, item)}
+            >
+              <Text style={{ color: isSelected ? '#ffffff' : '#111827', fontWeight: '600' }}>
+                {item}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+    );
+  };
 
   return (
     <View className="mb-2">
@@ -113,13 +180,10 @@ export const SquadSelector: React.FC<SquadSelectorProps> = ({
 
       {/* Kadro Eksik mi Switch */}
       <Text className="text-green-700 font-semibold mb-2">{t('create.squadIncompleteQuestion')}</Text>
-      <Switch
+      <SquadSwitch
         value={isSquadIncomplete}
         onValueChange={setIsSquadIncomplete}
-        trackColor={{ false: "#d1d5db", true: "#5ea500" }} // Açık ve kapalı rengi belirler
-        thumbColor={Platform.OS === "android" ? "#ffffff" : undefined} // Android için beyaz başlatma noktası
-        ios_backgroundColor="#d1d5db" // iOS için kapalıyken arka plan rengi
-        style={{ transform: [{ scaleX: -1 }] }} // **Switch'i terse çevirerek** iOS ve Android'de sol başlangıç
+        primaryColor={colors.primary}
       />
 
       {isSquadIncomplete && (
@@ -148,25 +212,7 @@ export const SquadSelector: React.FC<SquadSelectorProps> = ({
                   {missingPositions[position] && missingPositions[position].selected && (
                     <View className="mt-2">
                       <Text className="text-gray-600 mb-2">{t('create.howManyMissingQuestion').replace('{position}', position === 'ortaSaha' ? 'Orta Saha' : position.charAt(0).toUpperCase() + position.slice(1))}</Text>
-                      <FlatList
-                        horizontal
-                        data={Array.from({ length: getMaxCountForPosition(position, matchFormat) }, (_, i) => i + 1)}
-                        keyExtractor={(item) => item.toString()}
-                        renderItem={({ item }) => (
-                          <TouchableOpacity
-                            className={`p-2 px-3 rounded-lg border ${missingPositions[position].count === item
-                                ? 'bg-green-600 border-green-600 text-white'
-                                : 'bg-gray-300 border-gray-400'
-                              }`}
-                            onPress={() => handleCountChange(position, item)}
-                          >
-                            <Text className={missingPositions[position].count === item ? 'text-white' : 'text-black'}>
-                              {item}
-                            </Text>
-                          </TouchableOpacity>
-                        )}
-                        ItemSeparatorComponent={() => <View style={{ width: 5 }} />}
-                      />
+                      {renderCountButtons(position)}
                     </View>
                   )}
                 </View>
@@ -196,25 +242,7 @@ export const SquadSelector: React.FC<SquadSelectorProps> = ({
                       <Text className="text-gray-600 mb-2">
                         {t('create.howManyMissingQuestion').replace('{position}', position === 'ortaSaha' ? 'Orta Saha' : position)}
                       </Text>
-                      <FlatList
-                        horizontal
-                        data={Array.from({ length: getMaxCountForPosition(position, matchFormat) }, (_, i) => i + 1)}
-                        keyExtractor={(item) => item.toString()}
-                        renderItem={({ item }) => (
-                          <TouchableOpacity
-                            className={`p-2 px-3 rounded-lg border ${missingPositions[position].count === item
-                                ? 'bg-green-600 border-green-600 text-white'
-                                : 'bg-gray-300 border-gray-400'
-                              }`}
-                            onPress={() => handleCountChange(position, item)}
-                          >
-                            <Text className={missingPositions[position].count === item ? 'text-white' : 'text-black'}>
-                              {item}
-                            </Text>
-                          </TouchableOpacity>
-                        )}
-                        ItemSeparatorComponent={() => <View style={{ width: 5 }} />}
-                      />
+                      {renderCountButtons(position)}
                     </View>
                   )}
                 </View>
@@ -229,16 +257,34 @@ export const SquadSelector: React.FC<SquadSelectorProps> = ({
 };
 
 const styles = StyleSheet.create({
-  separator: {
-    width: 5, // Ayırıcı genişliği (isteğinize göre ayarlayın)
-    height: '100%', // Ayırıcının yüksekliği (isteğe göre ayarlayın)
-    backgroundColor: 'transparent', // veya ayırıcı rengi (örn. '#000000')
+  switchTrack: {
+    width: SWITCH_WIDTH,
+    height: SWITCH_HEIGHT,
+    borderRadius: SWITCH_HEIGHT / 2,
+    padding: THUMB_PADDING,
+    alignSelf: 'flex-start',
+    justifyContent: 'center',
   },
-  flatList: {
-    marginHorizontal: 10, // FlatList'in yatay boşluğu (isteğe bağlı)
+  switchThumb: {
+    width: THUMB_SIZE,
+    height: THUMB_SIZE,
+    borderRadius: THUMB_SIZE / 2,
+    backgroundColor: '#ffffff',
+    borderWidth: 2,
   },
   buttonWrapper: {
-    width: '48%', // %50 yerine %48 verdik, kenarlarda kayma olmaması için
+    width: '48%',
     marginBottom: 10,
+  },
+  countRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 5,
+  },
+  countButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    borderWidth: 1,
   },
 });

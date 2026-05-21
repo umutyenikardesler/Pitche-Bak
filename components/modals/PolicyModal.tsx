@@ -10,6 +10,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useAppTheme } from "@/contexts/ThemeContext";
 import { POLICIES, PolicyKey } from "@/constants/policies";
 
 interface PolicyModalProps {
@@ -24,6 +25,7 @@ export default function PolicyModal({
   policyKey,
 }: PolicyModalProps) {
   const { t } = useLanguage();
+  const { colors } = useAppTheme();
   const insets = useSafeAreaInsets();
 
   if (!policyKey) return null;
@@ -49,8 +51,9 @@ export default function PolicyModal({
         style={Platform.OS === "web" ? { alignItems: "center" } : undefined}
       >
         <View
-          className="bg-white rounded-t-3xl flex-1"
+          className="rounded-t-3xl flex-1"
           style={{
+            backgroundColor: colors.surface,
             paddingTop: safeTop,
             paddingBottom: safeBottom,
             borderTopWidth: 4,
@@ -74,9 +77,10 @@ export default function PolicyModal({
               : null),
           }}
         >
-          <View className="flex-row items-center justify-between p-4 border-b border-gray-200">
+          <View className="flex-row items-center justify-between p-4" style={{ borderBottomWidth: 1, borderColor: colors.border }}>
             <Text
-              className="text-lg font-bold text-green-600 flex-1"
+              className="text-lg font-bold flex-1"
+              style={{ color: colors.primary }}
               numberOfLines={2}
             >
               {title}
@@ -99,7 +103,8 @@ export default function PolicyModal({
                 return (
                   <Text
                     key={idx}
-                    className="text-xs text-gray-500 mb-3 italic"
+                    className="text-xs mb-3 italic"
+                    style={{ color: colors.textMuted }}
                   >
                     {block.text}
                   </Text>
@@ -109,7 +114,8 @@ export default function PolicyModal({
                 return (
                   <Text
                     key={idx}
-                    className="text-base font-bold text-gray-900 mt-4 mb-2"
+                    className="text-base font-bold mt-4 mb-2"
+                    style={{ color: colors.text }}
                   >
                     {block.text}
                   </Text>
@@ -118,13 +124,13 @@ export default function PolicyModal({
               if (block.type === "li") {
                 return (
                   <View key={idx} style={{ flexDirection: "row", marginBottom: 8, alignItems: "flex-start" }}>
-                    <Text style={{ color: "#374151", marginRight: 8, marginTop: 2 }}>•</Text>
-                    <Text style={{ color: "#374151", flex: 1, flexShrink: 1 }}>{block.text}</Text>
+                    <Text style={{ color: colors.textSecondary, marginRight: 8, marginTop: 2 }}>•</Text>
+                    <Text style={{ color: colors.textSecondary, flex: 1, flexShrink: 1 }}>{block.text}</Text>
                   </View>
                 );
               }
               return (
-                <Text key={idx} className="text-gray-700 mb-3">
+                <Text key={idx} className="mb-3" style={{ color: colors.textSecondary }}>
                   {block.text}
                 </Text>
               );

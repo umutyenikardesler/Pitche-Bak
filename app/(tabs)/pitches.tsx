@@ -8,6 +8,7 @@ import haversine from "haversine";
 import * as Location from "expo-location";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useAppTheme } from "@/contexts/ThemeContext";
 import PitchesLocation from "@/components/pitches/PitchesLocation";
 import PitchesList from "@/components/pitches/PitchesList";
 import AdMobBanner from "@/components/ads/AdMobBanner";
@@ -23,6 +24,7 @@ type PitchRow = {
 
 export default function Pitches() {
   const { t } = useLanguage();
+  const { colors } = useAppTheme();
   const [pitches, setPitches] = useState<PitchRow[]>([]);
   const [selectedPitch, setSelectedPitch] = useState<PitchRow | null>(null);
   const [loading, setLoading] = useState(true);
@@ -458,13 +460,13 @@ export default function Pitches() {
   }, [selectedPitch]);
 
   if (loading) {
-    return <ActivityIndicator size="large" color="green" className="flex-1 justify-center items-center" />;
+    return <ActivityIndicator size="large" color={colors.primary} className="flex-1 justify-center items-center" />;
   }
 
   return (
     <GestureHandlerRootView className="flex-1">
       <GestureDetector gesture={swipeBackGesture}>
-        <View className="bg-slate-100 flex-1">
+        <View className="flex-1" style={{ backgroundColor: colors.background }}>
           {!selectedPitch && (
             <View style={{ flexShrink: 0 }} collapsable={false}>
               <PitchesLocation locationText={locationText} setLocationText={setLocationText} getLocation={getLocation} />

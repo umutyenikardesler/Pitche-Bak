@@ -20,6 +20,7 @@ import { useMatchDataFetching } from '@/components/matchDetails/hooks/useMatchDa
 import { useMatchRealtime } from '@/components/matchDetails/hooks/useMatchRealtime';
 import { useMatchEventListeners } from '@/components/matchDetails/hooks/useMatchEventListeners';
 import { useMatchPositionHandlers } from '@/components/matchDetails/hooks/useMatchPositionHandlers';
+import { useAppTheme } from '@/contexts/ThemeContext';
 
 interface MatchDetailsProps {
   match: Match;
@@ -29,6 +30,7 @@ interface MatchDetailsProps {
 
 export default function MatchDetails({ match, onClose, onOpenProfilePreview }: MatchDetailsProps) {
   const { t } = useLanguage();
+  const { colors } = useAppTheme();
   const router = useRouter();
   const { isGuest } = useAuth();
   const { showGuestAuthAlert } = useGuestAuthAlert();
@@ -296,21 +298,22 @@ export default function MatchDetails({ match, onClose, onOpenProfilePreview }: M
       alwaysBounceVertical={false}
       overScrollMode="auto"
     >
-      <View className="flex-1 bg-white p-4 rounded-lg m-3 shadow-lg">
+      <View className="flex-1 p-4 rounded-lg m-3 shadow-lg" style={{ backgroundColor: colors.surface }}>
         <MatchHeader title={match.title} />
         <MatchInfo match={match} />
 
         <View>
-          <Text className="text-xl font-semibold text-green-700 text-center mt-3">
+          <Text className="text-xl font-semibold text-center mt-3" style={{ color: colors.primaryDark }}>
             {t('home.missingSquads')}
           </Text>
-          <Text className="text-base font-semibold text-center mb-2">
+          <Text className="text-base font-semibold text-center mb-2" style={{ color: colors.text }}>
             ( Kaleci: <Text className="text-red-500 font-bold">KL</Text>, Defans: <Text className="text-blue-700 font-bold">DF</Text>, Orta Saha: <Text className="text-green-700 font-bold">OS</Text>, Forvet: <Text className="text-yellow-600 font-bold">FV</Text> )
           </Text>
           {!isOwner && missingGroups.length > 0 && (
             <View className="items-center mb-3 px-2">
               <Text
-                className="text-xs text-gray-600 text-center"
+                className="text-xs text-center"
+                style={{ color: colors.textMuted }}
                 numberOfLines={1}
               >
                 Eksik pozisyona dokunarak katılım isteği gönder.
@@ -370,7 +373,7 @@ export default function MatchDetails({ match, onClose, onOpenProfilePreview }: M
         <View className="h-20"></View>
         
         {/* Geri Dön butonu - ScrollView içinde sabit */}
-        <View className="absolute bottom-0 left-0 right-0 bg-white py-2 mr-8 ml-1">
+        <View className="absolute bottom-0 left-0 right-0 py-2 mr-8 ml-1" style={{ backgroundColor: colors.surface }}>
           <TouchableOpacity className="w-full items-center bg-green-700 p-3 rounded-lg m-3" onPress={onClose}>
             <Text className="text-white font-bold text-lg">{t('general.back')}</Text>
           </TouchableOpacity>

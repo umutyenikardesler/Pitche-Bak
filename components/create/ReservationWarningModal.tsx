@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, Modal, TouchableOpacity, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useAppTheme } from '@/contexts/ThemeContext';
 
 interface ReservationWarningModalProps {
   visible: boolean;
@@ -13,6 +14,7 @@ export default function ReservationWarningModal({
   onClose,
 }: ReservationWarningModalProps) {
   const { t } = useLanguage();
+  const { colors } = useAppTheme();
   const [reservationConfirmed, setReservationConfirmed] = useState(false);
 
   const handleClose = () => {
@@ -41,31 +43,43 @@ export default function ReservationWarningModal({
         handleClose();
       }}
     >
-      <View className="flex-1 bg-black/70 justify-center items-center px-4">
-        <View className="bg-white rounded-lg p-6 w-full max-w-md">
+      <View className="flex-1 justify-center items-center px-4" style={{ backgroundColor: colors.overlay }}>
+        <View
+          className="rounded-lg p-6 w-full max-w-md"
+          style={{
+            backgroundColor: colors.surface,
+            borderWidth: 1,
+            borderColor: colors.primary,
+            shadowColor: colors.primary,
+            shadowOpacity: 0.8,
+            shadowRadius: 8,
+            shadowOffset: { width: 0, height: 0 },
+            elevation: 8,
+          }}
+        >
           {/* Başlık */}
           <View className="mb-4">
-            <Text className="text-2xl font-bold text-center mb-2 text-red-600">
+            <Text className="text-2xl font-bold text-center mb-2" style={{ color: colors.danger }}>
               {t('create.reservationWarning.title')}
             </Text>
-            <View className="h-1 bg-red-600 rounded-full mb-3"></View>
+            <View className="h-1 rounded-full mb-3" style={{ backgroundColor: colors.danger }}></View>
           </View>
 
           {/* İçerik */}
           <View className="mb-4">
-            <Text className="text-lg font-bold text-green-700 mb-2 text-center">
+            <Text className="text-lg font-bold mb-2 text-center" style={{ color: colors.primaryDark }}>
               {t('create.reservationWarning.reservationTitle')}
             </Text>
-            <Text className="text-base text-gray-700 mb-4 text-center">
+            <Text className="text-base mb-4 text-center" style={{ color: colors.text }}>
               {t('create.reservationWarning.reservationTextPrefix')}{' '}
-              <Text className="font-bold text-red-600">{t('create.reservationWarning.reservationTextEmphasis')}</Text>{' '}
+              <Text className="font-bold" style={{ color: colors.danger }}>{t('create.reservationWarning.reservationTextEmphasis')}</Text>{' '}
               {t('create.reservationWarning.reservationTextSuffix')}
             </Text>
 
-            <Text className="text-lg font-bold text-blue-700 mb-2 text-center">
+            <Text className="text-lg font-bold mb-2 text-center" style={{ color: colors.primary }}>
               {t('create.reservationWarning.createTitle')}
             </Text>
-            <Text className="text-base text-gray-700 mb-4 text-center">
+            <Text className="text-base mb-4 text-center" style={{ color: colors.text }}>
               {t('create.reservationWarning.createText')}
             </Text>
           </View>
@@ -73,17 +87,22 @@ export default function ReservationWarningModal({
           {/* Checkbox */}
           <TouchableOpacity
             onPress={() => setReservationConfirmed(!reservationConfirmed)}
-            className="flex-row items-center justify-center mb-4 p-3 bg-gray-50 rounded-lg"
+            className="flex-row items-center justify-center mb-4 p-3 rounded-lg"
+            style={{ backgroundColor: colors.surfaceAlt }}
             activeOpacity={0.7}
           >
-            <View className={`w-6 h-6 border-2 rounded mr-3 items-center justify-center ${
-              reservationConfirmed ? 'bg-green-600 border-green-600' : 'border-gray-400'
-            }`}>
+            <View
+              className="w-6 h-6 border-2 rounded mr-3 items-center justify-center"
+              style={{
+                backgroundColor: reservationConfirmed ? colors.primary : 'transparent',
+                borderColor: reservationConfirmed ? colors.primary : colors.inputBorder,
+              }}
+            >
               {reservationConfirmed && (
                 <Ionicons name="checkmark" size={18} color="#fff" />
               )}
             </View>
-            <Text className="flex-1 text-base font-semibold text-gray-800 text-center">
+            <Text className="flex-1 text-base font-semibold text-center" style={{ color: colors.text }}>
               {t('create.reservationWarning.checkboxText')}
             </Text>
           </TouchableOpacity>
@@ -91,12 +110,14 @@ export default function ReservationWarningModal({
           {/* Tamam Butonu */}
           <TouchableOpacity
             onPress={handleClose}
-            className={`py-3 rounded-md ${
-              reservationConfirmed ? 'bg-green-600' : 'bg-gray-400'
-            }`}
+            className="py-3 rounded-md"
+            style={{
+              backgroundColor: reservationConfirmed ? colors.primary : colors.inputBorder,
+              opacity: reservationConfirmed ? 1 : 0.7,
+            }}
             disabled={!reservationConfirmed}
           >
-            <Text className="text-white font-bold text-center text-lg">
+            <Text className="font-bold text-center text-lg" style={{ color: colors.whiteText }}>
               {t('general.ok')}
             </Text>
           </TouchableOpacity>

@@ -7,6 +7,7 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { useNotification } from "@/components/NotificationContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useGuestAuthAlert } from "@/contexts/GuestAuthModalContext";
+import { useAppTheme } from "@/contexts/ThemeContext";
 import { DeviceEventEmitter, Platform, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -16,6 +17,7 @@ export default function TabsLayout() {
   const { t } = useLanguage();
   const { isGuest } = useAuth();
   const { showGuestAuthAlert } = useGuestAuthAlert();
+  const { colors, isDark } = useAppTheme();
   const insets = useSafeAreaInsets();
   const tabPressTimers = useRef<Record<string, NodeJS.Timeout>>({});
   const tabPressCounts = useRef<Record<string, number>>({});
@@ -37,7 +39,7 @@ export default function TabsLayout() {
   const tabBarExtraBottom = isWeb ? 0 : isIos ? 0 : tabBarInnerBottomAndroid;
   const tabBarStyles = StyleSheet.create({
     tabBar: {
-      backgroundColor: "#ffffff",
+      backgroundColor: colors.surface,
       height: isWeb ? 84 : tabBarBaseHeight + tabBarBottomInset + tabBarExtraBottom,
       paddingBottom: isWeb ? 10 : tabBarBottomInset + tabBarExtraBottom,
       // marginBottom verme: altta gri şerit (arka plan görünür)
@@ -51,7 +53,7 @@ export default function TabsLayout() {
     },
     tabBarBg: {
       flex: 1,
-      backgroundColor: '#ffffff'
+      backgroundColor: colors.surface
     },
     tabBarTopLine: {
       position: 'absolute',
@@ -140,15 +142,34 @@ export default function TabsLayout() {
                 fontWeight: '700',
                 marginTop: 2,
               },
+              sceneStyle: {
+                backgroundColor: colors.background,
+              },
+              headerStyle: {
+                backgroundColor: colors.surface,
+                borderBottomWidth: 1,
+                borderBottomColor: colors.primary,
+              },
+              headerShadowVisible: false,
             }
-          : undefined
+          : {
+              sceneStyle: {
+                backgroundColor: colors.background,
+              },
+              headerStyle: {
+                backgroundColor: colors.surface,
+                borderBottomWidth: 1,
+                borderBottomColor: colors.primary,
+              },
+              headerShadowVisible: false,
+            }
       }
     >
       <Tabs.Screen
         name="index"
         options={{
           tabBarActiveTintColor: "#059669",
-          tabBarInactiveTintColor: "#374151",
+          tabBarInactiveTintColor: isDark ? "#d1d5db" : "#374151",
           tabBarStyle: tabBarStyles.tabBar,
           tabBarItemStyle: tabBarStyles.tabBarItem,
           tabBarBackground: () => (
@@ -160,7 +181,7 @@ export default function TabsLayout() {
           ...(isWeb
             ? {
                 header: () => (
-                  <View style={{ width: '100%', paddingHorizontal: 12, paddingVertical: 8, backgroundColor: '#fff' }}>
+                  <View style={{ width: '100%', paddingHorizontal: 12, paddingVertical: 8, backgroundColor: colors.surface, borderBottomWidth: 1, borderBottomColor: colors.primary }}>
                     <CustomHeader title={t('home.title')} onTitlePress={handleTitlePress} />
                   </View>
                 ),
@@ -184,7 +205,7 @@ export default function TabsLayout() {
         name="pitches"
         options={{
           tabBarActiveTintColor: "#059669",
-          tabBarInactiveTintColor: "#374151",
+          tabBarInactiveTintColor: isDark ? "#d1d5db" : "#374151",
           tabBarStyle: tabBarStyles.tabBar,
           tabBarItemStyle: tabBarStyles.tabBarItem,
           tabBarBackground: () => (
@@ -196,7 +217,7 @@ export default function TabsLayout() {
           ...(isWeb
             ? {
                 header: () => (
-                  <View style={{ width: '100%', paddingHorizontal: 12, paddingVertical: 8, backgroundColor: '#fff' }}>
+                  <View style={{ width: '100%', paddingHorizontal: 12, paddingVertical: 8, backgroundColor: colors.surface, borderBottomWidth: 1, borderBottomColor: colors.primary }}>
                     <CustomHeader title={t('pitches.title')} onTitlePress={handleTitlePress} />
                   </View>
                 ),
@@ -232,7 +253,7 @@ export default function TabsLayout() {
         }}
         options={{
           tabBarActiveTintColor: "#059669",
-          tabBarInactiveTintColor: "#374151",
+          tabBarInactiveTintColor: isDark ? "#d1d5db" : "#374151",
           tabBarStyle: tabBarStyles.tabBar,
           tabBarItemStyle: tabBarStyles.tabBarItem,
           tabBarBackground: () => (
@@ -244,7 +265,7 @@ export default function TabsLayout() {
           ...(isWeb
             ? {
                 header: () => (
-                  <View style={{ width: '100%', paddingHorizontal: 12, paddingVertical: 8, backgroundColor: '#fff' }}>
+                  <View style={{ width: '100%', paddingHorizontal: 12, paddingVertical: 8, backgroundColor: colors.surface, borderBottomWidth: 1, borderBottomColor: colors.primary }}>
                     <CustomHeader title={t('create.title')} onTitlePress={handleTitlePress} />
                   </View>
                 ),
@@ -274,7 +295,7 @@ export default function TabsLayout() {
         }}
         options={{
           tabBarActiveTintColor: "#059669",
-          tabBarInactiveTintColor: "#374151",
+          tabBarInactiveTintColor: isDark ? "#d1d5db" : "#374151",
           tabBarStyle: tabBarStyles.tabBar,
           tabBarItemStyle: tabBarStyles.tabBarItem,
           tabBarBackground: () => (
@@ -286,7 +307,7 @@ export default function TabsLayout() {
           ...(isWeb
             ? {
                 header: () => (
-                  <View style={{ width: '100%', paddingHorizontal: 12, paddingVertical: 8, backgroundColor: '#fff' }}>
+                  <View style={{ width: '100%', paddingHorizontal: 12, paddingVertical: 8, backgroundColor: colors.surface, borderBottomWidth: 1, borderBottomColor: colors.primary }}>
                     <CustomHeader title={t('messages.title')} onTitlePress={handleTitlePress} />
                   </View>
                 ),
@@ -311,7 +332,7 @@ export default function TabsLayout() {
         }}
         options={{
           tabBarActiveTintColor: "#059669",
-          tabBarInactiveTintColor: "#374151",
+          tabBarInactiveTintColor: isDark ? "#d1d5db" : "#374151",
           tabBarStyle: tabBarStyles.tabBar,
           tabBarItemStyle: tabBarStyles.tabBarItem,
           tabBarBackground: () => (
@@ -323,7 +344,7 @@ export default function TabsLayout() {
           ...(isWeb
             ? {
                 header: () => (
-                  <View style={{ width: '100%', paddingHorizontal: 12, paddingVertical: 8, backgroundColor: '#fff' }}>
+                  <View style={{ width: '100%', paddingHorizontal: 12, paddingVertical: 8, backgroundColor: colors.surface, borderBottomWidth: 1, borderBottomColor: colors.primary }}>
                     <CustomHeader title={t('profile.title')} onTitlePress={handleTitlePress} />
                   </View>
                 ),
@@ -353,7 +374,7 @@ export default function TabsLayout() {
         }}
         options={{
           tabBarActiveTintColor: "#059669",
-          tabBarInactiveTintColor: "#374151",
+          tabBarInactiveTintColor: isDark ? "#d1d5db" : "#374151",
           tabBarStyle: tabBarStyles.tabBar,
           tabBarItemStyle: tabBarStyles.tabBarItem,
           tabBarBackground: () => (
@@ -365,7 +386,7 @@ export default function TabsLayout() {
           ...(isWeb
             ? {
                 header: () => (
-                  <View style={{ width: '100%', paddingHorizontal: 12, paddingVertical: 8, backgroundColor: '#fff' }}>
+                  <View style={{ width: '100%', paddingHorizontal: 12, paddingVertical: 8, backgroundColor: colors.surface, borderBottomWidth: 1, borderBottomColor: colors.primary }}>
                     <CustomHeader title={t('notifications.title')} onTitlePress={handleTitlePress} />
                   </View>
                 ),

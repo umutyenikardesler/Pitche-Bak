@@ -3,6 +3,7 @@ import {
   Modal,
   View,
   Text,
+  Switch,
   KeyboardAvoidingView,
   ScrollView,
   TextInput,
@@ -16,6 +17,7 @@ import Constants from "expo-constants";
 import * as Device from "expo-device";
 import { useRouter } from "expo-router";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useAppTheme } from "@/contexts/ThemeContext";
 import { supabase } from "@/services/supabase";
 import PolicyModal from "./PolicyModal";
 import { POLICY_KEYS, PolicyKey } from "@/constants/policies";
@@ -32,6 +34,7 @@ export default function SettingsModal({
 }: SettingsModalProps) {
   const router = useRouter();
   const { currentLanguage, changeLanguage, t } = useLanguage();
+  const { colors, isDark, toggleTheme } = useAppTheme();
   const [userRole, setUserRole] = useState<string | null>(null);
   const [languageOptionsVisible, setLanguageOptionsVisible] = useState(false);
   const [agreementsVisible, setAgreementsVisible] = useState(false);
@@ -373,34 +376,36 @@ export default function SettingsModal({
         >
           <View className="flex-1 justify-center items-center bg-black/50 px-6">
             <View
-              className="bg-white rounded-2xl w-full p-5"
+              className="rounded-2xl w-full p-5"
               style={{
+                backgroundColor: colors.surface,
                 ...(Platform.OS === "web"
                   ? { maxWidth: 520, minWidth: 320 }
                   : null),
               }}
             >
-              <Text className="text-lg font-bold text-gray-900 mb-3">
+              <Text className="text-lg font-bold mb-3" style={{ color: colors.text }}>
                 {t("settings.delete.title")}
               </Text>
 
-              <Text className="text-gray-700">
+              <Text style={{ color: colors.textSecondary }}>
                 {t("settings.delete.description")}
               </Text>
-              <Text className="text-red-600 font-semibold mt-3">
+              <Text className="font-semibold mt-3" style={{ color: colors.danger }}>
                 {t("settings.delete.irreversible")}
               </Text>
-              <Text className="text-gray-900 font-bold mt-3">
+              <Text className="font-bold mt-3" style={{ color: colors.text }}>
                 {t("settings.delete.confirmQuestion")}
               </Text>
 
               <View className="flex-row mt-5">
                 <TouchableOpacity
-                  className="bg-gray-200 rounded-lg p-3 flex-1 mr-2 items-center"
+                  className="rounded-lg p-3 flex-1 mr-2 items-center"
+                  style={{ backgroundColor: colors.surfaceAlt }}
                   onPress={() => setDeleteConfirmVisible(false)}
                   disabled={deletingAccount}
                 >
-                  <Text className="text-gray-800 font-semibold">
+                  <Text className="font-semibold" style={{ color: colors.text }}>
                     {t("general.cancel")}
                   </Text>
                 </TouchableOpacity>
@@ -422,8 +427,9 @@ export default function SettingsModal({
         <TouchableOpacity
           activeOpacity={1}
           onPress={(e) => e.stopPropagation()}
-          className="bg-white rounded-t-3xl h-1/2"
+          className="rounded-t-3xl h-1/2"
           style={{
+            backgroundColor: colors.surface,
             borderTopWidth: 4,
             borderTopColor: "#16a34a",
             borderLeftWidth: 2,
@@ -449,10 +455,47 @@ export default function SettingsModal({
           }}
         >
           {/* Header */}
-          <View className="flex-row items-center justify-between p-4 border-b border-gray-200">
-            <Text className="text-xl font-bold text-green-600">
-              {t("profile.settings")}
-            </Text>
+          <View
+            className="flex-row items-center justify-between p-4"
+            style={{ borderBottomWidth: 1, borderColor: colors.border, position: "relative" }}
+          >
+            <View style={{ minWidth: 84 }}>
+              <Text className="text-xl font-bold" style={{ color: colors.primary }}>
+                {t("profile.settings")}
+              </Text>
+            </View>
+            <View
+              pointerEvents="box-none"
+              style={{ position: "absolute", left: 0, right: 0, alignItems: "center" }}
+            >
+              <View
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  backgroundColor: colors.surfaceAlt,
+                  borderRadius: 999,
+                  paddingHorizontal: 10,
+                  paddingVertical: 5,
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                  gap: 6,
+                }}
+              >
+                <Text style={{ color: !isDark ? colors.primary : colors.textMuted, fontSize: 12, fontWeight: "700" }}>
+                  {t("settings.themeDay")}
+                </Text>
+                <Switch
+                  value={isDark}
+                  onValueChange={() => { void toggleTheme(); }}
+                  trackColor={{ false: "#bbf7d0", true: "#166534" }}
+                  thumbColor={isDark ? "#16a34a" : "#f9fafb"}
+                  ios_backgroundColor={colors.border}
+                />
+                <Text style={{ color: isDark ? colors.primary : colors.textMuted, fontSize: 12, fontWeight: "700" }}>
+                  {t("settings.themeNight")}
+                </Text>
+              </View>
+            </View>
             <TouchableOpacity
               onPress={onClose}
               className="bg-green-600 p-2 rounded-full"
@@ -490,21 +533,21 @@ export default function SettingsModal({
 
             {accountInfoVisible && (
               <View className="mb-3">
-                <View className="bg-gray-100 rounded-lg p-3">
+                <View className="rounded-lg p-3" style={{ backgroundColor: colors.surfaceAlt }}>
                   <View className="flex-row items-center justify-between">
-                    <Text className="text-gray-700 font-semibold">{t("settings.account.emailLabel")}</Text>
-                    <Text className="text-gray-900 font-semibold ml-3" numberOfLines={1}>
+                    <Text className="font-semibold" style={{ color: colors.textSecondary }}>{t("settings.account.emailLabel")}</Text>
+                    <Text className="font-semibold ml-3" style={{ color: colors.text }} numberOfLines={1}>
                       {accountLoading ? t("general.loading") : accountEmail || "-"}
                     </Text>
                   </View>
 
-                  <View className="h-px bg-gray-200 my-3" />
+                  <View className="h-px my-3" style={{ backgroundColor: colors.border }} />
 
                   <View className="flex-row items-center justify-between">
-                    <Text className="text-gray-700 font-semibold">{t("settings.account.passwordLabel")}</Text>
-                    <Text className="text-gray-900 font-semibold">********</Text>
+                    <Text className="font-semibold" style={{ color: colors.textSecondary }}>{t("settings.account.passwordLabel")}</Text>
+                    <Text className="font-semibold" style={{ color: colors.text }}>********</Text>
                   </View>
-                  <Text className="text-xs text-gray-500 mt-2">
+                  <Text className="text-xs mt-2" style={{ color: colors.textMuted }}>
                     {t("settings.account.passwordHiddenNote")}
                   </Text>
 
@@ -544,27 +587,29 @@ export default function SettingsModal({
                   </View>
 
                   {editEmailVisible && (
-                    <View className="mt-3 bg-white rounded-lg p-3 border border-green-200">
-                      <Text className="text-gray-700 font-semibold mb-2">{t("settings.account.newEmailLabel")}</Text>
+                    <View className="mt-3 rounded-lg p-3 border" style={{ backgroundColor: colors.surface, borderColor: colors.primary }}>
+                      <Text className="font-semibold mb-2" style={{ color: colors.textSecondary }}>{t("settings.account.newEmailLabel")}</Text>
                       <TextInput
-                        className="bg-gray-100 rounded-lg p-3 text-gray-900"
+                        className="rounded-lg p-3"
+                        style={{ backgroundColor: colors.inputBackground, color: colors.text, borderWidth: 1, borderColor: colors.inputBorder }}
                         value={newEmail}
                         onChangeText={setNewEmail}
                         autoCapitalize="none"
                         autoCorrect={false}
                         keyboardType="email-address"
                         placeholder={t("settings.account.emailPlaceholder")}
-                        placeholderTextColor="#9ca3af"
+                        placeholderTextColor={colors.textMuted}
                         editable={!savingEmail}
                       />
 
                       <View className="flex-row mt-3">
                         <TouchableOpacity
-                          className="bg-gray-200 rounded-lg p-3 flex-1 mr-2 items-center"
+                          className="rounded-lg p-3 flex-1 mr-2 items-center"
+                          style={{ backgroundColor: colors.surfaceAlt }}
                           onPress={() => setEditEmailVisible(false)}
                           disabled={savingEmail}
                         >
-                          <Text className="text-gray-800 font-semibold">{t("general.cancel")}</Text>
+                          <Text className="font-semibold" style={{ color: colors.text }}>{t("general.cancel")}</Text>
                         </TouchableOpacity>
                         <TouchableOpacity
                           className="bg-green-600 rounded-lg p-3 flex-1 ml-2 items-center"
@@ -577,23 +622,24 @@ export default function SettingsModal({
                         </TouchableOpacity>
                       </View>
 
-                      <Text className="text-xs text-gray-500 mt-2">
+                      <Text className="text-xs mt-2" style={{ color: colors.textMuted }}>
                         {t("settings.account.emailVerifyNote")}
                       </Text>
                     </View>
                   )}
 
                   {editPasswordVisible && (
-                    <View className="mt-3 bg-white rounded-lg p-3 border border-green-200">
-                      <Text className="text-gray-700 font-semibold mb-2">{t("settings.account.newPasswordLabel")}</Text>
-                      <View className="flex-row items-center bg-gray-100 rounded-lg">
+                    <View className="mt-3 rounded-lg p-3 border" style={{ backgroundColor: colors.surface, borderColor: colors.primary }}>
+                      <Text className="font-semibold mb-2" style={{ color: colors.textSecondary }}>{t("settings.account.newPasswordLabel")}</Text>
+                      <View className="flex-row items-center rounded-lg" style={{ backgroundColor: colors.inputBackground, borderWidth: 1, borderColor: colors.inputBorder }}>
                         <TextInput
-                          className="p-3 text-gray-900 flex-1"
+                          className="p-3 flex-1"
+                          style={{ color: colors.text }}
                           value={newPassword}
                           onChangeText={setNewPassword}
                           secureTextEntry={!showNewPassword}
                           placeholder="••••••••"
-                          placeholderTextColor="#9ca3af"
+                          placeholderTextColor={colors.textMuted}
                           editable={!savingPassword}
                         />
                         <TouchableOpacity
@@ -609,15 +655,16 @@ export default function SettingsModal({
                         </TouchableOpacity>
                       </View>
 
-                      <Text className="text-gray-700 font-semibold mt-3 mb-2">{t("settings.account.newPasswordConfirmLabel")}</Text>
-                      <View className="flex-row items-center bg-gray-100 rounded-lg">
+                      <Text className="font-semibold mt-3 mb-2" style={{ color: colors.textSecondary }}>{t("settings.account.newPasswordConfirmLabel")}</Text>
+                      <View className="flex-row items-center rounded-lg" style={{ backgroundColor: colors.inputBackground, borderWidth: 1, borderColor: colors.inputBorder }}>
                         <TextInput
-                          className="p-3 text-gray-900 flex-1"
+                          className="p-3 flex-1"
+                          style={{ color: colors.text }}
                           value={newPasswordConfirm}
                           onChangeText={setNewPasswordConfirm}
                           secureTextEntry={!showNewPasswordConfirm}
                           placeholder="••••••••"
-                          placeholderTextColor="#9ca3af"
+                          placeholderTextColor={colors.textMuted}
                           editable={!savingPassword}
                         />
                         <TouchableOpacity
@@ -677,11 +724,12 @@ export default function SettingsModal({
 
                       <View className="flex-row mt-3">
                         <TouchableOpacity
-                          className="bg-gray-200 rounded-lg p-3 flex-1 mr-2 items-center"
+                          className="rounded-lg p-3 flex-1 mr-2 items-center"
+                          style={{ backgroundColor: colors.surfaceAlt }}
                           onPress={() => setEditPasswordVisible(false)}
                           disabled={savingPassword}
                         >
-                          <Text className="text-gray-800 font-semibold">{t("general.cancel")}</Text>
+                          <Text className="font-semibold" style={{ color: colors.text }}>{t("general.cancel")}</Text>
                         </TouchableOpacity>
                         <TouchableOpacity
                           className="bg-green-600 rounded-lg p-3 flex-1 ml-2 items-center"
@@ -740,10 +788,11 @@ export default function SettingsModal({
                         ? "bg-green-100 border-2 border-green-600"
                         : "bg-gray-100"
                     }`}
+                    style={currentLanguage === "tr" ? undefined : { backgroundColor: colors.surfaceAlt }}
                     onPress={() => handleLanguageChange("tr")}
                   >
                     <View className="flex-row items-center">
-                      <Text className="text-lg font-semibold text-gray-800">
+                      <Text className="text-lg font-semibold" style={{ color: colors.text }}>
                         🇹🇷 {t("language.turkish")}
                       </Text>
                     </View>
@@ -762,10 +811,11 @@ export default function SettingsModal({
                         ? "bg-green-100 border-2 border-green-600"
                         : "bg-gray-100"
                     }`}
+                    style={currentLanguage === "en" ? undefined : { backgroundColor: colors.surfaceAlt }}
                     onPress={() => handleLanguageChange("en")}
                   >
                     <View className="flex-row items-center">
-                      <Text className="text-lg font-semibold text-gray-800">
+                      <Text className="text-lg font-semibold" style={{ color: colors.text }}>
                         🇬🇧 {t("language.english")}
                       </Text>
                     </View>
@@ -802,7 +852,7 @@ export default function SettingsModal({
 
             {agreementsVisible && (
               <View className="mb-3">
-                <View className="bg-gray-100 rounded-lg p-2">
+                <View className="rounded-lg p-2" style={{ backgroundColor: colors.surfaceAlt }}>
                   {POLICY_KEYS.map((key) => (
                     <TouchableOpacity
                       key={key}
@@ -810,7 +860,7 @@ export default function SettingsModal({
                       onPress={() => setPolicyModalKey(key)}
                       activeOpacity={0.7}
                     >
-                      <Text className="text-gray-800 font-medium">
+                      <Text className="font-medium" style={{ color: colors.text }}>
                         {t(`settings.agreements.${key}`)}
                       </Text>
                       <Ionicons name="chevron-forward" size={18} color="#16a34a" />
@@ -861,59 +911,59 @@ export default function SettingsModal({
 
             {deviceInfoVisible && (
               <View className="mb-3">
-                <View className="bg-gray-100 rounded-lg p-3">
-                  <Text className="text-gray-900 font-bold mb-3">
+                <View className="rounded-lg p-3" style={{ backgroundColor: colors.surfaceAlt }}>
+                  <Text className="font-bold mb-3" style={{ color: colors.text }}>
                     {t("settings.device.appInfoTitle")}
                   </Text>
 
                   <View className="flex-row items-center justify-between">
-                    <Text className="text-gray-700 font-semibold">{t("settings.device.appLabel")}</Text>
-                    <Text className="text-gray-900 font-semibold ml-3" numberOfLines={1}>
+                    <Text className="font-semibold" style={{ color: colors.textSecondary }}>{t("settings.device.appLabel")}</Text>
+                    <Text className="font-semibold ml-3" style={{ color: colors.text }} numberOfLines={1}>
                       {appName}
                     </Text>
                   </View>
 
-                  <View className="h-px bg-gray-200 my-3" />
+                  <View className="h-px my-3" style={{ backgroundColor: colors.border }} />
 
                   <View className="flex-row items-center justify-between">
-                    <Text className="text-gray-700 font-semibold">{t("settings.device.versionLabel")}</Text>
-                    <Text className="text-gray-900 font-semibold">{appVersion}</Text>
+                    <Text className="font-semibold" style={{ color: colors.textSecondary }}>{t("settings.device.versionLabel")}</Text>
+                    <Text className="font-semibold" style={{ color: colors.text }}>{appVersion}</Text>
                   </View>
 
-                  <View className="h-px bg-gray-200 my-3" />
+                  <View className="h-px my-3" style={{ backgroundColor: colors.border }} />
 
                   <View className="flex-row items-center justify-between">
-                    <Text className="text-gray-700 font-semibold">{t("settings.device.deviceLabel")}</Text>
-                    <Text className="text-gray-900 font-semibold ml-3" numberOfLines={1}>
+                    <Text className="font-semibold" style={{ color: colors.textSecondary }}>{t("settings.device.deviceLabel")}</Text>
+                    <Text className="font-semibold ml-3" style={{ color: colors.text }} numberOfLines={1}>
                       {deviceBrand} {deviceModel}
                     </Text>
                   </View>
 
-                  <View className="h-px bg-gray-200 my-3" />
+                  <View className="h-px my-3" style={{ backgroundColor: colors.border }} />
 
                   <View className="flex-row items-center justify-between">
-                    <Text className="text-gray-700 font-semibold">{t("settings.device.osLabel")}</Text>
-                    <Text className="text-gray-900 font-semibold">
+                    <Text className="font-semibold" style={{ color: colors.textSecondary }}>{t("settings.device.osLabel")}</Text>
+                    <Text className="font-semibold" style={{ color: colors.text }}>
                       {osName} {osVersion}
                     </Text>
                   </View>
 
-                  <View className="h-px bg-gray-200 my-3" />
+                  <View className="h-px my-3" style={{ backgroundColor: colors.border }} />
 
                   <View className="flex-row items-center justify-between">
-                    <Text className="text-gray-700 font-semibold">{t("settings.device.updateStatusLabel")}</Text>
+                    <Text className="font-semibold" style={{ color: colors.textSecondary }}>{t("settings.device.updateStatusLabel")}</Text>
                     <View className="flex-row items-center">
                       {Platform.OS !== "ios" ? (
                         <>
                           <Ionicons name="help-circle-outline" size={18} color="#6b7280" />
-                          <Text className="text-gray-600 font-semibold ml-2">
+                          <Text className="font-semibold ml-2" style={{ color: colors.textMuted }}>
                             {t("settings.device.updateNotSupported")}
                           </Text>
                         </>
                       ) : updateCheckLoading ? (
                         <>
                           <Ionicons name="time-outline" size={18} color="#6b7280" />
-                          <Text className="text-gray-600 font-semibold ml-2">
+                          <Text className="font-semibold ml-2" style={{ color: colors.textMuted }}>
                             {t("settings.device.updateChecking")}
                           </Text>
                         </>
@@ -943,7 +993,7 @@ export default function SettingsModal({
                       ) : (
                         <>
                           <Ionicons name="help-circle-outline" size={18} color="#6b7280" />
-                          <Text className="text-gray-600 font-semibold ml-2">{t("settings.device.unknown")}</Text>
+                          <Text className="font-semibold ml-2" style={{ color: colors.textMuted }}>{t("settings.device.unknown")}</Text>
                         </>
                       )}
                     </View>

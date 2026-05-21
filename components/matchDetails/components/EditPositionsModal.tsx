@@ -4,6 +4,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { supabase } from "@/services/supabase";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { Match } from "@/components/index/types";
+import { useAppTheme } from "@/contexts/ThemeContext";
 
 interface EditPositionsModalProps {
   visible: boolean;
@@ -26,6 +27,7 @@ export default function EditPositionsModal({
   onSuccess,
 }: EditPositionsModalProps) {
   const { t } = useLanguage();
+  const { colors } = useAppTheme();
   const [positionCounts, setPositionCounts] = useState<PositionCounts>({
     K: 0,
     D: 0,
@@ -233,12 +235,12 @@ export default function EditPositionsModal({
   if (!canEdit && visible) {
     return (
       <Modal visible={visible} transparent animationType="fade">
-        <View className="flex-1 bg-black/50 justify-center items-center px-4">
-          <View className="bg-white rounded-lg p-6 w-full max-w-sm">
-            <Text className="text-lg font-bold text-center mb-4">
+        <View className="flex-1 justify-center items-center px-4" style={{ backgroundColor: colors.overlay }}>
+          <View className="rounded-lg p-6 w-full max-w-sm" style={{ backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.primary }}>
+            <Text className="text-lg font-bold text-center mb-4" style={{ color: colors.text }}>
               Düzenleme Süresi Doldu
             </Text>
-            <Text className="text-center text-gray-600 mb-4">
+            <Text className="text-center mb-4" style={{ color: colors.textMuted }}>
               Maç başlamasına 30 dakikadan az kaldığı için pozisyonları düzenleyemezsiniz.
             </Text>
             <TouchableOpacity
@@ -258,31 +260,33 @@ export default function EditPositionsModal({
       <TouchableOpacity 
         activeOpacity={1}
         onPress={onClose}
-        className="flex-1 bg-black/50 justify-center items-center px-4"
+        className="flex-1 justify-center items-center px-4"
+        style={{ backgroundColor: colors.overlay }}
       >
         <TouchableOpacity 
           activeOpacity={1}
           onPress={(e) => e.stopPropagation()}
-          className="bg-white rounded-lg p-6 w-full max-w-md"
+          className="rounded-lg p-6 w-full max-w-md"
+          style={{ backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.primary }}
         >
           <View className="flex-row items-center justify-between mb-4">
-            <Text className="text-xl font-bold">Pozisyon Sayılarını Düzenle</Text>
+            <Text className="text-xl font-bold" style={{ color: colors.text }}>Pozisyon Sayılarını Düzenle</Text>
             <TouchableOpacity onPress={onClose}>
-              <Ionicons name="close" size={24} color="#000" />
+              <Ionicons name="close" size={24} color={colors.icon} />
             </TouchableOpacity>
           </View>
 
-          <Text className="text-sm text-gray-600 mb-4 text-center">
+          <Text className="text-sm mb-4 text-center" style={{ color: colors.textMuted }}>
             Her pozisyon için eksik oyuncu sayısını belirleyin
           </Text>
 
           {(Object.keys(positionCounts) as Array<keyof PositionCounts>).map((pos) => (
-            <View key={pos} className="flex-row items-center justify-between mb-4 p-3 bg-gray-50 rounded-lg">
+            <View key={pos} className="flex-row items-center justify-between mb-4 p-3 rounded-lg" style={{ backgroundColor: colors.surfaceAlt }}>
               <View className="flex-row items-center flex-1">
                 <View className={`${getPositionColor(pos)} rounded-full py-2 px-4 mr-3`}>
                   <Text className="text-white font-bold">{pos}</Text>
                 </View>
-                <Text className="font-semibold flex-1">{getPositionName(pos)}</Text>
+                <Text className="font-semibold flex-1" style={{ color: colors.text }}>{getPositionName(pos)}</Text>
               </View>
               
               <View className="flex-row items-center">
@@ -293,14 +297,15 @@ export default function EditPositionsModal({
                     }
                   }}
                   className={`rounded-full w-10 h-10 items-center justify-center mr-2 ${
-                    positionCounts[pos] === 0 ? 'bg-red-600' : 'bg-gray-300'
+                    positionCounts[pos] === 0 ? 'bg-red-600' : ''
                   }`}
+                  style={positionCounts[pos] === 0 ? undefined : { backgroundColor: colors.inputBorder }}
                   activeOpacity={positionCounts[pos] === 0 ? 1 : 0.7}
                 >
-                  <Ionicons name="remove" size={20} color={positionCounts[pos] === 0 ? "#fff" : "#000"} />
+                  <Ionicons name="remove" size={20} color={positionCounts[pos] === 0 ? colors.whiteText : colors.text} />
                 </TouchableOpacity>
                 
-                <Text className="text-xl font-bold mx-3 min-w-[30px] text-center">
+                <Text className="text-xl font-bold mx-3 min-w-[30px] text-center" style={{ color: colors.text }}>
                   {positionCounts[pos]}
                 </Text>
                 
@@ -314,9 +319,13 @@ export default function EditPositionsModal({
                   className={`rounded-full w-10 h-10 items-center justify-center ml-2 ${
                     (() => {
                       const maxCount = getMaxCountForPosition(pos, matchFormat);
-                      return positionCounts[pos] >= maxCount ? 'bg-green-600' : 'bg-gray-300';
+                      return positionCounts[pos] >= maxCount ? 'bg-green-600' : '';
                     })()
                   }`}
+                  style={(() => {
+                    const maxCount = getMaxCountForPosition(pos, matchFormat);
+                    return positionCounts[pos] >= maxCount ? undefined : { backgroundColor: colors.inputBorder };
+                  })()}
                   activeOpacity={(() => {
                     const maxCount = getMaxCountForPosition(pos, matchFormat);
                     return positionCounts[pos] >= maxCount ? 1 : 0.7;
@@ -327,7 +336,7 @@ export default function EditPositionsModal({
                     size={20} 
                     color={(() => {
                       const maxCount = getMaxCountForPosition(pos, matchFormat);
-                      return positionCounts[pos] >= maxCount ? "#fff" : "#000";
+                      return positionCounts[pos] >= maxCount ? colors.whiteText : colors.text;
                     })()} 
                   />
                 </TouchableOpacity>
@@ -338,10 +347,11 @@ export default function EditPositionsModal({
           <View className="flex-row gap-3 mt-6">
             <TouchableOpacity
               onPress={onClose}
-              className="flex-1 bg-gray-300 py-3 rounded-md"
+              className="flex-1 py-3 rounded-md"
+              style={{ backgroundColor: colors.surfaceAlt }}
               disabled={loading}
             >
-              <Text className="text-center font-semibold">İptal</Text>
+              <Text className="text-center font-semibold" style={{ color: colors.text }}>İptal</Text>
             </TouchableOpacity>
             
             <TouchableOpacity

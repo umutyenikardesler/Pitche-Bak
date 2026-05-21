@@ -9,6 +9,7 @@ import { NotificationProvider } from '@/components/NotificationContext';
 import { LanguageProvider } from '@/contexts/LanguageContext';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { GuestAuthModalProvider } from '@/contexts/GuestAuthModalContext';
+import { ThemeProvider, useAppTheme } from '@/contexts/ThemeContext';
 import AnalyticsProvider from '@/components/AnalyticsProvider';
 import { setPendingAuthUrl } from '@/lib/pendingAuthUrl';
 import { setLastNonAuthRoute } from "@/lib/lastNonAuthRoute";
@@ -19,12 +20,16 @@ import { registerPushToken, unregisterPushToken } from "@/services/pushNotificat
 // Sadece belirli logları ignore et, tüm logları değil
 LogBox.ignoreLogs([
   'Non-serializable values were found in the navigation state',
+  'Default FirebaseApp is not initialized',
+  'FirebaseApp',
+  'expo-notifications',
 ]);
 
-export default function RootLayout() {
+function AppShell() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useGlobalSearchParams();
+  const { colors } = useAppTheme();
 
   // Online kullanıcı sayısı için Realtime Presence.
   // Not: "anlık aktif kullanıcı" sayısı bu kanala bağlı olan unique user sayısıdır.
@@ -64,7 +69,6 @@ export default function RootLayout() {
         if (!isMounted) return;
         if (userId) {
           await setupForUser(userId);
-          // Uygulama ilk açıldığında token kaydet
           try { await registerPushToken(userId); } catch (_) {}
         }
       } catch (_) {}
@@ -75,16 +79,14 @@ export default function RootLayout() {
       const nextId = session?.user?.id ?? null;
       if (nextId === currentUserId) return;
       if (!nextId) {
-        // Çıkış yapıldı — push token'ı sil
         if (currentUserId) {
-          try { await unregisterPushToken(currentUserId); } catch (_) {}
+          await unregisterPushToken(currentUserId);
         }
         currentUserId = null;
         teardown();
         return;
       }
       await setupForUser(nextId);
-      // Giriş yapıldı — push token'ı kaydet
       try { await registerPushToken(nextId); } catch (_) {}
     });
 
@@ -96,6 +98,9 @@ export default function RootLayout() {
         try {
           if (channel) await channel.track({ online_at: new Date().toISOString() });
         } catch (_) {}
+        if (currentUserId) {
+          try { await registerPushToken(currentUserId); } catch (_) {}
+        }
       });
     } catch (_) {}
 
@@ -165,18 +170,18 @@ export default function RootLayout() {
           <SafeAreaProvider>
             <AnalyticsProvider />
             {Platform.OS === 'web' ? (
-              <View style={{ flex: 1, backgroundColor: '#f3f4f6', alignItems: 'center' }}>
+              <View style={{ flex: 1, backgroundColor: colors.background, alignItems: 'center' }}>
                 <View
                   style={{
                     flex: 1,
                     width: '50%',
                     minWidth: 360,
                     maxWidth: 520,
-                    backgroundColor: '#ffffff',
+                    backgroundColor: colors.surface,
                     overflow: 'hidden',
                     borderLeftWidth: 1,
                     borderRightWidth: 1,
-                    borderColor: '#e5e7eb',
+                    borderColor: colors.border,
                   }}
                 >
                   <Stack screenOptions={{ headerShown: false }}>
@@ -192,6 +197,7 @@ export default function RootLayout() {
                 </View>
               </View>
             ) : (
+              <View style={{ flex: 1, backgroundColor: colors.background }}>
               <Stack screenOptions={{ headerShown: false }}>
                 <Stack.Screen
                   name="(tabs)"
@@ -202,6 +208,7 @@ export default function RootLayout() {
                   }}
                 />
               </Stack>
+              </View>
             )}
           </SafeAreaProvider>
         </GestureHandlerRootView>
@@ -209,5 +216,13 @@ export default function RootLayout() {
         </GuestAuthModalProvider>
     </AuthProvider>
     </LanguageProvider>
+  );
+}
+
+export default function RootLayout() {
+  return (
+    <ThemeProvider>
+      <AppShell />
+    </ThemeProvider>
   );
 }

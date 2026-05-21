@@ -1,6 +1,7 @@
 import { View, Text, TouchableOpacity, Image } from "react-native";
 import { useRouter } from 'expo-router';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useAppTheme } from '@/contexts/ThemeContext';
 
 interface DirectMessageNotificationProps {
     item: {
@@ -19,6 +20,7 @@ interface DirectMessageNotificationProps {
 
 export default function DirectMessageNotification({ item, onMarkAsRead }: DirectMessageNotificationProps) {
     const { t } = useLanguage();
+    const { colors } = useAppTheme();
     const router = useRouter();
     
     // Tarih ve saat formatlama - Database'deki saati olduğu gibi göster
@@ -48,7 +50,10 @@ export default function DirectMessageNotification({ item, onMarkAsRead }: Direct
                 });
             }}
         >
-            <View className="bg-white rounded-lg mx-4 mt-3 shadow-sm">
+            <View
+                className="rounded-lg mx-4 mt-3 shadow-sm"
+                style={{ backgroundColor: colors.surface, borderWidth: 1, borderColor: item.is_read ? colors.border : colors.primary }}
+            >
                 <View className="flex-row items-center p-4">
                     <View className="mr-3">
                         <Image
@@ -57,6 +62,13 @@ export default function DirectMessageNotification({ item, onMarkAsRead }: Direct
                                 width: 56, 
                                 height: 56, 
                                 borderRadius: 28, 
+                                borderWidth: 1,
+                                borderColor: colors.primary,
+                                shadowColor: colors.primary,
+                                shadowOpacity: 0.9,
+                                shadowRadius: 16,
+                                shadowOffset: { width: 0, height: 0 },
+                                elevation: 12,
                                 resizeMode: 'cover',
                                 opacity: item.is_read ? 0.6 : 1 
                             }}
@@ -64,16 +76,17 @@ export default function DirectMessageNotification({ item, onMarkAsRead }: Direct
                     </View>
                     <View className="flex-1">
                         <Text 
-                            className={`${item.is_read ? 'text-gray-500' : 'text-gray-800'}`} 
+                            style={{ color: item.is_read ? colors.textMuted : colors.text }}
                             numberOfLines={2}
                         >
-                            <Text className={`font-bold ${item.is_read ? 'text-gray-600' : 'text-green-700'}`}>
+                            <Text className="font-bold" style={{ color: colors.primaryDark }}>
                                 {senderFullName}
                             </Text> {t('notifications.sentMessage') || 'size mesaj gönderdi.'}
                         </Text>
                         {!!item.message && (
                             <Text 
-                                className={`mt-1 ${item.is_read ? 'text-gray-400' : 'text-gray-600'}`} 
+                                className="mt-1"
+                                style={{ color: item.is_read ? colors.textMuted : colors.textSecondary }}
                                 numberOfLines={1}
                             >
                                 {'"'}{item.message}{'"'}
@@ -83,7 +96,10 @@ export default function DirectMessageNotification({ item, onMarkAsRead }: Direct
                 </View>
                 <View className="px-4 pb-3">
                     <View className="flex-row items-center">
-                        <Text className={`text-xs font-bold px-2 py-1 rounded ${item.is_read ? 'text-gray-500 bg-gray-300' : 'text-green-700 bg-gray-200'}`}>
+                        <Text
+                            className="text-xs font-bold px-2 py-1 rounded"
+                            style={{ color: item.is_read ? colors.textMuted : colors.primaryDark, backgroundColor: colors.surfaceAlt }}
+                        >
                             {formatted}
                         </Text>
                     </View>

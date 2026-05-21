@@ -11,6 +11,7 @@ import { reportContent, hasUserReportedContent } from "@/services/contentReports
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useGuestAuthAlert } from '@/contexts/GuestAuthModalContext';
+import { useAppTheme } from "@/contexts/ThemeContext";
 
 type ChatSummary = MatchChatSummary | DirectChatSummary;
 
@@ -46,6 +47,7 @@ interface DirectChatSummary extends BaseChatSummary {
 export default function Messages() {
   const router = useRouter();
   const { t } = useLanguage();
+  const { colors, isDark } = useAppTheme();
   const { isGuest } = useAuth();
   const { showGuestAuthAlert } = useGuestAuthAlert();
 
@@ -530,8 +532,8 @@ export default function Messages() {
 
       return (
         <View
-          className="bg-white rounded-lg mx-4 my-1 p-1 shadow-lg"
-          style={isPinned ? { borderWidth: 2, borderColor: '#16a34a' } : undefined}
+          className="rounded-lg mx-4 my-1 p-1 shadow-lg"
+          style={{ backgroundColor: colors.surface, ...(isPinned ? { borderWidth: 2, borderColor: colors.primary } : undefined) }}
         >
           <TouchableOpacity activeOpacity={0.8} onPress={() => router.push({ pathname: '/message/chat', params })} className="flex-row items-center">
             {/* Profil Resmi */}
@@ -546,20 +548,32 @@ export default function Messages() {
             {/* Orta bilgi alanı - flex-1 ile kalan alanı doldurur */}
             <View className="flex-1 flex justify-center -mt-2 ml-2 min-w-0">
               <View className="flex-row items-center justify-between">
-                <Text className={`text-lg font-semibold ${hasUnread ? 'text-green-600' : 'text-gray-700'}`} numberOfLines={1}>
+                <Text
+                  className="text-lg font-semibold"
+                  style={{ color: isDark ? colors.primaryDark : (hasUnread ? colors.primaryDark : colors.textSecondary) }}
+                  numberOfLines={1}
+                >
                   {item.owner_name} {item.owner_surname}
                 </Text>
               </View>
 
-              <View className="text-gray-700 text-md flex-row items-center">
-                <Ionicons name="chatbubbles-outline" size={18} color="black" />
-                <Text className="pl-2 font-semibold flex-1" numberOfLines={1}> {previewText} </Text>
+              <View className="text-md flex-row items-center">
+                <Ionicons name="chatbubbles-outline" size={18} color={colors.icon} />
+                <Text
+                  className="pl-2 font-semibold flex-1"
+                  style={{ color: isDark ? colors.text : colors.textSecondary }}
+                  numberOfLines={1}
+                >
+                  {" "}{previewText}{" "}
+                </Text>
               </View>
 
               {!!lastAtText && (
-                <View className="text-gray-700 text-md flex-row items-center pt-1">
-                  <Ionicons name="time-outline" size={18} color="black" />
-                  <Text className="pl-2 font-semibold"> {lastAtText} </Text>
+                <View className="text-md flex-row items-center pt-1">
+                  <Ionicons name="time-outline" size={18} color={colors.icon} />
+                  <Text className="pl-2 font-semibold" style={{ color: isDark ? colors.text : colors.textMuted }}>
+                    {" "}{lastAtText}{" "}
+                  </Text>
                 </View>
               )}
             </View>
@@ -637,8 +651,8 @@ export default function Messages() {
 
     return (
       <View
-        className="bg-white rounded-lg mx-4 my-1 p-2 shadow-lg"
-        style={isPinned ? { borderWidth: 2, borderColor: '#16a34a' } : undefined}
+        className="rounded-lg mx-4 my-1 p-2 shadow-lg"
+        style={{ backgroundColor: colors.surface, ...(isPinned ? { borderWidth: 2, borderColor: colors.primary } : undefined) }}
       >
         <TouchableOpacity
           activeOpacity={0.8}
@@ -657,27 +671,27 @@ export default function Messages() {
           {/* Orta bilgi alanı - flex-1 ile kalan alanı doldurur */}
           <View className="flex-1 flex justify-center ml-2 min-w-0" style={{ paddingTop: 0, paddingBottom: 2 }}>
             <View className="flex-row items-center justify-between">
-              <Text className={`text-lg font-semibold ${hasUnread ? 'text-green-700' : 'text-gray-700'}`} numberOfLines={1}>
+              <Text className="text-lg font-semibold" style={{ color: hasUnread ? colors.primaryDark : colors.text }} numberOfLines={1}>
                 {item.owner_name} {item.owner_surname}
               </Text>
             </View>
 
-            <View className="text-gray-700 text-md flex-row items-center">
-              <Ionicons name="calendar-outline" size={18} color="black" />
-              <Text className="pl-2 font-semibold"> {formattedDate} →</Text>
-              <Text className="pl-2 font-bold text-green-700"> {startFormatted}-{endFormatted} </Text>
+            <View className="text-md flex-row items-center">
+              <Ionicons name="calendar-outline" size={18} color={colors.icon} />
+              <Text className="pl-2 font-semibold" style={{ color: colors.text }}> {formattedDate} →</Text>
+              <Text className="pl-2 font-bold" style={{ color: colors.primaryDark }}> {startFormatted}-{endFormatted} </Text>
             </View>
 
-            <View className="text-gray-700 text-md flex-row items-center pt-1">
-              <Ionicons name="location" size={18} color="black" />
-              <Text className="pl-2 font-semibold"> {(item.pitches?.districts?.name || 'Bilinmiyor')} →</Text>
-              <Text className="pl-2 font-bold text-green-700"> {item.pitches?.name || 'Bilinmiyor'} </Text>
+            <View className="text-md flex-row items-center pt-1">
+              <Ionicons name="location" size={18} color={colors.icon} />
+              <Text className="pl-2 font-semibold" style={{ color: colors.text }}> {(item.pitches?.districts?.name || 'Bilinmiyor')} →</Text>
+              <Text className="pl-2 font-bold" style={{ color: colors.primaryDark }}> {item.pitches?.name || 'Bilinmiyor'} </Text>
             </View>
 
             {!!lastAtText && (
-              <View className="text-gray-700 text-md flex-row items-center pt-1">
-                <Ionicons name="time-outline" size={18} color="black" />
-                <Text className="pl-2 font-semibold"> {lastAtText} </Text>
+              <View className="text-md flex-row items-center pt-1">
+                <Ionicons name="time-outline" size={18} color={colors.icon} />
+                <Text className="pl-2 font-semibold" style={{ color: colors.text }}> {lastAtText} </Text>
               </View>
             )}
           </View>
@@ -737,7 +751,7 @@ export default function Messages() {
                 // Sağa yaslı + soldan biraz iç boşluk
                 style={{ paddingLeft: 6, paddingRight: isPinned ? 0 : 2, marginBottom: isPinned ? 12 : 4 }}
               >
-                <Ionicons name="ellipsis-vertical" size={22} color="#059669" />
+                <Ionicons name="ellipsis-vertical" size={22} color={colors.primaryDark} />
               </TouchableOpacity>
             </View>
 
@@ -754,7 +768,7 @@ export default function Messages() {
   if (loading) {
     content = (
       <View className="flex-1 justify-center items-center">
-        <ActivityIndicator size="large" color="#16a34a" />
+        <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
   } else if (!items.length) {
@@ -765,7 +779,7 @@ export default function Messages() {
         renderItem={null as any}
         ListEmptyComponent={
           <View className="flex-1 justify-center items-center" style={{ minHeight: 200 }}>
-            <Text className="text-gray-600">
+            <Text style={{ color: colors.textMuted }}>
               {t('messages.noChats') || 'Henüz sohbet yok'}
             </Text>
           </View>
@@ -775,8 +789,8 @@ export default function Messages() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            colors={['#16a34a']}
-            tintColor="#16a34a"
+            colors={[colors.primary]}
+            tintColor={colors.primary}
           />
         }
       />
@@ -801,12 +815,12 @@ export default function Messages() {
         {/* EULA/Topluluk İlkeleri - Apple UGC: kullanıcı içeriğe girmeden önce kabul */}
         {!isGuest && ugcAgreed === false && (
           <Modal visible={true} animationType="fade">
-            <View style={{ flex: 1, backgroundColor: '#fff', justifyContent: 'center', padding: 24 }}>
+            <View style={{ flex: 1, backgroundColor: colors.surface, justifyContent: 'center', padding: 24 }}>
               <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'center' }} showsVerticalScrollIndicator={false}>
-                <Text style={{ fontSize: 20, fontWeight: '700', color: '#065f46', marginBottom: 16, textAlign: 'center' }}>{t('ugc.agreeTitle')}</Text>
-                <Text style={{ fontSize: 15, color: '#4b5563', lineHeight: 22, marginBottom: 24 }}>{t('ugc.agreeMessage')}</Text>
-                <Text style={{ fontSize: 13, color: '#16a34a', fontWeight: '600', marginBottom: 24 }}>• {t('chat.contentFilteredNote')}</Text>
-                <TouchableOpacity onPress={handleUgcAgree} style={{ backgroundColor: '#16a34a', borderRadius: 12, paddingVertical: 14, alignItems: 'center' }}>
+                <Text style={{ fontSize: 20, fontWeight: '700', color: colors.primaryDark, marginBottom: 16, textAlign: 'center' }}>{t('ugc.agreeTitle')}</Text>
+                <Text style={{ fontSize: 15, color: colors.textSecondary, lineHeight: 22, marginBottom: 24 }}>{t('ugc.agreeMessage')}</Text>
+                <Text style={{ fontSize: 13, color: colors.primary, fontWeight: '600', marginBottom: 24 }}>• {t('chat.contentFilteredNote')}</Text>
+                <TouchableOpacity onPress={handleUgcAgree} style={{ backgroundColor: colors.primary, borderRadius: 12, paddingVertical: 14, alignItems: 'center' }}>
                   <Text style={{ color: 'white', fontWeight: '700', fontSize: 16 }}>{t('ugc.agreeButton')}</Text>
                 </TouchableOpacity>
               </ScrollView>
@@ -818,9 +832,9 @@ export default function Messages() {
 
         {/* Sohbet seçenekleri modalı (... menüsü) */}
         <Modal visible={!!chatOptionsItem} transparent animationType="fade">
-          <Pressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 24 }} onPress={() => setChatOptionsItem(null)}>
-            <Pressable style={{ backgroundColor: 'white', borderRadius: 16, padding: 20, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.15, shadowRadius: 12, elevation: 8 }} onPress={(e) => e.stopPropagation()}>
-              <Text style={{ fontSize: 18, fontWeight: '700', color: '#065f46', marginBottom: 16, textAlign: 'center' }}>{t('messages.chatOptions')}</Text>
+          <Pressable style={{ flex: 1, backgroundColor: colors.overlay, justifyContent: 'center', padding: 24 }} onPress={() => setChatOptionsItem(null)}>
+            <Pressable style={{ backgroundColor: colors.surface, borderRadius: 16, padding: 20, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.15, shadowRadius: 12, elevation: 8 }} onPress={(e) => e.stopPropagation()}>
+              <Text style={{ fontSize: 18, fontWeight: '700', color: colors.primaryDark, marginBottom: 16, textAlign: 'center' }}>{t('messages.chatOptions')}</Text>
               {chatOptionsItem && (
                 <View style={{ gap: 4 }}>
                   {pinnedChatKeys.has(getChatKey(chatOptionsItem)) ? (
@@ -848,7 +862,7 @@ export default function Messages() {
                   </TouchableOpacity>
                 </View>
               )}
-              <TouchableOpacity activeOpacity={0.8} onPress={() => setChatOptionsItem(null)} style={{ marginTop: 16, paddingVertical: 12, borderRadius: 10, backgroundColor: '#6b7280', alignItems: 'center' }}>
+              <TouchableOpacity activeOpacity={0.8} onPress={() => setChatOptionsItem(null)} style={{ marginTop: 16, paddingVertical: 12, borderRadius: 10, backgroundColor: colors.surfaceAlt, alignItems: 'center' }}>
                 <Text style={{ color: 'white', fontWeight: '600', fontSize: 15 }}>{t('general.cancel')}</Text>
               </TouchableOpacity>
             </Pressable>
@@ -857,11 +871,11 @@ export default function Messages() {
 
         {/* Kullanıcı şikayet modalı */}
         <Modal visible={reportModalVisible} transparent animationType="fade">
-          <Pressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 20 }} onPress={() => { setReportModalVisible(false); setReportTargetItem(null); }}>
-            <Pressable style={{ backgroundColor: 'white', borderRadius: 12, padding: 20 }} onPress={(e) => e.stopPropagation()}>
-              <Text style={{ fontSize: 16, fontWeight: '600', marginBottom: 8 }}>{t('chat.reportUser')}</Text>
+          <Pressable style={{ flex: 1, backgroundColor: colors.overlay, justifyContent: 'center', padding: 20 }} onPress={() => { setReportModalVisible(false); setReportTargetItem(null); }}>
+            <Pressable style={{ backgroundColor: colors.surface, borderRadius: 12, padding: 20 }} onPress={(e) => e.stopPropagation()}>
+              <Text style={{ fontSize: 16, fontWeight: '600', marginBottom: 8, color: colors.text }}>{t('chat.reportUser')}</Text>
               {reportTargetItem && (
-                <Text style={{ fontSize: 14, color: '#6b7280', marginBottom: 12 }} numberOfLines={2}>
+                <Text style={{ fontSize: 14, color: colors.textMuted, marginBottom: 12 }} numberOfLines={2}>
                   {reportTargetItem.owner_name} {reportTargetItem.owner_surname}
                 </Text>
               )}
@@ -871,11 +885,12 @@ export default function Messages() {
                 onChangeText={setReportNotes}
                 multiline
                 numberOfLines={3}
-                style={{ borderWidth: 1, borderColor: '#d1d5db', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 8, marginBottom: 16, minHeight: 80, textAlignVertical: 'top' }}
+                placeholderTextColor={colors.textMuted}
+                style={{ borderWidth: 1, borderColor: colors.inputBorder, backgroundColor: colors.inputBackground, color: colors.text, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 8, marginBottom: 16, minHeight: 80, textAlignVertical: 'top' }}
               />
               <View style={{ flexDirection: 'row', gap: 12, justifyContent: 'flex-end' }}>
-                <TouchableOpacity onPress={() => { setReportModalVisible(false); setReportTargetItem(null); }} style={{ backgroundColor: '#e5e7eb', borderRadius: 8, paddingHorizontal: 16, paddingVertical: 10 }}>
-                  <Text style={{ color: '#374151', fontWeight: '600' }}>{t('general.cancel')}</Text>
+                <TouchableOpacity onPress={() => { setReportModalVisible(false); setReportTargetItem(null); }} style={{ backgroundColor: colors.surfaceAlt, borderRadius: 8, paddingHorizontal: 16, paddingVertical: 10 }}>
+                  <Text style={{ color: colors.text, fontWeight: '600' }}>{t('general.cancel')}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity onPress={handleReportSubmitFromList} style={{ backgroundColor: '#dc2626', borderRadius: 8, paddingHorizontal: 16, paddingVertical: 10 }}>
                   <Text style={{ color: 'white', fontWeight: '600' }}>{t('chat.reportSubmit')}</Text>

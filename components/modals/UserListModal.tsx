@@ -12,8 +12,10 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { supabase } from "@/services/supabase";
+import { createNotification } from "@/services/triggerPushNotification";
 import { useLanguage } from "@/contexts/LanguageContext";
 import ProfilePreview from "@/components/index/ProfilePreview";
+import { useAppTheme } from "@/contexts/ThemeContext";
 
 interface FollowUser {
   id: string;
@@ -41,6 +43,9 @@ export default function UserListModal({
 }: UserListModalProps) {
   const router = useRouter();
   const { t } = useLanguage();
+  const { colors } = useAppTheme();
+  const headerBg = "#0b1220"; // koyu lacivert (dark mode ile uyumlu)
+  const modalRadius = 12;
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [profilePreviewVisible, setProfilePreviewVisible] = useState(false);
   const [followingStatusMap, setFollowingStatusMap] = useState<Map<string, "accepted" | "pending" | null>>(new Map());
@@ -173,18 +178,14 @@ export default function UserListModal({
       }
 
       // Bildirim oluştur
-      const { error: notificationError } = await supabase
-        .from("notifications")
-        .insert([
-          {
-            user_id: userId,
-            sender_id: user.id,
-            type: "follow_request",
-            message: `${senderData?.name} ${senderData?.surname} ${t("notifications.sentFollowRequest")}`,
-            is_read: false,
-            created_at: turkiyeNow.toISOString(),
-          },
-        ]);
+      const { error: notificationError } = await createNotification({
+        user_id: userId,
+        sender_id: user.id,
+        type: "follow_request",
+        message: `${senderData?.name} ${senderData?.surname} ${t("notifications.sentFollowRequest")}`,
+        is_read: false,
+        created_at: turkiyeNow.toISOString(),
+      });
 
       if (notificationError) {
         console.error("Bildirim oluşturma hatası:", notificationError);
@@ -250,7 +251,7 @@ export default function UserListModal({
       animationType="fade"
       statusBarTranslucent
     >
-      <View className="flex-1 bg-black/50 justify-center items-center">
+      <View className="flex-1 justify-center items-center" style={{ backgroundColor: colors.overlay }}>
         {/* Boş alana tıklayınca kapatma */}
         <TouchableOpacity
           className="absolute inset-0"
@@ -260,34 +261,48 @@ export default function UserListModal({
 
         {/* Modal içeriği */}
         <View
-          className="bg-white rounded-xl w-10/12 max-h-2/3 shadow-2xl"
+          className="w-10/12 max-h-2/3 shadow-2xl"
           style={
-            Platform.OS === "web"
-              ? {
-                  width: "36%",
-                  minWidth: 320,
-                  maxWidth: 520,
-                  alignSelf: "center",
-                }
-              : undefined
+            {
+              backgroundColor: "transparent",
+              borderWidth: 1,
+              borderColor: colors.primary,
+              borderRadius: modalRadius,
+              ...(Platform.OS === "web"
+                ? {
+                    width: "36%",
+                    minWidth: 320,
+                    maxWidth: 520,
+                    alignSelf: "center",
+                    borderRadius: modalRadius,
+                    boxShadow: `0 0 18px ${colors.primary}`,
+                  }
+                : undefined),
+            }
           }
         >
+          <View style={{ backgroundColor: colors.surface, borderRadius: modalRadius, overflow: "hidden" }}>
           {/* Header */}
-          <View className="flex-row justify-between items-center p-4 border-b border-gray-200 bg-green-200 rounded-t-xl">
-            <Text className="text-xl font-bold text-green-700">
+          <View
+            className="flex-row justify-between items-center p-4 rounded-t-xl"
+            style={{ backgroundColor: headerBg }}
+          >
+            <Text className="text-xl font-bold" style={{ color: colors.primaryDark }}>
               {title}
             </Text>
             <TouchableOpacity
               onPress={onClose}
-              className="bg-green-700 px-3 py-1 rounded-full"
+              className="px-3 py-1 rounded-full"
+              style={{ backgroundColor: colors.primary }}
             >
-              <Ionicons name="close" size={20} color="white" />
+              <Ionicons name="close" size={20} color={colors.whiteText} />
             </TouchableOpacity>
           </View>
+          <View style={{ height: 1, backgroundColor: colors.primary }} />
 
           {/* Liste */}
           <ScrollView
-            style={{ maxHeight: 335 }}
+            style={{ maxHeight: 335, backgroundColor: colors.surface }}
             contentContainerStyle={{ paddingBottom: 10 }}
             showsVerticalScrollIndicator
             bounces={false}
@@ -295,28 +310,37 @@ export default function UserListModal({
             {currentList.length === 0 ? (
               activeListType === "following" ? (
                 <View className="py-10 px-4 items-center justify-center">
-                  <Text className="text-base text-gray-500 text-center">
+                  <Text className="text-base text-center" style={{ color: colors.textMuted }}>
                     {t("profile.notFollowingAnyoneYet")}
                   </Text>
                 </View>
               ) : (
                 <View className="py-10 px-4 items-center justify-center">
-                  <Text className="text-base text-gray-500 text-center">
+                  <Text className="text-base text-center" style={{ color: colors.textMuted }}>
                     {t("profile.noFollowersYet")}
                   </Text>
                 </View>
               )
             ) : (
-              currentList.map((u) => {
+              currentList.map((u, idx) => {
                 const followStatus = followingStatusMap.get(u.id) || null;
                 const isFollowing = followStatus === "accepted";
                 const isPending = followStatus === "pending";
                 const isFollowersList = activeListType === "followers";
+                const isLast = idx === currentList.length - 1;
                 
                 return (
                   <View
                     key={u.id}
-                    className="flex-row items-center p-4 border-b border-gray-100"
+                    className="flex-row items-center p-4"
+                    style={{
+                      backgroundColor: colors.surface,
+                      borderBottomWidth: isLast ? 0 : 1,
+                      borderBottomColor: colors.border,
+                      borderBottomLeftRadius: isLast ? modalRadius : 0,
+                      borderBottomRightRadius: isLast ? modalRadius : 0,
+                      overflow: isLast ? "hidden" : "visible",
+                    }}
                   >
                     <TouchableOpacity
                       className="flex-row items-center flex-1"
@@ -329,14 +353,14 @@ export default function UserListModal({
                             ? { uri: u.profile_image }
                             : require("@/assets/images/ball.png")
                         }
-                        className="rounded-full border-2 border-green-200"
-                        style={{ width: 55, height: 55, resizeMode: "cover" }}
+                        className="rounded-full border-2"
+                        style={{ width: 55, height: 55, resizeMode: "cover", borderColor: colors.primary }}
                       />
                       <View className="ml-4 flex-1">
-                        <Text className="text-lg font-semibold text-green-700">
+                        <Text className="text-lg font-semibold" style={{ color: colors.text }}>
                           {u.name} {u.surname}
                         </Text>
-                        <Text className="text-sm text-gray-500 mt-1">
+                        <Text className="text-sm mt-1" style={{ color: colors.textMuted }}>
                           {isFollowersList ? t("profile.followingYou") : t("profile.youFollowing")}
                         </Text>
                       </View>
@@ -357,7 +381,7 @@ export default function UserListModal({
                         disabled={isPending}
                       >
                         {isFollowing ? (
-                          <Ionicons name="chatbubble-outline" size={24} color="#16a34a" />
+                          <Ionicons name="chatbubble-outline" size={24} color={colors.primary} />
                         ) : isPending ? (
                           <View className="relative">
                             <Ionicons name="person-add-outline" size={24} color="#f97316" />
@@ -366,7 +390,7 @@ export default function UserListModal({
                             </View>
                           </View>
                         ) : (
-                          <Ionicons name="person-add-outline" size={24} color="#16a34a" />
+                          <Ionicons name="person-add-outline" size={24} color={colors.primary} />
                         )}
                       </TouchableOpacity>
                     )}
@@ -378,7 +402,7 @@ export default function UserListModal({
                         className="ml-3 p-2"
                         activeOpacity={0.7}
                       >
-                        <Ionicons name="person-remove-outline" size={24} color="#ef4444" />
+                        <Ionicons name="person-remove-outline" size={24} color={colors.danger} />
                       </TouchableOpacity>
                     )}
                   </View>
@@ -386,6 +410,7 @@ export default function UserListModal({
               })
             )}
           </ScrollView>
+          </View>
         </View>
       </View>
 

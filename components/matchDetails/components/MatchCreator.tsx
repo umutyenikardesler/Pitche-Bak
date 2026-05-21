@@ -1,6 +1,7 @@
 import { View, Text, TouchableOpacity } from "react-native";
 import { useRouter } from "expo-router";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useAppTheme } from "@/contexts/ThemeContext";
 
 interface MatchCreatorProps {
   userName: string;
@@ -21,11 +22,12 @@ export default function MatchCreator({
 }: MatchCreatorProps) {
   const router = useRouter();
   const { t } = useLanguage();
+  const { colors } = useAppTheme();
 
   return (
     <View className="items-center my-4">
       <View className="flex-row max-w-full items-center justify-center">
-        <Text className="font-bold">{t('home.matchCreatedBy')} </Text>
+        <Text className="font-bold" style={{ color: colors.text }}>{t('home.matchCreatedBy')} </Text>
         <TouchableOpacity
           onPress={() => {
             if (onOpenProfilePreview) {
@@ -35,7 +37,7 @@ export default function MatchCreator({
             }
           }}
         >
-          <Text className="text-green-700 font-bold">
+          <Text className="font-bold" style={{ color: colors.primaryDark }}>
             {userName} {userSurname}
           </Text>
         </TouchableOpacity>

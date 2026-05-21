@@ -7,6 +7,7 @@ import Animated, {
   useSharedValue,
 } from "react-native-reanimated";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useAppTheme } from "@/contexts/ThemeContext";
 
 const FIELD_HEIGHT = 90;
 const BALL_SIZE = 12;
@@ -18,6 +19,7 @@ interface GuestLandingProps {
 
 export default function GuestLanding({ onContinue }: GuestLandingProps) {
   const { t } = useLanguage();
+  const { colors, isDark } = useAppTheme();
   const headerWidthSV = useSharedValue(0);
   const ballX = useSharedValue(0);
   const ballY = useSharedValue(0);
@@ -94,7 +96,7 @@ export default function GuestLanding({ onContinue }: GuestLandingProps) {
   }));
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#f3f4f6" }} edges={["top"]}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={["top"]}>
       {/* Header - Halı saha (normal giriş sayfası gibi üst boşluk) */}
       <View
         className="bg-green-700 px-2"
@@ -150,12 +152,12 @@ export default function GuestLanding({ onContinue }: GuestLandingProps) {
       </View>
 
       {/* İçerik - slider yerine misafir açıklaması */}
-      <View style={{ flex: 1, backgroundColor: "#ffffff", paddingHorizontal: 16, paddingTop: 18, paddingBottom: 18 }}>
+      <View style={{ flex: 1, backgroundColor: colors.surface, paddingHorizontal: 16, paddingTop: 18, paddingBottom: 18 }}>
         <View style={{ paddingHorizontal: 4 }}>
-          <Text style={{ fontSize: 18, fontWeight: "900", color: "#065f46", textAlign: "center" }}>
+          <Text style={{ fontSize: 18, fontWeight: "900", color: colors.primaryDark, textAlign: "center" }}>
             {t("guest.landing.title")}
           </Text>
-          <Text style={{ marginTop: 8, color: "#374151", textAlign: "center", fontSize: 14, lineHeight: 20 }}>
+          <Text style={{ marginTop: 8, color: colors.textSecondary, textAlign: "center", fontSize: 14, lineHeight: 20 }}>
             {t("guest.landing.subtitle")}
           </Text>
         </View>
@@ -173,10 +175,10 @@ export default function GuestLanding({ onContinue }: GuestLandingProps) {
               key={idx}
               style={{
                 width: "48%",
-                backgroundColor: "#ffffff",
+                backgroundColor: colors.surfaceAlt,
                 borderRadius: 16,
                 borderWidth: 1,
-                borderColor: "rgba(22, 163, 74, 0.22)",
+                borderColor: isDark ? colors.border : "rgba(22, 163, 74, 0.22)",
                 padding: 12,
                 alignItems: "center",
                 ...(Platform.OS === "android"
@@ -189,16 +191,16 @@ export default function GuestLanding({ onContinue }: GuestLandingProps) {
                   width: 34,
                   height: 34,
                   borderRadius: 17,
-                  backgroundColor: "rgba(22, 163, 74, 0.14)",
+                  backgroundColor: isDark ? "rgba(22, 163, 74, 0.24)" : "rgba(22, 163, 74, 0.14)",
                   alignItems: "center",
                   justifyContent: "center",
                   borderWidth: 1,
-                  borderColor: "rgba(22, 163, 74, 0.22)",
+                  borderColor: isDark ? colors.border : "rgba(22, 163, 74, 0.22)",
                 }}
               >
-                <Ionicons name={it.icon} size={18} color="#16a34a" />
+                <Ionicons name={it.icon} size={18} color={colors.primary} />
               </View>
-              <Text style={{ marginTop: 10, color: "#111827", fontSize: 14, fontWeight: "800", lineHeight: 20, textAlign: "center" }}>
+              <Text style={{ marginTop: 10, color: colors.text, fontSize: 14, fontWeight: "800", lineHeight: 20, textAlign: "center" }}>
                 {it.text}
               </Text>
             </View>

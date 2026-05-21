@@ -9,10 +9,12 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useGuestAuthAlert } from '@/contexts/GuestAuthModalContext';
+import { useAppTheme } from '@/contexts/ThemeContext';
 
 export default function Notifications() {
     const router = useRouter();
     const { t } = useLanguage();
+    const { colors } = useAppTheme();
     const { isGuest } = useAuth();
     const { showGuestAuthAlert } = useGuestAuthAlert();
     const [profileModalVisible, setProfileModalVisible] = useState(false);
@@ -68,13 +70,13 @@ export default function Notifications() {
     if (loading) {
         return (
             <View className="flex-1 justify-center items-center">
-                <ActivityIndicator size="large" color="#16a34a" />
+                <ActivityIndicator size="large" color={colors.primary} />
             </View>
         );
     }
 
     return (
-        <View className="flex-1 bg-gray-100">
+        <View className="flex-1" style={{ backgroundColor: colors.background }}>
             <NotificationList
                 groupedNotifications={groupedNotifications}
                 onFollowRequest={handleFollowRequest}

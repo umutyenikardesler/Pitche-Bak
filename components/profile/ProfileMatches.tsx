@@ -4,6 +4,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { supabase } from "@/services/supabase";
 import { useFocusEffect } from "@react-navigation/native";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useAppTheme } from "@/contexts/ThemeContext";
 
 type Match = {
   id: number;
@@ -35,6 +36,7 @@ export default function ProfileMatches({
   mode = "profile",
 }: Props) {
   const { t } = useLanguage();
+  const { colors } = useAppTheme();
   const [loading, setLoading] = useState(true);
   const [matches, setMatches] = useState<Match[]>([]);
 
@@ -107,13 +109,13 @@ export default function ProfileMatches({
       {/* Maç Listesi ve İçeriği */}
       <View className="flex-row justify-center items-center my-2">
         <Ionicons name="calendar-outline" size={16} color="green" className="" />
-        <Text className="font-bold text-green-700 mx-1"> {t('profile.myMatches')} </Text>
+        <Text className="font-bold mx-1" style={{ color: colors.primaryDark }}> {t('profile.myMatches')} </Text>
       </View>
 
       {/* Maç Listesi */}
       <View className={mode === "profile" ? "flex-1 mb-2" : "mb-2"}>
         {loading ? (
-          <Text className="text-center mb-4 text-gray-500">{t('general.loading')}</Text>
+          <Text className="text-center mb-4" style={{ color: colors.textMuted }}>{t('general.loading')}</Text>
         ) : matches.length > 0 ? (
           mode === "profile" ? (
             <ScrollView
@@ -131,23 +133,32 @@ export default function ProfileMatches({
               }
             >
               {matches.map((item) => (
-                <View key={item.id.toString()} className="bg-gray-100 rounded-lg p-2 mx-4 mt-1 mb-1 shadow-sm justify-center items-center">
-                  <Text className="text-green-700 font-bold mb-1">{item.title}</Text>
+                <View key={item.id.toString()} className="rounded-lg p-2 mx-4 mt-1 mb-1 shadow-sm justify-center items-center" style={{ backgroundColor: colors.surfaceAlt, borderWidth: 1, borderColor: colors.primary }}>
+                  <Text className="font-bold mb-1" style={{ color: colors.primaryDark }}>{item.title}</Text>
                   <View className="text-gray-700 text-md flex-row items-center">
-                    <Ionicons name="calendar-outline" size={18} color="black" />
-                    <Text className="pl-2 font-semibold">
+                    <Ionicons name="calendar-outline" size={18} color={colors.icon} />
+                    <Text className="pl-2 font-semibold" style={{ color: colors.text }}>
                       {item.formattedDate}
                       {"  →"}
                     </Text>
-                    <Text className="pl-2 font-bold text-green-600">{item.startFormatted}-{item.endFormatted}</Text>
+                    <Text className="pl-2 font-bold" style={{ color: colors.primary }}>{item.startFormatted}-{item.endFormatted}</Text>
                   </View>
-                  <View className="text-gray-700 text-md flex-row items-center pt-1">
-                    <Ionicons name="location-outline" size={18} color="black" />
-                    <Text className="pl-2 font-semibold">
-                      {item.pitches?.districts?.name ?? ""}
-                      {"  →"}
-                    </Text>
-                    <Text className="pl-2 font-bold text-green-700">{item.pitches?.name ?? ""}</Text>
+                  <View className="pt-1" style={{ width: "100%", paddingHorizontal: 0, alignItems: "center" }}>
+                    <View style={{ maxWidth: "92%", flexDirection: "row", alignItems: "center" }}>
+                      <Ionicons name="location-outline" size={18} color={colors.icon} />
+                      <Text
+                        className="font-semibold"
+                        style={{ color: colors.text, marginLeft: 5, flexShrink: 1, textAlign: "center" }}
+                        numberOfLines={1}
+                        ellipsizeMode="tail"
+                      >
+                        {item.pitches?.districts?.name ?? ""}
+                        {"  → "}
+                        <Text className="font-bold" style={{ color: colors.primaryDark }}>
+                          {item.pitches?.name ?? ""}
+                        </Text>
+                      </Text>
+                    </View>
                   </View>
                 </View>
               ))}
@@ -156,30 +167,39 @@ export default function ProfileMatches({
             // Modal modunda: inner ScrollView YOK (nested scroll iOS'ta kilitleniyor)
             <View style={{ marginBottom: 0 }}>
               {matches.map((item) => (
-                <View key={item.id.toString()} className="bg-gray-100 rounded-lg p-2 mx-4 mt-1 mb-1 shadow-sm justify-center items-center">
-                  <Text className="text-green-700 font-bold mb-1">{item.title}</Text>
+                <View key={item.id.toString()} className="rounded-lg p-2 mx-4 mt-1 mb-1 shadow-sm justify-center items-center" style={{ backgroundColor: colors.surfaceAlt, borderWidth: 1, borderColor: colors.primary }}>
+                  <Text className="font-bold mb-1" style={{ color: colors.primaryDark }}>{item.title}</Text>
                   <View className="text-gray-700 text-md flex-row items-center">
-                    <Ionicons name="calendar-outline" size={18} color="black" />
-                    <Text className="pl-2 font-semibold">
+                    <Ionicons name="calendar-outline" size={18} color={colors.icon} />
+                    <Text className="pl-2 font-semibold" style={{ color: colors.text }}>
                       {item.formattedDate}
                       {"  →"}
                     </Text>
-                    <Text className="pl-2 font-bold text-green-600">{item.startFormatted}-{item.endFormatted}</Text>
+                    <Text className="pl-2 font-bold" style={{ color: colors.primary }}>{item.startFormatted}-{item.endFormatted}</Text>
                   </View>
-                  <View className="text-gray-700 text-md flex-row items-center pt-1">
-                    <Ionicons name="location-outline" size={18} color="black" />
-                    <Text className="pl-2 font-semibold">
-                      {item.pitches?.districts?.name ?? ""}
-                      {"  →"}
-                    </Text>
-                    <Text className="pl-2 font-bold text-green-700">{item.pitches?.name ?? ""}</Text>
+                  <View className="pt-1" style={{ width: "100%", paddingHorizontal: 5, alignItems: "center" }}>
+                    <View style={{ maxWidth: "92%", flexDirection: "row", alignItems: "center" }}>
+                      <Ionicons name="location-outline" size={18} color={colors.icon} />
+                      <Text
+                        className="font-semibold"
+                        style={{ color: colors.text, marginLeft: 5, flexShrink: 1, textAlign: "center" }}
+                        numberOfLines={1}
+                        ellipsizeMode="tail"
+                      >
+                        {item.pitches?.districts?.name ?? ""}
+                        {"  → "}
+                        <Text className="font-bold" style={{ color: colors.primaryDark }}>
+                          {item.pitches?.name ?? ""}
+                        </Text>
+                      </Text>
+                    </View>
                   </View>
                 </View>
               ))}
             </View>
           )
         ) : (
-          <Text className="text-center mb-4 text-gray-500">Henüz maç oluşturmadınız!</Text>
+          <Text className="text-center mb-4" style={{ color: colors.textMuted }}>Henüz maç oluşturmadınız!</Text>
         )}
       </View>
     </View>

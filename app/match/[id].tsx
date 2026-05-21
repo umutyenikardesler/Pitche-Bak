@@ -5,11 +5,13 @@ import { ActivityIndicator, SafeAreaView, Text, View } from "react-native";
 import MatchDetailsModal from "@/components/index/MatchDetails";
 import { Match } from "@/components/index/types";
 import { supabase } from "@/services/supabase";
+import { useAppTheme } from "@/contexts/ThemeContext";
 
 type MatchDetailsData = Match;
 
 export default function MatchDeepLinkScreen() {
   const router = useRouter();
+  const { colors } = useAppTheme();
   const params = useLocalSearchParams<{ id?: string }>();
   const id = typeof params?.id === "string" ? params.id : "";
 
@@ -88,18 +90,18 @@ export default function MatchDeepLinkScreen() {
   }, [id]);
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "white" }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
       <Stack.Screen options={{ title }} />
 
       {loading ? (
         <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
-          <ActivityIndicator size="large" color="#16a34a" />
-          <Text style={{ marginTop: 12, color: "#6b7280" }}>Yükleniyor…</Text>
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={{ marginTop: 12, color: colors.textMuted }}>Yükleniyor…</Text>
         </View>
       ) : error ? (
         <View style={{ flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 20 }}>
-          <Text style={{ color: "#dc2626", fontWeight: "700", fontSize: 16, textAlign: "center" }}>{error}</Text>
-          <Text style={{ marginTop: 8, color: "#6b7280", textAlign: "center" }}>
+          <Text style={{ color: colors.danger, fontWeight: "700", fontSize: 16, textAlign: "center" }}>{error}</Text>
+          <Text style={{ marginTop: 8, color: colors.textMuted, textAlign: "center" }}>
             Paylaşım linki hatalı olabilir veya maç silinmiş olabilir.
           </Text>
         </View>

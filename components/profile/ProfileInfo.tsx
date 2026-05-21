@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { Text, View, Image, TouchableOpacity } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useAppTheme } from "@/contexts/ThemeContext";
 import { useFocusEffect } from "@react-navigation/native";
 
 interface ProfileInfoProps {
@@ -14,6 +15,7 @@ interface ProfileInfoProps {
 
 export default function ProfileInfo({ userData, setModalVisible, setEditModalVisible, pickImage, onImagePicked }: ProfileInfoProps) {
     const { t } = useLanguage();
+    const { colors } = useAppTheme();
 
     const [profileImage, setProfileImage] = useState({ uri: userData?.profile_image || null });
 
@@ -107,7 +109,7 @@ export default function ProfileInfo({ userData, setModalVisible, setEditModalVis
                     style={{marginBottom: 5}}
                 >
                     <View className="bg-white rounded-full p-1 shadow-lg">
-                        <Ionicons name="add-circle" size={24} color="green" />
+                        <Ionicons name="add-circle" size={24} color={colors.primary} />
                     </View>
                 </TouchableOpacity>
             </View>
@@ -115,23 +117,23 @@ export default function ProfileInfo({ userData, setModalVisible, setEditModalVis
             {/* Diğer bilgilerin olduğu kısım %75 */}
             <View className="w-3/4 px-4">
                 <View className="w-full">
-                    <Text className="font-semibold text-lg text-green-700 my-1">
+                    <Text className="font-semibold text-lg my-1" style={{ color: colors.primaryDark }}>
                         {userData?.name || t('profile.noName')} {userData?.surname || ""}
                     </Text>
                 </View>
 
                 <View className="flex-row justify-between mb-1">
-                    <Text className="text-wrap font-semibold">{t('profile.age')}:</Text>
-                    <Text className="text-green-600 font-semibold"> {userData?.age || "-"}  </Text>
-                    <Text className="font-semibold">{t('profile.height')}:</Text>
-                    <Text className="text-green-600 font-semibold"> {userData?.height || "-"} {t('units.cm')}  </Text>
-                    <Text className="font-semibold">{t('profile.weight')}:</Text>
-                    <Text className="text-green-600 font-semibold"> {userData?.weight || "-"} {t('units.kg')}</Text>
+                    <Text className="text-wrap font-semibold" style={{ color: colors.text }}>{t('profile.age')}:</Text>
+                    <Text className="font-semibold" style={{ color: colors.primary }}> {userData?.age || "-"}  </Text>
+                    <Text className="font-semibold" style={{ color: colors.text }}>{t('profile.height')}:</Text>
+                    <Text className="font-semibold" style={{ color: colors.primary }}> {userData?.height || "-"} {t('units.cm')}  </Text>
+                    <Text className="font-semibold" style={{ color: colors.text }}>{t('profile.weight')}:</Text>
+                    <Text className="font-semibold" style={{ color: colors.primary }}> {userData?.weight || "-"} {t('units.kg')}</Text>
                 </View>
 
                 <View className="flex-row justify-start mb-1">
-                    <Text className="font-semibold">{t('profile.position')}: </Text>
-                    <Text className="text-green-600 font-semibold">{userData?.description || t('profile.noDescription')}</Text>
+                    <Text className="font-semibold" style={{ color: colors.text }}>{t('profile.position')}: </Text>
+                    <Text className="font-semibold" style={{ color: colors.primary }}>{userData?.description || t('profile.noDescription')}</Text>
                 </View>
 
                 {/* Butonlar */}

@@ -10,6 +10,7 @@ import { supabase } from '@/services/supabase';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useGuestAuthAlert } from '@/contexts/GuestAuthModalContext';
+import { useAppTheme } from '@/contexts/ThemeContext';
 import '@/global.css';
 
 import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
@@ -31,6 +32,7 @@ interface MissingPositions {
 
 export default function CreateMatch() {
   const { t } = useLanguage();
+  const { colors } = useAppTheme();
   const router = useRouter();
   const { isGuest } = useAuth();
   const { showGuestAuthAlert } = useGuestAuthAlert();
@@ -281,12 +283,12 @@ export default function CreateMatch() {
         animationType="fade"
         onRequestClose={() => setSuccessModalVisible(false)}
       >
-        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'center', alignItems: 'center' }}>
-          <View style={{ width: 320, backgroundColor: 'white', borderRadius: 16, padding: 18 }}>
-            <Text style={{ fontSize: 18, fontWeight: '800', textAlign: 'center', marginBottom: 8 }}>
+        <View style={{ flex: 1, backgroundColor: colors.overlay, justifyContent: 'center', alignItems: 'center' }}>
+          <View style={{ width: 320, backgroundColor: colors.surface, borderRadius: 16, padding: 18 }}>
+            <Text style={{ fontSize: 18, fontWeight: '800', textAlign: 'center', marginBottom: 8, color: colors.text }}>
               Tebrikler 🎉
             </Text>
-            <Text style={{ textAlign: 'center', color: '#374151', marginBottom: 14 }}>
+            <Text style={{ textAlign: 'center', color: colors.textSecondary, marginBottom: 14 }}>
               Maçınız başarılı bir şekilde oluşturulmuştur.
             </Text>
             <TouchableOpacity
@@ -311,7 +313,7 @@ export default function CreateMatch() {
                 // Web'de router ile geri dön
                 router.replace("/(tabs)");
               }}
-              style={{ backgroundColor: '#16a34a', paddingVertical: 10, borderRadius: 10 }}
+              style={{ backgroundColor: colors.primary, paddingVertical: 10, borderRadius: 10 }}
               activeOpacity={0.9}
             >
               <Text style={{ color: 'white', fontWeight: '800', textAlign: 'center' }}>Tamam</Text>
@@ -327,17 +329,17 @@ export default function CreateMatch() {
         animationType="fade"
         onRequestClose={() => setErrorModalVisible(false)}
       >
-        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'center', alignItems: 'center' }}>
-          <View style={{ width: 320, backgroundColor: 'white', borderRadius: 16, padding: 18 }}>
-            <Text style={{ fontSize: 18, fontWeight: '800', textAlign: 'center', marginBottom: 8 }}>
+        <View style={{ flex: 1, backgroundColor: colors.overlay, justifyContent: 'center', alignItems: 'center' }}>
+          <View style={{ width: 320, backgroundColor: colors.surface, borderRadius: 16, padding: 18 }}>
+            <Text style={{ fontSize: 18, fontWeight: '800', textAlign: 'center', marginBottom: 8, color: colors.text }}>
               Hata
             </Text>
-            <Text style={{ textAlign: 'center', color: '#374151', marginBottom: 14 }}>
+            <Text style={{ textAlign: 'center', color: colors.textSecondary, marginBottom: 14 }}>
               {errorModalMessage}
             </Text>
             <TouchableOpacity
               onPress={() => setErrorModalVisible(false)}
-              style={{ backgroundColor: '#111827', paddingVertical: 10, borderRadius: 10 }}
+              style={{ backgroundColor: colors.surfaceAlt, paddingVertical: 10, borderRadius: 10 }}
               activeOpacity={0.9}
             >
               <Text style={{ color: 'white', fontWeight: '800', textAlign: 'center' }}>Tamam</Text>
@@ -347,19 +349,26 @@ export default function CreateMatch() {
       </Modal>
 
       <ScrollView 
-        className="bg-white rounded-lg my-3 mx-4 p-4 shadow-md"
+        className="rounded-lg my-3 mx-4 p-4 shadow-md"
+        style={{ backgroundColor: colors.surface }}
         contentContainerStyle={{ flexGrow: 1, justifyContent: 'space-between' }}
       >
       <View>
         <View className="mb-4">
-                          <Text className="text-green-700 font-semibold mb-2">{t('create.matchTitle')}</Text>
+                          <Text className="font-semibold mb-2" style={{ color: colors.primaryDark }}>{t('create.matchTitle')}</Text>
           <TextInput
-            className="w-full border border-gray-500 p-2 rounded"
+            className="w-full p-2 rounded"
                           placeholder={t('create.matchTitlePlaceholder')}
-            placeholderTextColor="#9CA3AF"
+            placeholderTextColor={colors.textMuted}
             value={matchTitle}
             onChangeText={(text) => setMatchTitle(capitalizeWords(text))}
             autoCapitalize="words" // Bu satırı da ekleyebilirsiniz (klavye özelliği)
+            style={{
+              borderWidth: 1,
+              borderColor: colors.inputBorder,
+              backgroundColor: colors.inputBackground,
+              color: colors.text,
+            }}
           />
         </View>
 

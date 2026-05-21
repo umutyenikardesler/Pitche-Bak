@@ -7,6 +7,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { Match } from '@/components/index/types';
 import { supabase } from '@/services/supabase';
 import { useAuth } from '@/contexts/AuthContext';
+import { useAppTheme } from '@/contexts/ThemeContext';
 
 interface PitchSummaryProps {
   match: Match;
@@ -15,6 +16,7 @@ interface PitchSummaryProps {
 
 export default function PitchSummary({ match, currentUserId }: PitchSummaryProps) {
   const { t } = useLanguage();
+  const { colors } = useAppTheme();
   const { isGuest } = useAuth();
   const isMatchOwner = !!currentUserId && currentUserId === match.create_user;
   // "Halı Saha Özeti" başlangıçta açık gelsin (mobil + web)
@@ -147,16 +149,17 @@ export default function PitchSummary({ match, currentUserId }: PitchSummaryProps
   return (
     <>
       <TouchableOpacity 
-        className="flex-row mb-3 justify-center items-center bg-green-100 border-2 border-green-300 rounded-lg py-3 px-2"
+        className="flex-row mb-3 justify-center items-center rounded-lg py-3 px-2"
+        style={{ backgroundColor: colors.surfaceAlt, borderWidth: 2, borderColor: colors.primary }}
         onPress={() => setIsExpanded(!isExpanded)}
         activeOpacity={0.8}
       >
-        <Ionicons name="accessibility-outline" size={20} color="green" />
-        <Text className="text-xl font-bold text-green-700 ml-3"> {t('home.pitchSummary')} </Text>
+        <Ionicons name="accessibility-outline" size={20} color={colors.primary} />
+        <Text className="text-xl font-bold ml-3" style={{ color: colors.primaryDark }}> {t('home.pitchSummary')} </Text>
         <Ionicons 
           name={isExpanded ? "chevron-up" : "chevron-down"} 
           size={24} 
-          color="green" 
+          color={colors.primary}
           className="ml-3" 
         />
       </TouchableOpacity>
@@ -173,9 +176,9 @@ export default function PitchSummary({ match, currentUserId }: PitchSummaryProps
                 <View style={{ position: 'absolute', right: 8, bottom: 8 }}>
                   <TouchableOpacity
                     onPress={showMapChooser}
-                    style={{ backgroundColor: 'rgba(255,255,255,0.95)', paddingHorizontal: 10, paddingVertical: 8, borderRadius: 9999 }}
+                    style={{ backgroundColor: colors.surface, paddingHorizontal: 10, paddingVertical: 8, borderRadius: 9999, borderWidth: 1, borderColor: colors.primary }}
                   >
-                    <Text style={{ fontWeight: '700', color: '#111' }}>Haritalar uygulamasında Aç</Text>
+                    <Text style={{ fontWeight: '700', color: colors.text }}>Haritalar uygulamasında Aç</Text>
                   </TouchableOpacity>
                 </View>
               ) : null}
@@ -187,22 +190,22 @@ export default function PitchSummary({ match, currentUserId }: PitchSummaryProps
                 animationType="fade"
                 onRequestClose={() => setMapChooserVisible(false)}
               >
-                <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', alignItems: 'center', justifyContent: 'center' }}>
-                  <View style={{ backgroundColor: 'white', borderRadius: 12, padding: 16, width: 280 }}>
-                    <Text style={{ fontWeight: '800', fontSize: 16, marginBottom: 10, textAlign: 'center', color: '#16a34a' }}>
+                <View style={{ flex: 1, backgroundColor: colors.overlay, alignItems: 'center', justifyContent: 'center' }}>
+                  <View style={{ backgroundColor: colors.surface, borderRadius: 12, padding: 16, width: 280, borderWidth: 1, borderColor: colors.primary }}>
+                    <Text style={{ fontWeight: '800', fontSize: 16, marginBottom: 10, textAlign: 'center', color: colors.primary }}>
                       Haritalarda aç
                     </Text>
                     {Platform.OS === 'ios' ? (
                       <TouchableOpacity onPress={openInAppleMaps} style={{ paddingVertical: 10 }}>
-                        <Text style={{ textAlign: 'center', fontWeight: '600' }}>Apple Haritalar</Text>
+                        <Text style={{ textAlign: 'center', fontWeight: '600', color: colors.text }}>Apple Haritalar</Text>
                       </TouchableOpacity>
                     ) : null}
                     <TouchableOpacity onPress={openInGoogleMaps} style={{ paddingVertical: 10 }}>
-                      <Text style={{ textAlign: 'center', fontWeight: '600' }}>Google Maps</Text>
+                      <Text style={{ textAlign: 'center', fontWeight: '600', color: colors.text }}>Google Maps</Text>
                     </TouchableOpacity>
                     {availableMaps.waze ? (
                       <TouchableOpacity onPress={openInWaze} style={{ paddingVertical: 10 }}>
-                        <Text style={{ textAlign: 'center', fontWeight: '600' }}>Waze</Text>
+                        <Text style={{ textAlign: 'center', fontWeight: '600', color: colors.text }}>Waze</Text>
                       </TouchableOpacity>
                     ) : null}
                     <TouchableOpacity
@@ -210,13 +213,13 @@ export default function PitchSummary({ match, currentUserId }: PitchSummaryProps
                       style={{
                         marginTop: 10,
                         paddingVertical: 10,
-                        backgroundColor: '#e5e7eb',
+                        backgroundColor: colors.surfaceAlt,
                         borderRadius: 10,
                         borderWidth: 1,
-                        borderColor: '#9ca3af',
+                        borderColor: colors.border,
                       }}
                     >
-                      <Text style={{ textAlign: 'center', color: '#374151', fontWeight: '700' }}>
+                      <Text style={{ textAlign: 'center', color: colors.text, fontWeight: '700' }}>
                         İptal
                       </Text>
                     </TouchableOpacity>
@@ -227,22 +230,22 @@ export default function PitchSummary({ match, currentUserId }: PitchSummaryProps
           )}
 
           <View className="">
-            <Text className="h-7 text-xl font-semibold text-green-700 text-center my-2">{pitchName}</Text>
+            <Text className="h-7 text-xl font-semibold text-center my-2" style={{ color: colors.primaryDark }}>{pitchName}</Text>
           </View>
 
           <View className="">
-            <Text className="h-7 text-lg font-semibold text-green-700 text-center my-2">{t('home.openAddress')}</Text>
+            <Text className="h-7 text-lg font-semibold text-center my-2" style={{ color: colors.primaryDark }}>{t('home.openAddress')}</Text>
           </View>
-          <View className="text-gray-700 text-md flex-row justify-center items-center pt-1">
-            <Ionicons name="location" size={18} color="black" />
-            <Text className="pl-2 font-semibold text-gray-700">{pitchAddress}</Text>
+          <View className="text-md flex-row justify-center items-center pt-1">
+            <Ionicons name="location" size={18} color={colors.icon} />
+            <Text className="pl-2 font-semibold" style={{ color: colors.text }}>{pitchAddress}</Text>
           </View>
 
           {/* Telefon ve Ücret yan yana */}
           <View className="flex-row mt-3">
             {/* Sol: Halı Saha Telefonu */}
             <View className="w-1/2 pr-1">
-              <Text className="h-7 text-lg font-semibold text-green-700 text-center my-2">
+              <Text className="h-7 text-lg font-semibold text-center my-2" style={{ color: colors.primaryDark }}>
                 Halı Saha Telefonu
               </Text>
               {hasPhone ? (
@@ -250,17 +253,17 @@ export default function PitchSummary({ match, currentUserId }: PitchSummaryProps
                   onPress={() => Linking.openURL(`tel:${pitchPhone}`)}
                   activeOpacity={0.7}
                 >
-                  <View className="text-gray-700 text-md flex-row justify-center items-center pt-1">
-                    <Ionicons name="call-outline" size={18} color="green" />
-                    <Text className="pl-2 font-semibold text-gray-900">
+                  <View className="text-md flex-row justify-center items-center pt-1">
+                    <Ionicons name="call-outline" size={18} color={colors.primary} />
+                    <Text className="pl-2 font-semibold" style={{ color: colors.text }}>
                       {pitchPhone}
                     </Text>
                   </View>
                 </TouchableOpacity>
               ) : (
-                <View className="text-gray-700 text-md flex-row justify-center items-center pt-1">
-                  <Ionicons name="call-outline" size={18} color="green" />
-                  <Text className="pl-2 font-semibold text-gray-700">
+                <View className="text-md flex-row justify-center items-center pt-1">
+                  <Ionicons name="call-outline" size={18} color={colors.primary} />
+                  <Text className="pl-2 font-semibold" style={{ color: colors.textMuted }}>
                     Telefon bilgisi yok
                   </Text>
                 </View>
@@ -269,17 +272,17 @@ export default function PitchSummary({ match, currentUserId }: PitchSummaryProps
 
             {/* Sağ: Saha Ücreti */}
             <View className="w-1/2 pl-1">
-              <Text className="h-7 text-lg font-semibold text-green-700 text-center my-2">
+              <Text className="h-7 text-lg font-semibold text-center my-2" style={{ color: colors.primaryDark }}>
                 {t('pitches.pitchPrice')}
               </Text>
               <View className="flex-row justify-center items-center pt-1 flex-wrap">
-                <Ionicons name="wallet-outline" size={18} color="green" />
+                <Ionicons name="wallet-outline" size={18} color={colors.primary} />
                 {hasPrice ? (
-                  <Text className="pl-2 font-semibold text-gray-700">
+                  <Text className="pl-2 font-semibold" style={{ color: colors.text }}>
                     {pitchPriceRaw} ₺
                   </Text>
                 ) : (
-                  <Text className="pl-2 font-semibold text-gray-700">
+                  <Text className="pl-2 font-semibold" style={{ color: colors.textMuted }}>
                     Fiyat bilgisi yok
                   </Text>
                 )}
@@ -289,15 +292,15 @@ export default function PitchSummary({ match, currentUserId }: PitchSummaryProps
                     hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                     style={{ marginLeft: 4 }}
                   >
-                    <Ionicons name="information-circle-outline" size={20} color="#6b7280" />
+                    <Ionicons name="information-circle-outline" size={20} color={colors.textMuted} />
                   </TouchableOpacity>
                 ) : null}
                 {isMatchOwner ? (
                   <TouchableOpacity
                     onPress={openPriceEdit}
-                    style={{ marginLeft: 6, paddingHorizontal: 8, paddingVertical: 4, backgroundColor: '#e5e7eb', borderRadius: 6 }}
+                    style={{ marginLeft: 6, paddingHorizontal: 8, paddingVertical: 4, backgroundColor: colors.surfaceAlt, borderRadius: 6 }}
                   >
-                    <Text style={{ fontSize: 12, fontWeight: '600', color: '#374151' }}>
+                    <Text style={{ fontSize: 12, fontWeight: '600', color: colors.text }}>
                       {t('pitches.editPrice')}
                     </Text>
                   </TouchableOpacity>
@@ -307,7 +310,7 @@ export default function PitchSummary({ match, currentUserId }: PitchSummaryProps
           </View>
 
           <View>
-            <Text className="h-7 text-lg font-semibold text-green-700 text-center mt-4">{t('home.pitchFeatures')}</Text>
+            <Text className="h-7 text-lg font-semibold text-center mt-4" style={{ color: colors.primaryDark }}>{t('home.pitchFeatures')}</Text>
           </View>
           <View className="flex-row flex-wrap justify-center items-center mt-3">
             {featuresArray.map((feature, index) => (
@@ -323,20 +326,20 @@ export default function PitchSummary({ match, currentUserId }: PitchSummaryProps
           {/* Saha ücreti bilgi modalı */}
           <Modal visible={priceInfoVisible} transparent animationType="fade">
             <TouchableOpacity
-              style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 24 }}
+              style={{ flex: 1, backgroundColor: colors.overlay, justifyContent: 'center', padding: 24 }}
               activeOpacity={1}
               onPress={() => setPriceInfoVisible(false)}
             >
               <TouchableOpacity
                 activeOpacity={1}
                 onPress={(e) => e.stopPropagation()}
-                style={{ backgroundColor: 'white', borderRadius: 12, padding: 20 }}
+                style={{ backgroundColor: colors.surface, borderRadius: 12, padding: 20, borderWidth: 1, borderColor: colors.primary }}
               >
-                <Text style={{ fontSize: 13, color: '#374151', lineHeight: 20, textAlign: 'center' }}>
+                <Text style={{ fontSize: 13, color: colors.text, lineHeight: 20, textAlign: 'center' }}>
                   {t('pitches.priceDisclaimer')}
                 </Text>
-                <TouchableOpacity onPress={() => setPriceInfoVisible(false)} style={{ marginTop: 16, paddingVertical: 10, backgroundColor: '#6b7280', borderRadius: 8, alignItems: 'center' }}>
-                  <Text style={{ color: 'white', fontWeight: '600' }}>{t('general.close')}</Text>
+                <TouchableOpacity onPress={() => setPriceInfoVisible(false)} style={{ marginTop: 16, paddingVertical: 10, backgroundColor: colors.surfaceAlt, borderRadius: 8, alignItems: 'center' }}>
+                  <Text style={{ color: colors.text, fontWeight: '600' }}>{t('general.close')}</Text>
                 </TouchableOpacity>
               </TouchableOpacity>
             </TouchableOpacity>
@@ -345,16 +348,16 @@ export default function PitchSummary({ match, currentUserId }: PitchSummaryProps
           {/* Saha ücreti düzenleme modalı */}
           <Modal visible={priceEditVisible} transparent animationType="fade">
             <TouchableOpacity
-              style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 24 }}
+              style={{ flex: 1, backgroundColor: colors.overlay, justifyContent: 'center', padding: 24 }}
               activeOpacity={1}
               onPress={() => !priceUpdating && setPriceEditVisible(false)}
             >
               <TouchableOpacity
                 activeOpacity={1}
                 onPress={(e) => e.stopPropagation()}
-                style={{ backgroundColor: 'white', borderRadius: 12, padding: 20 }}
+                style={{ backgroundColor: colors.surface, borderRadius: 12, padding: 20, borderWidth: 1, borderColor: colors.primary }}
               >
-                <Text style={{ fontSize: 16, fontWeight: '600', marginBottom: 12, textAlign: 'center' }}>
+                <Text style={{ fontSize: 16, fontWeight: '600', marginBottom: 12, textAlign: 'center', color: colors.text }}>
                   {t('pitches.editPriceTitle')}
                 </Text>
                 <TextInput
@@ -362,14 +365,15 @@ export default function PitchSummary({ match, currentUserId }: PitchSummaryProps
                   onChangeText={setEditPriceValue}
                   keyboardType="numeric"
                   placeholder="0"
-                  style={{ borderWidth: 1, borderColor: '#d1d5db', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10, fontSize: 16, marginBottom: 16 }}
+                  placeholderTextColor={colors.textMuted}
+                  style={{ borderWidth: 1, borderColor: colors.inputBorder, backgroundColor: colors.inputBackground, color: colors.text, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10, fontSize: 16, marginBottom: 16 }}
                 />
                 <View style={{ flexDirection: 'row', gap: 12 }}>
-                  <TouchableOpacity onPress={() => setPriceEditVisible(false)} style={{ flex: 1, paddingVertical: 10, backgroundColor: '#e5e7eb', borderRadius: 8, alignItems: 'center' }}>
-                    <Text style={{ color: '#374151', fontWeight: '600' }}>{t('general.cancel')}</Text>
+                  <TouchableOpacity onPress={() => setPriceEditVisible(false)} style={{ flex: 1, paddingVertical: 10, backgroundColor: colors.surfaceAlt, borderRadius: 8, alignItems: 'center' }}>
+                    <Text style={{ color: colors.text, fontWeight: '600' }}>{t('general.cancel')}</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity onPress={handleSavePrice} disabled={priceUpdating} style={{ flex: 1, paddingVertical: 10, backgroundColor: '#16a34a', borderRadius: 8, alignItems: 'center' }}>
-                    <Text style={{ color: 'white', fontWeight: '600' }}>{priceUpdating ? '...' : t('general.save')}</Text>
+                  <TouchableOpacity onPress={handleSavePrice} disabled={priceUpdating} style={{ flex: 1, paddingVertical: 10, backgroundColor: colors.primary, borderRadius: 8, alignItems: 'center' }}>
+                    <Text style={{ color: colors.whiteText, fontWeight: '600' }}>{priceUpdating ? '...' : t('general.save')}</Text>
                   </TouchableOpacity>
                 </View>
               </TouchableOpacity>

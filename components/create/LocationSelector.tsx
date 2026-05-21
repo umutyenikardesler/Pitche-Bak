@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity, FlatList, Dimensions, Modal } from 'react-native';
 import { supabase } from '@/services/supabase';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useAppTheme } from '@/contexts/ThemeContext';
 
 interface District {
   id: number;
@@ -37,6 +38,7 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
   setDistrictName // Props olarak alın
 }) => {
   const { t } = useLanguage();
+  const { colors } = useAppTheme();
   const [districts, setDistricts] = useState<District[]>([]);
   const [pitches, setPitches] = useState<Pitch[]>([]);
   const [showDistrictModal, setShowDistrictModal] = useState(false);
@@ -139,10 +141,11 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
         animationType="fade"
         onRequestClose={() => setShowDistrictModal(false)}
       >
-        <View className="flex-1 justify-center items-center bg-black/50">
+        <View className="flex-1 justify-center items-center" style={{ backgroundColor: colors.overlay }}>
           <View
-            className="bg-white rounded-lg p-4"
+            className="rounded-lg p-4"
             style={{
+              backgroundColor: colors.surface,
               width: districtModalWidth,
               minWidth: isCompact ? 0 : 180,
               maxWidth: isCompact ? undefined : 320,
@@ -155,7 +158,8 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
               keyExtractor={(item) => item.id.toString()}
               renderItem={({ item }: { item: District }) => (
                 <TouchableOpacity
-                  className="p-3 border-b border-gray-200"
+                  className="p-3"
+                  style={{ borderBottomWidth: 1, borderBottomColor: colors.border }}
                   onPress={() => {
                     setSelectedDistrict(String(item.id));
                     setShowDistrictModal(false);
@@ -163,7 +167,7 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
                     setPrice('');
                   }}
                 >
-                  <Text>{item.name}</Text>
+                  <Text style={{ color: colors.text }}>{item.name}</Text>
                 </TouchableOpacity>
               )}
             />
@@ -191,10 +195,11 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
         animationType="fade"
         onRequestClose={() => setShowPitchModal(false)}
       >
-        <View className="flex-1 justify-center items-center bg-black/50">
+        <View className="flex-1 justify-center items-center" style={{ backgroundColor: colors.overlay }}>
           <View
-            className="bg-white rounded-lg p-4"
+            className="rounded-lg p-4"
             style={{
+              backgroundColor: colors.surface,
               width: pitchModalWidth,
               minWidth: isCompact ? 0 : 240,
               maxWidth: isCompact ? undefined : 420,
@@ -208,14 +213,15 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
               keyExtractor={(item) => item.id.toString()}
               renderItem={({ item }: { item: Pitch }) => (
                 <TouchableOpacity
-                  className="p-3 border-b border-gray-200"
+                  className="p-3"
+                  style={{ borderBottomWidth: 1, borderBottomColor: colors.border }}
                   onPress={() => {
                     setSelectedPitch(String(item.id));
                     setPrice(String(item.price)); // Fiyatı state'e kaydet
                     setShowPitchModal(false);
                   }}
                 >
-                  <Text>{item.name}</Text>
+                  <Text style={{ color: colors.text }}>{item.name}</Text>
                 </TouchableOpacity>
               )}
               style={{ flexGrow: 1 }}
@@ -234,27 +240,32 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
 
   return (
     <View className="mb-4">
-      <Text className="text-green-700 font-semibold mb-2">{t('create.locationTitle')}</Text>
+      <Text className="font-semibold mb-2" style={{ color: colors.primaryDark }}>{t('create.locationTitle')}</Text>
       <TouchableOpacity
-        className="border border-gray-500 rounded mb-2 p-3"
+        className="rounded mb-2 p-3"
         onPress={() => setShowDistrictModal(true)}
+        style={{ borderWidth: 1, borderColor: colors.inputBorder, backgroundColor: colors.inputBackground }}
       >
-        <Text>{districtName || t('create.selectDistrictPlaceholder')}</Text>
+        <Text style={{ color: districtName ? colors.text : colors.textMuted }}>
+          {districtName || t('create.selectDistrictPlaceholder')}
+        </Text>
       </TouchableOpacity>
 
       <TouchableOpacity
-        className="border border-gray-500 rounded mb-2 p-3"
+        className="rounded mb-2 p-3"
         onPress={() => {
           if (!selectedDistrict) return;
           setShowPitchModal(true);
         }}
         disabled={!selectedDistrict}
         style={{
-          backgroundColor: !selectedDistrict ? '#eee' : 'transparent', // Arka plan rengini değiştir
+          borderWidth: 1,
+          borderColor: colors.inputBorder,
+          backgroundColor: colors.inputBackground,
           opacity: !selectedDistrict ? 0.7 : 1, // Opaklığı azalt (isteğe bağlı)
         }}
       >
-        <Text>
+        <Text style={{ color: selectedPitch ? colors.text : colors.textMuted }}>
           {selectedPitch
             ? (pitches.find(p => String(p.id) === selectedPitch)?.name ?? t('create.selectPitchPlaceholder'))
             : t('create.selectPitchPlaceholder')}
@@ -265,16 +276,19 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
       {renderDistrictModal()}
       {renderPitchModal()}
 
-      <Text className="text-green-700 font-semibold mb-2">{t('create.priceTitle')}</Text>
+      <Text className="font-semibold mb-2" style={{ color: colors.primaryDark }}>{t('create.priceTitle')}</Text>
       <TextInput
-        className="w-full border border-gray-500 p-3 rounded"
+        className="w-full p-3 rounded"
         placeholder={t('create.pricePlaceholder')}
-        placeholderTextColor="#9CA3AF"
+        placeholderTextColor={colors.textMuted}
         value={price ? `${price} ₺` : ""} // State'deki fiyatı göster
         editable={false} // TextInput'u pasif yap
         style={{
-          color: 'green', fontWeight: '600',
-          backgroundColor: selectedDistrict ? '#eee' : 'transparent', // Arka plan rengini değiştir
+          color: colors.primaryDark,
+          fontWeight: '600',
+          borderWidth: 1,
+          borderColor: colors.inputBorder,
+          backgroundColor: colors.inputBackground,
           opacity: !selectedDistrict ? 0.7 : 1, // Opaklığı azalt (isteğe bağlı)
         }} // Fiyatı yeşil yap
       />

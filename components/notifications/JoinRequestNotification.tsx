@@ -1,5 +1,6 @@
 import { View, Text, TouchableOpacity, Image } from "react-native";
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useAppTheme } from '@/contexts/ThemeContext';
 
 interface JoinRequestNotificationProps {
     item: {
@@ -32,6 +33,7 @@ interface JoinRequestNotificationProps {
 
 export default function JoinRequestNotification({ item, onAccept, onReject, onProfilePress, onMarkAsRead }: JoinRequestNotificationProps) {
     const { t } = useLanguage();
+    const { colors } = useAppTheme();
     
     // Tarih ve saat formatlama - Database'deki saati olduğu gibi göster
     const created = new Date(item.created_at);
@@ -59,10 +61,17 @@ export default function JoinRequestNotification({ item, onAccept, onReject, onPr
     const matchInfo = item.match ? 
         `${item.match.formattedDate} ${item.match.startFormatted}-${item.match.endFormatted}, ${item.match.pitches?.districts?.name || 'Bilinmiyor'} → ${item.match.pitches?.name || 'Bilinmiyor'}` :
         'Bilinmiyor';
+    const bodyTextColor = item.is_read ? colors.textMuted : colors.text;
+    const strongTextColor = colors.primaryDark;
+    const dateBadgeStyle = {
+        color: item.is_read ? colors.textMuted : colors.primaryDark,
+        backgroundColor: colors.surfaceAlt,
+    };
 
     return (
         <TouchableOpacity 
-            className="bg-white rounded-lg mx-4 mt-3 shadow-sm"
+            className="rounded-lg mx-4 mt-3 shadow-sm"
+            style={{ backgroundColor: colors.surface, borderWidth: 1, borderColor: item.is_read ? colors.border : colors.primary }}
             onPress={() => {
                 // Sadece geri bildirim mesajlarına tıklandığında okundu olarak işaretle
                 if (item.message && (item.message.includes('kullanıcısının oluşturduğu') || item.message.includes('kabul edildiniz') || item.message.includes('kabul edilmediniz') || item.message.includes('reddedildi'))) {
@@ -80,14 +89,27 @@ export default function JoinRequestNotification({ item, onAccept, onReject, onPr
                 >
                     <Image
                         source={item.sender_profile_image ? { uri: item.sender_profile_image } : require('@/assets/images/ball.png')}
-                        style={{ width: 72, height: 72, borderRadius: 36, resizeMode: 'cover', opacity: item.is_read ? 0.6 : 1 }}
+                        style={{
+                            width: 72,
+                            height: 72,
+                            borderRadius: 36,
+                            borderWidth: 1,
+                            borderColor: colors.primary,
+                            shadowColor: colors.primary,
+                            shadowOpacity: 0.9,
+                            shadowRadius: 16,
+                            shadowOffset: { width: 0, height: 0 },
+                            elevation: 12,
+                            resizeMode: 'cover',
+                            opacity: item.is_read ? 0.6 : 1,
+                        }}
                     />
                 </TouchableOpacity>
                 {/* Bildirim Metni */}
                 <View className="flex-1 p-1 leading-snug">
                     {item.message && (item.message.includes('reddedildi')) ? (
                         // Red bildirimi - detaylı mesaj formatı
-                        <Text className={`leading-6 ${item.is_read ? 'text-gray-500' : 'text-gray-700'}`}>
+                        <Text className="leading-6" style={{ color: bodyTextColor }}>
                             {(() => {
                                 // Mesajı parse et: "Duygu Zengin kullanıcısının oluşturmuş olduğu 25.10.2025 14:00-15:00, Kadıköy → Fenerbahçe maçı için Defans pozisyonuna katılma isteğiniz reddedildi."
                                 // "maçı için" ile ayır
@@ -114,22 +136,23 @@ export default function JoinRequestNotification({ item, onAccept, onReject, onPr
                                 return (
                                     <>
                                         <Text 
-                                            className={`font-bold ${item.is_read ? 'text-gray-600' : 'text-green-700'}`}
+                                            className="font-bold"
+                                            style={{ color: strongTextColor }}
                                             onPress={() => onProfilePress(item.sender_id)}
                                         >
                                             {name}
                                         </Text>
-                                        <Text className={`${item.is_read ? 'text-gray-500' : 'text-gray-700'}`}> {userPart} </Text>
-                                        <Text className={`font-bold ${item.is_read ? 'text-gray-600' : 'text-green-700'}`}>{dateTime}</Text>
+                                        <Text style={{ color: bodyTextColor }}> {userPart} </Text>
+                                        <Text className="font-bold" style={{ color: strongTextColor }}>{dateTime}</Text>
                                         {locationInfo && (
                                             <>
-                                                <Text className={`${item.is_read ? 'text-gray-500' : 'text-gray-700'}`}>, </Text>
-                                                <Text className={`font-bold ${item.is_read ? 'text-gray-600' : 'text-green-700'}`}>{locationInfo}</Text>
+                                                <Text style={{ color: bodyTextColor }}>, </Text>
+                                                <Text className="font-bold" style={{ color: strongTextColor }}>{locationInfo}</Text>
                                             </>
                                         )}
-                                        <Text className={`${item.is_read ? 'text-gray-500' : 'text-gray-700'}`}> maçı için </Text>
+                                        <Text style={{ color: bodyTextColor }}> maçı için </Text>
                                         <Text className={`font-bold ${item.is_read ? 'text-orange-500' : 'text-orange-600'}`}>{position}</Text>
-                                        <Text className={`${item.is_read ? 'text-gray-500' : 'text-gray-700'}`}> pozisyonuna </Text>
+                                        <Text style={{ color: bodyTextColor }}> pozisyonuna </Text>
                                         <Text className={`font-bold ${item.is_read ? 'text-red-500' : 'text-red-600'}`}>{reddedildi}</Text>
                                     </>
                                 );
@@ -137,7 +160,7 @@ export default function JoinRequestNotification({ item, onAccept, onReject, onPr
                         </Text>
                     ) : item.message && (item.message.includes('kullanıcısının oluşturduğu')) ? (
                         // Detaylı sonuç bildirimi - mesajı parse et ve kullanıcı adını linkli yap
-                        <Text className={`leading-6 ${item.is_read ? 'text-gray-500' : 'text-gray-700'}`}>
+                        <Text className="leading-6" style={{ color: bodyTextColor }}>
                             {(() => {
                                 // Mesajı parse et: "Duygu Zengin kullanıcısının oluşturduğu 25.10.2025 14:00-15:00 Kadıköy → Fenerbahçe maçı için Defans mevkisine kabul edilmediniz."
                                 const parts = item.message.split(' ');
@@ -168,16 +191,17 @@ export default function JoinRequestNotification({ item, onAccept, onReject, onPr
                                 return (
                                     <>
                                         <Text 
-                                            className={`font-bold ${item.is_read ? 'text-gray-600' : 'text-green-700'}`}
+                                            className="font-bold"
+                                            style={{ color: strongTextColor }}
                                             onPress={() => onProfilePress(item.sender_id)}
                                         >
                                             {name}
                                         </Text>
-                                        <Text className={`${item.is_read ? 'text-gray-500' : 'text-gray-700'}`}> {userPart} {oluşturduğu} </Text>
-                                        <Text className={`font-bold ${item.is_read ? 'text-gray-600' : 'text-green-700'}`}>{matchInfo}</Text>
-                                        <Text className={`${item.is_read ? 'text-gray-500' : 'text-gray-700'}`}> maçı için </Text>
+                                        <Text style={{ color: bodyTextColor }}> {userPart} {oluşturduğu} </Text>
+                                        <Text className="font-bold" style={{ color: strongTextColor }}>{matchInfo}</Text>
+                                        <Text style={{ color: bodyTextColor }}> maçı için </Text>
                                         <Text className={`font-bold ${item.is_read ? 'text-orange-500' : 'text-orange-600'}`}>{position}</Text>
-                                        <Text className={`${item.is_read ? 'text-gray-500' : 'text-gray-700'}`}> mevkisine </Text>
+                                        <Text style={{ color: bodyTextColor }}> mevkisine </Text>
                                         <Text className={`font-bold ${item.is_read ? (edildiniz.includes('edildiniz') ? 'text-green-500' : 'text-red-500') : (edildiniz.includes('edildiniz') ? 'text-green-600' : 'text-red-600')}`}>{kabul} </Text>
                                         <Text className={`font-bold ${item.is_read ? (edildiniz.includes('edildiniz') ? 'text-green-500' : 'text-red-500') : (edildiniz.includes('edildiniz') ? 'text-green-600' : 'text-red-600')}`}>{edildiniz}</Text>
                                     </>
@@ -187,35 +211,37 @@ export default function JoinRequestNotification({ item, onAccept, onReject, onPr
                     ) : item.message && (item.message.includes('kabul edildiniz') || item.message.includes('kabul edilmediniz')) ? (
                         // Kısa sonuç bildirimi - eski format (sadece alt satırda gösterilecek)
                         <View className="leading-snug">
-                            <Text className={`leading-6 ${item.is_read ? 'text-gray-500' : 'text-gray-700'}`}>
+                            <Text className="leading-6" style={{ color: bodyTextColor }}>
                                 <Text
-                                    className={`font-bold leading-6 ${item.is_read ? 'text-gray-600' : 'text-green-700'}`}
+                                    className="font-bold leading-6"
+                                    style={{ color: strongTextColor }}
                                     onPress={() => onProfilePress(item.sender_id)}
                                 >
                                     {item.sender_name} {item.sender_surname}
                                 </Text>
-                                <Text className={`leading-6 ${item.is_read ? 'text-gray-500' : 'text-gray-700'}`}> kullanıcısı senin </Text>
-                                <Text className={`font-bold leading-6 ${item.is_read ? 'text-gray-600' : 'text-green-700'}`}>{matchInfo}</Text>
-                                <Text className={`leading-6 ${item.is_read ? 'text-gray-500' : 'text-gray-700'}`}> maçın için </Text>
+                                <Text className="leading-6" style={{ color: bodyTextColor }}> kullanıcısı senin </Text>
+                                <Text className="font-bold leading-6" style={{ color: strongTextColor }}>{matchInfo}</Text>
+                                <Text className="leading-6" style={{ color: bodyTextColor }}> maçın için </Text>
                                 <Text className={`font-bold leading-6 ${item.is_read ? 'text-orange-500' : 'text-orange-600'}`}>{getPositionName(item.position || '')}</Text>
-                                <Text className={`leading-6 ${item.is_read ? 'text-gray-500' : 'text-gray-700'}`}> pozisyonuna katılmak istiyor?</Text>
+                                <Text className="leading-6" style={{ color: bodyTextColor }}> pozisyonuna katılmak istiyor?</Text>
                             </Text>
                         </View>
                     ) : (
                         // Normal katılım isteği bildirimi
                         <View className="leading-snug">
-                            <Text className={`leading-6 ${item.is_read ? 'text-gray-500' : 'text-gray-700'}`}>
+                            <Text className="leading-6" style={{ color: bodyTextColor }}>
                                 <Text
-                                    className={`font-bold leading-6 ${item.is_read ? 'text-gray-600' : 'text-green-700'}`}
+                                    className="font-bold leading-6"
+                                    style={{ color: strongTextColor }}
                                     onPress={() => onProfilePress(item.sender_id)}
                                 >
                                     {item.sender_name} {item.sender_surname}
                                 </Text>
-                                <Text className={`leading-6 ${item.is_read ? 'text-gray-500' : 'text-gray-700'}`}> kullanıcısı senin </Text>
-                                <Text className={`font-bold leading-6 ${item.is_read ? 'text-gray-600' : 'text-green-700'}`}>{matchInfo}</Text>
-                                <Text className={`leading-6 ${item.is_read ? 'text-gray-500' : 'text-gray-700'}`}> maçın için </Text>
+                                <Text className="leading-6" style={{ color: bodyTextColor }}> kullanıcısı senin </Text>
+                                <Text className="font-bold leading-6" style={{ color: strongTextColor }}>{matchInfo}</Text>
+                                <Text className="leading-6" style={{ color: bodyTextColor }}> maçın için </Text>
                                 <Text className={`font-bold leading-6 ${item.is_read ? 'text-orange-500' : 'text-orange-600'}`}>{getPositionName(item.position || '')}</Text>
-                                <Text className={`leading-6 ${item.is_read ? 'text-gray-500' : 'text-gray-700'}`}> pozisyonuna katılmak istiyor?</Text>
+                                <Text className="leading-6" style={{ color: bodyTextColor }}> pozisyonuna katılmak istiyor?</Text>
                             </Text>
                         </View>
                     )}
@@ -227,22 +253,22 @@ export default function JoinRequestNotification({ item, onAccept, onReject, onPr
                 {item.message && (item.message.includes('reddedildi')) ? (
                     // Red bildirimi - tarih + bilgilendirme mesajı
                     <View className="flex-row justify-between items-center mr-2">
-                        <Text className={`text-xs font-bold px-2 py-1 rounded ${item.is_read ? 'text-gray-500 bg-gray-300' : 'text-green-700 bg-gray-200'}`}>
+                        <Text className="text-xs font-bold px-2 py-1 rounded" style={dateBadgeStyle}>
                             {formatted}
                         </Text>
-                        <Text className="text-gray-600 text-xs ml-2 flex-1">Sonraki maçlar için tekrar istek gönderebilirsiniz.</Text>
+                        <Text className="text-xs ml-2 flex-1" style={{ color: colors.textMuted }}>Sonraki maçlar için tekrar istek gönderebilirsiniz.</Text>
                     </View>
                 ) : item.message && (item.message.includes('kullanıcısının oluşturduğu')) ? (
                     // Detaylı sonuç bildirimi - sadece tarih göster
                     <View className="flex-row justify-start items-center">
-                        <Text className={`text-xs font-bold px-2 py-1 rounded ${item.is_read ? 'text-gray-500 bg-gray-300' : 'text-green-700 bg-gray-200'}`}>
+                        <Text className="text-xs font-bold px-2 py-1 rounded" style={dateBadgeStyle}>
                             {formatted}
                         </Text>
                     </View>
                 ) : item.message && (item.message.includes('Göndermiş olduğunuz')) ? (
                     // İstek gönderen kullanıcıya gönderilen red mesajı - mesajı olduğu gibi göster
                     <View className="flex-row justify-between items-center mr-2">
-                        <Text className={`text-xs font-bold px-2 py-1 rounded ${item.is_read ? 'text-gray-500 bg-gray-300' : 'text-green-700 bg-gray-200'}`}>
+                        <Text className="text-xs font-bold px-2 py-1 rounded" style={dateBadgeStyle}>
                             {formatted}
                         </Text>
                         <Text className="text-red-600 font-bold ml-2 flex-1">{item.message}</Text>
@@ -250,7 +276,7 @@ export default function JoinRequestNotification({ item, onAccept, onReject, onPr
                 ) : item.message && (item.message.includes('kabul edildiniz') || item.message.includes('kabul edilmediniz')) ? (
                     // Kısa sonuç bildirimi - tarih + kırmızı mesaj (maç sahibi için)
                     <View className="flex-row justify-between items-center mr-2">
-                        <Text className={`text-xs font-bold px-2 py-1 rounded ${item.is_read ? 'text-gray-500 bg-gray-300' : 'text-green-700 bg-gray-200'}`}>
+                        <Text className="text-xs font-bold px-2 py-1 rounded" style={dateBadgeStyle}>
                             {formatted}
                         </Text>
                         {item.message?.includes('kabul edildiniz') && (
@@ -264,7 +290,7 @@ export default function JoinRequestNotification({ item, onAccept, onReject, onPr
                     // Normal katılım isteği - tarih + butonlar
                     <View className="flex-row justify-between items-center">
                         <View className="mr-3">
-                            <Text className="text-xs font-bold px-2 py-1 rounded text-green-700 bg-gray-200">
+                            <Text className="text-xs font-bold px-2 py-1 rounded" style={dateBadgeStyle}>
                                 {formatted}
                             </Text>
                         </View>

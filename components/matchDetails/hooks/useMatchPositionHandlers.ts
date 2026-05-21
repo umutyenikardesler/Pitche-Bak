@@ -2,6 +2,7 @@
 import { useCallback } from 'react';
 import { Alert, DeviceEventEmitter } from 'react-native';
 import { supabase } from '@/services/supabase';
+import { createNotification } from '@/services/triggerPushNotification';
 import { Match } from '@/components/index/types';
 import { getPositionName } from '../utils/getPositionName';
 
@@ -108,9 +109,7 @@ export const useMatchPositionHandlers = ({
         is_read: false
       };
       
-      const { error: notificationError } = await supabase
-        .from('notifications')
-        .insert(notificationData);
+      const { error: notificationError } = await createNotification(notificationData);
 
       if (notificationError) {
         console.error('[MatchDetails] Bildirim oluşturma hatası:', notificationError);

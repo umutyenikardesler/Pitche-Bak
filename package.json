@@ -1,7 +1,7 @@
 {
   "name": "sahayabak",
   "main": "expo-router/entry",
-  "version": "1.1.0",
+  "version": "2.0.0",
   "scripts": {
     "start": "expo start",
     "reset-project": "node ./scripts/reset-project.js",
@@ -10,7 +10,8 @@
     "web": "expo start --web",
     "test": "jest --watchAll",
     "lint": "expo lint",
-    "eas-build-pre-install": "node ./scripts/configure-ios-variant.js"
+    "eas-build-pre-install": "node ./scripts/configure-native-variants.js",
+    "eas-build-post-install": "node ./scripts/configure-native-variants.js"
   },
   "jest": {
     "preset": "jest-expo"

@@ -1,6 +1,7 @@
 // Custom hook for notification handlers
 import React, { useCallback } from 'react';
 import { supabase } from '@/services/supabase';
+import { createNotification } from '@/services/triggerPushNotification';
 import { useNotification } from '@/components/NotificationContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { Notification } from './notificationTypes';
@@ -89,7 +90,7 @@ export const useNotificationHandlers = (
                         ? `${currentUserData.name} ${currentUserData.surname}` 
                         : t('notifications.userFallback');
                     
-                    await supabase.from('notifications').insert({
+                    await createNotification({
                         user_id: notification.sender_id,
                         sender_id: user.id,
                         type: 'follow_request',
@@ -150,7 +151,7 @@ export const useNotificationHandlers = (
                         ? `${currentUserData.name} ${currentUserData.surname}` 
                         : t('notifications.userFallback');
                     
-                    await supabase.from('notifications').insert({
+                    await createNotification({
                         user_id: notification.sender_id,
                         sender_id: user.id,
                         type: 'follow_request',
@@ -222,13 +223,13 @@ export const useNotificationHandlers = (
                 ? `${(currentUserData as any).name || ''} ${(currentUserData as any).surname || ''}`.trim()
                 : t('notifications.userFallback');
 
-            const { error: notifErr } = await supabase.from('notifications').insert({
+            const { error: notifErr } = await createNotification({
                 user_id: notification.sender_id,
                 sender_id: user.id,
                 type: 'follow_request',
                 message: `${senderName} ${t('notifications.sentFollowRequest')}`,
                 is_read: false,
-            } as any);
+            });
 
             if (notifErr) {
                 console.error('[Notifications] follow back notification insert error:', notifErr);
@@ -318,7 +319,7 @@ export const useNotificationHandlers = (
                         matchInfo = `${formattedDate} ${startFormatted}-${endFormatted} ${districtName} → ${pitchName}`;
                     }
                     
-                    await supabase.from('notifications').insert({
+                    await createNotification({
                         user_id: notification.sender_id,
                         sender_id: user.id,
                         type: 'join_request',
@@ -385,7 +386,7 @@ export const useNotificationHandlers = (
                         notification.position || ''
                     );
                     
-                    const { error: insertError } = await supabase.from('notifications').insert({
+                    const { error: insertError } = await createNotification({
                         user_id: notification.sender_id,
                         sender_id: user.id,
                         type: 'join_request',

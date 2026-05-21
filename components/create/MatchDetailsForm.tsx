@@ -5,6 +5,7 @@ import ReactDatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import { tr, enUS } from 'date-fns/locale';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useAppTheme } from '@/contexts/ThemeContext';
 import '@/global.css';
 
 interface MatchDetailsFormProps {
@@ -16,9 +17,13 @@ interface MatchDetailsFormProps {
 
 export const MatchDetailsForm: React.FC<MatchDetailsFormProps> = ({ date, setDate, time, setTime }) => {
   const { t, currentLanguage } = useLanguage();
+  const { colors } = useAppTheme();
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showTimeModal, setShowTimeModal] = useState(false);
   const screenHeight = Dimensions.get('window').height;
+  const timeRowHeight = 45;
+  const timeModalVerticalPadding = 32;
+  const timeModalCloseButtonHeight = 64;
 
   // Dinamik saat dilimine göre bugünü hesapla
   const getCurrentDate = (d = new Date()) => {
@@ -121,40 +126,68 @@ export const MatchDetailsForm: React.FC<MatchDetailsFormProps> = ({ date, setDat
     setShowDatePicker(false);
   };
 
-  const renderTimeModal = () => (
-    <Modal
-      visible={showTimeModal}
-      transparent={true}
-      animationType="fade"
-      onRequestClose={() => setShowTimeModal(false)}
-    >
-      <View className="flex-1 justify-center items-center bg-black/50">
-        <View className="w-50 bg-white rounded-lg p-4" style={{ maxHeight: screenHeight * 0.75 }}>
-          <FlatList
-            data={availableHours.map(hour => ({ label: `${String(hour).padStart(2, '0')}:00`, value: hour.toString() }))}
-            keyExtractor={(item) => item.value}
-            renderItem={({ item }) => (
-              <TouchableOpacity
-                className="p-3 border-b border-gray-200"
-                onPress={() => {
-                  setTime(item.value);
-                  setShowTimeModal(false);
-                }}
-              >
-                <Text>{item.label}</Text>
-              </TouchableOpacity>
-            )}
-          />
-          <TouchableOpacity
-            className="mt-4 bg-green-600 rounded p-3"
-            onPress={() => setShowTimeModal(false)}
+  const renderTimeModal = () => {
+    const timeOptions = availableHours.map(hour => ({
+      label: `${String(hour).padStart(2, '0')}:00`,
+      value: hour.toString(),
+    }));
+    const maxModalHeight = screenHeight * 0.75;
+    const contentHeight = timeOptions.length * timeRowHeight + timeModalVerticalPadding + timeModalCloseButtonHeight;
+    const modalHeight = Math.min(contentHeight, maxModalHeight);
+    const listHeight = Math.max(0, modalHeight - timeModalVerticalPadding - timeModalCloseButtonHeight);
+
+    return (
+      <Modal
+        visible={showTimeModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowTimeModal(false)}
+      >
+        <View className="flex-1 justify-center items-center" style={{ backgroundColor: colors.overlay }}>
+          <View
+            className="w-50 rounded-lg p-4"
+            style={{
+              height: modalHeight,
+              maxHeight: maxModalHeight,
+              backgroundColor: colors.surface,
+              borderWidth: 1,
+              borderColor: colors.primary,
+              shadowColor: colors.primary,
+              shadowOpacity: 0.7,
+              shadowRadius: 8,
+              shadowOffset: { width: 0, height: 0 },
+              elevation: 9,
+            }}
           >
-            <Text className="text-white text-center">{t('general.close')}</Text>
-          </TouchableOpacity>
+            <FlatList
+              data={timeOptions}
+              keyExtractor={(item) => item.value}
+              style={{ height: listHeight, flexGrow: 0 }}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  className="p-3"
+                  style={{ height: timeRowHeight, borderBottomWidth: 1, borderBottomColor: colors.border }}
+                  onPress={() => {
+                    setTime(item.value);
+                    setShowTimeModal(false);
+                  }}
+                >
+                  <Text style={{ color: colors.text, fontWeight: '600', textAlign: 'center' }}>{item.label}</Text>
+                </TouchableOpacity>
+              )}
+            />
+            <TouchableOpacity
+              className="mt-4 rounded p-3"
+              style={{ backgroundColor: colors.primary }}
+              onPress={() => setShowTimeModal(false)}
+            >
+              <Text className="text-center" style={{ color: colors.whiteText }}>{t('general.close')}</Text>
+            </TouchableOpacity>
+          </View>
         </View>
-      </View>
-    </Modal>
-  );
+      </Modal>
+    );
+  };
 
   return (
     <View className="mb-4">
