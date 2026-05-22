@@ -15,26 +15,34 @@
       },
       "ios": {
         "image": "sdk-54",
-        "bundleIdentifier": "com.tumurelsedrakiney.PitcheBak.dev",
         "prebuildCommand": "node ./scripts/configure-native-variants.js && npx expo prebuild --non-interactive --platform ios && printf 'export NODE_BINARY=$(command -v node)\\n' > ios/.xcode.env && printf 'export NODE_BINARY=$(command -v node)\\n' > ios/.xcode.env.local"
       }
     },
     "preview": {
       "distribution": "internal",
+      "env": {
+        "APP_VARIANT": "prod"
+      },
       "android": {
         "buildType": "apk"
       },
       "developmentClient": false,
       "ios": {
         "image": "sdk-54",
-        "prebuildCommand": "npx expo prebuild --non-interactive --platform ios && printf 'export NODE_BINARY=$(command -v node)\\n' > ios/.xcode.env && printf 'export NODE_BINARY=$(command -v node)\\n' > ios/.xcode.env.local"
+        "prebuildCommand": "node ./scripts/configure-native-variants.js && npx expo prebuild --non-interactive --platform ios && printf 'export NODE_BINARY=$(command -v node)\\n' > ios/.xcode.env && printf 'export NODE_BINARY=$(command -v node)\\n' > ios/.xcode.env.local"
       }
     },
     "production": {
       "autoIncrement": true,
+      "env": {
+        "APP_VARIANT": "prod"
+      },
+      "android": {
+        "buildType": "apk"
+      },
       "ios": {
         "image": "sdk-54",
-        "prebuildCommand": "npx expo prebuild --non-interactive --platform ios && printf 'export NODE_BINARY=$(command -v node)\\n' > ios/.xcode.env && printf 'export NODE_BINARY=$(command -v node)\\n' > ios/.xcode.env.local"
+        "prebuildCommand": "node ./scripts/configure-native-variants.js && npx expo prebuild --non-interactive --platform ios && printf 'export NODE_BINARY=$(command -v node)\\n' > ios/.xcode.env && printf 'export NODE_BINARY=$(command -v node)\\n' > ios/.xcode.env.local"
       }
     }
   },

@@ -10,6 +10,8 @@
     "web": "expo start --web",
     "test": "jest --watchAll",
     "lint": "expo lint",
+    "native:dev": "node ./scripts/configure-native-variants.js dev",
+    "native:prod": "node ./scripts/configure-native-variants.js prod",
     "eas-build-pre-install": "node ./scripts/configure-native-variants.js",
     "eas-build-post-install": "node ./scripts/configure-native-variants.js"
   },

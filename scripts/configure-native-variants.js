@@ -1,6 +1,11 @@
 const { execSync } = require('child_process');
 const path = require('path');
 
+const arg = process.argv[2];
+if (arg === 'dev' || arg === 'prod') {
+  process.env.APP_VARIANT = arg;
+}
+
 const scriptsDir = __dirname;
 
 function run(scriptName) {
