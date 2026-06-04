@@ -391,7 +391,7 @@
 					"-lc++",
 				);
 				OTHER_SWIFT_FLAGS = "$(inherited) -D EXPO_CONFIGURATION_DEBUG";
-				PRODUCT_BUNDLE_IDENTIFIER = com.tumurelsedrakiney.PitcheBak;
+				PRODUCT_BUNDLE_IDENTIFIER = com.tumurelsedrakiney.PitcheBak.dev;
 				PRODUCT_NAME = SahayaBak;
 				SWIFT_OBJC_BRIDGING_HEADER = "SahayaBak/SahayaBak-Bridging-Header.h";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
@@ -422,7 +422,7 @@
 					"-lc++",
 				);
 				OTHER_SWIFT_FLAGS = "$(inherited) -D EXPO_CONFIGURATION_RELEASE";
-				PRODUCT_BUNDLE_IDENTIFIER = com.tumurelsedrakiney.PitcheBak;
+				PRODUCT_BUNDLE_IDENTIFIER = com.tumurelsedrakiney.PitcheBak.dev;
 				PRODUCT_NAME = SahayaBak;
 				SWIFT_OBJC_BRIDGING_HEADER = "SahayaBak/SahayaBak-Bridging-Header.h";
 				SWIFT_VERSION = 5.0;

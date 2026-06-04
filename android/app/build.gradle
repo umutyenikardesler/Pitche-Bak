@@ -89,7 +89,7 @@ android {
 
     namespace 'com.tumurelsedrakiney.pitchebak'
     defaultConfig {
-        applicationId 'com.tumurelsedrakiney.pitchebak'
+        applicationId 'com.tumurelsedrakiney.pitchebak.dev'
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 20

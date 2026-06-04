@@ -67,26 +67,39 @@ export default function MatchShareModal({ visible, match, onClose }: MatchShareM
   }, []);
 
   const shareScheme = useMemo(() => {
-    // Dev/Prod fark etmeksizin, link hangi build'den paylaşıldıysa o build'in scheme'ini yaz.
-    // Bazı dev-client durumlarında expoConfig yanlışlıkla prod (myapp) döndürebiliyor; o yüzden çoklu sinyal kullanıyoruz.
-    const appVariant = (Constants.expoConfig as any)?.extra?.appVariant; // app.config.js set ediyor (APP_VARIANT)
-    const configScheme = (Constants.expoConfig as any)?.scheme;
-    const inferredScheme =
-      appVariant === "dev"
-        ? "myapp-dev"
-        : typeof configScheme === "string" && configScheme.length
-          ? configScheme
-          : "myapp";
+    // En güvenilir sinyal: cihazda yüklü olan binary'nin gerçek paket/bundle kimliği.
+    // Bu, hangi build'den (dev mi prod mu) paylaşıldığını config'e veya __DEV__'e bakmadan kesin söyler.
+    // dev paketi: com.tumurelsedrakiney.pitchebak.dev / com.tumurelsedrakiney.PitcheBak.dev
+    let nativeId: string | null = null;
+    try {
+      const Application = require("expo-application");
+      nativeId =
+        (Application?.applicationId as string | undefined) || // Android packageName + iOS bundleId
+        null;
+    } catch {
+      nativeId = null;
+    }
 
-    // Dev'de güvenli fallback
-    return __DEV__ && inferredScheme === "myapp" ? "myapp-dev" : inferredScheme;
+    if (typeof nativeId === "string" && nativeId.length) {
+      return nativeId.toLowerCase().endsWith(".dev") ? "myapp-dev" : "myapp";
+    }
+
+    // Fallback (expo-application native modülü yoksa): config sinyalleri.
+    const appVariant = (Constants.expoConfig as any)?.extra?.appVariant; // app.config.js (APP_VARIANT)
+    const configScheme = (Constants.expoConfig as any)?.scheme;
+    if (appVariant === "dev") return "myapp-dev";
+    if (typeof configScheme === "string" && configScheme.length) return configScheme;
+    return "myapp";
   }, []);
 
   const shareUrl = useMemo(() => {
     if (!match?.id) return "https://sahayabak.com";
     const shortCode = match.share_code?.trim?.();
-    const prefixedShortCode =
-      shortCode && shareScheme === "myapp-dev" ? `dev-${shortCode}` : shortCode || null;
+    // Linkin hangi build'i açacağını kodun içine yaz: dev-<code> → myapp-dev, prod-<code> → myapp.
+    // Böylece tıklanınca her zaman paylaşan build'de açılır (web /s/ resolver bu önekleri çözüyor).
+    const prefixedShortCode = shortCode
+      ? `${shareScheme === "myapp-dev" ? "dev" : "prod"}-${shortCode}`
+      : null;
     const pathShortUrl = prefixedShortCode
       ? `https://sahayabak.com/s/${encodeURIComponent(prefixedShortCode)}`
       : null;
@@ -99,8 +112,8 @@ export default function MatchShareModal({ visible, match, onClose }: MatchShareM
       `https://sahayabak.com/m/${encodeURIComponent(match.id)}`;
 
     // Kısa linkte dev/prod ayrımı kodun içinde taşınıyor:
-    // - dev: /s/dev-xxxxxx
-    // - prod: /s/xxxxxx
+    // - dev:  /s/dev-xxxxxx  → myapp-dev
+    // - prod: /s/prod-xxxxxx → myapp
     // Bu yüzden aynı bilgiyi bir de ?s= ile eklemiyoruz.
     if (pathShortUrl || match.share_short_url?.trim?.()) {
       return baseUrl;
@@ -120,8 +133,9 @@ export default function MatchShareModal({ visible, match, onClose }: MatchShareM
 
   const displayShareUrl = useMemo(() => {
     const shortCode = match?.share_code?.trim?.();
-    const prefixedShortCode =
-      shortCode && shareScheme === "myapp-dev" ? `dev-${shortCode}` : shortCode || null;
+    const prefixedShortCode = shortCode
+      ? `${shareScheme === "myapp-dev" ? "dev" : "prod"}-${shortCode}`
+      : null;
     const raw =
       (prefixedShortCode
         ? `https://sahayabak.com/s/${encodeURIComponent(prefixedShortCode)}`

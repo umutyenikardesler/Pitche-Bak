@@ -41,7 +41,10 @@
         
         
         
-        <data android:scheme="myapp"/>
+        
+        
+        
+        <data android:scheme="myapp-dev"/>
         <data android:scheme="exp+pitche-bak"/>
       </intent-filter>
     </activity>

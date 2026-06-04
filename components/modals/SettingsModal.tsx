@@ -481,9 +481,12 @@ export default function SettingsModal({
                   gap: 6,
                 }}
               >
-                <Text style={{ color: !isDark ? colors.primary : colors.textMuted, fontSize: 12, fontWeight: "700" }}>
-                  {t("settings.themeDay")}
-                </Text>
+                <Ionicons
+                  name="sunny-outline"
+                  size={18}
+                  color={!isDark ? colors.primary : colors.textMuted}
+                  accessibilityLabel={t("settings.themeDay")}
+                />
                 <Switch
                   value={isDark}
                   onValueChange={() => { void toggleTheme(); }}
@@ -491,9 +494,12 @@ export default function SettingsModal({
                   thumbColor={isDark ? "#16a34a" : "#f9fafb"}
                   ios_backgroundColor={colors.border}
                 />
-                <Text style={{ color: isDark ? colors.primary : colors.textMuted, fontSize: 12, fontWeight: "700" }}>
-                  {t("settings.themeNight")}
-                </Text>
+                <Ionicons
+                  name="moon-outline"
+                  size={18}
+                  color={isDark ? colors.primary : colors.textMuted}
+                  accessibilityLabel={t("settings.themeNight")}
+                />
               </View>
             </View>
             <TouchableOpacity

@@ -91,9 +91,19 @@
         }
 
         function scheme() {
-          // Dev build override: /m/<id>?s=myapp-dev
+          // Build override: /m/<id>?s=myapp-dev veya /m/<id>?s=myapp
           var qs = new URLSearchParams(window.location.search || "");
           return qs.get("s") || "myapp";
+        }
+
+        function androidPackageName(currentScheme) {
+          return currentScheme === "myapp-dev"
+            ? "com.tumurelsedrakiney.pitchebak.dev"
+            : "com.tumurelsedrakiney.pitchebak";
+        }
+
+        function isAndroid() {
+          return /android/i.test(navigator.userAgent || "");
         }
 
         var id = getMatchId();
@@ -108,7 +118,17 @@
 
         // Expo Router mevcut projede "myapp://auth/callback" şeklinde çalışıyor.
         // Aynı formatla: myapp://match/<id>
-        var deepLink = scheme() + "://match/" + encodeURIComponent(id);
+        var currentScheme = scheme();
+        var encodedId = encodeURIComponent(id);
+        var deepLink = currentScheme + "://match/" + encodedId;
+        var androidIntentLink =
+          "intent://match/" +
+          encodedId +
+          "#Intent;scheme=" +
+          encodeURIComponent(currentScheme) +
+          ";package=" +
+          androidPackageName(currentScheme) +
+          ";end";
 
         function isInAppBrowser() {
           var ua = (navigator.userAgent || "").toLowerCase();
@@ -117,7 +137,7 @@
 
         function openAppNow() {
           try {
-            window.location.href = deepLink;
+            window.location.href = isAndroid() ? androidIntentLink : deepLink;
           } catch (_) {}
         }
 

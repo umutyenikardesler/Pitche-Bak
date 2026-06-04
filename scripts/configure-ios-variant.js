@@ -12,6 +12,7 @@ const displayName = isDev ? 'SahayaBak Dev' : 'SahayaBak';
 const bundleId = isDev
   ? 'com.tumurelsedrakiney.PitcheBak.dev'
   : 'com.tumurelsedrakiney.PitcheBak';
+const scheme = isDev ? 'myapp-dev' : 'myapp';
 
 function replaceOrThrow(content, pattern, replacement, label) {
   if (!pattern.test(content)) {
@@ -28,6 +29,13 @@ function updateInfoPlist() {
     /(<key>CFBundleDisplayName<\/key>\s*<string>)(.*?)(<\/string>)/s,
     `$1${displayName}$3`,
     'CFBundleDisplayName'
+  );
+
+  content = replaceOrThrow(
+    content,
+    /(<key>CFBundleURLSchemes<\/key>\s*<array>\s*<string>)(.*?)(<\/string>\s*<string>)(.*?)(<\/string>\s*<\/array>)/s,
+    `$1${scheme}$3${bundleId}$5`,
+    'CFBundleURLSchemes'
   );
 
   fs.writeFileSync(infoPlistPath, content, 'utf8');
@@ -57,6 +65,7 @@ function main() {
   console.log(`Configured iOS variant: ${variant}`);
   console.log(`Display name: ${displayName}`);
   console.log(`Bundle ID: ${bundleId}`);
+  console.log(`Scheme: ${scheme}`);
 }
 
 main();
