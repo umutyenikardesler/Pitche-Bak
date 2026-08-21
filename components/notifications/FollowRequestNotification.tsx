@@ -345,7 +345,8 @@ export default function FollowRequestNotification({
             {/* Üst satır - Profil Resmi ve Bildirim Metni */}
             <View className="flex-row items-center p-4">
                 {/* Profil Resmi */}
-                <View className="mr-3">
+                {/* elevation (Android) View'a ait; borderRadius ile gölge daire kalıyor */}
+                <View className="mr-3" style={{ borderRadius: 36, elevation: 12 }}>
                     <Image
                         source={item.sender_profile_image ? { uri: item.sender_profile_image } : require('@/assets/images/ball.png')}
                         style={{
@@ -358,7 +359,6 @@ export default function FollowRequestNotification({
                             shadowOpacity: 0.9,
                             shadowRadius: 16,
                             shadowOffset: { width: 0, height: 0 },
-                            elevation: 12,
                             resizeMode: 'cover',
                             opacity: item.is_read ? 0.6 : 1,
                         }}

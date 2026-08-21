@@ -55,22 +55,22 @@ export default function DirectMessageNotification({ item, onMarkAsRead }: Direct
                 style={{ backgroundColor: colors.surface, borderWidth: 1, borderColor: item.is_read ? colors.border : colors.primary }}
             >
                 <View className="flex-row items-center p-4">
-                    <View className="mr-3">
+                    {/* elevation (Android) View'a ait; borderRadius ile gölge daire kalıyor */}
+                    <View className="mr-3" style={{ borderRadius: 28, elevation: 12 }}>
                         <Image
                             source={item.sender_profile_image ? { uri: item.sender_profile_image } : require('@/assets/images/ball.png')}
-                            style={{ 
-                                width: 56, 
-                                height: 56, 
-                                borderRadius: 28, 
+                            style={{
+                                width: 56,
+                                height: 56,
+                                borderRadius: 28,
                                 borderWidth: 1,
                                 borderColor: colors.primary,
                                 shadowColor: colors.primary,
                                 shadowOpacity: 0.9,
                                 shadowRadius: 16,
                                 shadowOffset: { width: 0, height: 0 },
-                                elevation: 12,
                                 resizeMode: 'cover',
-                                opacity: item.is_read ? 0.6 : 1 
+                                opacity: item.is_read ? 0.6 : 1
                             }}
                         />
                     </View>

@@ -2,7 +2,7 @@ import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, SafeAreaView, Text, View } from "react-native";
 
-import MatchDetailsModal from "@/components/index/MatchDetails";
+import MatchDetails from "@/components/index/MatchDetails";
 import { Match } from "@/components/index/types";
 import { supabase } from "@/services/supabase";
 import { useAppTheme } from "@/contexts/ThemeContext";
@@ -106,7 +106,7 @@ export default function MatchDeepLinkScreen() {
           </Text>
         </View>
       ) : match ? (
-        <MatchDetailsModal match={match} visible onClose={close} />
+        <MatchDetails match={match} onClose={close} />
       ) : null}
     </SafeAreaView>
   );

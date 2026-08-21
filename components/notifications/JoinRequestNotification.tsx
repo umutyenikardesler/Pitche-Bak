@@ -83,8 +83,10 @@ export default function JoinRequestNotification({ item, onAccept, onReject, onPr
             {/* Üst satır - Profil Resmi ve Bildirim Metni */}
             <View className="flex-row items-center p-4">
                 {/* Profil Resmi */}
-                <TouchableOpacity 
+                {/* elevation (Android) wrapper'a ait; borderRadius ile gölge daire kalıyor */}
+                <TouchableOpacity
                     className="mr-3"
+                    style={{ borderRadius: 36, elevation: 12 }}
                     onPress={() => onProfilePress(item.sender_id)}
                 >
                     <Image
@@ -99,7 +101,6 @@ export default function JoinRequestNotification({ item, onAccept, onReject, onPr
                             shadowOpacity: 0.9,
                             shadowRadius: 16,
                             shadowOffset: { width: 0, height: 0 },
-                            elevation: 12,
                             resizeMode: 'cover',
                             opacity: item.is_read ? 0.6 : 1,
                         }}
