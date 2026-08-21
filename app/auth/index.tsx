@@ -7,11 +7,9 @@ import { supabase } from "@/services/supabase";
 import * as Linking from "expo-linking";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Ionicons } from "@expo/vector-icons";
-import Animated, { useSharedValue, useAnimatedStyle, useFrameCallback, runOnJS } from "react-native-reanimated";
+import { runOnJS } from "react-native-reanimated";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import * as WebBrowser from "expo-web-browser";
-import { makeRedirectUri } from "expo-auth-session";
-import * as QueryParams from "expo-auth-session/build/QueryParams";
 import * as AppleAuthentication from "expo-apple-authentication";
 import Constants from "expo-constants";
 import * as Crypto from "expo-crypto";
@@ -22,6 +20,13 @@ import {
   PENDING_VERIFICATION_EMAIL_KEY,
 } from "@/lib/authVerification";
 import PolicyModal from "@/components/modals/PolicyModal";
+import AuthFieldHeader from "@/components/auth/AuthFieldHeader";
+import { translateAuthError } from "@/lib/authErrorMessages";
+import {
+  getOAuthRedirectUri,
+  getOAuthSupabaseRedirectUrl,
+  createSessionFromRedirectUrl,
+} from "@/lib/oauthRedirect";
 import type { PolicyKey } from "@/constants/policies";
 import { getLastNonAuthRoute } from "@/lib/lastNonAuthRoute";
 
@@ -60,9 +65,7 @@ export default function AuthScreen() {
   const [isOAuthLoading, setIsOAuthLoading] = useState<"google" | "apple" | null>(null);
   const [appleAvailable, setAppleAvailable] = useState(false);
   const [keyboardVisible, setKeyboardVisible] = useState(false);
-  const [keyboardWasOpened, setKeyboardWasOpened] = useState(false); // Klavye bir kere açıldı mı?
   const [languageMenuOpen, setLanguageMenuOpen] = useState(false);
-  const [keyboardHeight, setKeyboardHeight] = useState(0); // iOS için klavye yüksekliği
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [policyModalKey, setPolicyModalKey] = useState<PolicyKey | null>(null);
 
@@ -113,131 +116,11 @@ export default function AuthScreen() {
       }
     });
 
-  // Header halı saha içinde gezen top animasyonu
-  const FIELD_HEIGHT = 90;
-  const BALL_SIZE = 12;
-  const BALL_PADDING = 6;
-  const headerWidthSV = useSharedValue(0);
-  const ballX = useSharedValue(0);
-  const ballY = useSharedValue(0);
-  // px/ms hız bileşenleri
-  const ballVX = useSharedValue(0);
-  const ballVY = useSharedValue(0);
-  const ballRot = useSharedValue(0);
-
-  const rand = (min: number, max: number) => {
-    'worklet';
-    return min + Math.random() * (max - min);
-  };
-
-  const ensureBallInit = () => {
-    'worklet';
-    const w = headerWidthSV.value || 0;
-    if (w <= 0) return;
-    if (ballVX.value !== 0 || ballVY.value !== 0) return;
-
-    const minX = BALL_PADDING;
-    const maxX = Math.max(minX, w - BALL_SIZE - BALL_PADDING);
-    const minY = BALL_PADDING;
-    const maxY = Math.max(minY, FIELD_HEIGHT - BALL_SIZE - BALL_PADDING);
-
-    // Başlangıç: ortalara yakın
-    ballX.value = (minX + maxX) / 2;
-    ballY.value = (minY + maxY) / 2;
-
-    // Rastgele başlangıç hızı (px/ms). 0.06 -> 60px/sn
-    const speed = rand(0.05, 0.095);
-    const angle = rand(0, Math.PI * 2);
-    ballVX.value = Math.cos(angle) * speed;
-    ballVY.value = Math.sin(angle) * speed;
-  };
-
-  useFrameCallback((frame) => {
-    'worklet';
-    ensureBallInit();
-
-    const w = headerWidthSV.value || 0;
-    if (w <= 0) return;
-
-    const dt = frame.timeSincePreviousFrame ?? 16;
-
-    const minX = BALL_PADDING;
-    const maxX = Math.max(minX, w - BALL_SIZE - BALL_PADDING);
-    const minY = BALL_PADDING;
-    const maxY = Math.max(minY, FIELD_HEIGHT - BALL_SIZE - BALL_PADDING);
-
-    let x = ballX.value + ballVX.value * dt;
-    let y = ballY.value + ballVY.value * dt;
-    let vx = ballVX.value;
-    let vy = ballVY.value;
-
-    const bounceJitter = () => {
-      'worklet';
-      // Her çarpışmada küçük sapma: “rastgele desen” hissi
-      vx *= rand(0.92, 1.08);
-      vy *= rand(0.92, 1.08);
-      // Diğer eksene küçük itme
-      vy += rand(-0.02, 0.02);
-      vx += rand(-0.02, 0.02);
-      // Çok yavaşlamasın / çok hızlanmasın
-      const maxSpeed = 0.12;
-      const minSpeed = 0.035;
-      const sp = Math.sqrt(vx * vx + vy * vy) || 0.0001;
-      const clamped = Math.min(maxSpeed, Math.max(minSpeed, sp));
-      vx = (vx / sp) * clamped;
-      vy = (vy / sp) * clamped;
-    };
-
-    // X çarpışma
-    if (x <= minX) {
-      x = minX;
-      vx = Math.abs(vx);
-      bounceJitter();
-    } else if (x >= maxX) {
-      x = maxX;
-      vx = -Math.abs(vx);
-      bounceJitter();
-    }
-
-    // Y çarpışma
-    if (y <= minY) {
-      y = minY;
-      vy = Math.abs(vy);
-      bounceJitter();
-    } else if (y >= maxY) {
-      y = maxY;
-      vy = -Math.abs(vy);
-      bounceJitter();
-    }
-
-    ballX.value = x;
-    ballY.value = y;
-    ballVX.value = vx;
-    ballVY.value = vy;
-    ballRot.value = ballRot.value + (vx * dt) / 6;
-  });
-
-  const ballAnimatedStyle = useAnimatedStyle(() => {
-    const w = headerWidthSV.value || 0;
-    return {
-      transform: [
-        { translateX: ballX.value },
-        { translateY: ballY.value },
-        { rotate: `${ballRot.value}rad` },
-      ],
-      opacity: w > 0 ? 1 : 0,
-    };
-  });
 
   // Klavye durumunu dinle
   useEffect(() => {
-    const keyboardDidShowListener = Keyboard.addListener("keyboardDidShow", (e) => {
+    const keyboardDidShowListener = Keyboard.addListener("keyboardDidShow", () => {
       setKeyboardVisible(true);
-      setKeyboardWasOpened(true); // Klavye açıldı, flag'i set et
-      // iOS'ta klavye yüksekliğini al
-      if (Platform.OS === 'ios') {
-        setKeyboardHeight(e.endCoordinates.height);
-      }
     });
     const keyboardDidHideListener = Keyboard.addListener("keyboardDidHide", () => {
       // Android'de footer butonlarıyla klavye kapatıldığında da tetiklenmesi için kısa bir gecikme
@@ -247,7 +130,6 @@ export default function AuthScreen() {
         }, 150);
       } else {
         setKeyboardVisible(false);
-        setKeyboardHeight(0); // iOS'ta klavye kapandığında yüksekliği sıfırla
       }
     });
 
@@ -257,41 +139,9 @@ export default function AuthScreen() {
     };
   }, []);
 
-  // Auth hata mesajlarını seçili dile göre çevir
-  const translateError = (errorMessage: string): string => {
-    const errorKeyMap: Record<string, string> = {
-      "Password should be at least 6 characters": "auth.errors.passwordMin",
-      "AuthApiError: Password should be at least 6 characters": "auth.errors.passwordMin",
-      "Email format is invalid": "auth.errors.invalidEmail",
-      "User already registered": "auth.errors.userAlreadyRegistered",
-      "AuthApiError: User already exists": "auth.errors.userAlreadyExists",
-      "Invalid login credentials": "auth.errors.invalidCredentials",
-      "Email not confirmed": "auth.errors.emailNotConfirmed",
-      "User not found": "auth.errors.userNotFound",
-      "Unsupported provider: missing OAuth secret": "auth.errors.appleMissingOAuthSecret",
-      "missing OAuth secret": "auth.errors.missingOAuthSecret",
-      "redirect url is not allowed": "auth.errors.redirectUrlNotAllowed",
-      "Redirect URL is not allowed": "auth.errors.redirectUrlNotAllowed",
-      "Invalid Redirect URL": "auth.errors.redirectUrlNotAllowed",
-      "Email rate limit exceeded": "auth.errors.emailRateLimitExceeded",
-      "For security purposes, you can only request this once every 60 seconds": "auth.errors.emailRateLimitExceeded",
-    };
-
-    const key = errorKeyMap[errorMessage];
-    if (key) return t(key);
-    if (errorMessage.toLowerCase().includes("redirect") && errorMessage.toLowerCase().includes("url")) {
-      return t("auth.errors.redirectUrlNotAllowed");
-    }
-    if (errorMessage.toLowerCase().includes("rate limit") || errorMessage.toLowerCase().includes("60 seconds")) {
-      return t("auth.errors.emailRateLimitExceeded");
-    }
-
-    // Bilinmeyen hata: TR'de başlık ekle, EN'de mesajı olduğu gibi göster
-    if (currentLanguage === "tr") return `${t("general.error")}: ${errorMessage}`;
-    return errorMessage;
-  };
-
- 
+  // Auth hata mesajlarını seçili dile göre çevir (eşleme tablosu lib/authErrorMessages.ts'te)
+  const translateError = (errorMessage: string): string =>
+    translateAuthError(errorMessage, t, currentLanguage);
 
   // Başarılı giriş sonrası geçiş
   const navigateTo = (destination: string) => {
@@ -434,62 +284,6 @@ export default function AuthScreen() {
       resolveAndSetEmail();
     }, [resolveAndSetEmail])
   );
-
-  const getOAuthRedirectUri = () => {
-    // AuthSession'ın dinleyeceği gerçek app deep link'i.
-    if (Platform.OS === "web") return Linking.createURL("auth/callback");
-
-    const scheme =
-      (Constants.expoConfig as any)?.scheme ||
-      (Constants.expoConfig as any)?.ios?.scheme ||
-      (Constants.expoConfig as any)?.android?.scheme ||
-      "myapp";
-
-    return makeRedirectUri({ scheme, path: "auth/callback" });
-  };
-
-  const getOAuthSupabaseRedirectUrl = () => {
-    // Native'de hash/query kaybını azaltmak için önce web callback sayfamıza dönüp
-    // oradan doğru scheme ile uygulamaya geri yönlendiriyoruz.
-    if (Platform.OS === "web") return Linking.createURL("auth/callback");
-
-    const webBaseUrl = (Constants.expoConfig as any)?.extra?.webBaseUrl;
-    const scheme =
-      (Constants.expoConfig as any)?.scheme ||
-      (Constants.expoConfig as any)?.ios?.scheme ||
-      (Constants.expoConfig as any)?.android?.scheme ||
-      "myapp";
-
-    if (webBaseUrl) {
-      const base = `${webBaseUrl.replace(/\/$/, "")}/auth/callback.html`;
-      return `${base}${base.includes("?") ? "&" : "?"}s=${encodeURIComponent(scheme)}`;
-    }
-
-    return makeRedirectUri({ scheme, path: "auth/callback" });
-  };
-
-  const createSessionFromRedirectUrl = async (url: string) => {
-    const { params, errorCode } = QueryParams.getQueryParams(url);
-    if (errorCode) throw new Error(errorCode);
-
-    const code = (params as any)?.code as string | undefined;
-    const access_token = (params as any)?.access_token as string | undefined;
-    const refresh_token = (params as any)?.refresh_token as string | undefined;
-
-    if (code) {
-      const { data: exchanged, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
-      if (exchangeError) throw exchangeError;
-      return exchanged?.session ?? null;
-    }
-
-    if (access_token && refresh_token) {
-      const { data, error } = await supabase.auth.setSession({ access_token, refresh_token });
-      if (error) throw error;
-      return data?.session ?? null;
-    }
-
-    return null;
-  };
 
   const signInWithOAuth = async (provider: "google" | "apple") => {
     const redirectUri = getOAuthRedirectUri();
@@ -933,253 +727,7 @@ export default function AuthScreen() {
           scrollEnabled={false}
         >
           {/* Header */}
-          <View 
-            className="bg-green-700 px-2"
-            style={{
-              height: 90,
-              position: 'relative',
-              overflow: 'hidden',
-            }}
-            onLayout={(e) => {
-              const w = e.nativeEvent.layout.width;
-              if (w && w > 0) headerWidthSV.value = w;
-            }}
-          >
-            {/* Futbol sahası çizgileri efekti */}
-            <View 
-              style={{
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                right: 0,
-                bottom: 0,
-                opacity: 0.8,
-              }}>
-              {/* Üst dış çizgi - 1px boşluk ile */}
-              <View style={{ 
-                position: 'absolute', 
-                top: 1, 
-                left: 1, 
-                right: 1, 
-                height: 2, 
-                backgroundColor: 'white',
-              }} />
-              
-              {/* Alt dış çizgi - 1px boşluk ile */}
-              <View style={{ 
-                position: 'absolute', 
-                bottom: 1, 
-                left: 1, 
-                right: 1, 
-                height: 2, 
-                backgroundColor: 'white',
-              }} />
-              
-              {/* Sol dış çizgi - 1px boşluk ile */}
-              <View style={{ 
-                position: 'absolute', 
-                top: 1, 
-                bottom: 1, 
-                left: 1, 
-                width: 2, 
-                backgroundColor: 'white',
-              }} />
-              
-              {/* Sağ dış çizgi - 1px boşluk ile */}
-              <View style={{ 
-                position: 'absolute', 
-                top: 1, 
-                bottom: 1, 
-                right: 1, 
-                width: 2, 
-                backgroundColor: 'white',
-              }} />
-              
-              {/* Orta saha çizgisi */}
-              <View style={{ 
-                position: 'absolute', 
-                left: '50%', 
-                top: 1, 
-                bottom: 1, 
-                width: 2, 
-                backgroundColor: 'white',
-                transform: [{ translateX: -1 }]
-              }} />
-              
-              {/* Orta yuvarlak */}
-              <View style={{ 
-                position: 'absolute', 
-                top: '50%', 
-                left: '50%', 
-                width: 60, 
-                height: 60, 
-                borderWidth: 2, 
-                borderColor: 'white',
-                borderRadius: 30,
-                transform: [{ translateX: -30 }, { translateY: -30 }]
-              }} />
-              
-              {/* Sol kale - İç çizgiler (file gibi) */}
-              <View style={{
-                position: 'absolute',
-                left: 1,
-                top: '25%',
-                bottom: '25%',
-                width: 25,
-                borderWidth: 2,
-                borderColor: 'white',
-                borderRightWidth: 0,
-                backgroundColor: 'rgba(255, 255, 255, 0.15)',
-              }} />
-              
-              {/* Sol ceza sahası - Yan çizgiler (kale yan çizgisinden ayrı) */}
-              <View style={{
-                position: 'absolute',
-                left: 3,
-                top: '15%',
-                width: 40,
-                height: 2,
-                backgroundColor: 'white',
-              }} />
-              <View style={{
-                position: 'absolute',
-                left: 3,
-                bottom: '15%',
-                width: 40,
-                height: 2,
-                backgroundColor: 'white',
-              }} />
-              
-              {/* Sol ceza sahası - Ön çizgi (dikey) */}
-              <View style={{
-                position: 'absolute',
-                left: 42,
-                top: '15%',
-                bottom: '15%',
-                width: 2,
-                backgroundColor: 'white',
-              }} />
-              
-              {/* Sol penaltı noktası */}
-              <View style={{
-                position: 'absolute',
-                left: 32,
-                top: '50%',
-                width: 4,
-                height: 4,
-                borderRadius: 2,
-                backgroundColor: 'white',
-                transform: [{ translateX: -2 }, { translateY: -2 }],
-              }} />
-              
-              {/* Sağ kale - İç çizgiler (file gibi) */}
-              <View style={{
-                position: 'absolute',
-                right: 1,
-                top: '25%',
-                bottom: '25%',
-                width: 25,
-                borderWidth: 2,
-                borderColor: 'white',
-                borderLeftWidth: 0,
-                backgroundColor: 'rgba(255, 255, 255, 0.15)',
-              }} />
-              
-              {/* Sağ ceza sahası - Yan çizgiler (kale yan çizgisinden ayrı) */}
-              <View style={{
-                position: 'absolute',
-                right: 3,
-                top: '15%',
-                width: 40,
-                height: 2,
-                backgroundColor: 'white',
-              }} />
-              <View style={{
-                position: 'absolute',
-                right: 3,
-                bottom: '15%',
-                width: 40,
-                height: 2,
-                backgroundColor: 'white',
-              }} />
-              
-              {/* Sağ ceza sahası - Ön çizgi (dikey) */}
-              <View style={{
-                position: 'absolute',
-                right: 42,
-                top: '15%',
-                bottom: '15%',
-                width: 2,
-                backgroundColor: 'white',
-              }} />
-              
-              {/* Sağ penaltı noktası */}
-              <View style={{
-                position: 'absolute',
-                right: 32,
-                top: '50%',
-                width: 4,
-                height: 4,
-                borderRadius: 2,
-                backgroundColor: 'white',
-                transform: [{ translateX: 2 }, { translateY: -2 }],
-              }} />
-            </View>
-            
-            {/* İçerik */}
-            <View style={{ width: '100%', height: '100%', zIndex: 1, position: 'relative' }}>
-             
-
-              {/* Minik top: saha içinde sürekli gezer */}
-              <Animated.Image
-                source={require('../../assets/images/ball.png')}
-                style={[
-                  {
-                    position: 'absolute',
-                    width: BALL_SIZE,
-                    height: BALL_SIZE,
-                    zIndex: 2,
-                  },
-                  ballAnimatedStyle,
-                ]}
-                resizeMode="contain"
-              />
-
-              {/* SAHAYABAK: sabit */}
-              <View
-                pointerEvents="none"
-                style={{
-                  position: 'absolute',
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  bottom: 0,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  zIndex: 3,
-                }}
-              >
-                <Text
-                  style={{
-                    color: 'white',
-                    fontWeight: '900',
-                    letterSpacing: 3,
-                    fontSize: 20,
-                    paddingHorizontal: 12,
-                    paddingVertical: 6,
-                    borderRadius: 999,
-                    backgroundColor: 'rgba(0,0,0,0.22)',
-                    borderWidth: 1,
-                    borderColor: 'rgba(255,255,255,0.55)',
-                    transform: [{ translateX: 1 }],
-                  }}
-                >
-                  {t('auth.brand')}
-                </Text>
-              </View>
-              
-            </View>
-          </View>
+          <AuthFieldHeader />
           
           {/* Beyaz alan - kenarlıksız, tüm alanı kaplayan giriş formu */}
           <View style={{ flex: 1, backgroundColor: '#ffffff' }}>

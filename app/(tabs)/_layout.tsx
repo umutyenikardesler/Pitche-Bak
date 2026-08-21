@@ -1,8 +1,7 @@
-import { Tabs, useNavigation, useRouter } from "expo-router";
-import { useRef } from "react";
+import { Tabs } from "expo-router";
+import { type ComponentProps, type ReactNode } from "react";
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import CustomHeader from "@/components/CustomHeader";
-import * as Haptics from 'expo-haptics';
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useNotification } from "@/components/NotificationContext";
 import { useAuth } from "@/contexts/AuthContext";
@@ -11,16 +10,18 @@ import { useAppTheme } from "@/contexts/ThemeContext";
 import { DeviceEventEmitter, Platform, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+/** Tab ikonu: hazır ikon seti + adı, ya da tamamen özel bir render (ör. badge'li ikon). */
+type IconSpec =
+  | { family: 'ionicons'; name: ComponentProps<typeof Ionicons>['name'] }
+  | { family: 'material'; name: ComponentProps<typeof MaterialIcons>['name'] }
+  | { render: (args: { focused: boolean; color: string }) => ReactNode };
+
 export default function TabsLayout() {
-  const navigation = useNavigation();
-  const router = useRouter();
   const { t } = useLanguage();
   const { isGuest } = useAuth();
   const { showGuestAuthAlert } = useGuestAuthAlert();
   const { colors, isDark } = useAppTheme();
   const insets = useSafeAreaInsets();
-  const tabPressTimers = useRef<Record<string, NodeJS.Timeout>>({});
-  const tabPressCounts = useRef<Record<string, number>>({});
   const isWeb = Platform.OS === 'web';
   const isIos = Platform.OS === 'ios';
 
@@ -92,6 +93,79 @@ export default function TabsLayout() {
     }
   });
 
+  // Tüm tab'larda ortak olan tab bar görünümü
+  const renderTabBarBackground = () => (
+    <View style={tabBarStyles.tabBarBg} pointerEvents="none">
+      <View style={tabBarStyles.tabBarTopLine} />
+    </View>
+  );
+
+  const sharedTabBarOptions = {
+    tabBarActiveTintColor: "#059669",
+    tabBarInactiveTintColor: isDark ? "#d1d5db" : "#374151",
+    tabBarStyle: tabBarStyles.tabBar,
+    tabBarItemStyle: tabBarStyles.tabBarItem,
+    tabBarBackground: renderTabBarBackground,
+  };
+
+  // Web'de header'ı kendimiz sarmak zorundayız; mobilde headerTitle yeterli.
+  const headerOptions = (title: string) =>
+    isWeb
+      ? {
+          header: () => (
+            <View style={{ width: '100%', paddingHorizontal: 12, paddingVertical: 8, backgroundColor: colors.surface, borderBottomWidth: 1, borderBottomColor: colors.primary }}>
+              <CustomHeader title={title} onTitlePress={handleTitlePress} />
+            </View>
+          ),
+        }
+      : {
+          headerTitle: () => <CustomHeader title={title} onTitlePress={handleTitlePress} />,
+        };
+
+  const renderTabIcon = (icon: IconSpec, { focused, color }: { focused: boolean; color: string }) => {
+    if ('render' in icon) return icon.render({ focused, color });
+    const size = focused ? 28 : 22;
+    const style = { marginTop: 2 };
+    return icon.family === 'ionicons' ? (
+      <Ionicons name={icon.name} color={color} size={size} style={style} />
+    ) : (
+      <MaterialIcons name={icon.name} color={color} size={size} style={style} />
+    );
+  };
+
+  /**
+   * Tek bir tab'ın options'ını üretir.
+   * headerTitle verilmezse label başlık olarak kullanılır (index hariç hepsi böyle).
+   * hidden: true -> tab bar'da görünmez (href: null) ama route erişilebilir kalır.
+   */
+  const makeTabOptions = ({
+    label,
+    headerTitle,
+    icon,
+    hidden,
+  }: {
+    label: string;
+    headerTitle?: string;
+    icon: IconSpec;
+    hidden?: boolean;
+  }) => ({
+    ...sharedTabBarOptions,
+    tabBarLabel: label,
+    ...headerOptions(headerTitle ?? label),
+    tabBarIcon: (props: { focused: boolean; color: string }) => renderTabIcon(icon, props),
+    ...(hidden ? { href: null } : {}),
+  });
+
+  // Misafir kullanıcıya kapalı tab'lar için ortak listener
+  const guestBlockedListeners = (alertKey: string) => ({
+    tabPress: (e: { preventDefault: () => void }) => {
+      if (isGuest) {
+        e.preventDefault();
+        showGuestAuthAlert(t(alertKey));
+      }
+    },
+  });
+
   // Mesaj sekmesi için badge'li ikon
   const MessagesTabIcon = ({ focused, color }: { focused: boolean; color: string }) => {
     const { messageCount } = useNotification();
@@ -132,69 +206,39 @@ export default function TabsLayout() {
     <Tabs
       // Web'de per-screen `tabBarShowLabel` bazı durumlarda uygulanmıyor.
       // Mobil davranışını bozmamak için bunu SADECE web'de navigator seviyesinde zorluyoruz.
-      screenOptions={
-        isWeb
+      screenOptions={{
+        sceneStyle: {
+          backgroundColor: colors.background,
+        },
+        headerStyle: {
+          backgroundColor: colors.surface,
+          borderBottomWidth: 1,
+          borderBottomColor: colors.primary,
+        },
+        headerShadowVisible: false,
+        ...(isWeb
           ? {
               tabBarShowLabel: true,
-              tabBarLabelPosition: 'below-icon',
+              tabBarLabelPosition: 'below-icon' as const,
               tabBarLabelStyle: {
                 fontSize: 12,
-                fontWeight: '700',
+                fontWeight: '700' as const,
                 marginTop: 2,
               },
-              sceneStyle: {
-                backgroundColor: colors.background,
-              },
-              headerStyle: {
-                backgroundColor: colors.surface,
-                borderBottomWidth: 1,
-                borderBottomColor: colors.primary,
-              },
-              headerShadowVisible: false,
             }
-          : {
-              sceneStyle: {
-                backgroundColor: colors.background,
-              },
-              headerStyle: {
-                backgroundColor: colors.surface,
-                borderBottomWidth: 1,
-                borderBottomColor: colors.primary,
-              },
-              headerShadowVisible: false,
-            }
-      }
+          : {}),
+      }}
     >
       <Tabs.Screen
         name="index"
-        options={{
-          tabBarActiveTintColor: "#059669",
-          tabBarInactiveTintColor: isDark ? "#d1d5db" : "#374151",
-          tabBarStyle: tabBarStyles.tabBar,
-          tabBarItemStyle: tabBarStyles.tabBarItem,
-          tabBarBackground: () => (
-            <View style={tabBarStyles.tabBarBg} pointerEvents="none">
-              <View style={tabBarStyles.tabBarTopLine} />
-            </View>
-          ),
-          tabBarLabel: t('home.findMatch'),
-          ...(isWeb
-            ? {
-                header: () => (
-                  <View style={{ width: '100%', paddingHorizontal: 12, paddingVertical: 8, backgroundColor: colors.surface, borderBottomWidth: 1, borderBottomColor: colors.primary }}>
-                    <CustomHeader title={t('home.title')} onTitlePress={handleTitlePress} />
-                  </View>
-                ),
-              }
-            : {
-                headerTitle: () => <CustomHeader title={t('home.title')} onTitlePress={handleTitlePress} />,
-              }),
-          tabBarIcon: ({ focused, color, size }) => (
-            <Ionicons name="search-outline" color={color as string} size={focused ? 28 : 22} style={{ marginTop: 2 }} />
-          ),
-        }}
+        options={makeTabOptions({
+          // Tab etiketi ile header başlığı bu ekranda kasıtlı olarak farklı
+          label: t('home.findMatch'),
+          headerTitle: t('home.title'),
+          icon: { family: 'ionicons', name: 'search-outline' },
+        })}
         listeners={{
-          tabPress: (e) => {
+          tabPress: () => {
             // Index tab'ına basıldığında (özellikle MatchDetails açıkken)
             // açık olan modal/detayları kapatmak için event gönder.
             DeviceEventEmitter.emit('closeModals');
@@ -203,37 +247,10 @@ export default function TabsLayout() {
       />
       <Tabs.Screen
         name="pitches"
-        options={{
-          tabBarActiveTintColor: "#059669",
-          tabBarInactiveTintColor: isDark ? "#d1d5db" : "#374151",
-          tabBarStyle: tabBarStyles.tabBar,
-          tabBarItemStyle: tabBarStyles.tabBarItem,
-          tabBarBackground: () => (
-            <View style={tabBarStyles.tabBarBg} pointerEvents="none">
-              <View style={tabBarStyles.tabBarTopLine} />
-            </View>
-          ),
-          tabBarLabel: t('pitches.title'),
-          ...(isWeb
-            ? {
-                header: () => (
-                  <View style={{ width: '100%', paddingHorizontal: 12, paddingVertical: 8, backgroundColor: colors.surface, borderBottomWidth: 1, borderBottomColor: colors.primary }}>
-                    <CustomHeader title={t('pitches.title')} onTitlePress={handleTitlePress} />
-                  </View>
-                ),
-              }
-            : {
-                headerTitle: () => <CustomHeader title={t('pitches.title')} onTitlePress={handleTitlePress} />,
-              }),
-          tabBarIcon: ({ focused, color }) => (
-            <Ionicons
-              name="navigate-circle-outline"
-              color={color as string}
-              size={focused ? 28 : 22}
-              style={{ marginTop: 2 }}
-            />
-          ),
-        }}
+        options={makeTabOptions({
+          label: t('pitches.title'),
+          icon: { family: 'ionicons', name: 'navigate-circle-outline' },
+        })}
         listeners={{
           tabPress: () => {
             // Sahalar tabına basıldığında saha detayını kapat
@@ -243,167 +260,36 @@ export default function TabsLayout() {
       />
       <Tabs.Screen
         name="create"
-        listeners={{
-          tabPress: (e) => {
-            if (isGuest) {
-              e.preventDefault();
-              showGuestAuthAlert(t('auth.guestCreateMatch'));
-            }
-          },
-        }}
-        options={{
-          tabBarActiveTintColor: "#059669",
-          tabBarInactiveTintColor: isDark ? "#d1d5db" : "#374151",
-          tabBarStyle: tabBarStyles.tabBar,
-          tabBarItemStyle: tabBarStyles.tabBarItem,
-          tabBarBackground: () => (
-            <View style={tabBarStyles.tabBarBg} pointerEvents="none">
-              <View style={tabBarStyles.tabBarTopLine} />
-            </View>
-          ),
-          tabBarLabel: t('create.title'),
-          ...(isWeb
-            ? {
-                header: () => (
-                  <View style={{ width: '100%', paddingHorizontal: 12, paddingVertical: 8, backgroundColor: colors.surface, borderBottomWidth: 1, borderBottomColor: colors.primary }}>
-                    <CustomHeader title={t('create.title')} onTitlePress={handleTitlePress} />
-                  </View>
-                ),
-              }
-            : {
-                headerTitle: () => <CustomHeader title={t('create.title')} onTitlePress={handleTitlePress} />,
-              }),
-          tabBarIcon: ({ focused, color }) => (
-            <MaterialIcons
-              name="add-circle-outline"
-              color={color as string}
-              size={focused ? 28 : 22}
-              style={{ marginTop: 2 }}
-            />
-          ),
-        }}
+        listeners={guestBlockedListeners('auth.guestCreateMatch')}
+        options={makeTabOptions({
+          label: t('create.title'),
+          icon: { family: 'material', name: 'add-circle-outline' },
+        })}
       />
       <Tabs.Screen
         name="message"
-        listeners={{
-          tabPress: (e) => {
-            if (isGuest) {
-              e.preventDefault();
-              showGuestAuthAlert(t('auth.guestMessage'));
-            }
-          },
-        }}
-        options={{
-          tabBarActiveTintColor: "#059669",
-          tabBarInactiveTintColor: isDark ? "#d1d5db" : "#374151",
-          tabBarStyle: tabBarStyles.tabBar,
-          tabBarItemStyle: tabBarStyles.tabBarItem,
-          tabBarBackground: () => (
-            <View style={tabBarStyles.tabBarBg} pointerEvents="none">
-              <View style={tabBarStyles.tabBarTopLine} />
-            </View>
-          ),
-          tabBarLabel: t('messages.title'),
-          ...(isWeb
-            ? {
-                header: () => (
-                  <View style={{ width: '100%', paddingHorizontal: 12, paddingVertical: 8, backgroundColor: colors.surface, borderBottomWidth: 1, borderBottomColor: colors.primary }}>
-                    <CustomHeader title={t('messages.title')} onTitlePress={handleTitlePress} />
-                  </View>
-                ),
-              }
-            : {
-                headerTitle: () => <CustomHeader title={t('messages.title')} onTitlePress={handleTitlePress} />,
-              }),
-          tabBarIcon: ({ focused, color }) => (
-            <MessagesTabIcon focused={focused} color={color as string} />
-          ),
-        }}
+        listeners={guestBlockedListeners('auth.guestMessage')}
+        options={makeTabOptions({
+          label: t('messages.title'),
+          icon: { render: ({ focused, color }) => <MessagesTabIcon focused={focused} color={color} /> },
+        })}
       />
       <Tabs.Screen
         name="profile"
-        listeners={{
-          tabPress: (e) => {
-            if (isGuest) {
-              e.preventDefault();
-              showGuestAuthAlert(t('auth.guestProfile'));
-            }
-          },
-        }}
-        options={{
-          tabBarActiveTintColor: "#059669",
-          tabBarInactiveTintColor: isDark ? "#d1d5db" : "#374151",
-          tabBarStyle: tabBarStyles.tabBar,
-          tabBarItemStyle: tabBarStyles.tabBarItem,
-          tabBarBackground: () => (
-            <View style={tabBarStyles.tabBarBg} pointerEvents="none">
-              <View style={tabBarStyles.tabBarTopLine} />
-            </View>
-          ),
-          tabBarLabel: t('profile.title'),
-          ...(isWeb
-            ? {
-                header: () => (
-                  <View style={{ width: '100%', paddingHorizontal: 12, paddingVertical: 8, backgroundColor: colors.surface, borderBottomWidth: 1, borderBottomColor: colors.primary }}>
-                    <CustomHeader title={t('profile.title')} onTitlePress={handleTitlePress} />
-                  </View>
-                ),
-              }
-            : {
-                headerTitle: () => <CustomHeader title={t('profile.title')} onTitlePress={handleTitlePress} />,
-              }),
-          tabBarIcon: ({ focused, color }) => (
-            <Ionicons
-              name="person-circle-outline"
-              color={color as string}
-              size={focused ? 28 : 22}
-              style={{ marginTop: 2 }}
-            />
-          ),
-        }}
+        listeners={guestBlockedListeners('auth.guestProfile')}
+        options={makeTabOptions({
+          label: t('profile.title'),
+          icon: { family: 'ionicons', name: 'person-circle-outline' },
+        })}
       />
       <Tabs.Screen
         name="notifications"
-        listeners={{
-          tabPress: (e) => {
-            if (isGuest) {
-              e.preventDefault();
-              showGuestAuthAlert(t('auth.guestNotifications'));
-            }
-          },
-        }}
-        options={{
-          tabBarActiveTintColor: "#059669",
-          tabBarInactiveTintColor: isDark ? "#d1d5db" : "#374151",
-          tabBarStyle: tabBarStyles.tabBar,
-          tabBarItemStyle: tabBarStyles.tabBarItem,
-          tabBarBackground: () => (
-            <View style={tabBarStyles.tabBarBg} pointerEvents="none">
-              <View style={tabBarStyles.tabBarTopLine} />
-            </View>
-          ),
-          tabBarLabel: t('notifications.title'),
-          ...(isWeb
-            ? {
-                header: () => (
-                  <View style={{ width: '100%', paddingHorizontal: 12, paddingVertical: 8, backgroundColor: colors.surface, borderBottomWidth: 1, borderBottomColor: colors.primary }}>
-                    <CustomHeader title={t('notifications.title')} onTitlePress={handleTitlePress} />
-                  </View>
-                ),
-              }
-            : {
-                headerTitle: () => <CustomHeader title={t('notifications.title')} onTitlePress={handleTitlePress} />,
-              }),
-          tabBarIcon: ({ focused, color }) => (
-            <Ionicons
-              name="notifications-outline"
-              color={color as string}
-              size={focused ? 28 : 22}
-              style={{ marginTop: 2 }}
-            />
-          ),
-          href: null,
-        }}
+        listeners={guestBlockedListeners('auth.guestNotifications')}
+        options={makeTabOptions({
+          label: t('notifications.title'),
+          icon: { family: 'ionicons', name: 'notifications-outline' },
+          hidden: true,
+        })}
       />
 
       {/* Tab bar'da görünmesin (Landing -> Misafir akışı için) */}
@@ -413,11 +299,7 @@ export default function TabsLayout() {
           href: null,
           headerShown: false,
           tabBarStyle: tabBarStyles.tabBar,
-          tabBarBackground: () => (
-            <View style={tabBarStyles.tabBarBg} pointerEvents="none">
-              <View style={tabBarStyles.tabBarTopLine} />
-            </View>
-          ),
+          tabBarBackground: renderTabBarBackground,
         }}
       />
     </Tabs>
