@@ -4,15 +4,18 @@ import {
   Text,
   Image,
   TouchableOpacity,
-  ActivityIndicator,
   Alert,
   Modal,
   ScrollView,
-  FlatList,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { supabase } from "@/services/supabase";
 import { blockUser } from "@/services/blocks";
+import {
+  fetchFollowList,
+  fetchFollowCounts as fetchFollowCountsFromDb,
+  type FollowUser,
+} from "@/services/follows";
 import { useState, useEffect, useCallback } from "react";
 import { usePathname, useRouter } from "expo-router";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -32,13 +35,6 @@ interface UserData {
   weight: number;
   description: string;
   match_count: number;
-}
-
-interface FollowUser {
-  id: string;
-  name: string;
-  surname: string;
-  profile_image?: string;
 }
 
 interface ProfilePreviewProps {
@@ -69,9 +65,6 @@ export default function ProfilePreview({
   const [followerCount, setFollowerCount] = useState(0);
   const [followingCount, setFollowingCount] = useState(0);
 
-  // Takipçi ve takip edilen listeleri için state'ler
-  const [followersList, setFollowersList] = useState<FollowUser[]>([]);
-  const [followingList, setFollowingList] = useState<FollowUser[]>([]);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
   // Kullanıcının maç sayısını çek
@@ -90,157 +83,13 @@ export default function ProfilePreview({
     }
   };
 
-  // Takipçi ve takip sayılarını çek
+  // Takipçi ve takip sayılarını çek. Sorgusu başarısız olan tarafın sayacı olduğu gibi bırakılır.
   const fetchFollowCounts = async (userId: string) => {
-    try {
-      const { data: followers, error: followerError } = await supabase
-        .from("follow_requests")
-        .select("id")
-        .eq("following_id", userId)
-        .eq("status", "accepted");
-
-      const { data: following, error: followingError } = await supabase
-        .from("follow_requests")
-        .select("id")
-        .eq("follower_id", userId)
-        .eq("status", "accepted");
-
-      if (!followerError) setFollowerCount(followers.length);
-      if (!followingError) setFollowingCount(following.length);
-    } catch (error) {
-      console.error("Takip verileri çekilirken hata:", error);
-    }
+    const { followers, following } = await fetchFollowCountsFromDb(userId);
+    if (followers !== null) setFollowerCount(followers);
+    if (following !== null) setFollowingCount(following);
   };
 
-  // Takipçi listesini çek
-  const fetchFollowersList = async (
-    userId: string,
-    callback?: (followers: FollowUser[]) => void
-  ) => {
-    try {
-      console.log("fetchFollowersList called, userId:", userId);
-
-      // Önce takipçi ID'lerini al
-      const { data: followData, error: followError } = await supabase
-        .from("follow_requests")
-        .select("follower_id, updated_at, created_at")
-        .eq("following_id", userId)
-        .eq("status", "accepted")
-        .order("updated_at", { ascending: false })
-        .order("created_at", { ascending: false });
-
-      console.log("Follower IDs:", followData, "Error:", followError);
-
-      if (followError || !followData || followData.length === 0) {
-        const emptyList: FollowUser[] = [];
-        setFollowersList(emptyList);
-        if (callback) callback(emptyList);
-        return;
-      }
-
-      // Sonra bu ID'lerle kullanıcı bilgilerini al
-      const followerIds = followData.map((item: any) => item.follower_id);
-      const { data: userData, error: userError } = await supabase
-        .from("users")
-        .select("id, name, surname, profile_image")
-        .in("id", followerIds);
-
-      console.log("User data:", userData, "Error:", userError);
-
-      if (!userError && userData) {
-        // user kayıtlarını, follow_requests sırasına göre yeniden sırala
-        const userById = new Map(
-          (userData as any[]).map((u: any) => [u.id, u])
-        );
-        const followers = followerIds
-          .map((id: string) => userById.get(id))
-          .filter(Boolean)
-          .map((user: any) => ({
-            id: user.id,
-            name: user.name,
-            surname: user.surname,
-            profile_image: user.profile_image,
-          }));
-        console.log("Processed followers list:", followers);
-        setFollowersList(followers);
-        if (callback) callback(followers);
-      } else {
-        const emptyList: FollowUser[] = [];
-        setFollowersList(emptyList);
-        if (callback) callback(emptyList);
-      }
-    } catch (error) {
-      console.error("Error fetching followers list:", error);
-      const emptyList: FollowUser[] = [];
-      setFollowersList(emptyList);
-      if (callback) callback(emptyList);
-    }
-  };
-
-  // Takip edilen listesini çek
-  const fetchFollowingList = async (
-    userId: string,
-    callback?: (following: FollowUser[]) => void
-  ) => {
-    try {
-      console.log("fetchFollowingList called, userId:", userId);
-
-      // Önce takip edilen ID'lerini al
-      const { data: followData, error: followError } = await supabase
-        .from("follow_requests")
-        .select("following_id, updated_at, created_at")
-        .eq("follower_id", userId)
-        .eq("status", "accepted")
-        .order("updated_at", { ascending: false })
-        .order("created_at", { ascending: false });
-
-      console.log("Following IDs:", followData, "Error:", followError);
-
-      if (followError || !followData || followData.length === 0) {
-        const emptyList: FollowUser[] = [];
-        setFollowingList(emptyList);
-        if (callback) callback(emptyList);
-        return;
-      }
-
-      // Sonra bu ID'lerle kullanıcı bilgilerini al
-      const followingIds = followData.map((item: any) => item.following_id);
-      const { data: userData, error: userError } = await supabase
-        .from("users")
-        .select("id, name, surname, profile_image")
-        .in("id", followingIds);
-
-      console.log("User data:", userData, "Error:", userError);
-
-      if (!userError && userData) {
-        // user kayıtlarını, follow_requests sırasına göre yeniden sırala
-        const userById = new Map(
-          (userData as any[]).map((u: any) => [u.id, u])
-        );
-        const following = followingIds
-          .map((id: string) => userById.get(id))
-          .filter(Boolean)
-          .map((user: any) => ({
-            id: user.id,
-            name: user.name,
-            surname: user.surname,
-            profile_image: user.profile_image,
-          }));
-        console.log("Processed following list:", following);
-        setFollowingList(following);
-        if (callback) callback(following);
-      } else {
-        const emptyList: FollowUser[] = [];
-        setFollowingList(emptyList);
-        if (callback) callback(emptyList);
-      }
-    } catch (error) {
-      console.error("Error fetching following list:", error);
-      const emptyList: FollowUser[] = [];
-      setFollowingList(emptyList);
-      if (callback) callback(emptyList);
-    }
-  };
 
   const fetchData = useCallback(async () => {
     try {
@@ -396,8 +245,6 @@ export default function ProfilePreview({
     setMatchCount(0);
     setFollowerCount(0);
     setFollowingCount(0);
-    setFollowersList([]);
-    setFollowingList([]);
     setListModalVisible(false);
     setCurrentList([]);
     // Sonra modal'ı kapat
@@ -583,32 +430,28 @@ export default function ProfilePreview({
 
   // Takipçi listesini aç
   const handlePressFollowers = async () => {
-    console.log("handlePressFollowers called");
-    await fetchFollowersList(userId, (followers) => {
-      if (followers.length === 0) {
-        Alert.alert(t("profile.followers"), t("profile.noFollowersYet"));
-        return;
-      }
+    const followers = await fetchFollowList(userId, "followers");
+    if (followers.length === 0) {
+      Alert.alert(t("profile.followers"), t("profile.noFollowersYet"));
+      return;
+    }
 
-      setCurrentList(followers);
-      setActiveListType("followers");
-      setListModalVisible(true);
-    });
+    setCurrentList(followers);
+    setActiveListType("followers");
+    setListModalVisible(true);
   };
 
   // Takip edilen listesini aç
   const handlePressFollowing = async () => {
-    console.log("handlePressFollowing called");
-    await fetchFollowingList(userId, (following) => {
-      if (following.length === 0) {
-        Alert.alert(t("profile.following"), t("profile.notFollowingAnyoneYet"));
-        return;
-      }
+    const following = await fetchFollowList(userId, "following");
+    if (following.length === 0) {
+      Alert.alert(t("profile.following"), t("profile.notFollowingAnyoneYet"));
+      return;
+    }
 
-      setCurrentList(following);
-      setActiveListType("following");
-      setListModalVisible(true);
-    });
+    setCurrentList(following);
+    setActiveListType("following");
+    setListModalVisible(true);
   };
 
   // Liste modal'ını kapat
@@ -616,35 +459,6 @@ export default function ProfilePreview({
     setListModalVisible(false);
     setCurrentList([]);
   };
-
-  // Kullanıcı öğesi render et
-  const renderUserItem = ({ item }: { item: FollowUser }) => (
-    <View className="flex-row items-center p-4 border-b border-gray-100 hover:bg-gray-50">
-      <View className="relative">
-        <Image
-          source={
-            item.profile_image
-              ? { uri: item.profile_image }
-              : require("@/assets/images/ball.png")
-          }
-          className="rounded-full border-2 border-green-200"
-          style={{ width: 55, height: 55, resizeMode: "cover" }}
-        />
-        {/* <View className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-white"></View> */}
-      </View>
-      <View className="ml-4 flex-1">
-        <Text className="text-lg font-semibold text-green-700">
-          {item.name} {item.surname}
-        </Text>
-                                <Text className="text-sm text-gray-500 mt-1">
-                          {activeListType === "followers"
-                            ? t("profile.followingYou")
-                            : t("profile.youFollowing")}
-                        </Text>
-      </View>
-      {/* <Ionicons name="chevron-forward" size={20} color="#16a34a" /> */}
-    </View>
-  );
 
   return (
     <>

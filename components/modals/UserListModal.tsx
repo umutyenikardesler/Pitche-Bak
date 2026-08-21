@@ -13,16 +13,10 @@ import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { supabase } from "@/services/supabase";
 import { createNotification } from "@/services/triggerPushNotification";
+import type { FollowUser } from "@/services/follows";
 import { useLanguage } from "@/contexts/LanguageContext";
 import ProfilePreview from "@/components/index/ProfilePreview";
 import { useAppTheme } from "@/contexts/ThemeContext";
-
-interface FollowUser {
-  id: string;
-  name: string;
-  surname: string;
-  profile_image?: string;
-}
 
 interface UserListModalProps {
   visible: boolean;

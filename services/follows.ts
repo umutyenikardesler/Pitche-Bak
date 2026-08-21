@@ -37,34 +37,39 @@ export async function fetchFollowList(
 ): Promise<FollowUser[]> {
   const { self, other } = DIRECTION_COLUMNS[direction];
 
-  const { data: relations, error: relationsError } = await supabase
-    .from('follow_requests')
-    .select(`${other}, updated_at, created_at`)
-    .eq(self, userId)
-    .eq('status', 'accepted')
-    .order('updated_at', { ascending: false })
-    .order('created_at', { ascending: false });
+  try {
+    const { data: relations, error: relationsError } = await supabase
+      .from('follow_requests')
+      .select(`${other}, updated_at, created_at`)
+      .eq(self, userId)
+      .eq('status', 'accepted')
+      .order('updated_at', { ascending: false })
+      .order('created_at', { ascending: false });
 
-  if (relationsError || !relations || relations.length === 0) return [];
+    if (relationsError || !relations || relations.length === 0) return [];
 
-  const ids = relations.map((row: any) => row[other] as string);
-  const { data: users, error: usersError } = await supabase
-    .from('users')
-    .select('id, name, surname, profile_image')
-    .in('id', ids);
+    const ids = relations.map((row: any) => row[other] as string);
+    const { data: users, error: usersError } = await supabase
+      .from('users')
+      .select('id, name, surname, profile_image')
+      .in('id', ids);
 
-  if (usersError || !users) return [];
+    if (usersError || !users) return [];
 
-  const byId = new Map((users as any[]).map((u: any) => [u.id, u]));
-  return ids
-    .map((id) => byId.get(id))
-    .filter(Boolean)
-    .map((u: any) => ({
-      id: u.id,
-      name: u.name,
-      surname: u.surname,
-      profile_image: u.profile_image,
-    }));
+    const byId = new Map((users as any[]).map((u: any) => [u.id, u]));
+    return ids
+      .map((id) => byId.get(id))
+      .filter(Boolean)
+      .map((u: any) => ({
+        id: u.id,
+        name: u.name,
+        surname: u.surname,
+        profile_image: u.profile_image,
+      }));
+  } catch (error) {
+    console.error(`Takip listesi (${direction}) çekilirken hata:`, error);
+    return [];
+  }
 }
 
 /**
