@@ -32,6 +32,12 @@ npm-debug.*
 yarn-debug.*
 yarn-error.*
 
+# Crash / logcat dumps ve yerel karalama alanı (repoya girmemeli)
+crash.txt
+*logcat*.txt
+agent-tools/
+tmp/
+
 # macOS
 .DS_Store
 *.pem
