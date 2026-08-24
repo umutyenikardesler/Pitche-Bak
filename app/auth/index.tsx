@@ -574,8 +574,8 @@ export default function AuthScreen() {
     }
 
     const RATE_WINDOW_MS = 60 * 60 * 1000; // 1 hour
-    const RATE_MAX = 2; // Supabase rate limit: 2 emails/hour (project setting)
-    const MIN_SPACING_MS = 60 * 1000; // some flows also enforce ~60s spacing
+    const RATE_MAX = 100; // Resend SMTP ile saatlik limit (Supabase Dashboard'daki Auth Rate Limits ile eşleşmeli)
+    const MIN_SPACING_MS = 1 * 1000; // denemeler arası ~1sn spacing
     const rlKey = `rate_limit:reset_password:${trimmedEmail.toLowerCase()}`;
 
     const formatRemaining = (ms: number) => {
