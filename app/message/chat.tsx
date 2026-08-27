@@ -1,5 +1,5 @@
-import { memo, useEffect, useState, useCallback, useRef } from 'react';
-import { View, Text, FlatList, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, InteractionManager, Alert, Pressable, Modal } from 'react-native';
+import { memo, useEffect, useState, useCallback, useRef, useMemo } from 'react';
+import { View, Text, FlatList, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, Alert, Pressable, Modal, Keyboard } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
 import { supabase } from '@/services/supabase';
 import { createNotification } from '@/services/triggerPushNotification';
@@ -14,6 +14,7 @@ import { getBlockedUserIds, blockUser } from '@/services/blocks';
 import { reportContent, hasUserReportedContent } from '@/services/contentReports';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, { Extrapolation, interpolate, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
+import * as Haptics from 'expo-haptics';
 
 interface MsgItem {
   id: string;
@@ -122,7 +123,7 @@ const MessageRow = memo(function MessageRow({
   );
 
   return (
-    <View style={{ paddingHorizontal: 12, paddingVertical: 6 }}>
+    <View style={{ paddingHorizontal: 12, paddingVertical: 3 }}>
       <View style={{ position: 'relative', minHeight: 28 }}>
         <Animated.View
           style={[
@@ -261,18 +262,16 @@ export default function ChatScreen() {
     [activeMatchId]
   );
 
+  // Liste `inverted` olduğu için "en alt" = offset 0. scrollToEnd'in içerik ölçümüyle
+  // yarışması (yeni mesajın klavye altında kalması) böylece tamamen ortadan kalkıyor.
   const scrollToBottom = useCallback((animated = false) => {
     const run = () => {
       try {
-        listRef.current?.scrollToEnd({ animated });
+        listRef.current?.scrollToOffset({ offset: 0, animated });
       } catch (_) {}
     };
     run();
     requestAnimationFrame(run);
-    requestAnimationFrame(() => requestAnimationFrame(run));
-    InteractionManager.runAfterInteractions(run);
-    setTimeout(run, 50);
-    setTimeout(run, 200);
   }, []);
 
   useEffect(() => {
@@ -299,6 +298,13 @@ export default function ChatScreen() {
   useEffect(() => {
     messagesRef.current = messages;
   }, [messages]);
+
+  // Klavye açıldığında son mesaj klavyenin altında kalmasın diye listeyi en alta kaydır
+  useEffect(() => {
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const sub = Keyboard.addListener(showEvent, () => scrollToBottom(true));
+    return () => sub.remove();
+  }, [scrollToBottom]);
 
   // Resolve recipient id safely (avoid sending message to self)
   const resolveRecipientId = useCallback(async (currentUserId: string): Promise<string | null> => {
@@ -448,6 +454,7 @@ export default function ChatScreen() {
     }
 
     setIsSending(true);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy).catch(() => {});
 
     const content = input.trim();
     setInput('');
@@ -663,6 +670,9 @@ export default function ChatScreen() {
     }
   }, [editModalItem, editInput, t]);
 
+  // `inverted` liste en yeni mesajı başa alır; kaynak dizi kronolojik kaldığı için burada çeviriyoruz.
+  const invertedMessages = useMemo(() => [...messages].reverse(), [messages]);
+
   const renderItem = ({ item }: { item: MsgItem }) => {
     const mine = item.sender_id === me;
     const isDeleted = deletedIds.has(item.id);
@@ -754,16 +764,11 @@ export default function ChatScreen() {
             <View style={{ flex: 1 }}>
               <FlatList
                 ref={listRef}
-                data={messages}
+                inverted
+                data={invertedMessages}
                 keyExtractor={(m) => m.id}
                 renderItem={renderItem}
-                contentContainerStyle={{ paddingVertical: 8, paddingBottom: Math.max(60, insets.bottom + 8) }}
-                onContentSizeChange={() => {
-                  if (pendingInitialScroll.current && messages.length > 0) {
-                    scrollToBottom(false);
-                    pendingInitialScroll.current = false;
-                  }
-                }}
+                contentContainerStyle={{ paddingVertical: 8 }}
               />
             </View>
           </GestureDetector>
@@ -951,6 +956,7 @@ export default function ChatScreen() {
                 placeholder="Mesaj yaz"
                 value={input}
                 onChangeText={setInput}
+                onFocus={() => scrollToBottom(true)}
                 placeholderTextColor={colors.textMuted}
                 style={{ flex: 1, borderWidth: 1, borderColor: colors.inputBorder, backgroundColor: colors.inputBackground, color: colors.text, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 8, marginRight: 8 }}
               />
