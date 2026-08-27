@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { View, Text, FlatList, TouchableOpacity, Image, ActivityIndicator, RefreshControl, Animated, Dimensions, Modal, Pressable, Alert, TextInput, ScrollView } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
@@ -12,6 +12,11 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useGuestAuthAlert } from '@/contexts/GuestAuthModalContext';
 import { useAppTheme } from "@/contexts/ThemeContext";
+
+// Listede ilk açılışta (sabitlenmişler dahil) gösterilecek sohbet sayısı ve
+// her kaydırmada eklenecek sayfa boyutu.
+const INITIAL_VISIBLE_CHATS = 6;
+const CHATS_PAGE_SIZE = 5;
 
 type ChatSummary = MatchChatSummary | DirectChatSummary;
 
@@ -69,6 +74,9 @@ export default function Messages() {
   const [reportTargetItem, setReportTargetItem] = useState<ChatSummary | null>(null);
   const [ugcAgreed, setUgcAgreed] = useState<boolean | null>(null);
   const [pinnedChatKeys, setPinnedChatKeys] = useState<Set<string>>(new Set());
+  const [visibleCount, setVisibleCount] = useState(INITIAL_VISIBLE_CHATS);
+  // Yeni sayfa yüklendikten sonra liste yeniden ölçülene kadar tekrar yükleme yapma.
+  const pendingLoadRef = useRef(false);
   const getChatKey = useCallback((item: ChatSummary): string => {
     if (item.kind === "match") return `${item.owner_id}-m-${item.id}`;
     return `${item.owner_id}-d-${(item as DirectChatSummary).match_id ?? "x"}`;
@@ -333,8 +341,36 @@ export default function Messages() {
   }, []);
 
   const onRefresh = useCallback(() => {
+    setVisibleCount(INITIAL_VISIBLE_CHATS);
+    pendingLoadRef.current = false;
     fetchChats(true);
   }, [fetchChats]);
+
+  // Bir sonraki sohbet "silik" olarak görünsün diye görünen sayının 1 fazlasını render ediyoruz.
+  const visibleItems = useMemo(
+    () => items.slice(0, visibleCount + 1),
+    [items, visibleCount]
+  );
+
+  // onEndReached her içerik uzunluğu için yalnızca bir kez tetiklendiğinden güvenilmez
+  // (açılışta bir kez tetiklenip bir daha çalışmıyor). Bunun yerine kaydırma konumunu ölçüyoruz.
+  const handleScroll = useCallback(
+    (e: { nativeEvent: { layoutMeasurement: { height: number }; contentOffset: { y: number }; contentSize: { height: number } } }) => {
+      if (pendingLoadRef.current) return;
+      if (visibleCount >= items.length) return;
+      const { layoutMeasurement, contentOffset, contentSize } = e.nativeEvent;
+      const distanceFromBottom = contentSize.height - (contentOffset.y + layoutMeasurement.height);
+      if (distanceFromBottom > 120) return;
+      pendingLoadRef.current = true;
+      setVisibleCount((prev) => prev + CHATS_PAGE_SIZE);
+    },
+    [items.length, visibleCount]
+  );
+
+  // Liste yeniden ölçüldüğünde kilidi aç: bir sonraki kaydırma yeni sayfayı yükleyebilir.
+  const handleContentSizeChange = useCallback(() => {
+    pendingLoadRef.current = false;
+  }, []);
 
   const handleBlockFromList = useCallback(async (item: ChatSummary) => {
     setChatOptionsItem(null);
@@ -507,7 +543,7 @@ export default function Messages() {
     };
   }, [fetchChats]);
 
-  const renderItem = ({ item }: { item: ChatSummary }) => {
+  const renderChatRow = ({ item }: { item: ChatSummary }) => {
     const hasUnread = (item.unreadCount ?? 0) > 0;
     const isPinned = pinnedChatKeys.has(getChatKey(item));
     const unreadText = (n: number | undefined) => {
@@ -763,6 +799,15 @@ export default function Messages() {
     );
   };
 
+  // Görünen son satırın altındaki sohbet, "devamı var" ipucu olarak soluk gösterilir.
+  // Sarmalayıcı her satırda aynı kalmalı: yapıyı koşullu değiştirmek NativeWind'in
+  // "kardeş bileşen eklendi/çıkarıldı" uyarısını tetikliyor.
+  const renderItem = ({ item, index }: { item: ChatSummary; index: number }) => (
+    <View style={{ opacity: index < visibleCount ? 1 : 0.35, marginBottom: 4 }}>
+      {renderChatRow({ item })}
+    </View>
+  );
+
   let content: JSX.Element;
 
   if (loading) {
@@ -798,12 +843,15 @@ export default function Messages() {
   } else {
     content = (
       <FlatList
-        data={items}
+        data={visibleItems}
         keyExtractor={(it) => `${it.kind}-${it.owner_id}-${it.kind === 'match' ? it.id : 'dm'}`}
         renderItem={renderItem}
         contentContainerStyle={{ paddingBottom: 16, paddingTop: 8, flexGrow: 1 }}
         refreshing={refreshing}
         onRefresh={onRefresh}
+        onScroll={handleScroll}
+        scrollEventThrottle={16}
+        onContentSizeChange={handleContentSizeChange}
         alwaysBounceVertical
       />
     );
