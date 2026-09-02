@@ -16,6 +16,7 @@ import { setLastNonAuthRoute } from "@/lib/lastNonAuthRoute";
 import { isAuthCallbackLocked, lockAuthCallbackFor } from "@/lib/authCallbackLock";
 import { supabase } from "@/services/supabase";
 import { registerPushToken, unregisterPushToken } from "@/services/pushNotifications";
+import * as Notifications from "expo-notifications";
 
 // Sadece belirli logları ignore et, tüm logları değil
 LogBox.ignoreLogs([
@@ -30,6 +31,32 @@ function AppShell() {
   const pathname = usePathname();
   const searchParams = useGlobalSearchParams();
   const { colors } = useAppTheme();
+
+  // Push bildirimine dokunulduğunda bildirimler sayfasını aç.
+  // Hem uygulama açıkken/arka plandayken (listener) hem de bildirimle soğuk açılışta
+  // (getLastNotificationResponseAsync) çalışması gerekiyor.
+  useEffect(() => {
+    let isMounted = true;
+
+    const openNotifications = () => {
+      if (!isMounted) return;
+      router.push('/notifications');
+    };
+
+    const subscription = Notifications.addNotificationResponseReceivedListener(openNotifications);
+
+    (async () => {
+      try {
+        const last = await Notifications.getLastNotificationResponseAsync();
+        if (last) openNotifications();
+      } catch (_) {}
+    })();
+
+    return () => {
+      isMounted = false;
+      subscription.remove();
+    };
+  }, [router]);
 
   // Online kullanıcı sayısı için Realtime Presence.
   // Not: "anlık aktif kullanıcı" sayısı bu kanala bağlı olan unique user sayısıdır.

@@ -83,23 +83,34 @@ Deno.serve(async (req: Request) => {
     });
   }
 
+  // Gönderen adı ve maç bilgisi birbirinden bağımsız; paralel çekiyoruz.
+  const [senderRes, matchRes] = await Promise.all([
+    stored.sender_id
+      ? supabase.from('users').select('name, surname').eq('id', stored.sender_id).single()
+      : Promise.resolve({ data: null }),
+    stored.match_id
+      ? supabase
+          .from('match')
+          .select('date, time, pitches (name, districts (name))')
+          .eq('id', stored.match_id)
+          .single()
+      : Promise.resolve({ data: null }),
+  ]);
+
   let senderName = 'SahayaBak';
-  if (stored.sender_id) {
-    const { data: sender } = await supabase
-      .from('users')
-      .select('name, surname')
-      .eq('id', stored.sender_id)
-      .single();
-    if (sender?.name) {
-      senderName = [sender.name, sender.surname].filter(Boolean).join(' ');
-    }
+  const sender = senderRes.data as { name?: string; surname?: string } | null;
+  if (sender?.name) {
+    senderName = [sender.name, sender.surname].filter(Boolean).join(' ');
   }
+
+  const matchInfo = buildMatchInfo(matchRes.data);
 
   const { title, body } = buildNotificationContent(
     stored.type,
     senderName,
     stored.message,
     stored.position,
+    matchInfo,
   );
 
   const messages = tokens.map(({ token }) => ({
@@ -135,38 +146,72 @@ Deno.serve(async (req: Request) => {
   });
 });
 
+/** Pozisyon kodunu uygulama içindeki adla eşler. */
+function getPositionName(code?: string): string {
+  switch (code) {
+    case 'K': return 'Kaleci';
+    case 'D': return 'Defans';
+    case 'O': return 'Orta Saha';
+    case 'F': return 'Forvet';
+    default: return code ?? '';
+  }
+}
+
+/**
+ * Uygulama içindeki bildirim kartıyla AYNI maç özetini üretir:
+ * "25.10.2026 14:00-15:00, Kadıköy → Fenerbahçe"
+ * (bkz. components/notifications/JoinRequestNotification.tsx)
+ */
+function buildMatchInfo(match: any): string | null {
+  if (!match?.date || !match?.time) return null;
+
+  const pitch = Array.isArray(match.pitches) ? match.pitches[0] : match.pitches;
+  const district = Array.isArray(pitch?.districts) ? pitch.districts[0] : pitch?.districts;
+
+  const formattedDate = new Date(match.date).toLocaleDateString('tr-TR');
+
+  const [hourRaw, minuteRaw] = String(match.time).split(':');
+  const startHour = Number(hourRaw);
+  if (!Number.isFinite(startHour)) return null;
+  const minute = (minuteRaw ?? '00').padStart(2, '0');
+  const start = `${String(startHour).padStart(2, '0')}:${minute}`;
+  const end = `${String(startHour + 1).padStart(2, '0')}:${minute}`;
+
+  return `${formattedDate} ${start}-${end}, ${district?.name || 'Bilinmiyor'} → ${pitch?.name || 'Bilinmiyor'}`;
+}
+
 function buildNotificationContent(
   type: string,
   senderName: string,
   message?: string,
   position?: string,
+  matchInfo?: string | null,
 ): { title: string; body: string } {
   switch (type) {
-    case 'direct_message':
+    case 'direct_message': {
+      // Uygulama içindeki kartla aynı yapı: kalın gönderen adı + "size mesaj gönderdi."
+      // ve altında tırnak içinde mesajın kendisi.
+      // (bkz. components/notifications/DirectMessageNotification.tsx)
+      const preview = message
+        ? message.length > 80
+          ? message.slice(0, 77) + '...'
+          : message
+        : null;
+      // Push'ta metnin bir kısmını kalın yapmak mümkün değil; yalnızca başlık kalın
+      // render ediliyor. Bu yüzden cümlenin tamamı başlıkta, mesaj içeriği gövdede.
       return {
-        title: senderName,
-        body: message
-          ? message.length > 80
-            ? message.slice(0, 77) + '...'
-            : message
-          : 'Yeni mesaj',
+        title: `${senderName} size mesaj gönderdi.`,
+        body: preview ?? 'Yeni mesaj',
       };
+    }
     case 'follow_request':
-      if (message?.includes('kabul etti') || message?.toLowerCase().includes('accepted')) {
-        return {
-          title: 'SahayaBak',
-          body: `${senderName} takip isteğini kabul etti.`,
-        };
-      }
-      if (message?.includes('redded') || message?.toLowerCase().includes('reject')) {
-        return {
-          title: 'SahayaBak',
-          body: `${senderName} takip isteğini reddetti.`,
-        };
-      }
+      // Saklanan `message`, uygulama içindeki kartın ürettiği cümlenin birebir aynısı
+      // ("... sana takip isteği gönderdi." / "... takip isteğinizi kabul etti." vb.),
+      // bu yüzden yeniden kurmak yerine doğrudan kullanıyoruz.
+      // (bkz. components/notifications/FollowRequestNotification.tsx)
       return {
         title: 'SahayaBak',
-        body: `${senderName} seni takip etmek istiyor.`,
+        body: message?.trim() || `${senderName} sana takip isteği gönderdi.`,
       };
     case 'join_request':
       if (message?.includes('kabul edildiniz') || message?.includes('kabul edildi')) {
@@ -181,10 +226,17 @@ function buildNotificationContent(
           body: message.length > 100 ? message.slice(0, 97) + '...' : message,
         };
       }
+      // Uygulama içindeki bildirim kartıyla aynı cümle.
+      if (matchInfo) {
+        return {
+          title: 'SahayaBak',
+          body: `${senderName} kullanıcısı senin ${matchInfo} maçın için ${getPositionName(position)} pozisyonuna katılmak istiyor?`,
+        };
+      }
       return {
         title: 'SahayaBak',
         body: position
-          ? `${senderName} ${position} pozisyonunda katılım isteği gönderdi.`
+          ? `${senderName} kullanıcısı ${getPositionName(position)} pozisyonuna katılmak istiyor?`
           : `${senderName} maçına katılmak istiyor.`,
       };
     default:
