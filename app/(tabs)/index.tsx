@@ -17,6 +17,8 @@ import OtherMatches from '@/components/index/OtherMatches';
 import MatchDetails from '@/components/index/MatchDetails';
 import ProfilePreview from '@/components/index/ProfilePreview';
 import { Match } from '@/components/index/types';
+// Önbellekli/paralel uygulama servistedir; önbellek profil ekranıyla ortaktır.
+import { fetchLatestProfileImage } from '@/services/profileImages';
 
 export default function Index() {
   const { isGuest } = useAuth();
@@ -28,141 +30,14 @@ export default function Index() {
   const [refreshing, setRefreshing] = useState(false);
   const [totalMatchCount, setTotalMatchCount] = useState(0);
   const [myMatchesHeight, setMyMatchesHeight] = useState(0); // Yüksekliği state olarak tut
+  // İlk yükleme tamamlandı mı? Tamamlandıysa sonraki odaklanmalarda sessiz tazeleme yapılır.
+  const hasLoadedOnceRef = useRef(false);
   const router = useRouter();
   const navigation = useNavigation();
   const screenWidth = Dimensions.get('window').width;
   // Detay ekranı için yatay animasyon değeri (0: ekranda, +width: sağa çıkmış)
   const [detailTranslateX] = useState(new Animated.Value(0));
 
-  // En son profil resmini çek
-  const fetchLatestProfileImage = async (userId: string) => {
-    console.log("fetchLatestProfileImage çağrıldı, userId:", userId);
-
-    if (!userId) {
-      console.error("userId yok, fetchLatestProfileImage'den çıkılıyor.");
-      return null;
-    }
-
-    try {
-      // Ana kullanıcı klasörünü listele
-      const { data: userFolders, error: userError } = await supabase.storage
-        .from("pictures")
-        .list(`${userId}/`, {
-          limit: 100,
-        });
-
-      if (userError) {
-        console.error("Kullanıcı klasörleri listelenemedi:", userError);
-        return null;
-      }
-
-      if (!userFolders || userFolders.length === 0) {
-        console.log("Kullanıcı klasörü bulunamadı.");
-        return null;
-      }
-
-      console.log("Kullanıcı klasörleri:", userFolders.map(f => f.name));
-
-      // Tüm profile resimlerini topla
-      let allProfileImages: Array<{ path: string; timestamp: number; name: string }> = [];
-
-      // 1. Yeni klasör yapısındaki resimleri topla (year/month)
-      for (const yearFolder of userFolders) {
-        if (yearFolder.name && /^\d{4}$/.test(yearFolder.name)) {
-          const { data: monthFolders } = await supabase.storage
-            .from("pictures")
-            .list(`${userId}/${yearFolder.name}/`, {
-              limit: 100,
-            });
-
-          if (monthFolders) {
-            for (const monthFolder of monthFolders) {
-              if (monthFolder.name && /^\d{2}$/.test(monthFolder.name)) {
-                const { data: files } = await supabase.storage
-                  .from("pictures")
-                  .list(`${userId}/${yearFolder.name}/${monthFolder.name}/`, {
-                    limit: 100,
-                  });
-
-                if (files) {
-                  const profileFiles = files
-                    .filter(file => file.name.startsWith("profile_"))
-                    .map(file => {
-                      // Hem yeni format (profile_2025-08-31_17:08:46.jpg) hem eski format (profile_2025-08-31_16-37-08.jpg) destekle
-                      const dateTimeStr = file.name.replace("profile_", "").replace(".jpg", "");
-                      
-                      let timestamp: number;
-                      
-                      if (dateTimeStr.includes(':')) {
-                        // Yeni format: profile_2025-08-31_17:08:46.jpg
-                        const formattedDateTime = dateTimeStr.replace(/_/g, ' ');
-                        const [datePart, timePart] = formattedDateTime.split(' ');
-                        const [year, month, day] = datePart.split('-').map(Number);
-                        const [hours, minutes, seconds] = timePart.split(':').map(Number);
-                        
-                        const date = new Date(year, month - 1, day, hours, minutes, seconds);
-                        timestamp = date.getTime();
-                      } else {
-                        // Eski format: profile_2025-08-31_16-37-08.jpg
-                        const formattedDateTime = dateTimeStr.replace(/_/g, ' ');
-                        const [datePart, timePart] = formattedDateTime.split(' ');
-                        const [year, month, day] = datePart.split('-').map(Number);
-                        const [hours, minutes, seconds] = timePart.split('-').map(Number);
-                        
-                        const date = new Date(year, month - 1, day, hours, minutes, seconds);
-                        timestamp = date.getTime();
-                      }
-                      
-                      if (isNaN(timestamp)) {
-                        return null;
-                      }
-                      
-                      return {
-                        path: `${userId}/${yearFolder.name}/${monthFolder.name}/${file.name}`,
-                        timestamp,
-                        name: file.name
-                      };
-                    })
-                    .filter((item): item is { path: string; timestamp: number; name: string } => item !== null);
-
-                  allProfileImages.push(...profileFiles);
-                }
-              }
-            }
-          }
-        }
-      }
-
-      if (allProfileImages.length === 0) {
-        console.log("Hiç profile resmi bulunamadı.");
-        return null;
-      }
-
-      // Timestamp'e göre sırala (en yeni en üstte)
-      allProfileImages.sort((a, b) => b.timestamp - a.timestamp);
-      
-      console.log("Tarih/saat sırasına göre sıralanmış resimler:", allProfileImages.map(img => ({
-        name: img.name,
-        tarih: new Date(img.timestamp).toLocaleString("tr-TR"),
-        path: img.path
-      })));
-
-      // En son yüklenen resmi al
-      const latestImage = allProfileImages[0];
-      console.log("En son yüklenen resim:", latestImage.name, "Tarih:", new Date(latestImage.timestamp).toLocaleString("tr-TR"));
-
-      // Public URL al
-      const { data: publicURLData } = supabase.storage
-        .from("pictures")
-        .getPublicUrl(latestImage.path);
-
-      return publicURLData.publicUrl;
-
-    } catch (error) {
-      console.error("fetchLatestProfileImage'de hata:", error);
-      return null;
-    }
-  };
 
   // Dinamik yükseklik hesaplaması - Her render'da yeniden hesaplanır
   const { height } = Dimensions.get('window');
@@ -291,8 +166,14 @@ export default function Index() {
     return () => subscription.remove();
   }, [selectedMatch, profileModalVisible, handleCloseDetail, closeProfileModal]);
 
-  const fetchMatches = useCallback(async () => {
-    setRefreshing(true);
+  /**
+   * `background: true` iken yükleme göstergesi açılmaz; ekrandaki mevcut liste durur ve
+   * veri sessizce tazelenir (stale-while-revalidate). Tab'a her dönüşte listeyi boşaltıp
+   * "yükleniyor" göstermek gereksiz bekleme hissi yaratıyordu.
+   */
+  const fetchMatches = useCallback(async (options?: { background?: boolean }) => {
+    const background = options?.background === true;
+    if (!background) setRefreshing(true);
     // Türkiye saati için düzeltme (UTC+3)
     const now = new Date();
     const turkeyOffset = 3; // UTC+3 için offset
@@ -316,7 +197,14 @@ export default function Index() {
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status === 'granted') {
-        const { coords } = await Location.getCurrentPositionAsync({});
+        // Önce işletim sisteminin önbellekteki konumu (anında döner). Taze GPS kilidi
+        // beklemek tüm sorguları önünde bloklayıp saniyeler ekliyordu.
+        let coords = (await Location.getLastKnownPositionAsync())?.coords ?? null;
+        if (!coords) {
+          coords = (await Location.getCurrentPositionAsync({
+            accuracy: Location.Accuracy.Balanced,
+          })).coords;
+        }
         userLat = coords.latitude;
         userLon = coords.longitude;
       }
@@ -329,6 +217,24 @@ export default function Index() {
     const isGuestUser = !loggedUserId;
     let acceptedJoinMatchIds: string[] = [];
     let acceptedJoinSet = new Set<string>();
+
+    // "Diğer maçlar" sorgusu hiçbir şeye bağlı değil; hemen başlatıp aşağıda bekliyoruz.
+    // Böylece kendi maçlarının sorgusu ve profil resmi çözümlemesiyle aynı anda ilerliyor.
+    let otherQuery = supabase
+      .from("match")
+      .select(`
+        id, title, time, date, prices, share_url, share_code, share_short_url, missing_groups, create_user, match_format,
+        pitches (id, name, price, phone, address, features, district_id, latitude, longitude, districts (name)),
+        users (id, name, surname, profile_image)
+      `)
+      .order("date", { ascending: true })
+      .order("time", { ascending: true });
+
+    if (!isGuestUser && loggedUserId) {
+      otherQuery = otherQuery.neq("create_user", loggedUserId);
+    }
+
+    const otherMatchesPromise = otherQuery;
 
     if (!isGuestUser && loggedUserId) {
       // Bu kullanıcının "kabul edildiniz" join_request bildirimlerinden maçları topla
@@ -470,21 +376,8 @@ export default function Index() {
     }
 
     // Diğer maçlar (misafir: tüm maçlar, giriş yapmış: kendi maçları hariç)
-    let otherQuery = supabase
-      .from("match")
-      .select(`
-        id, title, time, date, prices, share_url, share_code, share_short_url, missing_groups, create_user, match_format,
-        pitches (id, name, price, phone, address, features, district_id, latitude, longitude, districts (name)),
-        users (id, name, surname, profile_image)
-      `)
-      .order("date", { ascending: true })
-      .order("time", { ascending: true });
-
-    if (!isGuestUser && loggedUserId) {
-      otherQuery = otherQuery.neq("create_user", loggedUserId);
-    }
-
-    const { data: otherMatchData, error: otherMatchError } = await otherQuery;
+    // Sorgu yukarıda başlatıldı; burada yalnızca sonucunu bekliyoruz.
+    const { data: otherMatchData, error: otherMatchError } = await otherMatchesPromise;
 
     if (!otherMatchError) {
       const filteredOtherMatches = otherMatchData?.filter((item) => {
@@ -576,7 +469,8 @@ export default function Index() {
       setOtherMatches(sortedOtherMatches);
     }
 
-    setRefreshing(false);
+    hasLoadedOnceRef.current = true;
+    if (!background) setRefreshing(false);
   }, []);
 
   // MatchDetails içinde pozisyon iptal/kabul gibi durumlarda Index listesini yenile
@@ -690,25 +584,13 @@ export default function Index() {
   // Tab değişimlerini dinle - useFocusEffect ile
   useFocusEffect(
     useCallback(() => {
-      console.log('Index tab\'ına odaklanıldı - useFocusEffect');
-      
-      // Tab'a her dönüldüğünde maç verilerini güncelle (pull to refresh gibi)
-      // Loading göstergesi için refreshing'i true yap ve state'leri sıfırla
-      setRefreshing(true);
-      setFutureMatches([]);
-      setOtherMatches([]);
-      setMyMatchesHeight(0);
-      // Eğer futureMatches zaten boşsa bile, MyMatches alanı çökmemeli.
-      // Boş state yüksekliğini hemen hesapla (aksi halde "Seni Bekleyen Maçlar" header kaybolabiliyor).
-      setTimeout(() => {
-        calculateHeightForLen(0);
-      }, 0);
-      
-      // Verileri yükle
-      fetchMatches();
-      
+      // Tab'a her dönüldüğünde veriyi tazeliyoruz; ancak listeleri SIFIRLAMIYORUZ.
+      // Eskiden state boşaltılıp "yükleniyor" gösteriliyordu ve elde doğru veri olsa bile
+      // kullanıcı her seferinde boş ekran + bekleme yaşıyordu.
+      fetchMatches({ background: hasLoadedOnceRef.current });
+
       return () => { };
-    }, [fetchMatches, calculateHeightForLen])
+    }, [fetchMatches])
   );
 
   useEffect(() => {

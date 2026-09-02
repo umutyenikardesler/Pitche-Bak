@@ -171,17 +171,55 @@ export const migrateOldImagesToNewStructure = async (userId: string) => {
 
 
 
-export const fetchLatestProfileImage = async (userId: string) => {
-  console.log("🔍 fetchLatestProfileImage çağrıldı, userId:", userId);
+// En güncel profil resmi Storage klasörleri taranarak bulunuyor (kök → yıl → ay).
+// Bu tarama birden fazla ağ turu demek ve aynı kullanıcı için ekran başına defalarca
+// çağrılabiliyor. Bu yüzden sonucu kullanıcı bazında kısa süreli önbellekliyoruz ve
+// eşzamanlı istekleri tek isteğe indiriyoruz.
+const PROFILE_IMAGE_TTL_MS = 5 * 60 * 1000;
+const profileImageCache = new Map<string, { url: string | null; at: number }>();
+const profileImageInflight = new Map<string, Promise<string | null>>();
 
-  if (!userId) {
-    console.error("❌ userId yok, fetchLatestProfileImage'den çıkılıyor.");
-    return null;
+/**
+ * Profil resmi önbelleğini temizler. Yeni resim yüklendiğinde ya da dosyalar taşındığında
+ * MUTLAKA çağrılmalı; aksi halde kullanıcı TTL boyunca eski resmini görür.
+ */
+export const clearProfileImageCache = (userId?: string) => {
+  if (userId) {
+    profileImageCache.delete(userId);
+    profileImageInflight.delete(userId);
+  } else {
+    profileImageCache.clear();
+    profileImageInflight.clear();
+  }
+};
+
+export const fetchLatestProfileImage = async (userId: string): Promise<string | null> => {
+  if (!userId) return null;
+
+  const cached = profileImageCache.get(userId);
+  if (cached && Date.now() - cached.at < PROFILE_IMAGE_TTL_MS) {
+    return cached.url;
   }
 
+  const inflight = profileImageInflight.get(userId);
+  if (inflight) return inflight;
+
+  const request = fetchLatestProfileImageUncached(userId)
+    .then((url) => {
+      profileImageCache.set(userId, { url, at: Date.now() });
+      return url;
+    })
+    .finally(() => {
+      profileImageInflight.delete(userId);
+    });
+
+  profileImageInflight.set(userId, request);
+  return request;
+};
+
+const fetchLatestProfileImageUncached = async (userId: string): Promise<string | null> => {
   try {
     // Ana kullanıcı klasörünü listele
-    console.log("📁 Kullanıcı klasörü listeleniyor:", `${userId}/`);
     const { data: userFolders, error: userError } = await supabase.storage
       .from("pictures")
       .list(`${userId}/`, {
@@ -189,134 +227,89 @@ export const fetchLatestProfileImage = async (userId: string) => {
       });
 
     if (userError) {
-      console.error("❌ Kullanıcı klasörleri listelenemedi:", userError);
+      console.error("Kullanıcı klasörleri listelenemedi:", userError);
       return null;
     }
 
     if (!userFolders || userFolders.length === 0) {
-      console.log("❌ Kullanıcı klasörü bulunamadı.");
       return null;
     }
 
-    console.log("✅ Kullanıcı klasörleri bulundu:", userFolders.map(f => f.name));
+    // Yıl klasörleri paralel taranıyor (önceden sıralı await zinciriydi).
+    const yearNames = userFolders
+      .map((f) => f.name)
+      .filter((name): name is string => !!name && /^\d{4}$/.test(name));
 
-    // Tüm profile resimlerini topla
-    let allProfileImages: { path: string; timestamp: number; name: string }[] = [];
-
-    // 1. Yeni klasör yapısındaki resimleri topla (year/month)
-    for (const yearFolder of userFolders) {
-      if (yearFolder.name && /^\d{4}$/.test(yearFolder.name)) {
-        console.log(`  📁 Yıl klasörü bulundu: ${yearFolder.name}`);
+    const perYearImages = await Promise.all(
+      yearNames.map(async (yearName) => {
         const { data: monthFolders } = await supabase.storage
           .from("pictures")
-          .list(`${userId}/${yearFolder.name}/`, {
+          .list(`${userId}/${yearName}/`, {
             limit: 100,
           });
 
-        if (monthFolders) {
-          console.log(`    📁 ${yearFolder.name} klasöründe ${monthFolders.length} ay klasörü bulundu`);
-          for (const monthFolder of monthFolders) {
-            if (monthFolder.name && /^\d{2}$/.test(monthFolder.name)) {
-              console.log(`      📁 Ay klasörü: ${monthFolder.name}`);
-              const { data: files } = await supabase.storage
-                .from("pictures")
-                .list(`${userId}/${yearFolder.name}/${monthFolder.name}/`, {
-                  limit: 100,
-                });
+        if (!monthFolders) return [];
 
-              if (files) {
-                console.log(`        📁 ${monthFolder.name} klasöründe ${files.length} dosya bulundu`);
-                const profileFiles = files
-                  .filter(file => file.name.startsWith("profile_"))
-                  .map(file => {
-                    // Hem yeni format (profile_2025-08-31_17:08:46.jpg) hem eski format (profile_2025-08-31_16-37-08.jpg) destekle
-                    const dateTimeStr = file.name.replace("profile_", "").replace(".jpg", "");
-                    
-                    let timestamp: number;
-                    let date: Date;
-                    
-                    if (dateTimeStr.includes(':')) {
-                      // Yeni format: profile_2025-08-31_17:08:46.jpg
-                      const formattedDateTime = dateTimeStr.replace(/_/g, ' ');
-                      const [datePart, timePart] = formattedDateTime.split(' ');
-                      const [year, month, day] = datePart.split('-').map(Number);
-                      const [hours, minutes, seconds] = timePart.split(':').map(Number);
-                      
-                      date = new Date(year, month - 1, day, hours, minutes, seconds);
-                      timestamp = date.getTime();
-                      
-                      console.log(`          📅 Parsing (Yeni Format): ${file.name}`);
-                      console.log(`            -> ${dateTimeStr} -> ${formattedDateTime}`);
-                      console.log(`            -> Date: ${year}-${month}-${day} ${hours}:${minutes}:${seconds}`);
-                      console.log(`            -> Timestamp: ${timestamp} -> ${date.toLocaleString("tr-TR")}`);
-                    } else {
-                      // Eski format: profile_2025-08-31_16-37-08.jpg
-                      const formattedDateTime = dateTimeStr.replace(/_/g, ' ');
-                      const [datePart, timePart] = formattedDateTime.split(' ');
-                      const [year, month, day] = datePart.split('-').map(Number);
-                      const [hours, minutes, seconds] = timePart.split('-').map(Number);
-                      
-                      date = new Date(year, month - 1, day, hours, minutes, seconds);
-                      timestamp = date.getTime();
-                      
-                      console.log(`          📅 Parsing (Eski Format): ${file.name}`);
-                      console.log(`            -> ${dateTimeStr} -> ${formattedDateTime}`);
-                      console.log(`            -> Date: ${year}-${month}-${day} ${hours}:${minutes}:${seconds}`);
-                      console.log(`            -> Timestamp: ${timestamp} -> ${date.toLocaleString("tr-TR")}`);
-                    }
-                    
-                    // Debug: Timestamp parsing kontrolü
-                    if (isNaN(timestamp)) {
-                      console.log(`          ⚠️ HATA: Geçersiz timestamp oluştu!`);
-                      console.log(`            -> dateTimeStr: "${dateTimeStr}"`);
-                      console.log(`            -> Timestamp: ${timestamp}`);
-                      return null;
-                    }
-                    
-                    return {
-                      path: `${userId}/${yearFolder.name}/${monthFolder.name}/${file.name}`,
-                      timestamp,
-                      name: file.name
-                    };
-                  })
-                  .filter((item): item is { path: string; timestamp: number; name: string } => item !== null);
+        const monthNames = monthFolders
+          .map((f) => f.name)
+          .filter((name): name is string => !!name && /^\d{2}$/.test(name));
 
-                console.log(`        📸 ${profileFiles.length} profile resmi bulundu`);
-                allProfileImages.push(...profileFiles);
-              }
-            }
-          }
-        }
-      }
-    }
+        // Ay klasörleri de paralel
+        const perMonthImages = await Promise.all(
+          monthNames.map(async (monthName) => {
+            const { data: files } = await supabase.storage
+              .from("pictures")
+              .list(`${userId}/${yearName}/${monthName}/`, {
+                limit: 100,
+              });
 
+            if (!files) return [];
 
+            return files
+              .filter((file) => file.name.startsWith("profile_"))
+              .map((file) => {
+                // Hem yeni format (profile_2025-08-31_17:08:46.jpg) hem eski format
+                // (profile_2025-08-31_16-37-08.jpg) destekleniyor.
+                const dateTimeStr = file.name.replace("profile_", "").replace(".jpg", "");
+                const formattedDateTime = dateTimeStr.replace(/_/g, ' ');
+                const [datePart, timePart] = formattedDateTime.split(' ');
+                if (!datePart || !timePart) return null;
 
+                const [year, month, day] = datePart.split('-').map(Number);
+                // Yeni formatta saat ayırıcısı ':', eskisinde '-'
+                const [hours, minutes, seconds] = timePart
+                  .split(timePart.includes(':') ? ':' : '-')
+                  .map(Number);
+
+                const timestamp = new Date(year, month - 1, day, hours, minutes, seconds).getTime();
+                if (isNaN(timestamp)) return null;
+
+                return {
+                  path: `${userId}/${yearName}/${monthName}/${file.name}`,
+                  timestamp,
+                  name: file.name,
+                };
+              })
+              .filter((item): item is { path: string; timestamp: number; name: string } => item !== null);
+          })
+        );
+
+        return perMonthImages.flat();
+      })
+    );
+
+    const allProfileImages = perYearImages.flat();
     if (allProfileImages.length === 0) {
-      console.log("❌ Hiç profile resmi bulunamadı.");
       return null;
     }
 
-    console.log("📸 Toplam profile resim sayısı:", allProfileImages.length);
-
     // Timestamp'e göre sırala (en yeni en üstte)
     allProfileImages.sort((a, b) => b.timestamp - a.timestamp);
-    
-    console.log("📅 Tarih/saat sırasına göre sıralanmış resimler:");
-    allProfileImages.forEach((img, index) => {
-      console.log(`  ${index + 1}. ${img.name} - ${new Date(img.timestamp).toLocaleString("tr-TR")} - ${img.path}`);
-    });
-
-    // En son yüklenen resmi al
-    const latestImage = allProfileImages[0];
-    console.log("🏆 En son yüklenen resim:", latestImage.name);
-    console.log("📅 Tarih:", new Date(latestImage.timestamp).toLocaleString("tr-TR"));
-    console.log("🛣️ Yol:", latestImage.path);
 
     // Public URL al
     const { data: publicURLData } = supabase.storage
       .from("pictures")
-      .getPublicUrl(latestImage.path);
+      .getPublicUrl(allProfileImages[0].path);
 
     return publicURLData.publicUrl;
 
