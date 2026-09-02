@@ -10,6 +10,7 @@ import { useAppTheme } from "@/contexts/ThemeContext";
 import { FontAwesome } from '@expo/vector-icons';
 import Animated, { useAnimatedStyle, useSharedValue, withRepeat, withTiming, Easing } from 'react-native-reanimated';
 import { useEffect, useState } from 'react';
+import { useTabBarBottomInset } from "@/hooks/useTabBarBottomInset";
 
 export default function PitchesList({ pitches, selectedPitch, setSelectedPitch, handleCloseDetail, refreshing, onRefresh, onPriceUpdated }: any) {
   const { t } = useLanguage();
@@ -17,6 +18,7 @@ export default function PitchesList({ pitches, selectedPitch, setSelectedPitch, 
   const { isGuest } = useAuth();
   const { showGuestAuthAlert } = useGuestAuthAlert();
   const router = useRouter();
+  const tabBarInset = useTabBarBottomInset();
 
   const [mapChooserVisible, setMapChooserVisible] = useState(false);
   const [availableMaps, setAvailableMaps] = useState<{ google: boolean; waze: boolean }>({ google: false, waze: false });
@@ -134,7 +136,7 @@ export default function PitchesList({ pitches, selectedPitch, setSelectedPitch, 
               style={{ flex: 1 }}
               contentContainerStyle={{
                 flexGrow: 1,
-                paddingBottom: Platform.OS === 'android' ? 50 : 0,
+                paddingBottom: (Platform.OS === 'android' ? 50 : 0) + tabBarInset,
               }}
               showsVerticalScrollIndicator={true}
               bounces={true}
@@ -414,7 +416,7 @@ export default function PitchesList({ pitches, selectedPitch, setSelectedPitch, 
         </Pressable>
       )}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.primary]} tintColor={colors.primary} />}
-      contentContainerStyle={{ paddingBottom: 10 }}
+      contentContainerStyle={{ paddingBottom: 10 + tabBarInset }}
       nestedScrollEnabled
     />
   );

@@ -7,6 +7,7 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { useAppTheme } from "@/contexts/ThemeContext";
 import '@/global.css';
 import MatchShareModal from "@/components/share/MatchShareModal";
+import { useTabBarBottomInset } from "@/hooks/useTabBarBottomInset";
 
 interface OtherMatchesProps {
   matches: Match[];
@@ -26,6 +27,7 @@ const formatTitle = (text: string) => {
 export default function OtherMatches({ matches, refreshing, onRefresh, onSelectMatch, onCreateMatch, isGuest }: OtherMatchesProps) {
   const { t } = useLanguage();
   const { colors } = useAppTheme();
+  const tabBarInset = useTabBarBottomInset();
   const INITIAL_VISIBLE = 7;
   const [visibleCount, setVisibleCount] = useState(INITIAL_VISIBLE);
   const [sortMenuOpen, setSortMenuOpen] = useState(false);
@@ -303,7 +305,7 @@ export default function OtherMatches({ matches, refreshing, onRefresh, onSelectM
           renderItem={renderMatch}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
           style={{ paddingTop: 3, paddingBottom: 5 }}
-          contentContainerStyle={{ paddingBottom: matches.length > 2 ? 7 : 0 }}
+          contentContainerStyle={{ paddingBottom: (matches.length > 2 ? 7 : 0) + tabBarInset }}
           scrollEnabled={true} // OtherMatches her zaman scroll edilebilir olmalı
           showsVerticalScrollIndicator={true}
           extraData={{ matches, visibleCount }}

@@ -9,6 +9,7 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useGuestAuthAlert } from '@/contexts/GuestAuthModalContext';
 import { useAppTheme } from "@/contexts/ThemeContext";
+import { useTabBarBottomInset } from "@/hooks/useTabBarBottomInset";
 
 import ProfileInfo from "@/components/profile/ProfileInfo";
 import ProfileStatus from "@/components/profile/ProfileStatus";
@@ -20,6 +21,7 @@ import UserListModal from "@/components/modals/UserListModal";
 import SettingsModal from "@/components/modals/SettingsModal";
 import {
   fetchLatestProfileImage,
+  clearProfileImageCache,
   migrateAllUsersImagesToNewFormat,
   migrateOldImagesToNewStructure,
 } from "@/services/profileImages";
@@ -28,6 +30,7 @@ import { fetchFollowList, fetchFollowCounts as fetchFollowCountsFromDb, type Fol
 
 export default function Profile() {
   const searchParams = useLocalSearchParams();
+  const tabBarInset = useTabBarBottomInset();
   const router = useRouter();
   const { t } = useLanguage();
   const { isGuest } = useAuth();
@@ -313,20 +316,17 @@ export default function Profile() {
       return;
     }
 
-    const latestProfileImage = await fetchLatestProfileImage(userIdToFetch);
-    if (latestProfileImage) {
-      userInfo.profile_image = latestProfileImage;
-      console.log("✅ Profil resmi bulundu:", latestProfileImage);
-    } else {
-      // Eğer profil resmi yoksa, default resmi kullan
-      userInfo.profile_image = null;
-      console.log("❌ Profil resmi bulunamadı, default resim kullanılacak");
-    }
+    // Profil resmi, maçlar ve takip sayıları birbirine bağlı değil; sırayla beklemek
+    // yerine paralel çalıştırıyoruz.
+    const [latestProfileImage] = await Promise.all([
+      fetchLatestProfileImage(userIdToFetch),
+      fetchUserMatches(userIdToFetch), // ProfileStatus için maç sayısı
+      fetchFollowCounts(userIdToFetch),
+    ]);
 
-    console.log("Kullanıcı verisi:", userInfo); // Log eklendi
+    // Resim yoksa varsayılan gösterilsin diye null bırakılıyor.
+    userInfo.profile_image = latestProfileImage ?? null;
     setUserData(userInfo);
-    fetchUserMatches(userIdToFetch); // ProfileStatus için maç sayısını çek
-    await fetchFollowCounts(userIdToFetch);
   };
 
   // Kullanıcının maçlarını çek (ProfileStatus için)
@@ -468,9 +468,11 @@ export default function Profile() {
 
         // UI'ı güncelle
         setProfileImage({ uri: publicURLData.publicUrl as any });
-        
+
+        // Yeni resim yüklendi: önbellekteki eski URL geçersiz.
+        clearProfileImageCache(userData!.id);
+
         // En son profil resmini al (storage'dan)
-        console.log("fetchLatestProfileImage çağrılıyor, userId:", userData!.id);
         const latestProfileImage = await fetchLatestProfileImage(userData!.id);
         console.log("En son profil resmi alındı:", latestProfileImage);
         console.log("Upload edilen resim URL:", publicURLData.publicUrl);
@@ -517,6 +519,8 @@ export default function Profile() {
         // Eski resimleri yeni klasör yapısına taşı
         setTimeout(async () => {
           await migrateOldImagesToNewStructure(userData!.id);
+          // Dosya yolları değişti; önbellekteki URL artık geçersiz olabilir.
+          clearProfileImageCache(userData!.id);
         }, 500);
         
         // Index sayfasındaki maç listelerini de güncelle (eğer index sayfası açıksa)
@@ -723,6 +727,7 @@ export default function Profile() {
   return (
     <ScrollView
       style={{ flex: 1, backgroundColor: colors.background }}
+      contentContainerStyle={{ paddingBottom: tabBarInset }}
     >
       <View className="rounded-lg m-3 p-1 shadow-lg flex-1" style={{ backgroundColor: colors.surface }}>
         <View className="flex-1">

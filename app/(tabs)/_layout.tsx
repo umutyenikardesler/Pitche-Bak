@@ -9,6 +9,39 @@ import { useGuestAuthAlert } from "@/contexts/GuestAuthModalContext";
 import { useAppTheme } from "@/contexts/ThemeContext";
 import { DeviceEventEmitter, Platform, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { BlurView } from 'expo-blur';
+import {
+  FLOATING_TAB_BAR_HEIGHT,
+  FLOATING_TAB_BAR_RADIUS,
+  FLOATING_TAB_BAR_SIDE_MARGIN,
+  floatingTabBarBottomOffset,
+} from '@/constants/tabBar';
+
+/**
+ * `expo-glass-effect` native bir modüldür ve yalnızca onu içeren bir build'de bulunur.
+ * Modülü içermeyen build'lerde import anında hata fırlatır (native view manager modül
+ * seviyesinde çözülüyor). Bu yüzden tembel ve korumalı yüklüyoruz: modül ya da Liquid
+ * Glass yoksa `null` döner ve arayüz otomatik olarak BlurView'a düşer.
+ */
+type GlassModule = typeof import('expo-glass-effect');
+let glassModuleCache: GlassModule | null | undefined;
+
+function resolveLiquidGlass(): GlassModule | null {
+  if (glassModuleCache === undefined) {
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports -- statik import, modülü içermeyen build'lerde çöker
+      glassModuleCache = require('expo-glass-effect') as GlassModule;
+    } catch {
+      glassModuleCache = null;
+    }
+  }
+  if (!glassModuleCache) return null;
+  try {
+    return glassModuleCache.isLiquidGlassAvailable() ? glassModuleCache : null;
+  } catch {
+    return null;
+  }
+}
 
 /** Tab ikonu: hazır ikon seti + adı, ya da tamamen özel bir render (ör. badge'li ikon). */
 type IconSpec =
@@ -38,19 +71,47 @@ export default function TabsLayout() {
   const tabBarBottomInset = Math.max(insets.bottom, 8);
   const tabBarInnerBottomAndroid = 12;
   const tabBarExtraBottom = isWeb ? 0 : isIos ? 0 : tabBarInnerBottomAndroid;
+  const tabBarHeight = isWeb
+    ? 84
+    : isIos
+      ? FLOATING_TAB_BAR_HEIGHT
+      : tabBarBaseHeight + tabBarBottomInset + tabBarExtraBottom;
   const tabBarStyles = StyleSheet.create({
     tabBar: {
-      backgroundColor: colors.surface,
-      height: isWeb ? 84 : tabBarBaseHeight + tabBarBottomInset + tabBarExtraBottom,
-      paddingBottom: isWeb ? 10 : tabBarBottomInset + tabBarExtraBottom,
+      // iOS'ta cam efektinin altındaki içerik görünsün diye bar saydam;
+      // arka planı `tabBarBackground` içindeki cam/blur katmanı çiziyor.
+      backgroundColor: isIos ? 'transparent' : colors.surface,
+      height: tabBarHeight,
+      // Yüzen barda safe-area boşluğu bar'ın İÇİNDE değil, ALTINDA duruyor.
+      // iOS'ta alt dolgu üst dolgudan fazla: ikon + etiket hap içinde bir tık yukarıda dursun.
+      paddingBottom: isWeb ? 10 : isIos ? 9 : tabBarBottomInset + tabBarExtraBottom,
       // marginBottom verme: altta gri şerit (arka plan görünür)
       marginBottom: 0,
-      paddingTop: isWeb ? 6 : 8,
-      elevation: 8,
+      paddingTop: isWeb ? 6 : isIos ? 3 : 8,
+      elevation: isIos ? 0 : 8,
       shadowColor: '#000',
       shadowOffset: { width: 0, height: -2 },
-      shadowOpacity: 0.1,
+      shadowOpacity: isIos ? 0 : 0.1,
       shadowRadius: 4
+    },
+    // iOS: ekranın altından ayrık, yuvarlak kenarlı yüzen "hap" çubuk.
+    tabBarIosGlass: {
+      position: 'absolute',
+      // NOT: kütüphanenin taban stili `start: 0 / end: 0` kullanıyor ve RN'de mantıksal
+      // özellikler `left`/`right`'ı ezer. Bu yüzden yan boşluğu marginHorizontal ile veriyoruz.
+      marginHorizontal: FLOATING_TAB_BAR_SIDE_MARGIN,
+      bottom: floatingTabBarBottomOffset(insets.bottom),
+      borderTopWidth: 0,
+      borderRadius: FLOATING_TAB_BAR_RADIUS,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 6 },
+      shadowOpacity: 0.15,
+      shadowRadius: 14,
+    },
+    // Cam katmanı bar'ın hap şekline kırpılsın.
+    tabBarGlassClip: {
+      borderRadius: FLOATING_TAB_BAR_RADIUS,
+      overflow: 'hidden',
     },
     tabBarBg: {
       flex: 1,
@@ -71,6 +132,19 @@ export default function TabsLayout() {
       letterSpacing: 0.2,
       // Web'de tab item'lar çok shrink olunca label görünmeyebiliyor
       flexShrink: 0,
+    },
+    // Yüzen bar daha dar olduğu için 5 etiketin sığması adına yazı ve aralıklar kısılıyor.
+    tabBarLabelIos: {
+      fontWeight: "700",
+      fontSize: 9,
+      marginTop: 1,
+      letterSpacing: -0.2,
+    },
+    tabBarItemIos: {
+      paddingVertical: 0,
+      paddingHorizontal: 0,
+      minWidth: 0,
+      marginHorizontal: 0,
     },
     tabBarItem: {
       // Mobil: mevcut davranışı bozma
@@ -93,19 +167,50 @@ export default function TabsLayout() {
     }
   });
 
-  // Tüm tab'larda ortak olan tab bar görünümü
-  const renderTabBarBackground = () => (
-    <View style={tabBarStyles.tabBarBg} pointerEvents="none">
-      <View style={tabBarStyles.tabBarTopLine} />
-    </View>
-  );
+  // Tüm tab'larda ortak olan tab bar görünümü.
+  // iOS 26+: sistemin gerçek Liquid Glass malzemesi (UIGlassEffect).
+  // Daha eski iOS: en yakın görünüm olarak sistem "chrome material" blur'u.
+  // Diğer platformlar: düz yüzey rengi.
+  const renderTabBarBackground = () => {
+    if (!isIos) {
+      return (
+        <View style={tabBarStyles.tabBarBg} pointerEvents="none">
+          <View style={tabBarStyles.tabBarTopLine} />
+        </View>
+      );
+    }
+
+    const glass = resolveLiquidGlass();
+
+    // Yüzen hap görünümünde yeşil üst çizgi yok; cam yüzey tek parça kalıyor.
+    return (
+      <View style={[StyleSheet.absoluteFill, tabBarStyles.tabBarGlassClip]} pointerEvents="none">
+        {glass ? (
+          <glass.GlassView
+            style={StyleSheet.absoluteFill}
+            glassEffectStyle="regular"
+            colorScheme={isDark ? 'dark' : 'light'}
+          />
+        ) : (
+          <BlurView
+            tint={isDark ? 'systemChromeMaterialDark' : 'systemChromeMaterialLight'}
+            intensity={100}
+            style={StyleSheet.absoluteFill}
+          />
+        )}
+      </View>
+    );
+  };
+
+  const tabBarStyle = isIos ? [tabBarStyles.tabBar, tabBarStyles.tabBarIosGlass] : tabBarStyles.tabBar;
 
   const sharedTabBarOptions = {
     tabBarActiveTintColor: "#059669",
     tabBarInactiveTintColor: isDark ? "#d1d5db" : "#374151",
-    tabBarStyle: tabBarStyles.tabBar,
-    tabBarItemStyle: tabBarStyles.tabBarItem,
+    tabBarStyle,
+    tabBarItemStyle: isIos ? tabBarStyles.tabBarItemIos : tabBarStyles.tabBarItem,
     tabBarBackground: renderTabBarBackground,
+    ...(isIos ? { tabBarLabelStyle: tabBarStyles.tabBarLabelIos } : {}),
   };
 
   // Web'de header'ı kendimiz sarmak zorundayız; mobilde headerTitle yeterli.
@@ -209,6 +314,9 @@ export default function TabsLayout() {
       screenOptions={{
         sceneStyle: {
           backgroundColor: colors.background,
+          // iOS'ta sahneye alt boşluk VERMİYORUZ: içerik cam bar'ın altından aksın diye.
+          // Listelerin sonu bar'ın arkasında kalmasın diye ilgili kaydırma kapları
+          // `useTabBarBottomInset()` ile kendi alt boşluğunu ekliyor.
         },
         headerStyle: {
           backgroundColor: colors.surface,
@@ -298,7 +406,7 @@ export default function TabsLayout() {
         options={{
           href: null,
           headerShown: false,
-          tabBarStyle: tabBarStyles.tabBar,
+          tabBarStyle,
           tabBarBackground: renderTabBarBackground,
         }}
       />

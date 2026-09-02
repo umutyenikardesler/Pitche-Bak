@@ -21,6 +21,7 @@ import { useMatchRealtime } from '@/components/matchDetails/hooks/useMatchRealti
 import { useMatchEventListeners } from '@/components/matchDetails/hooks/useMatchEventListeners';
 import { useMatchPositionHandlers } from '@/components/matchDetails/hooks/useMatchPositionHandlers';
 import { useAppTheme } from '@/contexts/ThemeContext';
+import { useTabBarBottomInset } from '@/hooks/useTabBarBottomInset';
 
 interface MatchDetailsProps {
   match: Match;
@@ -31,6 +32,7 @@ interface MatchDetailsProps {
 export default function MatchDetails({ match, onClose, onOpenProfilePreview }: MatchDetailsProps) {
   const { t } = useLanguage();
   const { colors } = useAppTheme();
+  const tabBarInset = useTabBarBottomInset();
   const router = useRouter();
   const { isGuest } = useAuth();
   const { showGuestAuthAlert } = useGuestAuthAlert();
@@ -283,9 +285,9 @@ export default function MatchDetails({ match, onClose, onOpenProfilePreview }: M
 
   return (
     <ScrollView
-      contentContainerStyle={{ 
+      contentContainerStyle={{
         flexGrow: 1,
-        paddingBottom: 0
+        paddingBottom: tabBarInset
       }}
       showsVerticalScrollIndicator={true}
       nestedScrollEnabled={true}

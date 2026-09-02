@@ -12,6 +12,7 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useGuestAuthAlert } from '@/contexts/GuestAuthModalContext';
 import { useAppTheme } from "@/contexts/ThemeContext";
+import { useTabBarBottomInset } from "@/hooks/useTabBarBottomInset";
 
 // Listede ilk açılışta (sabitlenmişler dahil) gösterilecek sohbet sayısı ve
 // her kaydırmada eklenecek sayfa boyutu.
@@ -53,6 +54,7 @@ export default function Messages() {
   const router = useRouter();
   const { t } = useLanguage();
   const { colors, isDark } = useAppTheme();
+  const tabBarInset = useTabBarBottomInset();
   const { isGuest } = useAuth();
   const { showGuestAuthAlert } = useGuestAuthAlert();
 
@@ -846,7 +848,7 @@ export default function Messages() {
         data={visibleItems}
         keyExtractor={(it) => `${it.kind}-${it.owner_id}-${it.kind === 'match' ? it.id : 'dm'}`}
         renderItem={renderItem}
-        contentContainerStyle={{ paddingBottom: 16, paddingTop: 8, flexGrow: 1 }}
+        contentContainerStyle={{ paddingBottom: 16 + tabBarInset, paddingTop: 8, flexGrow: 1 }}
         refreshing={refreshing}
         onRefresh={onRefresh}
         onScroll={handleScroll}

@@ -16,6 +16,7 @@ import '@/global.css';
 import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
 import AsyncStorage from "@react-native-async-storage/async-storage"; // Kullanıcı ID'sini almak için eklendi
 import { useLocalSearchParams, useRouter } from "expo-router";
+import { useTabBarBottomInset } from '@/hooks/useTabBarBottomInset';
 
 interface MissingPosition {
   selected: boolean;
@@ -33,6 +34,7 @@ interface MissingPositions {
 export default function CreateMatch() {
   const { t } = useLanguage();
   const { colors } = useAppTheme();
+  const tabBarInset = useTabBarBottomInset();
   const router = useRouter();
   const { isGuest } = useAuth();
   const { showGuestAuthAlert } = useGuestAuthAlert();
@@ -351,7 +353,7 @@ export default function CreateMatch() {
       <ScrollView 
         className="rounded-lg my-3 mx-4 p-4 shadow-md"
         style={{ backgroundColor: colors.surface }}
-        contentContainerStyle={{ flexGrow: 1, justifyContent: 'space-between' }}
+        contentContainerStyle={{ flexGrow: 1, justifyContent: 'space-between', paddingBottom: tabBarInset }}
       >
       <View>
         <View className="mb-4">
