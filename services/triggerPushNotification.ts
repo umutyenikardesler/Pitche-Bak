@@ -15,7 +15,7 @@ export async function triggerPushNotification(record: PushNotificationRecord): P
   if (!record?.id || !record?.user_id) return;
 
   try {
-    const { error } = await supabase.functions.invoke('send-push-notification', {
+    const { data, error } = await supabase.functions.invoke('send-push-notification', {
       body: {
         type: 'INSERT',
         table: 'notifications',
@@ -26,6 +26,15 @@ export async function triggerPushNotification(record: PushNotificationRecord): P
 
     if (error) {
       console.warn('[Push] Edge function hatası:', error.message);
+      return;
+    }
+
+    // Teşhis için sonucu görünür kıl: `no_tokens` ise alıcının cihaz token'ı kayıtlı değildir,
+    // `sent > 0` ise sorun Expo/APNs tarafındadır.
+    if (data?.reason === 'no_tokens') {
+      console.warn('[Push] Alıcının kayıtlı cihaz token\'ı yok (push_tokens boş):', record.user_id);
+    } else if (typeof data?.sent === 'number') {
+      console.log(`[Push] Expo'ya gönderildi: ${data.sent} cihaz`, data.result ?? '');
     }
   } catch (err) {
     console.warn('[Push] Edge function çağrılamadı:', err);

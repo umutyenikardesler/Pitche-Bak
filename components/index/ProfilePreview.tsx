@@ -11,6 +11,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { supabase } from "@/services/supabase";
 import { blockUser } from "@/services/blocks";
+import { createNotification } from "@/services/triggerPushNotification";
 import {
   fetchFollowList,
   fetchFollowCounts as fetchFollowCountsFromDb,
@@ -334,19 +335,17 @@ export default function ProfilePreview({
         throw insertError;
       }
 
-      // Bildirim oluştur
-      const { error: notificationError } = await supabase
-        .from("notifications")
-        .insert([
-          {
-            user_id: userId,
-            sender_id: user.id,
-            type: "follow_request",
-            message: `${senderData?.name} ${senderData?.surname} ${t("notifications.sentFollowRequest")}`,
-            is_read: false,
-            created_at: turkiyeNow.toISOString(), // <-- Türkiye saatiyle kaydet
-          },
-        ]);
+      // Bildirim oluştur.
+      // `createNotification` kullanılmalı: doğrudan insert edildiğinde satır oluşuyor
+      // (uygulama içi bildirim görünüyor) ama push tetikleyicisi çalışmıyordu.
+      const { error: notificationError } = await createNotification({
+        user_id: userId,
+        sender_id: user.id,
+        type: "follow_request",
+        message: `${senderData?.name} ${senderData?.surname} ${t("notifications.sentFollowRequest")}`,
+        is_read: false,
+        created_at: turkiyeNow.toISOString(), // <-- Türkiye saatiyle kaydet
+      });
 
       if (notificationError) {
         console.error("Bildirim oluşturma hatası:", notificationError);
