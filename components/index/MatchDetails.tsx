@@ -42,6 +42,7 @@ export default function MatchDetails({ match, onClose, onOpenProfilePreview }: M
   const state = useMatchDetailsState(match);
   const {
     currentUserId,
+    isIdentityReady,
     sentRequests,
     setSentRequests,
     isLoading,
@@ -163,13 +164,35 @@ export default function MatchDetails({ match, onClose, onOpenProfilePreview }: M
 
     (async () => {
       try {
-        // Güncel missing_groups'u al
-        const { data: matchRow, error: matchError } = await supabase
-          .from('match')
-          .select('missing_groups')
-          .eq('id', match.id)
-          .single();
+        // Üç sorgu da birbirinden bağımsız; sırayla beklemek katıldığın pozisyonun
+        // ekranda ~1 sn geç görünmesine yol açıyordu. Paralel çalıştırıyoruz.
+        const [matchRes, notifRes, requestRes] = await Promise.all([
+          // Güncel missing_groups
+          supabase
+            .from('match')
+            .select('missing_groups')
+            .eq('id', match.id)
+            .single(),
+          // Bu kullanıcı için, bu maça ait "kabul edildiniz" join_request bildirimleri
+          supabase
+            .from('notifications')
+            .select('position')
+            .eq('type', 'join_request')
+            .eq('match_id', match.id)
+            .eq('user_id', currentUserId)
+            .ilike('message', '%kabul edildiniz%'),
+          // Kullanıcının bu maça gönderdiği (ve halen DB'de duran) istekler.
+          // Not: İptal edilen pozisyonların notification kaydı siliniyor, bu yüzden
+          // burada olmayan pozisyonları "Dolu" kabul ETMEYECEĞİZ.
+          supabase
+            .from('notifications')
+            .select('position')
+            .eq('type', 'join_request')
+            .eq('match_id', match.id)
+            .eq('sender_id', currentUserId),
+        ]);
 
+        const { data: matchRow, error: matchError } = matchRes;
         if (matchError) {
           console.error('[MatchDetails] completedPositions match fetch error:', matchError);
           return;
@@ -182,30 +205,13 @@ export default function MatchDetails({ match, onClose, onOpenProfilePreview }: M
           missingArr.map((g) => String(g).split(':')[0])
         );
 
-        // Bu kullanıcı için, bu maça ait "kabul edildiniz" join_request bildirimlerini al
-        const { data: notifRows, error: notifError } = await supabase
-          .from('notifications')
-          .select('position')
-          .eq('type', 'join_request')
-          .eq('match_id', match.id)
-          .eq('user_id', currentUserId)
-          .ilike('message', '%kabul edildiniz%');
-
+        const { data: notifRows, error: notifError } = notifRes;
         if (notifError) {
           console.error('[MatchDetails] completedPositions notifications fetch error:', notifError);
           return;
         }
 
-        // Kullanıcının bu maça gönderdiği (ve halen DB'de duran) istekleri al
-        // Not: İptal edilen pozisyonların ilgili notification kaydı (sender_id = currentUserId) siliniyor,
-        // bu yüzden burada olmayan pozisyonları "Dolu" kabul ETMEYECEĞİZ.
-        const { data: requestRows, error: requestError } = await supabase
-          .from('notifications')
-          .select('position')
-          .eq('type', 'join_request')
-          .eq('match_id', match.id)
-          .eq('sender_id', currentUserId);
-
+        const { data: requestRows, error: requestError } = requestRes;
         if (requestError) {
           console.error('[MatchDetails] completedPositions requests fetch error:', requestError);
           return;
@@ -331,6 +337,7 @@ export default function MatchDetails({ match, onClose, onOpenProfilePreview }: M
           shownAcceptedPositions={shownAcceptedPositions}
           completedPositions={completedPositions}
           currentUserId={currentUserId}
+          isIdentityReady={isIdentityReady}
           matchCreateUser={match.create_user}
           isLoading={isLoading}
           onPositionPress={handlePositionRequest}

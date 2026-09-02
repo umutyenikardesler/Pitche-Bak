@@ -20,6 +20,8 @@ interface PositionListProps {
   shownAcceptedPositions: Set<string>;
   completedPositions: Set<string>;
   currentUserId: string | null;
+  /** Kimlik çözülene kadar sahipliğe bağlı arayüz (Katıl) gösterilmez. */
+  isIdentityReady?: boolean;
   matchCreateUser: string;
   isLoading: boolean;
   onPositionPress: (position: string) => void;
@@ -32,13 +34,18 @@ export default function PositionList({
   shownAcceptedPositions,
   completedPositions,
   currentUserId,
+  isIdentityReady = true,
   matchCreateUser,
   isLoading,
   onPositionPress,
 }: PositionListProps) {
   const { t } = useLanguage();
   const { colors, isDark } = useAppTheme();
-  const isOwner = currentUserId === matchCreateUser;
+  // Kimlik HENÜZ ÇÖZÜLMEMİŞKEN kullanıcıyı "sahip değil" saymak yanlış: bu sürede maç
+  // sahibine de kısa süre "Katıl" görünüp sonra kayboluyordu. Çözülene kadar gizliyoruz.
+  // (Misafirde kimlik çözülmüştür ve currentUserId null'dır; onlarda "Katıl" görünmeye
+  // devam eder ve basınca giriş uyarısı çıkar.)
+  const isOwner = !isIdentityReady || currentUserId === matchCreateUser;
   const hasAnyRequest = sentRequests.length > 0;
   const hasAcceptedPosition = acceptedPosition || shownAcceptedPositions.size > 0;
   const orderedPositions: string[] = ['K', 'D', 'O', 'F'];

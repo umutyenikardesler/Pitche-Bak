@@ -137,14 +137,11 @@ export const useMatchDataFetching = ({
         
         // Eğer pozisyon sayısı azaldıysa ve kullanıcının gönderdiği istek varsa başarı mesajını göster
         if (decreasedPositions.length > 0 && currentUserIdFromAuth && currentUserIdFromAuth !== match.create_user) {
-          console.log(`[MatchDetails] Azalan pozisyonlar: ${decreasedPositions.join(', ')}`);
           
           // İptal edilen pozisyonları kontrol et
           const nonCancelledPositions = decreasedPositions.filter(pos => !cancelledPositionsRef.current.has(pos));
-          console.log(`[MatchDetails] İptal edilmemiş pozisyonlar: ${nonCancelledPositions.join(', ')}`);
           
           if (nonCancelledPositions.length === 0) {
-            console.log(`[MatchDetails] Tüm azalan pozisyonlar iptal edilmiş, başarı mesajı gösterilmiyor`);
             return;
           }
           
@@ -158,12 +155,10 @@ export const useMatchDataFetching = ({
             .order('created_at', { ascending: false })
             .limit(5);
           
-          console.log(`[MatchDetails] Database'den gelen notifications:`, currentSentData);
           
           // Bu kullanıcı bu maç için hiç katılım isteği göndermediyse
           // kişisel kabul/red durumu göstermiyoruz
           if (!currentSentData || currentSentData.length === 0) {
-            console.log('[MatchDetails] Kullanıcının bu maç için gönderilmiş katılım isteği yok, durum mesajı gösterilmeyecek.');
             return;
           }
           
@@ -172,11 +167,9 @@ export const useMatchDataFetching = ({
             .map((row: any) => row.position)
             .filter((p: any) => typeof p === 'string');
             
-          console.log(`[MatchDetails] Database'deki tüm sent positions: ${allSentPositions.join(', ')}`);
           
           const acceptedPositions = nonCancelledPositions.filter(pos => allSentPositions.includes(pos));
           
-          console.log(`[MatchDetails] Kabul edilen pozisyonlar: ${acceptedPositions.join(', ')}`);
           
           if (acceptedPositions.length > 0) {
             // İlk kabul edilen pozisyonu göster
@@ -184,11 +177,9 @@ export const useMatchDataFetching = ({
             
             // Eğer bu pozisyon daha önce gösterildiyse tekrar gösterme
             if (shownAcceptedPositionsRef.current.has(acceptedPositionToShow)) {
-              console.log(`[MatchDetails] Pozisyon ${acceptedPositionToShow} daha önce gösterildi, tekrar gösterme`);
               return;
             }
             
-            console.log(`[MatchDetails] Başarı mesajı gösterilecek pozisyon: ${acceptedPositionToShow}`);
             const positionName = getPositionName(acceptedPositionToShow);
             
             // Önce popup göster
@@ -207,7 +198,6 @@ export const useMatchDataFetching = ({
                     // sentRequests'i güncelle - kabul edilen pozisyonu kaldır
                     setSentRequests(prev => {
                       const filtered = prev.filter(p => p !== acceptedPositionToShow);
-                      console.log(`[MatchDetails] sentRequests güncelleniyor: ${prev} -> ${filtered}`);
                       return filtered;
                     });
                   }
@@ -217,11 +207,9 @@ export const useMatchDataFetching = ({
           } else {
             // Eğer acceptedPositions boşsa ama decreasedPositions varsa, 
             // bu pozisyonu zaten kabul edilmiş olarak işaretle
-            console.log(`[MatchDetails] acceptedPositions boş, ama decreasedPositions var. Pozisyon zaten kabul edilmiş olabilir.`);
             const acceptedPositionToShow = nonCancelledPositions[0];
             
             if (!shownAcceptedPositionsRef.current.has(acceptedPositionToShow)) {
-              console.log(`[MatchDetails] Pozisyon ${acceptedPositionToShow} kabul edilmiş olarak işaretleniyor`);
               const positionName = getPositionName(acceptedPositionToShow);
               
               // Önce popup göster
@@ -243,7 +231,6 @@ export const useMatchDataFetching = ({
           }
         }
       } else {
-        console.log(`[MatchDetails] missing_groups array değil:`, data?.missing_groups);
       }
     } catch (error) {
       console.error(`[MatchDetails] fetchMissing catch hatası:`, error);
@@ -258,11 +245,9 @@ export const useMatchDataFetching = ({
       const currentUserIdFromAuth = user?.id || null;
       
       if (!currentUserIdFromAuth) {
-        console.log(`[MatchDetails] fetchSentRequests - currentUserId yok: ${currentUserIdFromAuth}`);
         return;
       }
       
-      console.log(`[MatchDetails] fetchSentRequests çağrıldı - User: ${currentUserIdFromAuth}, Match: ${match.id}`);
       const { data, error } = await supabase
         .from('notifications')
         .select('position, is_read, created_at')
@@ -276,7 +261,6 @@ export const useMatchDataFetching = ({
         return;
       }
       
-      console.log(`[MatchDetails] Database'den gelen notifications:`, data);
       
       // Sadece en son okunmamış (pending) isteği göster
       const pendingNotifications = (data || [])
@@ -293,7 +277,6 @@ export const useMatchDataFetching = ({
         ? pendingNotifications[0].position 
         : null;
         
-      console.log(`[MatchDetails] fetchSentRequests sonucu (son pending):`, lastPendingPosition);
       
       if (lastPendingPosition && typeof lastPendingPosition === 'string') {
         setSentRequests([lastPendingPosition]);
@@ -309,7 +292,6 @@ export const useMatchDataFetching = ({
   const loadAcceptedPositions = useCallback(async () => {
     if (!currentUserId) return;
     try {
-      console.log(`[MatchDetails] loadAcceptedPositions çağrıldı - User: ${currentUserId}, Match: ${match.id}`);
       
       // Tüm notifications'ı kontrol et (hem kabul edilen hem bekleyen hem red edilen)
       const { data: allNotifications, error } = await supabase
@@ -326,7 +308,6 @@ export const useMatchDataFetching = ({
         return;
       }
       
-      console.log(`[MatchDetails] Tüm notifications yüklendi:`, allNotifications);
       
       // Red edilen pozisyonları bul (mesaj "kabul edilmediniz" veya "reddedildi" içeriyorsa)
       const rejectedPositions = (allNotifications || [])
@@ -334,7 +315,6 @@ export const useMatchDataFetching = ({
         .map((row: any) => row.position)
         .filter((p: any) => typeof p === 'string');
       
-      console.log(`[MatchDetails] Red edilen pozisyonlar:`, rejectedPositions);
       
       // Kabul edilen pozisyonları bul (is_read: true ama red edilmemiş)
       const acceptedPositions = (allNotifications || [])
@@ -348,30 +328,22 @@ export const useMatchDataFetching = ({
         .map((row: any) => row.position)
         .filter((p: any) => typeof p === 'string');
         
-      console.log(`[MatchDetails] Kabul edilen pozisyonlar:`, acceptedPositions);
-      console.log(`[MatchDetails] Red edilen pozisyonlar:`, rejectedPositions);
-      console.log(`[MatchDetails] Bekleyen pozisyonlar:`, pendingPositions);
       
       // Red edilen pozisyonları acceptedPositions'tan çıkar
       const nonRejectedAcceptedPositions = acceptedPositions.filter(pos => !rejectedPositions.includes(pos));
       
       // İptal edilen pozisyonları filtrele (güncel state'i al)
       const currentCancelledPositions = cancelledPositionsRef.current;
-      console.log(`[MatchDetails] Mevcut cancelledPositions:`, Array.from(currentCancelledPositions));
       
       // Eğer cancelledPositions boşsa, tüm pozisyonları göster (ama red edilenleri hariç tut)
       if (currentCancelledPositions.size === 0) {
-        console.log(`[MatchDetails] CancelledPositions boş, tüm pozisyonlar gösteriliyor (red edilenler hariç)`);
         if (nonRejectedAcceptedPositions.length > 0 && pendingPositions.length === 0) {
-          console.log(`[MatchDetails] Sadece kabul edilen pozisyonlar var (red edilenler hariç), gösteriliyor`);
           setShownAcceptedPositions(new Set(nonRejectedAcceptedPositions));
           setAcceptedPosition(nonRejectedAcceptedPositions[0]);
         } else if (pendingPositions.length > 0) {
-          console.log(`[MatchDetails] Bekleyen pozisyonlar var, kabul edilen pozisyonlar gösterilmiyor`);
           setShownAcceptedPositions(new Set());
           setAcceptedPosition(null);
         } else {
-          console.log(`[MatchDetails] Hiç pozisyon yok`);
           setShownAcceptedPositions(new Set());
           setAcceptedPosition(null);
         }
@@ -380,20 +352,15 @@ export const useMatchDataFetching = ({
         const nonCancelledAcceptedPositions = nonRejectedAcceptedPositions.filter(pos => !currentCancelledPositions.has(pos));
         const nonCancelledPendingPositions = pendingPositions.filter(pos => !currentCancelledPositions.has(pos));
         
-        console.log(`[MatchDetails] İptal edilmemiş ve red edilmemiş kabul edilen pozisyonlar:`, nonCancelledAcceptedPositions);
-        console.log(`[MatchDetails] İptal edilmemiş bekleyen pozisyonlar:`, nonCancelledPendingPositions);
         
         // Eğer sadece kabul edilen pozisyon varsa ve bekleyen yoksa, kabul edileni göster
         if (nonCancelledAcceptedPositions.length > 0 && nonCancelledPendingPositions.length === 0) {
-          console.log(`[MatchDetails] Sadece kabul edilen pozisyonlar var, gösteriliyor`);
           setShownAcceptedPositions(new Set(nonCancelledAcceptedPositions));
           setAcceptedPosition(nonCancelledAcceptedPositions[0]);
         } else if (nonCancelledPendingPositions.length > 0) {
-          console.log(`[MatchDetails] Bekleyen pozisyonlar var, kabul edilen pozisyonlar gösterilmiyor`);
           setShownAcceptedPositions(new Set());
           setAcceptedPosition(null);
         } else {
-          console.log(`[MatchDetails] Hiç pozisyon yok`);
           setShownAcceptedPositions(new Set());
           setAcceptedPosition(null);
         }
@@ -413,7 +380,6 @@ export const useMatchDataFetching = ({
       return;
     }
     try {
-      console.log(`[MatchDetails] loadRejectedPosition çağrıldı - User: ${currentUserId}, Match: ${match.id}`);
       
       // Sadece en son red bildirimini al (hem "kabul edilmediniz" hem de "reddedildi" içeren mesajlar)
       const { data: rejectedNotification, error } = await supabase
@@ -432,7 +398,6 @@ export const useMatchDataFetching = ({
         return;
       }
       
-      console.log(`[MatchDetails] En son red bildirimi yüklendi:`, rejectedNotification);
       
       // Red bildirimi varsa
       if (rejectedNotification && rejectedNotification.position && rejectedNotification.message) {
@@ -472,10 +437,8 @@ export const useMatchDataFetching = ({
           });
           setSentRequests(prev => prev.filter(p => p !== rejectedPos));
         }
-        console.log(`[MatchDetails] RejectedPosition state'i güncellendi:`, rejectedPos);
       } else {
         setRejectedPosition(null);
-        console.log(`[MatchDetails] Red bildirimi bulunamadı:`, rejectedNotification);
       }
     } catch (error) {
       console.error(`[MatchDetails] loadRejectedPosition catch hatası:`, error);

@@ -2,9 +2,14 @@
 import { useState, useEffect } from 'react';
 import { Animated } from 'react-native';
 import { Match } from '@/components/index/types';
+import { useAuth } from '@/contexts/AuthContext';
 
 export const useMatchDetailsState = (match: Match) => {
-  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  // Kimlik AuthContext'te zaten hazır; buradan SENKRON okuyoruz.
+  // Eskiden async `supabase.auth.getUser()` ile alınıyordu ve ilk render'da null kalıyordu:
+  // bu sürede kullanıcı "maç sahibi değil" sayılıp "Katıl" görünüyor, kimlik gelince kayboluyordu.
+  const { user: authUser, isLoading: isAuthLoading } = useAuth();
+  const [currentUserId, setCurrentUserId] = useState<string | null>(authUser?.id ?? null);
   const [sentRequests, setSentRequests] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [acceptedPosition, setAcceptedPosition] = useState<string | null>(null);
@@ -43,19 +48,16 @@ export const useMatchDetailsState = (match: Match) => {
     fadeInOut();
   }, [fadeAnim]);
 
-  // Kullanıcı ID'sini al
+  // AuthContext oturumu tazelediğinde (ör. giriş/çıkış) kimliği senkron tut.
   useEffect(() => {
-    const getCurrentUser = async () => {
-      const { supabase } = await import('@/services/supabase');
-      const { data: { user } } = await supabase.auth.getUser();
-      setCurrentUserId(user?.id || null);
-    };
-    getCurrentUser();
-  }, []);
+    setCurrentUserId(authUser?.id ?? null);
+  }, [authUser?.id]);
 
   return {
     currentUserId,
     setCurrentUserId,
+    // Kimlik henüz bilinmiyorken "Katıl" gibi sahiplik bağlı arayüz gösterilmemeli.
+    isIdentityReady: !isAuthLoading,
     sentRequests,
     setSentRequests,
     isLoading,
