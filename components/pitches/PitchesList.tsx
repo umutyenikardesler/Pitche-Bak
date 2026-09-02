@@ -11,6 +11,7 @@ import { FontAwesome } from '@expo/vector-icons';
 import Animated, { useAnimatedStyle, useSharedValue, withRepeat, withTiming, Easing } from 'react-native-reanimated';
 import { useEffect, useState } from 'react';
 import { useTabBarBottomInset } from "@/hooks/useTabBarBottomInset";
+import { useTabBarAwarePagination } from "@/hooks/useTabBarAwarePagination";
 
 export default function PitchesList({ pitches, selectedPitch, setSelectedPitch, handleCloseDetail, refreshing, onRefresh, onPriceUpdated }: any) {
   const { t } = useLanguage();
@@ -19,6 +20,15 @@ export default function PitchesList({ pitches, selectedPitch, setSelectedPitch, 
   const { showGuestAuthAlert } = useGuestAuthAlert();
   const router = useRouter();
   const tabBarInset = useTabBarBottomInset();
+  // Kartın `mt-3` boşluğu sarmalayıcının ölçülen yüksekliğine zaten dahil olduğu için
+  // ayrıca rowGap vermiyoruz.
+  const {
+    visibleItems,
+    isFaded,
+    reset: resetPagination,
+    handleRowLayout,
+    listProps: paginationListProps,
+  } = useTabBarAwarePagination<any>(pitches ?? []);
 
   const [mapChooserVisible, setMapChooserVisible] = useState(false);
   const [availableMaps, setAvailableMaps] = useState<{ google: boolean; waze: boolean }>({ google: false, waze: false });
@@ -150,7 +160,12 @@ export default function PitchesList({ pitches, selectedPitch, setSelectedPitch, 
             >
               <View
                 className="rounded-lg mx-4 mt-2 p-4 shadow-md mb-4"
-                style={{ minHeight: '97%', backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.primary }}
+                // `minHeight: '97%'` yerine flexGrow: kart, kaydırma kabında kalan alanı
+                // kaplar. Kap zaten hap menü kadar alt boşluk ayırdığı için beyaz alan
+                // menünün üstünde biter (Geri Dön butonu tam orada durur). İçerik uzunsa
+                // (ör. 8'den fazla özellik) kart doğal yüksekliğine büyür ve sayfa kayar;
+                // kaydırırken içerik camın altından geçer.
+                style={{ flexGrow: 1, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.primary }}
               >
                 <View className="flex flex-col items-center flex-1 justify-between">
                   <View className="w-full flex-1">
@@ -397,27 +412,44 @@ export default function PitchesList({ pitches, selectedPitch, setSelectedPitch, 
 
   return (
     <FlatList
-      data={pitches}
+      data={visibleItems}
       keyExtractor={(item) => item.id.toString()}
-      renderItem={({ item }) => (
-        <Pressable
-          onPress={() => setSelectedPitch(item)}
-          // iOS'ta pull-to-refresh sırasında TouchableOpacity bazen "pressed" görünümünü takılı bırakabiliyor.
-          // Pressable ile basılı görsel efekt vermeyerek bu UX bug'ını engelliyoruz.
-          android_ripple={{ color: "rgba(22,163,74,0.10)" }}
+      renderItem={({ item, index }) => (
+        <View
+          onLayout={(e) => handleRowLayout(index, e.nativeEvent.layout.height)}
+          // Hap menü hizasına denk gelen saha "pasif" görünür; kaydırınca yenileri yüklenir.
+          style={{ opacity: isFaded(index) ? 0.35 : 1 }}
         >
-          <View className="rounded-lg mx-4 mt-3 p-3 shadow-md" style={{ backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border }}>
-            <View className="flex-row justify-between">
-              <Text className="w-4/6 text-base font-semibold" style={{ color: colors.text }}>{item.name}</Text>
-              <Text className="w-1/6 text-right text-sm" style={{ color: colors.textMuted }}>{item.distance?.toFixed(2)} km</Text>
-              <Ionicons className="w-3 text-right" name="chevron-forward-outline" size={16} color={colors.primary} />
+          <Pressable
+            onPress={() => setSelectedPitch(item)}
+            // iOS'ta pull-to-refresh sırasında TouchableOpacity bazen "pressed" görünümünü takılı bırakabiliyor.
+            // Pressable ile basılı görsel efekt vermeyerek bu UX bug'ını engelliyoruz.
+            android_ripple={{ color: "rgba(22,163,74,0.10)" }}
+          >
+            <View className="rounded-lg mx-4 mt-3 p-3 shadow-md" style={{ backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border }}>
+              <View className="flex-row justify-between">
+                <Text className="w-4/6 text-base font-semibold" style={{ color: colors.text }}>{item.name}</Text>
+                <Text className="w-1/6 text-right text-sm" style={{ color: colors.textMuted }}>{item.distance?.toFixed(2)} km</Text>
+                <Ionicons className="w-3 text-right" name="chevron-forward-outline" size={16} color={colors.primary} />
+              </View>
             </View>
-          </View>
-        </Pressable>
+          </Pressable>
+        </View>
       )}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.primary]} tintColor={colors.primary} />}
+      refreshControl={
+        <RefreshControl
+          refreshing={refreshing}
+          onRefresh={() => {
+            resetPagination();
+            onRefresh?.();
+          }}
+          colors={[colors.primary]}
+          tintColor={colors.primary}
+        />
+      }
       contentContainerStyle={{ paddingBottom: 10 + tabBarInset }}
       nestedScrollEnabled
+      {...paginationListProps}
     />
   );
 }

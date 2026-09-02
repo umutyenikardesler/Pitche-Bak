@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useMemo, useRef } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { View, Text, FlatList, TouchableOpacity, Image, ActivityIndicator, RefreshControl, Animated, Dimensions, Modal, Pressable, Alert, TextInput, ScrollView } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
@@ -13,11 +13,16 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useGuestAuthAlert } from '@/contexts/GuestAuthModalContext';
 import { useAppTheme } from "@/contexts/ThemeContext";
 import { useTabBarBottomInset } from "@/hooks/useTabBarBottomInset";
+import { useTabBarAwarePagination } from "@/hooks/useTabBarAwarePagination";
 
-// Listede ilk açılışta (sabitlenmişler dahil) gösterilecek sohbet sayısı ve
-// her kaydırmada eklenecek sayfa boyutu.
-const INITIAL_VISIBLE_CHATS = 6;
+// Ölçüm tamamlanana kadar kullanılan ilk tahmin. Gerçek değer, ekranda hap menünün
+// üstünde tam sığan kart sayısına göre hesaplanır (bkz. recomputeVisibleFit).
+const INITIAL_VISIBLE_CHATS = 7;
 const CHATS_PAGE_SIZE = 5;
+// Kartlar arası ek dikey aralık ve listenin üst dolgusu (fit hesabında kullanılıyor).
+// Kartların kendi `my-1` boşluğu var; burada ekstra aralık bırakmıyoruz.
+const CHAT_ROW_GAP = 0;
+const CHAT_LIST_PADDING_TOP = 8;
 
 type ChatSummary = MatchChatSummary | DirectChatSummary;
 
@@ -76,54 +81,91 @@ export default function Messages() {
   const [reportTargetItem, setReportTargetItem] = useState<ChatSummary | null>(null);
   const [ugcAgreed, setUgcAgreed] = useState<boolean | null>(null);
   const [pinnedChatKeys, setPinnedChatKeys] = useState<Set<string>>(new Set());
-  const [visibleCount, setVisibleCount] = useState(INITIAL_VISIBLE_CHATS);
-  // Yeni sayfa yüklendikten sonra liste yeniden ölçülene kadar tekrar yükleme yapma.
-  const pendingLoadRef = useRef(false);
+  // İlk yükleme tamamlandı mı? Tamamlandıysa sonraki odaklanmalarda sessiz tazeleme yapılır.
+  const hasLoadedOnceRef = useRef(false);
+  // Hap menü hizasına denk gelen sohbet soluk gösterilir; kaydırdıkça 5'er yüklenir.
+  const {
+    visibleItems,
+    isFaded,
+    reset: resetPagination,
+    handleRowLayout,
+    listProps: paginationListProps,
+  } = useTabBarAwarePagination<ChatSummary>(items, {
+    initialVisible: INITIAL_VISIBLE_CHATS,
+    pageSize: CHATS_PAGE_SIZE,
+    rowGap: CHAT_ROW_GAP,
+    listPaddingTop: CHAT_LIST_PADDING_TOP,
+  });
   const getChatKey = useCallback((item: ChatSummary): string => {
     if (item.kind === "match") return `${item.owner_id}-m-${item.id}`;
     return `${item.owner_id}-d-${(item as DirectChatSummary).match_id ?? "x"}`;
   }, []);
 
-  const fetchChats = useCallback(async (isRefresh = false) => {
+  /**
+   * mode:
+   *  - 'initial'    : tam ekran yükleme göstergesi (yalnızca ilk açılış)
+   *  - 'refresh'    : pull-to-refresh göstergesi
+   *  - 'background' : gösterge yok; ekrandaki liste durur, veri sessizce tazelenir
+   */
+  const fetchChats = useCallback(async (mode: 'initial' | 'refresh' | 'background' = 'initial') => {
     try {
-      if (isRefresh) {
+      if (mode === 'refresh') {
         setRefreshing(true);
-      } else {
+      } else if (mode === 'initial') {
         setLoading(true);
       }
-      
+
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      const blockedIds = await getBlockedUserIds(user.id);
+      // Birbirine bağlı olmayan okumalar paralel çalışıyor; eskiden hepsi sırayla
+      // bekleniyordu ve her biri ayrı bir gidiş-dönüş gecikmesi ekliyordu.
+      const [
+        blockedIds,
+        joinRequestsRes,
+        unreadRes,
+        recentMsgsRes,
+        hiddenRaw,
+        pinnedRaw,
+      ] = await Promise.all([
+        getBlockedUserIds(user.id),
+        // Katılım kabul edilmiş join_request bildirimlerinden sohbetleri topla.
+        // Partner her zaman sender_id'deki kullanıcıdır.
+        supabase
+          .from('notifications')
+          .select(`
+            id,
+            match_id,
+            created_at,
+            sender:users!notifications_sender_id_fkey(id, name, surname, profile_image),
+            match:match!notifications_match_id_fkey(id, title, date, time, create_user, pitches(name, districts(name)))
+          `)
+          .eq('user_id', user.id)
+          .eq('type', 'join_request')
+          .like('message', '%kabul edildiniz%')
+          .order('created_at', { ascending: false }),
+        // Okunmamış direct_message bildirimleri (kişi+maç bazında gruplanacak)
+        supabase
+          .from('notifications')
+          .select(`sender_id, match_id`)
+          .eq('user_id', user.id)
+          .eq('type', 'direct_message')
+          .eq('is_read', false),
+        // Direkt mesaj sohbetleri bu mesajlardan türetiliyor
+        supabase
+          .from('messages')
+          .select('id, sender_id, recipient_id, content, created_at, match_id')
+          .or(`sender_id.eq.${user.id},recipient_id.eq.${user.id}`)
+          .order('created_at', { ascending: false })
+          .limit(250),
+        AsyncStorage.getItem(`hidden_chats_${user.id}`),
+        AsyncStorage.getItem(`pinned_chats_${user.id}`),
+      ]);
 
-      // Katılım kabul edilmiş join_request bildirimlerinden sohbetleri topla
-      // Hem maça katılan kişi (user_id = current) hem de maç sahibi (user_id = current)
-      // için partner her zaman sender_id'deki kullanıcıdır.
-      const { data: allData, error } = await supabase
-        .from('notifications')
-        .select(`
-          id,
-          match_id,
-          created_at,
-          sender:users!notifications_sender_id_fkey(id, name, surname, profile_image),
-          match:match!notifications_match_id_fkey(id, title, date, time, create_user, pitches(name, districts(name)))
-        `)
-        .eq('user_id', user.id)
-        .eq('type', 'join_request')
-        .like('message', '%kabul edildiniz%')
-        .order('created_at', { ascending: false });
-
+      const { data: allData, error } = joinRequestsRes;
       if (error) throw error;
 
-      // Kullanıcıya gelen okunmamış direct_message bildirimlerini çek (kişi+maç bazında gruplayacağız)
-      const { data: unreadNotifs, error: unreadError } = await supabase
-        .from('notifications')
-        .select(`sender_id, match_id`)
-        .eq('user_id', user.id)
-        .eq('type', 'direct_message')
-        .eq('is_read', false);
-
+      const { data: unreadNotifs, error: unreadError } = unreadRes;
       if (unreadError) {
         console.error('[Messages] unread direct_message fetch error:', unreadError);
       }
@@ -159,13 +201,8 @@ export default function Messages() {
         index === self.findIndex(s => s.id === summary.id && s.owner_id === summary.owner_id)
       );
 
-      // Direkt mesaj sohbetlerini sadece match_id'siz mesajlardan türet
-      const { data: recentMsgs, error: msgError } = await supabase
-        .from('messages')
-        .select('id, sender_id, recipient_id, content, created_at, match_id')
-        .or(`sender_id.eq.${user.id},recipient_id.eq.${user.id}`)
-        .order('created_at', { ascending: false })
-        .limit(250);
+      // Direkt mesaj sohbetleri sadece match_id'siz mesajlardan türetiliyor
+      const { data: recentMsgs, error: msgError } = recentMsgsRes;
 
       if (msgError) {
         console.error('[Messages] recent messages fetch error:', msgError);
@@ -230,8 +267,6 @@ export default function Messages() {
         };
       });
 
-      const hiddenRaw = await AsyncStorage.getItem(`hidden_chats_${user.id}`);
-      const pinnedRaw = await AsyncStorage.getItem(`pinned_chats_${user.id}`);
       const hiddenSet = new Set<string>((hiddenRaw ? JSON.parse(hiddenRaw) : []) || []);
       const pinnedSet = new Set<string>((pinnedRaw ? JSON.parse(pinnedRaw) : []) || []);
 
@@ -313,14 +348,11 @@ export default function Messages() {
       console.error('[Messages] fetchChats error:', e);
       setItems([]);
     } finally {
+      hasLoadedOnceRef.current = true;
       setLoading(false);
       setRefreshing(false);
     }
   }, []);
-
-  useEffect(() => {
-    fetchChats();
-  }, [fetchChats]);
 
   useEffect(() => {
     (async () => {
@@ -343,36 +375,9 @@ export default function Messages() {
   }, []);
 
   const onRefresh = useCallback(() => {
-    setVisibleCount(INITIAL_VISIBLE_CHATS);
-    pendingLoadRef.current = false;
-    fetchChats(true);
-  }, [fetchChats]);
-
-  // Bir sonraki sohbet "silik" olarak görünsün diye görünen sayının 1 fazlasını render ediyoruz.
-  const visibleItems = useMemo(
-    () => items.slice(0, visibleCount + 1),
-    [items, visibleCount]
-  );
-
-  // onEndReached her içerik uzunluğu için yalnızca bir kez tetiklendiğinden güvenilmez
-  // (açılışta bir kez tetiklenip bir daha çalışmıyor). Bunun yerine kaydırma konumunu ölçüyoruz.
-  const handleScroll = useCallback(
-    (e: { nativeEvent: { layoutMeasurement: { height: number }; contentOffset: { y: number }; contentSize: { height: number } } }) => {
-      if (pendingLoadRef.current) return;
-      if (visibleCount >= items.length) return;
-      const { layoutMeasurement, contentOffset, contentSize } = e.nativeEvent;
-      const distanceFromBottom = contentSize.height - (contentOffset.y + layoutMeasurement.height);
-      if (distanceFromBottom > 120) return;
-      pendingLoadRef.current = true;
-      setVisibleCount((prev) => prev + CHATS_PAGE_SIZE);
-    },
-    [items.length, visibleCount]
-  );
-
-  // Liste yeniden ölçüldüğünde kilidi aç: bir sonraki kaydırma yeni sayfayı yükleyebilir.
-  const handleContentSizeChange = useCallback(() => {
-    pendingLoadRef.current = false;
-  }, []);
+    resetPagination();
+    fetchChats('refresh');
+  }, [fetchChats, resetPagination]);
 
   const handleBlockFromList = useCallback(async (item: ChatSummary) => {
     setChatOptionsItem(null);
@@ -440,7 +445,8 @@ export default function Messages() {
     const arr: string[] = raw ? JSON.parse(raw) : [];
     if (!arr.includes(key)) arr.push(key);
     await AsyncStorage.setItem(`pinned_chats_${user.id}`, JSON.stringify(arr));
-    fetchChats(true);
+    // Sabitleme sonrası sıralama değişiyor; listeyi göstergesiz tazele.
+    fetchChats('background');
   }, [getChatKey, fetchChats]);
 
   const handleUnpinChat = useCallback(async (item: ChatSummary) => {
@@ -451,7 +457,7 @@ export default function Messages() {
     const raw = await AsyncStorage.getItem(`pinned_chats_${user.id}`);
     const arr: string[] = (raw ? JSON.parse(raw) : []).filter((k: string) => k !== key);
     await AsyncStorage.setItem(`pinned_chats_${user.id}`, JSON.stringify(arr));
-    fetchChats(true);
+    fetchChats('background');
   }, [getChatKey, fetchChats]);
 
   const handleReportSubmitFromList = useCallback(async () => {
@@ -480,10 +486,13 @@ export default function Messages() {
     if (!error) Alert.alert('', t('chat.reportSent'));
   }, [reportTargetItem, reportNotes, t]);
 
-  // Ekran odağa geldiğinde sohbet listesini bir kez tazele (ör: chat ekranından geri dönünce)
+  // Ekran odağa geldiğinde sohbet listesini tazele (ör: chat ekranından geri dönünce).
+  // İlk yüklemeden sonra sessiz tazeleme: eskiden her odakta tam ekran gösterge açılıp
+  // liste yerine spinner görünüyordu. Bu effect mount'ta da çalıştığı için ayrı bir
+  // useEffect'e gerek yok (ikisi birlikte açılışta çift sorgu yapıyordu).
   useFocusEffect(
     useCallback(() => {
-      fetchChats();
+      fetchChats(hasLoadedOnceRef.current ? 'background' : 'initial');
       return () => {};
     }, [fetchChats])
   );
@@ -528,11 +537,12 @@ export default function Messages() {
           'postgres_changes',
           { event: 'INSERT', schema: 'public', table: 'messages', filter: `recipient_id=eq.${user.id}` },
           () => {
-            // Mesaj INSERT olduktan hemen sonra sohbet listesini güncelle
-            fetchChats(true);
-            // Birkaç yüz ms sonra tekrar çek ki notification da kesin oluşmuş olsun (unreadCount doğru gelsin)
+            // Mesaj INSERT'inden hemen sonra listeyi sessizce tazele.
+            fetchChats('background');
+            // Bildirim kaydı biraz sonra oluşuyor; unreadCount'un doğru gelmesi için
+            // kısa bir gecikmeyle bir kez daha tazeliyoruz (yine göstergesiz).
             setTimeout(() => {
-              fetchChats(true);
+              fetchChats('background');
             }, 300);
           }
         )
@@ -570,12 +580,12 @@ export default function Messages() {
 
       return (
         <View
-          className="rounded-lg mx-4 my-1 p-1 shadow-lg"
+          className="rounded-lg mx-4 my-1 px-1 py-0.5 shadow-lg"
           style={{ backgroundColor: colors.surface, ...(isPinned ? { borderWidth: 2, borderColor: colors.primary } : undefined) }}
         >
           <TouchableOpacity activeOpacity={0.8} onPress={() => router.push({ pathname: '/message/chat', params })} className="flex-row items-center">
             {/* Profil Resmi */}
-            <View className="w-1/5 flex justify-center p-1 py-1.5">
+            <View className="w-1/5 flex justify-center px-1 py-0.5">
               <Image
                 source={item.owner_profile_image ? { uri: item.owner_profile_image } : require('@/assets/images/ball.png')}
                 className="rounded-full mx-auto"
@@ -624,7 +634,7 @@ export default function Messages() {
                 maxWidth: 64,
                 marginLeft: 8,
                 marginRight: 5,
-                paddingVertical: 8,
+                paddingVertical: 2,
                 alignSelf: 'stretch',
                 // Sağ hizalama çalışsın diye stretch
                 alignItems: 'stretch',
@@ -689,7 +699,7 @@ export default function Messages() {
 
     return (
       <View
-        className="rounded-lg mx-4 my-1 p-2 shadow-lg"
+        className="rounded-lg mx-4 my-1 px-2 py-1 shadow-lg"
         style={{ backgroundColor: colors.surface, ...(isPinned ? { borderWidth: 2, borderColor: colors.primary } : undefined) }}
       >
         <TouchableOpacity
@@ -698,7 +708,7 @@ export default function Messages() {
           className="flex-row items-center"
         >
           {/* Profil Resmi */}
-          <View className="w-1/5 flex justify-center p-1 py-2">
+          <View className="w-1/5 flex justify-center px-1 py-1">
             <Image
               source={item.owner_profile_image ? { uri: item.owner_profile_image } : require('@/assets/images/ball.png')}
               className="rounded-full mx-auto"
@@ -805,7 +815,10 @@ export default function Messages() {
   // Sarmalayıcı her satırda aynı kalmalı: yapıyı koşullu değiştirmek NativeWind'in
   // "kardeş bileşen eklendi/çıkarıldı" uyarısını tetikliyor.
   const renderItem = ({ item, index }: { item: ChatSummary; index: number }) => (
-    <View style={{ opacity: index < visibleCount ? 1 : 0.35, marginBottom: 4 }}>
+    <View
+      onLayout={(e) => handleRowLayout(index, e.nativeEvent.layout.height)}
+      style={{ opacity: isFaded(index) ? 0.35 : 1, marginBottom: CHAT_ROW_GAP }}
+    >
       {renderChatRow({ item })}
     </View>
   );
@@ -848,13 +861,11 @@ export default function Messages() {
         data={visibleItems}
         keyExtractor={(it) => `${it.kind}-${it.owner_id}-${it.kind === 'match' ? it.id : 'dm'}`}
         renderItem={renderItem}
-        contentContainerStyle={{ paddingBottom: 16 + tabBarInset, paddingTop: 8, flexGrow: 1 }}
+        contentContainerStyle={{ paddingBottom: 16 + tabBarInset, paddingTop: CHAT_LIST_PADDING_TOP, flexGrow: 1 }}
         refreshing={refreshing}
         onRefresh={onRefresh}
-        onScroll={handleScroll}
-        scrollEventThrottle={16}
-        onContentSizeChange={handleContentSizeChange}
         alwaysBounceVertical
+        {...paginationListProps}
       />
     );
   }

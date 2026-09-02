@@ -78,7 +78,8 @@ export default function MyMatches({ matches, refreshing, onRefresh, onSelectMatc
     const isPlaying = isMatchCurrentlyPlaying(item);
 
     return (
-    <TouchableOpacity onPress={() => onSelectMatch(item)}>
+    // activeOpacity verilmezse RN varsayılanı 0.2 olur ve kart basınca sert şekilde söner.
+    <TouchableOpacity activeOpacity={0.85} onPress={() => onSelectMatch(item)}>
       <View className="rounded-lg mx-4 my-1 p-1 shadow-lg" style={{ backgroundColor: colors.surface }}>
         <View className="flex-row items-center justify-between" style={{ position: "relative" }}>
           {/* Maç oynanıyor etiketi: başlık alanının üstüne binebilir (tam görünsün) */}

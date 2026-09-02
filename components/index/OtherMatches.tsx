@@ -1,6 +1,5 @@
 import { View, Text, FlatList, TouchableOpacity, Image, RefreshControl, Pressable } from "react-native";
-import { useRef } from "react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Ionicons } from "@expo/vector-icons";
 import { Match } from "./types";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -8,6 +7,7 @@ import { useAppTheme } from "@/contexts/ThemeContext";
 import '@/global.css';
 import MatchShareModal from "@/components/share/MatchShareModal";
 import { useTabBarBottomInset } from "@/hooks/useTabBarBottomInset";
+import { useTabBarAwarePagination } from "@/hooks/useTabBarAwarePagination";
 
 interface OtherMatchesProps {
   matches: Match[];
@@ -28,17 +28,10 @@ export default function OtherMatches({ matches, refreshing, onRefresh, onSelectM
   const { t } = useLanguage();
   const { colors } = useAppTheme();
   const tabBarInset = useTabBarBottomInset();
-  const INITIAL_VISIBLE = 7;
-  const [visibleCount, setVisibleCount] = useState(INITIAL_VISIBLE);
   const [sortMenuOpen, setSortMenuOpen] = useState(false);
   const [sortMode, setSortMode] = useState<"distance" | "datetime">("datetime");
   const [headerHeight, setHeaderHeight] = useState(48);
   const [shareMatch, setShareMatch] = useState<Match | null>(null);
-
-  // Maç listesi değiştiğinde görünür sayıyı resetle
-  useEffect(() => {
-    setVisibleCount(INITIAL_VISIBLE);
-  }, [matches.length]);
 
   const sortedMatches = (() => {
     const arr = [...matches];
@@ -63,8 +56,19 @@ export default function OtherMatches({ matches, refreshing, onRefresh, onSelectM
     return arr;
   })();
 
+  // Hap menü hizasına denk gelen maç soluk gösterilir; kaydırdıkça 5'er yüklenir.
+  const {
+    visibleItems,
+    isFaded,
+    reset: resetPagination,
+    handleRowLayout,
+    listProps: paginationListProps,
+  } = useTabBarAwarePagination<Match>(sortedMatches);
+
   const renderMatch = ({ item }: { item: Match }) => (
-    <TouchableOpacity onPress={() => onSelectMatch(item)}>
+    // activeOpacity verilmezse RN varsayılanı 0.2 olur; kaydırmaya başlarken parmağın
+    // altındaki kart sönüp "pasif" (0.35) görünümüyle karışıyordu.
+    <TouchableOpacity activeOpacity={0.85} onPress={() => onSelectMatch(item)}>
      <View className="rounded-lg mx-4 mt-1 p-1 shadow-lg" style={{ backgroundColor: colors.surface }}>
         <View className="flex-row items-center justify-between">
           {/* Profil Resmi */}
@@ -300,33 +304,33 @@ export default function OtherMatches({ matches, refreshing, onRefresh, onSelectM
         </View>
       ) : (
         <FlatList
-          data={sortedMatches.slice(0, visibleCount)}
+          data={visibleItems}
           keyExtractor={(item) => item.id.toString()}
-          renderItem={renderMatch}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+          renderItem={({ item, index }) => (
+            <View
+              onLayout={(e) => handleRowLayout(index, e.nativeEvent.layout.height)}
+              style={{ opacity: isFaded(index) ? 0.35 : 1 }}
+            >
+              {renderMatch({ item })}
+            </View>
+          )}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={() => {
+                resetPagination();
+                onRefresh?.();
+              }}
+            />
+          }
           style={{ paddingTop: 3, paddingBottom: 5 }}
           contentContainerStyle={{ paddingBottom: (matches.length > 2 ? 7 : 0) + tabBarInset }}
           scrollEnabled={true} // OtherMatches her zaman scroll edilebilir olmalı
           showsVerticalScrollIndicator={true}
-          extraData={{ matches, visibleCount }}
-          removeClippedSubviews={true} // Performans için
+          extraData={visibleItems}
           maxToRenderPerBatch={5} // Performans için
           windowSize={5} // Performans için
-          ListFooterComponent={
-            matches.length > visibleCount ? (
-              <View className="items-center my-3">
-                <TouchableOpacity
-                  onPress={() => setVisibleCount((prev: number) => prev + INITIAL_VISIBLE)}
-                  className="px-4 py-2 rounded-md"
-                  style={{ backgroundColor: '#e5e7eb' }}
-                >
-                  <Text className="text-green-700 font-semibold">
-                    {t('home.showMore')}
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            ) : null
-          }
+          {...paginationListProps}
         />
       )}
 

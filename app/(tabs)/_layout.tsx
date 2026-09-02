@@ -101,14 +101,22 @@ export default function TabsLayout() {
       // özellikler `left`/`right`'ı ezer. Bu yüzden yan boşluğu marginHorizontal ile veriyoruz.
       marginHorizontal: FLOATING_TAB_BAR_SIDE_MARGIN,
       bottom: floatingTabBarBottomOffset(insets.bottom),
-      borderTopWidth: 0,
       borderRadius: FLOATING_TAB_BAR_RADIUS,
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 6 },
-      shadowOpacity: 0.15,
-      shadowRadius: 14,
+      // Marka rengi ince kenarlık. `borderTopWidth` ayrıca veriliyor: kütüphanenin taban
+      // stili üst kenara hairline koyuyor ve daha özel olduğu için `borderWidth`i ezerdi.
+      borderWidth: 1,
+      borderTopWidth: 1,
+      borderColor: '#16a34a',
+      // Dışa vuran yeşil ışıltı (offset yok, sadece yayılım).
+      shadowColor: '#16a34a',
+      shadowOffset: { width: 0, height: 0 },
+      shadowOpacity: 0.5,
+      shadowRadius: 4,
     },
     // Cam katmanı bar'ın hap şekline kırpılsın.
+    // NOT: Kenarlık ve ışıltı bilerek burada değil, bar'ın kendisinde. Bu katmanda
+    // `overflow: 'hidden'` var ve iOS'ta clipsToBounds gölgeyi de kırptığı için
+    // ışıltı burada görünmezdi.
     tabBarGlassClip: {
       borderRadius: FLOATING_TAB_BAR_RADIUS,
       overflow: 'hidden',

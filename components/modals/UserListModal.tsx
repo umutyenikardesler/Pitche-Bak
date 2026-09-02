@@ -37,8 +37,10 @@ export default function UserListModal({
 }: UserListModalProps) {
   const router = useRouter();
   const { t } = useLanguage();
-  const { colors } = useAppTheme();
-  const headerBg = "#0b1220"; // koyu lacivert (dark mode ile uyumlu)
+  const { colors, isDark } = useAppTheme();
+  // Gündüz modunda açık yeşil, gece modunda koyu lacivert.
+  // Başlık metni `colors.primaryDark` (koyu yeşil) olduğu için ikisinde de okunur kalıyor.
+  const headerBg = isDark ? "#0b1220" : "#dcfce7";
   const modalRadius = 12;
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [profilePreviewVisible, setProfilePreviewVisible] = useState(false);
