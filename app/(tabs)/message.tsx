@@ -23,7 +23,9 @@ const CHATS_PAGE_SIZE = 5;
 // Kartların kendi `my-1` boşluğu var; burada ekstra aralık bırakmıyoruz.
 const CHAT_ROW_GAP = 0;
 const CHAT_LIST_PADDING_TOP = 8;
-/** "Yapılacak Maçlar" bölümünün kaplayabileceği azami alan oranı. */
+/** "Yapılacak Maçlar" bölümünde kaydırmadan görünecek azami kart sayısı. */
+const UPCOMING_VISIBLE_ROWS = 3;
+/** Bölümün kaplayabileceği azami alan oranı (kart sayısı sınırına ek üst sınır). */
 const UPCOMING_MAX_HEIGHT_RATIO = 0.6;
 /** Kart henüz ölçülmemişken kullanılan yaklaşık kart yüksekliği. */
 const UPCOMING_ROW_FALLBACK = 96;
@@ -909,17 +911,22 @@ export default function Messages() {
   );
 
   /**
-   * "Yapılacak Maçlar" bölümünün yüksekliği:
-   *   - kart sayısı kadar (1 kart minimum, 2 kart → 2, 3 kart → 3 ...)
-   *   - en fazla alanın %60'ı; bu sınıra gelince kendi içinde kaydırılır.
+   * "Yapılacak Maçlar" bölümünün yüksekliği iki sınırın küçüğü:
+   *   1) kart sayısı kadar, en fazla UPCOMING_VISIBLE_ROWS kart (1 → 1, 2 → 2, 3+ → 3)
+   *   2) alanın %60'ı
+   * Hangisi önce doluyorsa bölüm orada durur ve kendi içinde kaydırılır.
    * Kart yüksekliği sabit olmadığı için ilk kart ölçülüp hesap ondan yapılıyor.
    * Kalan yüksekliği "Geçmiş Maçlar" listesi (flex: 1) otomatik alıyor.
    */
   const upcomingRow = upcomingRowHeight > 0 ? upcomingRowHeight : UPCOMING_ROW_FALLBACK;
   const upcomingMaxHeight =
     matchSectionsHeight > 0 ? matchSectionsHeight * UPCOMING_MAX_HEIGHT_RATIO : undefined;
+  const upcomingVisibleRows = Math.min(
+    Math.max(upcomingItems.length, 1),
+    UPCOMING_VISIBLE_ROWS
+  );
   const upcomingHeight = Math.min(
-    Math.max(upcomingItems.length, 1) * upcomingRow,
+    upcomingVisibleRows * upcomingRow,
     upcomingMaxHeight ?? Number.MAX_SAFE_INTEGER
   );
 
