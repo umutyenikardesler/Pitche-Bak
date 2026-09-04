@@ -11,6 +11,12 @@ type Options = {
   rowGap?: number;
   /** Listenin üst dolgusu (fit hesabında kullanılır). */
   listPaddingTop?: number;
+  /**
+   * Ekrana sığmasa bile en az bu kadar satır tam gösterilir. Bir bölümün (ör. yapılacak
+   * maçlar) fit hesabıyla kesilmemesi gerektiğinde kullanılır; soluk sınır böylece bir
+   * sonraki bölümün başına düşer.
+   */
+  minVisible?: number;
 };
 
 /** Listenin sonuna bu kadar yaklaşınca bir sonraki sayfa yüklenir. */
@@ -32,11 +38,12 @@ export function useTabBarAwarePagination<T>(items: T[], options: Options = {}) {
     pageSize = 5,
     rowGap = 0,
     listPaddingTop = 0,
+    minVisible = 0,
   } = options;
 
   const tabBarInset = useTabBarBottomInset();
 
-  const [visibleCount, setVisibleCount] = useState(initialVisible);
+  const [visibleCount, setVisibleCount] = useState(Math.max(initialVisible, minVisible));
   const [listHeight, setListHeight] = useState(0);
   const rowHeightsRef = useRef<number[]>([]);
   // Kullanıcı bir kez sayfa yüklediyse otomatik fit hesabı görünen sayıyı geri çekmesin.
@@ -62,8 +69,10 @@ export function useTabBarAwarePagination<T>(items: T[], options: Options = {}) {
       fit++;
     }
 
-    if (fit > 0) setVisibleCount(fit);
-  }, [listHeight, tabBarInset, listPaddingTop, rowGap]);
+    // minVisible, bir bölümün fit hesabıyla ortadan kesilmesini engeller.
+    const next = Math.max(fit, minVisible);
+    if (next > 0) setVisibleCount(next);
+  }, [listHeight, tabBarInset, listPaddingTop, rowGap, minVisible]);
 
   useEffect(() => {
     recomputeVisibleFit();
@@ -112,11 +121,11 @@ export function useTabBarAwarePagination<T>(items: T[], options: Options = {}) {
 
   /** Aşağı çekip yenilemede çağrılır: sayaç ve ölçümler sıfırlanır. */
   const reset = useCallback(() => {
-    setVisibleCount(initialVisible);
+    setVisibleCount(Math.max(initialVisible, minVisible));
     pendingLoadRef.current = false;
     hasPagedRef.current = false;
     rowHeightsRef.current = [];
-  }, [initialVisible]);
+  }, [initialVisible, minVisible]);
 
   // Sınırdaki satır soluk görünsün diye görünen sayının 1 fazlasını render ediyoruz.
   const visibleItems = useMemo(

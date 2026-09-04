@@ -138,14 +138,14 @@ export default function Messages() {
    * da döndürülür; başlık, listeye satır eklemeden o kartın üstünde render edilir
    * (böylece sayfalama/soluklaştırma hesabı satır sayısıyla bozulmaz).
    */
-  const { tabItems, hasUpcomingMatches, firstPastMatchKey } = useMemo(() => {
+  const { tabItems, upcomingMatchCount, firstPastMatchKey } = useMemo(() => {
     if (activeTab === 'group') {
-      return { tabItems: [] as ChatSummary[], hasUpcomingMatches: false, firstPastMatchKey: null as string | null };
+      return { tabItems: [] as ChatSummary[], upcomingMatchCount: 0, firstPastMatchKey: null as string | null };
     }
     if (activeTab === 'direct') {
       return {
         tabItems: items.filter((it) => it.kind === 'direct') as ChatSummary[],
-        hasUpcomingMatches: false,
+        upcomingMatchCount: 0,
         firstPastMatchKey: null as string | null,
       };
     }
@@ -170,7 +170,7 @@ export default function Messages() {
 
     return {
       tabItems: [...upcoming, ...past].map((x) => x.m) as ChatSummary[],
-      hasUpcomingMatches: upcoming.length > 0,
+      upcomingMatchCount: upcoming.length,
       firstPastMatchKey: past.length > 0 ? getChatKey(past[0].m) : null,
     };
   }, [items, activeTab, pinnedChatKeys, getChatKey]);
@@ -187,6 +187,9 @@ export default function Messages() {
     pageSize: CHATS_PAGE_SIZE,
     rowGap: CHAT_ROW_GAP,
     listPaddingTop: CHAT_LIST_PADDING_TOP,
+    // Yapılacak maçlar ekrana sığmasa da tamamı listelensin (kaydırarak görülür);
+    // soluk sınır böylece "Geçmiş Maçlar" bölümünün ilk kartına düşer.
+    minVisible: upcomingMatchCount,
   });
 
   // Sekme değişince sayfalama baştan hesaplansın (liste ve kart yükseklikleri değişiyor).
@@ -877,12 +880,14 @@ export default function Messages() {
   const sectionTitle = (label: string) => (
     <Text
       style={{
-        color: colors.primaryDark,
+        // primaryDark yerine primary: bir tık açık yeşil
+        color: colors.primary,
         fontWeight: '800',
         fontSize: 15,
+        textAlign: 'center',
         paddingHorizontal: 20,
-        paddingTop: 10,
-        paddingBottom: 4,
+        paddingTop: 4,
+        paddingBottom: 10,
       }}
     >
       {label}
@@ -953,7 +958,7 @@ export default function Messages() {
         // soluk satır hesabı da bu yüksekliğe göre ölçülüyor.
         style={{ flex: 1 }}
         ListHeaderComponent={
-          activeTab === 'match' && hasUpcomingMatches
+          activeTab === 'match' && upcomingMatchCount > 0
             ? sectionTitle(t('messages.sections.upcomingMatches'))
             : null
         }
