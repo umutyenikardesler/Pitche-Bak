@@ -8,6 +8,7 @@ import Animated, {
 } from "react-native-reanimated";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useAppTheme } from "@/contexts/ThemeContext";
+import { useTabBarBottomInset } from "@/hooks/useTabBarBottomInset";
 
 const FIELD_HEIGHT = 90;
 const BALL_SIZE = 12;
@@ -20,6 +21,7 @@ interface GuestLandingProps {
 export default function GuestLanding({ onContinue }: GuestLandingProps) {
   const { t } = useLanguage();
   const { colors, isDark } = useAppTheme();
+  const tabBarInset = useTabBarBottomInset();
   const headerWidthSV = useSharedValue(0);
   const ballX = useSharedValue(0);
   const ballY = useSharedValue(0);
@@ -223,8 +225,8 @@ export default function GuestLanding({ onContinue }: GuestLandingProps) {
           <Text style={{ color: "white", fontWeight: "900", fontSize: 16 }}>{t("guest.landing.start")}</Text>
         </TouchableOpacity>
 
-        {/* Tab bar için biraz boşluk */}
-        <View style={{ height: 18 }} />
+        {/* Yüzen hap menünün üstünde kalsın: sabit boşluk yerine bar'ın gerçek yüksekliği. */}
+        <View style={{ height: 18 + tabBarInset }} />
       </View>
     </SafeAreaView>
   );

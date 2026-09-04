@@ -108,7 +108,8 @@ export default function ProfileInfo({ userData, setModalVisible, setEditModalVis
                     className="absolute right-0 bottom-0" 
                     style={{marginBottom: 5}}
                 >
-                    <View className="bg-white rounded-full p-1 shadow-lg">
+                    {/* Sabit beyaz yerine yüzey rengi: koyu modda beyaz halka kalıyordu. */}
+                    <View className="rounded-full p-1 shadow-lg" style={{ backgroundColor: colors.surface }}>
                         <Ionicons name="add-circle" size={24} color={colors.primary} />
                     </View>
                 </TouchableOpacity>
