@@ -17,6 +17,13 @@ type Options = {
    * sonraki bölümün başına düşer.
    */
   minVisible?: number;
+  /**
+   * Değiştiğinde hook tüm durumunu (sayaç, ölçülen liste yüksekliği ve satır
+   * yükseklikleri) sıfırlar. Farklı listeler arasında geçişte (ör. sekmeler)
+   * verilmelidir; aksi halde önceki listenin ölçümleriyle hesap yapılır.
+   * Sıfırlama render sırasında yapılır, böylece yeni listenin ölçümünden önce olur.
+   */
+  resetKey?: string | number;
 };
 
 /** Listenin sonuna bu kadar yaklaşınca bir sonraki sayfa yüklenir. */
@@ -39,6 +46,7 @@ export function useTabBarAwarePagination<T>(items: T[], options: Options = {}) {
     rowGap = 0,
     listPaddingTop = 0,
     minVisible = 0,
+    resetKey,
   } = options;
 
   const tabBarInset = useTabBarBottomInset();
@@ -51,6 +59,19 @@ export function useTabBarAwarePagination<T>(items: T[], options: Options = {}) {
   // Yeni sayfa yüklendikten sonra liste yeniden ölçülene kadar tekrar yükleme yapma.
   const pendingLoadRef = useRef(false);
   const recomputeScheduledRef = useRef(false);
+
+  // `resetKey` değişince durumu RENDER SIRASINDA sıfırla. Effect ile yapmak sıralama
+  // riski taşıyor: yeni liste kendini ölçtükten sonra çalışırsa yüksekliği sıfırlayıp
+  // hesabı kalıcı olarak durdurabilir.
+  const [prevResetKey, setPrevResetKey] = useState(resetKey);
+  if (resetKey !== prevResetKey) {
+    setPrevResetKey(resetKey);
+    setVisibleCount(Math.max(initialVisible, minVisible));
+    setListHeight(0);
+    rowHeightsRef.current = [];
+    hasPagedRef.current = false;
+    pendingLoadRef.current = false;
+  }
 
   const recomputeVisibleFit = useCallback(() => {
     if (hasPagedRef.current || !listHeight) return;
@@ -119,7 +140,11 @@ export function useTabBarAwarePagination<T>(items: T[], options: Options = {}) {
     pendingLoadRef.current = false;
   }, []);
 
-  /** Aşağı çekip yenilemede çağrılır: sayaç ve ölçümler sıfırlanır. */
+  /**
+   * Aşağı çekip yenilemede çağrılır. `listHeight` BİLEREK korunur: liste yeniden
+   * monte olmadığı için `onLayout` tekrar tetiklenmez, sıfırlarsak hesap kalıcı
+   * olarak durur.
+   */
   const reset = useCallback(() => {
     setVisibleCount(Math.max(initialVisible, minVisible));
     pendingLoadRef.current = false;

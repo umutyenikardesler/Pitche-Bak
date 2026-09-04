@@ -194,12 +194,9 @@ export default function Messages() {
     pageSize: CHATS_PAGE_SIZE,
     rowGap: CHAT_ROW_GAP,
     listPaddingTop: CHAT_LIST_PADDING_TOP,
+    // Sekmeler farklı listeler ve farklı yüksekliklerde; geçişte ölçümler sıfırlanmalı.
+    resetKey: activeTab,
   });
-
-  // Sekme değişince sayfalama baştan hesaplansın (liste ve kart yükseklikleri değişiyor).
-  useEffect(() => {
-    resetPagination();
-  }, [activeTab, resetPagination]);
 
   /**
    * mode:
@@ -963,11 +960,14 @@ export default function Messages() {
         )}
 
         <FlatList
+          // Sekme değişiminde yeniden monte olup kendini taze ölçsün; aksi halde
+          // önceki sekmenin yüksekliğiyle hesap yapılıyor.
+          key="match-past"
           data={visibleItems}
           keyExtractor={(it) => `past-${it.owner_id}-${it.kind === 'match' ? it.id : 'dm'}`}
           renderItem={renderItem}
           style={{ flex: 1 }}
-          contentContainerStyle={{ paddingBottom: 16 + tabBarInset, flexGrow: 1 }}
+          contentContainerStyle={{ paddingBottom: 16 + tabBarInset, paddingTop: CHAT_LIST_PADDING_TOP, flexGrow: 1 }}
           refreshing={refreshing}
           onRefresh={onRefresh}
           alwaysBounceVertical
@@ -1007,6 +1007,8 @@ export default function Messages() {
   } else {
     content = (
       <FlatList
+        // Maç sekmesindeki listeden ayrı bir örnek olsun ki ölçümler karışmasın.
+        key="direct-list"
         data={visibleItems}
         keyExtractor={(it) => `${it.kind}-${it.owner_id}-${it.kind === 'match' ? it.id : 'dm'}`}
         renderItem={renderItem}
