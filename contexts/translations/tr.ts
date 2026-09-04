@@ -213,6 +213,12 @@ export const tr = {
   // Mesajlar
   'messages.title': 'Mesajlar',
   'messages.noChats': 'Şuan Sohbetiniz bulunmamaktadır.',
+  'messages.tabs.direct': 'Sohbetler',
+  'messages.tabs.match': 'Maç Sohbetleri',
+  'messages.tabs.group': 'Grup Mesajları',
+  'messages.noDirectChats': 'Henüz bir sohbetiniz yok.',
+  'messages.noMatchChats': 'Henüz maç sohbetiniz yok.',
+  'messages.groupComingSoon': 'Grup mesajları yakında.',
   'messages.noAcceptedJoins': 'Henüz katıldığın maç yok',
   
   // Bildirimler

@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import { View, Text, FlatList, TouchableOpacity, Image, ActivityIndicator, RefreshControl, Animated, Dimensions, Modal, Pressable, Alert, TextInput, ScrollView } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
@@ -23,6 +23,47 @@ const CHATS_PAGE_SIZE = 5;
 // Kartların kendi `my-1` boşluğu var; burada ekstra aralık bırakmıyoruz.
 const CHAT_ROW_GAP = 0;
 const CHAT_LIST_PADDING_TOP = 8;
+
+/** Mesajlar sayfasındaki sekmeler. Grup mesajları henüz uygulanmadı. */
+type ChatTab = 'direct' | 'match' | 'group';
+
+/**
+ * Maçın başlangıç zamanını ms cinsinden döndürür. Veri birkaç farklı biçimde
+ * gelebildiği için sırayla ISO, tarih-only ve TR (gg.aa.yyyy) biçimleri denenir.
+ * Hem sohbet sıralamasında hem de "Maç Sohbetleri" sekmesinde kullanılıyor.
+ */
+function parseMatchStartTs(dateStr: string, timeStr: string): number {
+  const dRaw = (dateStr || "").trim();
+  const tRaw = (timeStr || "").trim();
+  // Bazı verilerde saat "16.17.00" gibi gelebiliyor → normalize et
+  const tNorm = tRaw.includes(".") && !tRaw.includes(":") ? tRaw.replace(/\./g, ":") : tRaw;
+
+  const tParts = (tNorm || "").split(":").map((x) => Number(x));
+  const hh = Number.isFinite(tParts[0]) ? tParts[0] : 0;
+  const mm = Number.isFinite(tParts[1]) ? tParts[1] : 0;
+
+  // 1) ISO: 2026-03-29 + 16:17
+  const iso = new Date(`${dRaw}T${tNorm}`);
+  if (Number.isFinite(iso.getTime())) return iso.getTime();
+
+  // 2) Date-only parse + set time
+  const d1 = new Date(dRaw);
+  if (Number.isFinite(d1.getTime())) {
+    d1.setHours(hh, mm, 0, 0);
+    return d1.getTime();
+  }
+
+  // 3) TR format: 29.03.2026
+  if (dRaw.includes(".")) {
+    const [dd, mo, yy] = dRaw.split(".").map((x) => Number(x));
+    if (Number.isFinite(dd) && Number.isFinite(mo) && Number.isFinite(yy)) {
+      const d2 = new Date(yy, mo - 1, dd, hh, mm, 0, 0);
+      if (Number.isFinite(d2.getTime())) return d2.getTime();
+    }
+  }
+
+  return 0;
+}
 
 type ChatSummary = MatchChatSummary | DirectChatSummary;
 
@@ -83,6 +124,36 @@ export default function Messages() {
   const [pinnedChatKeys, setPinnedChatKeys] = useState<Set<string>>(new Set());
   // İlk yükleme tamamlandı mı? Tamamlandıysa sonraki odaklanmalarda sessiz tazeleme yapılır.
   const hasLoadedOnceRef = useRef(false);
+  const [activeTab, setActiveTab] = useState<ChatTab>('direct');
+  const getChatKey = useCallback((item: ChatSummary): string => {
+    if (item.kind === "match") return `${item.owner_id}-m-${item.id}`;
+    return `${item.owner_id}-d-${(item as DirectChatSummary).match_id ?? "x"}`;
+  }, []);
+
+  // Sekmeye göre liste. `items` zaten sabitlenmişler önde olacak şekilde sıralı geliyor;
+  // "Sohbetler" bu sırayı korur.
+  const tabItems = useMemo<ChatSummary[]>(() => {
+    if (activeTab === 'group') return [];
+    if (activeTab === 'direct') return items.filter((it) => it.kind === 'direct');
+
+    // Maç sohbetleri: yaklaşan maçlar tarih-saat sırasıyla üstte, oynanmışlar altta
+    // (en yakın geçmiş önce). Sabitlenenler kendi içlerinde aynı kurala uyar.
+    const now = Date.now();
+    const withTs = items
+      .filter((it): it is MatchChatSummary => it.kind === 'match')
+      .map((m) => ({ m, ts: parseMatchStartTs(m.date, m.time) }));
+
+    const order = (list: typeof withTs) => {
+      const upcoming = list.filter((x) => x.ts >= now).sort((a, b) => a.ts - b.ts);
+      const past = list.filter((x) => x.ts < now).sort((a, b) => b.ts - a.ts);
+      return [...upcoming, ...past].map((x) => x.m);
+    };
+
+    const pinned = withTs.filter((x) => pinnedChatKeys.has(getChatKey(x.m)));
+    const rest = withTs.filter((x) => !pinnedChatKeys.has(getChatKey(x.m)));
+    return [...order(pinned), ...order(rest)];
+  }, [items, activeTab, pinnedChatKeys, getChatKey]);
+
   // Hap menü hizasına denk gelen sohbet soluk gösterilir; kaydırdıkça 5'er yüklenir.
   const {
     visibleItems,
@@ -90,16 +161,17 @@ export default function Messages() {
     reset: resetPagination,
     handleRowLayout,
     listProps: paginationListProps,
-  } = useTabBarAwarePagination<ChatSummary>(items, {
+  } = useTabBarAwarePagination<ChatSummary>(tabItems, {
     initialVisible: INITIAL_VISIBLE_CHATS,
     pageSize: CHATS_PAGE_SIZE,
     rowGap: CHAT_ROW_GAP,
     listPaddingTop: CHAT_LIST_PADDING_TOP,
   });
-  const getChatKey = useCallback((item: ChatSummary): string => {
-    if (item.kind === "match") return `${item.owner_id}-m-${item.id}`;
-    return `${item.owner_id}-d-${(item as DirectChatSummary).match_id ?? "x"}`;
-  }, []);
+
+  // Sekme değişince sayfalama baştan hesaplansın (liste ve kart yükseklikleri değişiyor).
+  useEffect(() => {
+    resetPagination();
+  }, [activeTab, resetPagination]);
 
   /**
    * mode:
@@ -285,39 +357,6 @@ export default function Messages() {
         if (!s) return 0;
         const t = new Date(s).getTime();
         return Number.isFinite(t) ? t : 0;
-      };
-
-      const parseMatchStartTs = (dateStr: string, timeStr: string): number => {
-        const dRaw = (dateStr || "").trim();
-        const tRaw = (timeStr || "").trim();
-        // Bazı verilerde saat "16.17.00" gibi gelebiliyor → normalize et
-        const tNorm = tRaw.includes(".") && !tRaw.includes(":") ? tRaw.replace(/\./g, ":") : tRaw;
-
-        const tParts = (tNorm || "").split(":").map((x) => Number(x));
-        const hh = Number.isFinite(tParts[0]) ? tParts[0] : 0;
-        const mm = Number.isFinite(tParts[1]) ? tParts[1] : 0;
-
-        // 1) ISO: 2026-03-29 + 16:17
-        const iso = new Date(`${dRaw}T${tNorm}`);
-        if (Number.isFinite(iso.getTime())) return iso.getTime();
-
-        // 2) Date-only parse + set time
-        const d1 = new Date(dRaw);
-        if (Number.isFinite(d1.getTime())) {
-          d1.setHours(hh, mm, 0, 0);
-          return d1.getTime();
-        }
-
-        // 3) TR format: 29.03.2026
-        if (dRaw.includes(".")) {
-          const [dd, mo, yy] = dRaw.split(".").map((x) => Number(x));
-          if (Number.isFinite(dd) && Number.isFinite(mo) && Number.isFinite(yy)) {
-            const d2 = new Date(yy, mo - 1, dd, hh, mm, 0, 0);
-            if (Number.isFinite(d2.getTime())) return d2.getTime();
-          }
-        }
-
-        return 0;
       };
 
       const getSortTs = (it: ChatSummary): number => {
@@ -831,7 +870,7 @@ export default function Messages() {
         <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
-  } else if (!items.length) {
+  } else if (!tabItems.length) {
     content = (
       <FlatList
         data={[]}
@@ -840,10 +879,15 @@ export default function Messages() {
         ListEmptyComponent={
           <View className="flex-1 justify-center items-center" style={{ minHeight: 200 }}>
             <Text style={{ color: colors.textMuted }}>
-              {t('messages.noChats') || 'Henüz sohbet yok'}
+              {activeTab === 'group'
+                ? t('messages.groupComingSoon')
+                : activeTab === 'match'
+                  ? t('messages.noMatchChats')
+                  : t('messages.noDirectChats')}
             </Text>
           </View>
         }
+        style={{ flex: 1 }}
         contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', alignItems: 'center', paddingVertical: 16 }}
         refreshControl={
           <RefreshControl
@@ -861,6 +905,9 @@ export default function Messages() {
         data={visibleItems}
         keyExtractor={(it) => `${it.kind}-${it.owner_id}-${it.kind === 'match' ? it.id : 'dm'}`}
         renderItem={renderItem}
+        // Sekme çubuğuyla kardeş olduğu için kalan alanı açıkça doldurmalı;
+        // soluk satır hesabı da bu yüksekliğe göre ölçülüyor.
+        style={{ flex: 1 }}
         contentContainerStyle={{ paddingBottom: 16 + tabBarInset, paddingTop: CHAT_LIST_PADDING_TOP, flexGrow: 1 }}
         refreshing={refreshing}
         onRefresh={onRefresh}
@@ -888,6 +935,63 @@ export default function Messages() {
             </View>
           </Modal>
         )}
+
+        {/* Sekmeler: Sohbetler / Maç Sohbetleri / Grup Mesajları */}
+        <View
+          style={{
+            flexDirection: 'row',
+            gap: 6,
+            paddingHorizontal: 12,
+            paddingTop: 10,
+            paddingBottom: 8,
+            backgroundColor: colors.background,
+            borderBottomWidth: 1,
+            borderBottomColor: colors.border,
+          }}
+        >
+          {(['direct', 'match', 'group'] as const).map((tab) => {
+            const isActive = activeTab === tab;
+            const label =
+              tab === 'direct'
+                ? t('messages.tabs.direct')
+                : tab === 'match'
+                  ? t('messages.tabs.match')
+                  : t('messages.tabs.group');
+
+            return (
+              <TouchableOpacity
+                key={tab}
+                onPress={() => setActiveTab(tab)}
+                activeOpacity={0.85}
+                style={{
+                  flex: 1,
+                  paddingVertical: 8,
+                  paddingHorizontal: 6,
+                  borderRadius: 10,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  // Aktif sekme marka yeşiliyle dolu, pasifler yüzey rengi + ince çerçeve.
+                  backgroundColor: isActive ? colors.primary : colors.surface,
+                  borderWidth: 1,
+                  borderColor: isActive ? colors.primary : colors.border,
+                }}
+              >
+                <Text
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                  minimumFontScale={0.85}
+                  style={{
+                    fontSize: 12.5,
+                    fontWeight: '700',
+                    color: isActive ? colors.whiteText : (isDark ? colors.text : colors.textSecondary),
+                  }}
+                >
+                  {label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
 
         {content}
 

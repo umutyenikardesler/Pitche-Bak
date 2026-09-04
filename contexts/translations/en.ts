@@ -215,6 +215,12 @@ export const en: Record<TranslationKey, string> = {
   // Messages
   'messages.title': 'Messages',
   'messages.noChats': 'You have no chats at the moment.',
+  'messages.tabs.direct': 'Chats',
+  'messages.tabs.match': 'Match Chats',
+  'messages.tabs.group': 'Group Chats',
+  'messages.noDirectChats': 'You have no chats yet.',
+  'messages.noMatchChats': 'You have no match chats yet.',
+  'messages.groupComingSoon': 'Group chats are coming soon.',
   'messages.noAcceptedJoins': 'No accepted joins yet',
   
   // Notifications
