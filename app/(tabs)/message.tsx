@@ -27,8 +27,6 @@ const CHAT_LIST_PADDING_TOP = 8;
 const UPCOMING_VISIBLE_ROWS = 3;
 /** Bölümün kaplayabileceği azami alan oranı (kart sayısı sınırına ek üst sınır). */
 const UPCOMING_MAX_HEIGHT_RATIO = 0.6;
-/** Kart henüz ölçülmemişken kullanılan yaklaşık kart yüksekliği. */
-const UPCOMING_ROW_FALLBACK = 96;
 
 /** Mesajlar sayfasındaki sekmeler. Grup mesajları henüz uygulanmadı. */
 type ChatTab = 'direct' | 'match' | 'group';
@@ -131,9 +129,9 @@ export default function Messages() {
   // İlk yükleme tamamlandı mı? Tamamlandıysa sonraki odaklanmalarda sessiz tazeleme yapılır.
   const hasLoadedOnceRef = useRef(false);
   const [activeTab, setActiveTab] = useState<ChatTab>('direct');
-  // "Yapılacak Maçlar" bölümünün yüksekliği için ilk kartın ölçülen yüksekliği ve
-  // iki bölümün paylaştığı toplam alan.
-  const [upcomingRowHeight, setUpcomingRowHeight] = useState(0);
+  // "Yapılacak Maçlar" listesinin ölçülen toplam içerik yüksekliği ve iki bölümün
+  // paylaştığı toplam alan. Kart yüksekliği bunlardan türetiliyor.
+  const [upcomingContentHeight, setUpcomingContentHeight] = useState(0);
   const [matchSectionsHeight, setMatchSectionsHeight] = useState(0);
   const getChatKey = useCallback((item: ChatSummary): string => {
     if (item.kind === "match") return `${item.owner_id}-m-${item.id}`;
@@ -918,45 +916,45 @@ export default function Messages() {
    * Kart yüksekliği sabit olmadığı için ilk kart ölçülüp hesap ondan yapılıyor.
    * Kalan yüksekliği "Geçmiş Maçlar" listesi (flex: 1) otomatik alıyor.
    */
-  const upcomingRow = upcomingRowHeight > 0 ? upcomingRowHeight : UPCOMING_ROW_FALLBACK;
+  // Kart yüksekliği, listenin GERÇEK içerik yüksekliğinden türetiliyor (toplam / kart
+  // sayısı). Tek satırı onLayout ile ölçmek veya sabit bir tahmin kullanmak güvenilmez:
+  // tahmin gerçek karttan büyük olduğunda bölüm olması gerekenden yüksek çıkıyordu.
+  const measuredUpcomingRow =
+    upcomingItems.length > 0 && upcomingContentHeight > 0
+      ? upcomingContentHeight / upcomingItems.length
+      : 0;
+
   const upcomingMaxHeight =
     matchSectionsHeight > 0 ? matchSectionsHeight * UPCOMING_MAX_HEIGHT_RATIO : undefined;
-  const upcomingVisibleRows = Math.min(
-    Math.max(upcomingItems.length, 1),
-    UPCOMING_VISIBLE_ROWS
-  );
-  const upcomingHeight = Math.min(
-    upcomingVisibleRows * upcomingRow,
-    upcomingMaxHeight ?? Number.MAX_SAFE_INTEGER
-  );
+
+  // Ölçüm gelene kadar yükseklik dayatmıyoruz; liste doğal boyunda render olur.
+  const upcomingHeight =
+    measuredUpcomingRow > 0
+      ? Math.min(
+          Math.min(upcomingItems.length, UPCOMING_VISIBLE_ROWS) * measuredUpcomingRow,
+          upcomingMaxHeight ?? Number.MAX_SAFE_INTEGER
+        )
+      : undefined;
 
   const upcomingSection = (
     <>
       <View style={{ height: 5 }} />
       {sectionTitle(t('messages.sections.upcomingMatches'))}
       {upcomingItems.length === 0 ? (
-        <View style={{ height: upcomingRow, alignItems: 'center', justifyContent: 'center' }}>
+        // Boş durumda ölçülecek kart yok; sabit ve mütevazı bir yükseklik yeterli.
+        <View style={{ paddingVertical: 24, alignItems: 'center', justifyContent: 'center' }}>
           <Text style={{ color: colors.textMuted }}>{t('messages.noUpcomingMatches')}</Text>
         </View>
       ) : (
         <FlatList
           data={upcomingItems}
           keyExtractor={(it) => `up-${it.owner_id}-${it.kind === 'match' ? it.id : 'dm'}`}
-          renderItem={({ item, index }) => (
-            <View
-              onLayout={
-                index === 0
-                  ? (e) => setUpcomingRowHeight(e.nativeEvent.layout.height)
-                  : undefined
-              }
-            >
-              {renderChatRow({ item })}
-            </View>
-          )}
-          style={{ height: upcomingHeight }}
+          renderItem={({ item }) => renderChatRow({ item })}
+          onContentSizeChange={(_w, h) => setUpcomingContentHeight(h)}
+          style={upcomingHeight != null ? { height: upcomingHeight } : undefined}
           showsVerticalScrollIndicator
-          // Yalnızca %60 sınırına takıldığında kaydırılabilir olsun.
-          scrollEnabled={upcomingItems.length * upcomingRow > upcomingHeight + 1}
+          // Yalnızca içerik sınıra taştığında kaydırılabilir olsun.
+          scrollEnabled={upcomingHeight != null && upcomingContentHeight > upcomingHeight + 1}
         />
       )}
     </>
