@@ -1108,10 +1108,15 @@ export default function Messages() {
                   borderRadius: 10,
                   alignItems: 'center',
                   justifyContent: 'center',
-                  // Aktif sekme marka yeşiliyle dolu, pasifler yüzey rengi + ince çerçeve.
+                  // Aktif sekme marka yeşiliyle dolu, pasifler yüzey rengi.
                   backgroundColor: isActive ? colors.primary : colors.surface,
+                  // Hap menüdeki gibi 1px marka rengi kenarlık + dışa vuran yeşil ışıltı.
                   borderWidth: 1,
-                  borderColor: isActive ? colors.primary : colors.border,
+                  borderColor: colors.primary,
+                  shadowColor: colors.primary,
+                  shadowOffset: { width: 0, height: 0 },
+                  shadowOpacity: 0.5,
+                  shadowRadius: 4,
                 }}
               >
                 <Text
