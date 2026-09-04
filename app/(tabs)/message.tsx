@@ -23,8 +23,10 @@ const CHATS_PAGE_SIZE = 5;
 // Kartların kendi `my-1` boşluğu var; burada ekstra aralık bırakmıyoruz.
 const CHAT_ROW_GAP = 0;
 const CHAT_LIST_PADDING_TOP = 8;
-/** "Yapılacak Maçlar" bölümünde kaydırmadan görünecek kart sayısı. */
-const UPCOMING_VISIBLE_ROWS = 3;
+/** "Yapılacak Maçlar" bölümünün kaplayabileceği azami alan oranı. */
+const UPCOMING_MAX_HEIGHT_RATIO = 0.6;
+/** Kart henüz ölçülmemişken kullanılan yaklaşık kart yüksekliği. */
+const UPCOMING_ROW_FALLBACK = 96;
 
 /** Mesajlar sayfasındaki sekmeler. Grup mesajları henüz uygulanmadı. */
 type ChatTab = 'direct' | 'match' | 'group';
@@ -127,8 +129,10 @@ export default function Messages() {
   // İlk yükleme tamamlandı mı? Tamamlandıysa sonraki odaklanmalarda sessiz tazeleme yapılır.
   const hasLoadedOnceRef = useRef(false);
   const [activeTab, setActiveTab] = useState<ChatTab>('direct');
-  // "Yapılacak Maçlar" bölümünün yükseklik sınırı için ilk kartın ölçülen yüksekliği.
+  // "Yapılacak Maçlar" bölümünün yüksekliği için ilk kartın ölçülen yüksekliği ve
+  // iki bölümün paylaştığı toplam alan.
   const [upcomingRowHeight, setUpcomingRowHeight] = useState(0);
+  const [matchSectionsHeight, setMatchSectionsHeight] = useState(0);
   const getChatKey = useCallback((item: ChatSummary): string => {
     if (item.kind === "match") return `${item.owner_id}-m-${item.id}`;
     return `${item.owner_id}-d-${(item as DirectChatSummary).match_id ?? "x"}`;
@@ -904,34 +908,50 @@ export default function Messages() {
     </View>
   );
 
-  // Yapılacak maçlar bölümü: en fazla UPCOMING_VISIBLE_ROWS kart yüksekliğinde,
-  // fazlası kendi içinde kaydırılarak görülür. Kart yüksekliği sabit olmadığından
-  // ilk kart ölçülüp sınır ondan hesaplanıyor.
+  /**
+   * "Yapılacak Maçlar" bölümünün yüksekliği:
+   *   - kart sayısı kadar (1 kart minimum, 2 kart → 2, 3 kart → 3 ...)
+   *   - en fazla alanın %60'ı; bu sınıra gelince kendi içinde kaydırılır.
+   * Kart yüksekliği sabit olmadığı için ilk kart ölçülüp hesap ondan yapılıyor.
+   * Kalan yüksekliği "Geçmiş Maçlar" listesi (flex: 1) otomatik alıyor.
+   */
+  const upcomingRow = upcomingRowHeight > 0 ? upcomingRowHeight : UPCOMING_ROW_FALLBACK;
+  const upcomingMaxHeight =
+    matchSectionsHeight > 0 ? matchSectionsHeight * UPCOMING_MAX_HEIGHT_RATIO : undefined;
+  const upcomingHeight = Math.min(
+    Math.max(upcomingItems.length, 1) * upcomingRow,
+    upcomingMaxHeight ?? Number.MAX_SAFE_INTEGER
+  );
+
   const upcomingSection = (
     <>
+      <View style={{ height: 5 }} />
       {sectionTitle(t('messages.sections.upcomingMatches'))}
-      <FlatList
-        data={upcomingItems}
-        keyExtractor={(it) => `up-${it.owner_id}-${it.kind === 'match' ? it.id : 'dm'}`}
-        renderItem={({ item, index }) => (
-          <View
-            onLayout={
-              index === 0
-                ? (e) => setUpcomingRowHeight(e.nativeEvent.layout.height)
-                : undefined
-            }
-          >
-            {renderChatRow({ item })}
-          </View>
-        )}
-        style={
-          upcomingRowHeight > 0 && upcomingItems.length > UPCOMING_VISIBLE_ROWS
-            ? { maxHeight: upcomingRowHeight * UPCOMING_VISIBLE_ROWS }
-            : undefined
-        }
-        showsVerticalScrollIndicator
-        scrollEnabled={upcomingItems.length > UPCOMING_VISIBLE_ROWS}
-      />
+      {upcomingItems.length === 0 ? (
+        <View style={{ height: upcomingRow, alignItems: 'center', justifyContent: 'center' }}>
+          <Text style={{ color: colors.textMuted }}>{t('messages.noUpcomingMatches')}</Text>
+        </View>
+      ) : (
+        <FlatList
+          data={upcomingItems}
+          keyExtractor={(it) => `up-${it.owner_id}-${it.kind === 'match' ? it.id : 'dm'}`}
+          renderItem={({ item, index }) => (
+            <View
+              onLayout={
+                index === 0
+                  ? (e) => setUpcomingRowHeight(e.nativeEvent.layout.height)
+                  : undefined
+              }
+            >
+              {renderChatRow({ item })}
+            </View>
+          )}
+          style={{ height: upcomingHeight }}
+          showsVerticalScrollIndicator
+          // Yalnızca %60 sınırına takıldığında kaydırılabilir olsun.
+          scrollEnabled={upcomingItems.length * upcomingRow > upcomingHeight + 1}
+        />
+      )}
     </>
   );
 
@@ -943,13 +963,16 @@ export default function Messages() {
         <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
-  } else if (activeTab === 'match' && (upcomingItems.length > 0 || pastItems.length > 0)) {
+  } else if (activeTab === 'match') {
     // Maç sekmesi iki ayrı liste: üstte kısa/kaydırılabilir "Yapılacak Maçlar",
     // altta sayfalanan "Geçmiş Maçlar". Kardeş listeler oldukları için iç içe
     // VirtualizedList uyarısı oluşmuyor.
     content = (
-      <View style={{ flex: 1 }}>
-        {upcomingItems.length > 0 && upcomingSection}
+      <View
+        style={{ flex: 1 }}
+        onLayout={(e) => setMatchSectionsHeight(e.nativeEvent.layout.height)}
+      >
+        {upcomingSection}
 
         {pastItems.length > 0 && (
           <>
@@ -983,12 +1006,9 @@ export default function Messages() {
         renderItem={null as any}
         ListEmptyComponent={
           <View className="flex-1 justify-center items-center" style={{ minHeight: 200 }}>
+            {/* Maç sekmesi yukarıda kendi bölümleriyle ele alınıyor; burada kalanlar. */}
             <Text style={{ color: colors.textMuted }}>
-              {activeTab === 'group'
-                ? t('messages.groupComingSoon')
-                : activeTab === 'match'
-                  ? t('messages.noMatchChats')
-                  : t('messages.noDirectChats')}
+              {activeTab === 'group' ? t('messages.groupComingSoon') : t('messages.noDirectChats')}
             </Text>
           </View>
         }

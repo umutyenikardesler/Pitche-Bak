@@ -218,6 +218,7 @@ export const tr = {
   'messages.tabs.group': 'Grup Mesajları',
   'messages.sections.upcomingMatches': 'Yapılacak Maçlar',
   'messages.sections.pastMatches': 'Geçmiş Maçlar',
+  'messages.noUpcomingMatches': 'Henüz yapacağınız maç yok.',
   'messages.noDirectChats': 'Henüz bir sohbetiniz yok.',
   'messages.noMatchChats': 'Henüz maç sohbetiniz yok.',
   'messages.groupComingSoon': 'Grup mesajları yakında.',

@@ -220,6 +220,7 @@ export const en: Record<TranslationKey, string> = {
   'messages.tabs.group': 'Group Chats',
   'messages.sections.upcomingMatches': 'Upcoming Matches',
   'messages.sections.pastMatches': 'Past Matches',
+  'messages.noUpcomingMatches': 'You have no upcoming matches yet.',
   'messages.noDirectChats': 'You have no chats yet.',
   'messages.noMatchChats': 'You have no match chats yet.',
   'messages.groupComingSoon': 'Group chats are coming soon.',
