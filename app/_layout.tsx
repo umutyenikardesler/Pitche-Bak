@@ -3,8 +3,8 @@ import { Stack, usePathname, useGlobalSearchParams } from "expo-router";
 import { LogBox, Platform, View, AppState, Linking } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
-import { useRouter } from "expo-router";
-import { useEffect } from "react";
+import { useRouter, useRootNavigationState } from "expo-router";
+import { useEffect, useRef } from "react";
 import { NotificationProvider } from '@/components/NotificationContext';
 import { LanguageProvider } from '@/contexts/LanguageContext';
 import { AuthProvider } from '@/contexts/AuthContext';
@@ -32,10 +32,24 @@ function AppShell() {
   const searchParams = useGlobalSearchParams();
   const { colors } = useAppTheme();
 
+  // Kök navigasyon ağacı hazır olana kadar `key` tanımsızdır; yönlendirme öncesi beklenir.
+  const rootNavigationState = useRootNavigationState();
+  const navigationReady = !!rootNavigationState?.key;
+  // Soğuk açılıştaki bildirim yanıtı yalnızca bir kez işlensin.
+  const coldStartHandledRef = useRef(false);
+  const handledResponseIdRef = useRef<string | null>(null);
+
   // Push bildirimine dokunulduğunda bildirimler sayfasını aç.
   // Hem uygulama açıkken/arka plandayken (listener) hem de bildirimle soğuk açılışta
   // (getLastNotificationResponseAsync) çalışması gerekiyor.
+  //
+  // ÖNEMLİ: Navigasyon ağacı hazır olmadan router.push çağırmak soğuk açılışta beyaz
+  // ekrana yol açıyor. Bu yüzden `navigationReady` beklenir. Ayrıca
+  // getLastNotificationResponseAsync, uygulama bildirime dokunularak açılmasa da en son
+  // yanıtı döndürebildiğinden, o yanıt yalnızca BİR KEZ ve kimliğine göre işlenir.
   useEffect(() => {
+    if (!navigationReady) return;
+
     let isMounted = true;
 
     const openNotifications = () => {
@@ -43,12 +57,23 @@ function AppShell() {
       router.push('/notifications');
     };
 
-    const subscription = Notifications.addNotificationResponseReceivedListener(openNotifications);
+    const subscription = Notifications.addNotificationResponseReceivedListener((response) => {
+      handledResponseIdRef.current = response?.notification?.request?.identifier ?? null;
+      openNotifications();
+    });
 
     (async () => {
       try {
+        if (coldStartHandledRef.current) return;
+        coldStartHandledRef.current = true;
+
         const last = await Notifications.getLastNotificationResponseAsync();
-        if (last) openNotifications();
+        const id = last?.notification?.request?.identifier ?? null;
+        // Aynı yanıt listener tarafından zaten işlendiyse tekrar yönlendirme.
+        if (last && id !== handledResponseIdRef.current) {
+          handledResponseIdRef.current = id;
+          openNotifications();
+        }
       } catch (_) {}
     })();
 
@@ -56,7 +81,7 @@ function AppShell() {
       isMounted = false;
       subscription.remove();
     };
-  }, [router]);
+  }, [navigationReady, router]);
 
   // Online kullanıcı sayısı için Realtime Presence.
   // Not: "anlık aktif kullanıcı" sayısı bu kanala bağlı olan unique user sayısıdır.
