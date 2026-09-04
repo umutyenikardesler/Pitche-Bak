@@ -155,20 +155,33 @@ function AppShell() {
       } catch (_) {}
     })();
 
-    const { data: authSub } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    // ÖNEMLİ: onAuthStateChange geri çağrısı içinde Supabase çağrısı beklenmemeli.
+    // Geri çağrı auth kilidini tutuyor; içeride `await supabase...` yapmak signOut()'un
+    // hiç çözülmemesine yol açıyordu (çıkışta ekran "Çıkış yapılıyor"da kalıyordu).
+    // Bu yüzden ağ işlerini setTimeout ile kilidin dışına alıyoruz.
+    const { data: authSub } = supabase.auth.onAuthStateChange((_event, session) => {
       if (!isMounted) return;
       const nextId = session?.user?.id ?? null;
       if (nextId === currentUserId) return;
+
       if (!nextId) {
-        if (currentUserId) {
-          await unregisterPushToken(currentUserId);
-        }
+        const previousId = currentUserId;
         currentUserId = null;
         teardown();
+        if (previousId) {
+          setTimeout(() => {
+            unregisterPushToken(previousId).catch(() => {});
+          }, 0);
+        }
         return;
       }
-      await setupForUser(nextId);
-      try { await registerPushToken(nextId); } catch (_) {}
+
+      currentUserId = nextId;
+      setTimeout(() => {
+        if (!isMounted) return;
+        setupForUser(nextId).catch(() => {});
+        registerPushToken(nextId).catch(() => {});
+      }, 0);
     });
 
     // App tekrar foreground olunca presence ping at (bazı cihazlarda bağlantı kesilebiliyor)
