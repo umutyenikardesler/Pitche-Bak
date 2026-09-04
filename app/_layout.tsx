@@ -52,13 +52,38 @@ function AppShell() {
 
     let isMounted = true;
 
-    // Bildirim tipine göre hedef: mesajlar mesaj sekmesine, takip ve katılım
-    // istekleri bildirimler sayfasına gider. Tip, Edge Function'ın push yüküne
-    // koyduğu `data.type` alanından okunuyor.
+    // Bildirim tipine göre hedef: mesaj bildirimi doğrudan ilgili sohbeti,
+    // takip ve katılım istekleri bildirimler sayfasını açar.
+    // Alanlar Edge Function'ın push yüküne koyduğu `data`dan okunuyor.
     const openForResponse = (response: Notifications.NotificationResponse) => {
       if (!isMounted) return;
-      const type = response?.notification?.request?.content?.data?.type;
-      router.push(type === 'direct_message' ? '/message' : '/notifications');
+
+      const data = (response?.notification?.request?.content?.data ?? {}) as {
+        type?: string;
+        senderId?: string | null;
+        senderName?: string | null;
+        matchId?: string | null;
+      };
+
+      if (data.type !== 'direct_message') {
+        router.push('/notifications');
+        return;
+      }
+
+      // Gönderen bilinmiyorsa sohbeti açamayız; mesaj listesine düşüyoruz.
+      if (!data.senderId) {
+        router.push('/message');
+        return;
+      }
+
+      router.push({
+        pathname: '/message/chat',
+        params: {
+          to: data.senderId,
+          name: data.senderName ?? '',
+          ...(data.matchId ? { matchId: data.matchId } : {}),
+        },
+      });
     };
 
     const subscription = Notifications.addNotificationResponseReceivedListener((response) => {

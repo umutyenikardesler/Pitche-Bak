@@ -124,6 +124,9 @@ Deno.serve(async (req: Request) => {
       notificationId: stored.id,
       matchId: stored.match_id ?? null,
       senderId: stored.sender_id ?? null,
+      // Mesaj bildirimine dokunulunca sohbet ekranı doğrudan açılıyor; başlıkta
+      // gösterilecek ad için gerekli.
+      senderName,
     },
     channelId: 'default',
   }));
