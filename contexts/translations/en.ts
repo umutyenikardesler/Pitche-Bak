@@ -218,6 +218,8 @@ export const en: Record<TranslationKey, string> = {
   'messages.tabs.direct': 'Chats',
   'messages.tabs.match': 'Match Chats',
   'messages.tabs.group': 'Group Chats',
+  'messages.sections.upcomingMatches': 'Upcoming Matches',
+  'messages.sections.pastMatches': 'Past Matches',
   'messages.noDirectChats': 'You have no chats yet.',
   'messages.noMatchChats': 'You have no match chats yet.',
   'messages.groupComingSoon': 'Group chats are coming soon.',

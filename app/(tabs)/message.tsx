@@ -130,11 +130,25 @@ export default function Messages() {
     return `${item.owner_id}-d-${(item as DirectChatSummary).match_id ?? "x"}`;
   }, []);
 
-  // Sekmeye göre liste. `items` zaten sabitlenmişler önde olacak şekilde sıralı geliyor;
-  // "Sohbetler" bu sırayı korur.
-  const tabItems = useMemo<ChatSummary[]>(() => {
-    if (activeTab === 'group') return [];
-    if (activeTab === 'direct') return items.filter((it) => it.kind === 'direct');
+  /**
+   * Sekmeye göre liste. `items` zaten sabitlenmişler önde olacak şekilde sıralı geliyor;
+   * "Sohbetler" bu sırayı korur.
+   *
+   * Maç sekmesinde ayrıca bölüm başlıklarını çizebilmek için ilk "geçmiş" maçın anahtarı
+   * da döndürülür; başlık, listeye satır eklemeden o kartın üstünde render edilir
+   * (böylece sayfalama/soluklaştırma hesabı satır sayısıyla bozulmaz).
+   */
+  const { tabItems, hasUpcomingMatches, firstPastMatchKey } = useMemo(() => {
+    if (activeTab === 'group') {
+      return { tabItems: [] as ChatSummary[], hasUpcomingMatches: false, firstPastMatchKey: null as string | null };
+    }
+    if (activeTab === 'direct') {
+      return {
+        tabItems: items.filter((it) => it.kind === 'direct') as ChatSummary[],
+        hasUpcomingMatches: false,
+        firstPastMatchKey: null as string | null,
+      };
+    }
 
     // Maç sohbetleri: yaklaşan maçlar tarih-saat sırasıyla üstte, oynanmışlar altta
     // (en yakın geçmiş önce). Sabitlenenler kendi içlerinde aynı kurala uyar.
@@ -143,15 +157,22 @@ export default function Messages() {
       .filter((it): it is MatchChatSummary => it.kind === 'match')
       .map((m) => ({ m, ts: parseMatchStartTs(m.date, m.time) }));
 
-    const order = (list: typeof withTs) => {
-      const upcoming = list.filter((x) => x.ts >= now).sort((a, b) => a.ts - b.ts);
-      const past = list.filter((x) => x.ts < now).sort((a, b) => b.ts - a.ts);
-      return [...upcoming, ...past].map((x) => x.m);
-    };
+    const split = (list: typeof withTs) => ({
+      upcoming: list.filter((x) => x.ts >= now).sort((a, b) => a.ts - b.ts),
+      past: list.filter((x) => x.ts < now).sort((a, b) => b.ts - a.ts),
+    });
 
-    const pinned = withTs.filter((x) => pinnedChatKeys.has(getChatKey(x.m)));
-    const rest = withTs.filter((x) => !pinnedChatKeys.has(getChatKey(x.m)));
-    return [...order(pinned), ...order(rest)];
+    const pinned = split(withTs.filter((x) => pinnedChatKeys.has(getChatKey(x.m))));
+    const rest = split(withTs.filter((x) => !pinnedChatKeys.has(getChatKey(x.m))));
+
+    const upcoming = [...pinned.upcoming, ...rest.upcoming];
+    const past = [...pinned.past, ...rest.past];
+
+    return {
+      tabItems: [...upcoming, ...past].map((x) => x.m) as ChatSummary[],
+      hasUpcomingMatches: upcoming.length > 0,
+      firstPastMatchKey: past.length > 0 ? getChatKey(past[0].m) : null,
+    };
   }, [items, activeTab, pinnedChatKeys, getChatKey]);
 
   // Hap menü hizasına denk gelen sohbet soluk gösterilir; kaydırdıkça 5'er yüklenir.
@@ -853,14 +874,37 @@ export default function Messages() {
   // Görünen son satırın altındaki sohbet, "devamı var" ipucu olarak soluk gösterilir.
   // Sarmalayıcı her satırda aynı kalmalı: yapıyı koşullu değiştirmek NativeWind'in
   // "kardeş bileşen eklendi/çıkarıldı" uyarısını tetikliyor.
-  const renderItem = ({ item, index }: { item: ChatSummary; index: number }) => (
-    <View
-      onLayout={(e) => handleRowLayout(index, e.nativeEvent.layout.height)}
-      style={{ opacity: isFaded(index) ? 0.35 : 1, marginBottom: CHAT_ROW_GAP }}
+  const sectionTitle = (label: string) => (
+    <Text
+      style={{
+        color: colors.primaryDark,
+        fontWeight: '800',
+        fontSize: 15,
+        paddingHorizontal: 20,
+        paddingTop: 10,
+        paddingBottom: 4,
+      }}
     >
-      {renderChatRow({ item })}
-    </View>
+      {label}
+    </Text>
   );
+
+  const renderItem = ({ item, index }: { item: ChatSummary; index: number }) => {
+    // "Geçmiş Maçlar" başlığı, listeye ayrı bir satır eklemeden ilk geçmiş kartın
+    // üstünde çizilir; böylece sayfalama ve soluklaştırma satır sayısıyla bozulmaz.
+    const showPastHeader =
+      activeTab === 'match' && !!firstPastMatchKey && getChatKey(item) === firstPastMatchKey;
+
+    return (
+      <View
+        onLayout={(e) => handleRowLayout(index, e.nativeEvent.layout.height)}
+        style={{ opacity: isFaded(index) ? 0.35 : 1, marginBottom: CHAT_ROW_GAP }}
+      >
+        {showPastHeader && sectionTitle(t('messages.sections.pastMatches'))}
+        {renderChatRow({ item })}
+      </View>
+    );
+  };
 
   let content: JSX.Element;
 
@@ -908,6 +952,11 @@ export default function Messages() {
         // Sekme çubuğuyla kardeş olduğu için kalan alanı açıkça doldurmalı;
         // soluk satır hesabı da bu yüksekliğe göre ölçülüyor.
         style={{ flex: 1 }}
+        ListHeaderComponent={
+          activeTab === 'match' && hasUpcomingMatches
+            ? sectionTitle(t('messages.sections.upcomingMatches'))
+            : null
+        }
         contentContainerStyle={{ paddingBottom: 16 + tabBarInset, paddingTop: CHAT_LIST_PADDING_TOP, flexGrow: 1 }}
         refreshing={refreshing}
         onRefresh={onRefresh}
