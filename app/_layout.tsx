@@ -52,14 +52,18 @@ function AppShell() {
 
     let isMounted = true;
 
-    const openNotifications = () => {
+    // Bildirim tipine göre hedef: mesajlar mesaj sekmesine, takip ve katılım
+    // istekleri bildirimler sayfasına gider. Tip, Edge Function'ın push yüküne
+    // koyduğu `data.type` alanından okunuyor.
+    const openForResponse = (response: Notifications.NotificationResponse) => {
       if (!isMounted) return;
-      router.push('/notifications');
+      const type = response?.notification?.request?.content?.data?.type;
+      router.push(type === 'direct_message' ? '/message' : '/notifications');
     };
 
     const subscription = Notifications.addNotificationResponseReceivedListener((response) => {
       handledResponseIdRef.current = response?.notification?.request?.identifier ?? null;
-      openNotifications();
+      openForResponse(response);
     });
 
     (async () => {
@@ -72,7 +76,7 @@ function AppShell() {
         // Aynı yanıt listener tarafından zaten işlendiyse tekrar yönlendirme.
         if (last && id !== handledResponseIdRef.current) {
           handledResponseIdRef.current = id;
-          openNotifications();
+          openForResponse(last);
         }
       } catch (_) {}
     })();
