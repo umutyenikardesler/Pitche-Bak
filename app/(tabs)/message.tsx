@@ -129,9 +129,9 @@ export default function Messages() {
   // İlk yükleme tamamlandı mı? Tamamlandıysa sonraki odaklanmalarda sessiz tazeleme yapılır.
   const hasLoadedOnceRef = useRef(false);
   const [activeTab, setActiveTab] = useState<ChatTab>('direct');
-  // "Yapılacak Maçlar" listesinin ölçülen toplam içerik yüksekliği ve iki bölümün
-  // paylaştığı toplam alan. Kart yüksekliği bunlardan türetiliyor.
-  const [upcomingContentHeight, setUpcomingContentHeight] = useState(0);
+  // "Yapılacak Maçlar" bölümünde ilk kartın ölçülen yüksekliği ve iki bölümün
+  // paylaştığı toplam alan; 3 kartlık sınır ve %60 üst sınırı bunlardan hesaplanıyor.
+  const [upcomingRowHeight, setUpcomingRowHeight] = useState(0);
   const [matchSectionsHeight, setMatchSectionsHeight] = useState(0);
   const getChatKey = useCallback((item: ChatSummary): string => {
     if (item.kind === "match") return `${item.owner_id}-m-${item.id}`;
@@ -916,24 +916,16 @@ export default function Messages() {
    * Kart yüksekliği sabit olmadığı için ilk kart ölçülüp hesap ondan yapılıyor.
    * Kalan yüksekliği "Geçmiş Maçlar" listesi (flex: 1) otomatik alıyor.
    */
-  // Kart yüksekliği, listenin GERÇEK içerik yüksekliğinden türetiliyor (toplam / kart
-  // sayısı). Tek satırı onLayout ile ölçmek veya sabit bir tahmin kullanmak güvenilmez:
-  // tahmin gerçek karttan büyük olduğunda bölüm olması gerekenden yüksek çıkıyordu.
-  const measuredUpcomingRow =
-    upcomingItems.length > 0 && upcomingContentHeight > 0
-      ? upcomingContentHeight / upcomingItems.length
-      : 0;
-
   const upcomingMaxHeight =
     matchSectionsHeight > 0 ? matchSectionsHeight * UPCOMING_MAX_HEIGHT_RATIO : undefined;
 
-  // Ölçüm gelene kadar yükseklik dayatmıyoruz; liste doğal boyunda render olur.
+  // Kart yüksekliği ilk satırdan ölçülüyor. Listenin içerik yüksekliğinden türetmek
+  // güvenilmezdi: liste esnerken ölçüm de şişiyordu.
+  // Ölçüm gelene kadar yükseklik dayatmıyoruz; `flexGrow: 0` sayesinde liste zaten
+  // içeriği kadar yer kaplıyor, dolayısıyla 3 ve altı kartta sınıra gerek bile yok.
   const upcomingHeight =
-    measuredUpcomingRow > 0
-      ? Math.min(
-          Math.min(upcomingItems.length, UPCOMING_VISIBLE_ROWS) * measuredUpcomingRow,
-          upcomingMaxHeight ?? Number.MAX_SAFE_INTEGER
-        )
+    upcomingRowHeight > 0 && upcomingItems.length > UPCOMING_VISIBLE_ROWS
+      ? UPCOMING_VISIBLE_ROWS * upcomingRowHeight
       : undefined;
 
   const upcomingSection = (
@@ -949,12 +941,26 @@ export default function Messages() {
         <FlatList
           data={upcomingItems}
           keyExtractor={(it) => `up-${it.owner_id}-${it.kind === 'match' ? it.id : 'dm'}`}
-          renderItem={({ item }) => renderChatRow({ item })}
-          onContentSizeChange={(_w, h) => setUpcomingContentHeight(h)}
-          style={upcomingHeight != null ? { height: upcomingHeight } : undefined}
+          renderItem={({ item, index }) => (
+            <View
+              onLayout={
+                index === 0
+                  ? (e) => setUpcomingRowHeight(e.nativeEvent.layout.height)
+                  : undefined
+              }
+            >
+              {renderChatRow({ item })}
+            </View>
+          )}
+          style={[
+            // KRİTİK: RN'de ScrollView/FlatList varsayılan stili flexGrow: 1 içerir.
+            // Bu yüzden liste, içeriği tek kart olsa bile sütundaki boş alanı kaplıyordu.
+            { flexGrow: 0 },
+            upcomingHeight != null ? { height: upcomingHeight } : null,
+            upcomingMaxHeight != null ? { maxHeight: upcomingMaxHeight } : null,
+          ]}
           showsVerticalScrollIndicator
-          // Yalnızca içerik sınıra taştığında kaydırılabilir olsun.
-          scrollEnabled={upcomingHeight != null && upcomingContentHeight > upcomingHeight + 1}
+          scrollEnabled={upcomingItems.length > UPCOMING_VISIBLE_ROWS}
         />
       )}
     </>
