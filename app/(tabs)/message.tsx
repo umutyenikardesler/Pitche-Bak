@@ -23,6 +23,8 @@ const CHATS_PAGE_SIZE = 5;
 // Kartların kendi `my-1` boşluğu var; burada ekstra aralık bırakmıyoruz.
 const CHAT_ROW_GAP = 0;
 const CHAT_LIST_PADDING_TOP = 8;
+/** "Yapılacak Maçlar" bölümünde kaydırmadan görünecek kart sayısı. */
+const UPCOMING_VISIBLE_ROWS = 3;
 
 /** Mesajlar sayfasındaki sekmeler. Grup mesajları henüz uygulanmadı. */
 type ChatTab = 'direct' | 'match' | 'group';
@@ -125,6 +127,8 @@ export default function Messages() {
   // İlk yükleme tamamlandı mı? Tamamlandıysa sonraki odaklanmalarda sessiz tazeleme yapılır.
   const hasLoadedOnceRef = useRef(false);
   const [activeTab, setActiveTab] = useState<ChatTab>('direct');
+  // "Yapılacak Maçlar" bölümünün yükseklik sınırı için ilk kartın ölçülen yüksekliği.
+  const [upcomingRowHeight, setUpcomingRowHeight] = useState(0);
   const getChatKey = useCallback((item: ChatSummary): string => {
     if (item.kind === "match") return `${item.owner_id}-m-${item.id}`;
     return `${item.owner_id}-d-${(item as DirectChatSummary).match_id ?? "x"}`;
@@ -135,19 +139,18 @@ export default function Messages() {
    * "Sohbetler" bu sırayı korur.
    *
    * Maç sekmesinde ayrıca bölüm başlıklarını çizebilmek için ilk "geçmiş" maçın anahtarı
-   * da döndürülür; başlık, listeye satır eklemeden o kartın üstünde render edilir
-   * (böylece sayfalama/soluklaştırma hesabı satır sayısıyla bozulmaz).
+   * ayrı listeler olarak döndürülür: yapılacak maçlar kendi kısa ve kaydırılabilir
+   * listesinde, geçmiş maçlar ise sayfalanan ana listede gösterilir.
    */
-  const { tabItems, upcomingMatchCount, firstPastMatchKey } = useMemo(() => {
-    if (activeTab === 'group') {
-      return { tabItems: [] as ChatSummary[], upcomingMatchCount: 0, firstPastMatchKey: null as string | null };
-    }
+  const { tabItems, upcomingItems, pastItems } = useMemo(() => {
+    const empty = {
+      tabItems: [] as ChatSummary[],
+      upcomingItems: [] as ChatSummary[],
+      pastItems: [] as ChatSummary[],
+    };
+    if (activeTab === 'group') return empty;
     if (activeTab === 'direct') {
-      return {
-        tabItems: items.filter((it) => it.kind === 'direct') as ChatSummary[],
-        upcomingMatchCount: 0,
-        firstPastMatchKey: null as string | null,
-      };
+      return { ...empty, tabItems: items.filter((it) => it.kind === 'direct') as ChatSummary[] };
     }
 
     // Maç sohbetleri: yaklaşan maçlar tarih-saat sırasıyla üstte, oynanmışlar altta
@@ -169,11 +172,15 @@ export default function Messages() {
     const past = [...pinned.past, ...rest.past];
 
     return {
-      tabItems: [...upcoming, ...past].map((x) => x.m) as ChatSummary[],
-      upcomingMatchCount: upcoming.length,
-      firstPastMatchKey: past.length > 0 ? getChatKey(past[0].m) : null,
+      tabItems: [] as ChatSummary[],
+      upcomingItems: upcoming.map((x) => x.m) as ChatSummary[],
+      pastItems: past.map((x) => x.m) as ChatSummary[],
     };
   }, [items, activeTab, pinnedChatKeys, getChatKey]);
+
+  // Sayfalama/soluklaştırma maç sekmesinde YALNIZCA geçmiş maçlara uygulanır;
+  // yapılacak maçlar kendi kısa listesinde tam olarak gösterilir.
+  const paginatedItems = activeTab === 'match' ? pastItems : tabItems;
 
   // Hap menü hizasına denk gelen sohbet soluk gösterilir; kaydırdıkça 5'er yüklenir.
   const {
@@ -182,14 +189,11 @@ export default function Messages() {
     reset: resetPagination,
     handleRowLayout,
     listProps: paginationListProps,
-  } = useTabBarAwarePagination<ChatSummary>(tabItems, {
+  } = useTabBarAwarePagination<ChatSummary>(paginatedItems, {
     initialVisible: INITIAL_VISIBLE_CHATS,
     pageSize: CHATS_PAGE_SIZE,
     rowGap: CHAT_ROW_GAP,
     listPaddingTop: CHAT_LIST_PADDING_TOP,
-    // Yapılacak maçlar ekrana sığmasa da tamamı listelensin (kaydırarak görülür);
-    // soluk sınır böylece "Geçmiş Maçlar" bölümünün ilk kartına düşer.
-    minVisible: upcomingMatchCount,
   });
 
   // Sekme değişince sayfalama baştan hesaplansın (liste ve kart yükseklikleri değişiyor).
@@ -894,22 +898,45 @@ export default function Messages() {
     </Text>
   );
 
-  const renderItem = ({ item, index }: { item: ChatSummary; index: number }) => {
-    // "Geçmiş Maçlar" başlığı, listeye ayrı bir satır eklemeden ilk geçmiş kartın
-    // üstünde çizilir; böylece sayfalama ve soluklaştırma satır sayısıyla bozulmaz.
-    const showPastHeader =
-      activeTab === 'match' && !!firstPastMatchKey && getChatKey(item) === firstPastMatchKey;
+  const renderItem = ({ item, index }: { item: ChatSummary; index: number }) => (
+    <View
+      onLayout={(e) => handleRowLayout(index, e.nativeEvent.layout.height)}
+      style={{ opacity: isFaded(index) ? 0.35 : 1, marginBottom: CHAT_ROW_GAP }}
+    >
+      {renderChatRow({ item })}
+    </View>
+  );
 
-    return (
-      <View
-        onLayout={(e) => handleRowLayout(index, e.nativeEvent.layout.height)}
-        style={{ opacity: isFaded(index) ? 0.35 : 1, marginBottom: CHAT_ROW_GAP }}
-      >
-        {showPastHeader && sectionTitle(t('messages.sections.pastMatches'))}
-        {renderChatRow({ item })}
-      </View>
-    );
-  };
+  // Yapılacak maçlar bölümü: en fazla UPCOMING_VISIBLE_ROWS kart yüksekliğinde,
+  // fazlası kendi içinde kaydırılarak görülür. Kart yüksekliği sabit olmadığından
+  // ilk kart ölçülüp sınır ondan hesaplanıyor.
+  const upcomingSection = (
+    <>
+      {sectionTitle(t('messages.sections.upcomingMatches'))}
+      <FlatList
+        data={upcomingItems}
+        keyExtractor={(it) => `up-${it.owner_id}-${it.kind === 'match' ? it.id : 'dm'}`}
+        renderItem={({ item, index }) => (
+          <View
+            onLayout={
+              index === 0
+                ? (e) => setUpcomingRowHeight(e.nativeEvent.layout.height)
+                : undefined
+            }
+          >
+            {renderChatRow({ item })}
+          </View>
+        )}
+        style={
+          upcomingRowHeight > 0 && upcomingItems.length > UPCOMING_VISIBLE_ROWS
+            ? { maxHeight: upcomingRowHeight * UPCOMING_VISIBLE_ROWS }
+            : undefined
+        }
+        showsVerticalScrollIndicator
+        scrollEnabled={upcomingItems.length > UPCOMING_VISIBLE_ROWS}
+      />
+    </>
+  );
 
   let content: JSX.Element;
 
@@ -917,6 +944,35 @@ export default function Messages() {
     content = (
       <View className="flex-1 justify-center items-center">
         <ActivityIndicator size="large" color={colors.primary} />
+      </View>
+    );
+  } else if (activeTab === 'match' && (upcomingItems.length > 0 || pastItems.length > 0)) {
+    // Maç sekmesi iki ayrı liste: üstte kısa/kaydırılabilir "Yapılacak Maçlar",
+    // altta sayfalanan "Geçmiş Maçlar". Kardeş listeler oldukları için iç içe
+    // VirtualizedList uyarısı oluşmuyor.
+    content = (
+      <View style={{ flex: 1 }}>
+        {upcomingItems.length > 0 && upcomingSection}
+
+        {pastItems.length > 0 && (
+          <>
+            {/* Bölümler arası nefes payı */}
+            <View style={{ height: 5 }} />
+            {sectionTitle(t('messages.sections.pastMatches'))}
+          </>
+        )}
+
+        <FlatList
+          data={visibleItems}
+          keyExtractor={(it) => `past-${it.owner_id}-${it.kind === 'match' ? it.id : 'dm'}`}
+          renderItem={renderItem}
+          style={{ flex: 1 }}
+          contentContainerStyle={{ paddingBottom: 16 + tabBarInset, flexGrow: 1 }}
+          refreshing={refreshing}
+          onRefresh={onRefresh}
+          alwaysBounceVertical
+          {...paginationListProps}
+        />
       </View>
     );
   } else if (!tabItems.length) {
@@ -957,11 +1013,6 @@ export default function Messages() {
         // Sekme çubuğuyla kardeş olduğu için kalan alanı açıkça doldurmalı;
         // soluk satır hesabı da bu yüksekliğe göre ölçülüyor.
         style={{ flex: 1 }}
-        ListHeaderComponent={
-          activeTab === 'match' && upcomingMatchCount > 0
-            ? sectionTitle(t('messages.sections.upcomingMatches'))
-            : null
-        }
         contentContainerStyle={{ paddingBottom: 16 + tabBarInset, paddingTop: CHAT_LIST_PADDING_TOP, flexGrow: 1 }}
         refreshing={refreshing}
         onRefresh={onRefresh}
