@@ -6,6 +6,8 @@ import { useNotification } from './NotificationContext';
 import { useRouter, usePathname } from 'expo-router';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAppTheme } from '@/contexts/ThemeContext';
+import { useAuth } from '@/contexts/AuthContext';
+import { useGuestAuthAlert } from '@/contexts/GuestAuthModalContext';
 
 // Add type for props
 interface CustomHeaderProps {
@@ -20,11 +22,20 @@ const CustomHeader = ({ title, showNotificationIcon = true, onTitlePress }: Cust
   const { badgeCount } = useNotification();
   const { t } = useLanguage();
   const { colors, isDark } = useAppTheme();
+  const { isGuest } = useAuth();
+  const { showGuestAuthAlert } = useGuestAuthAlert();
   const { width: windowWidth } = useWindowDimensions();
   
   const handleNotificationsPress = () => {
     // Eğer zaten notifications sayfasındaysak, hiçbir şey yapma
     if (pathname === '/(tabs)/notifications' || pathname === '/notifications') {
+      return;
+    }
+    // Misafir kullanıcıyı bildirimlere HİÇ göndermiyoruz; sekmelerdeki tabPress
+    // korumasının aynısı. Aksi halde rota geçmişe giriyor, giriş ekranından geri
+    // dönüldüğünde koruma yeniden tetiklenip giriş ekranı tekrar açılıyordu.
+    if (isGuest) {
+      showGuestAuthAlert(t('auth.guestNotifications'));
       return;
     }
     router.push('/notifications');

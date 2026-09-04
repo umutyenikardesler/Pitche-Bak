@@ -3,8 +3,12 @@ import { Modal, View, Text } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useLanguage } from './LanguageContext';
 import { useAppTheme } from './ThemeContext';
+import { getLastNonAuthRoute } from '@/lib/lastNonAuthRoute';
 
 const REDIRECT_DELAY_MS = 2500;
+/** Misafirin "Başla"dan sonra geldiği ana sayfa; geri dönüş için varsayılan hedef. */
+const GUEST_HOME_ROUTE = '/(tabs)?guest=1';
+
 
 interface GuestAuthModalContextType {
   showGuestAuthAlert: (message: string) => void;
@@ -18,9 +22,14 @@ export function GuestAuthModalProvider({ children }: { children: React.ReactNode
   const { colors } = useAppTheme();
   const [visible, setVisible] = useState(false);
   const [message, setMessage] = useState('');
+  const [origin, setOrigin] = useState<string>(GUEST_HOME_ROUTE);
 
   const showGuestAuthAlert = useCallback((msg: string) => {
     setMessage(msg);
+    // Kökeni UYARI ANINDA sabitliyoruz. `lastNonAuthRoute` global bir değer ve
+    // yönlendirmeye kadar geçen sürede başka bir gezinti onu ezebilir; sabitlemezsek
+    // giriş ekranından geri dönüş yanlış sayfaya (ör. en başa) gidebiliyor.
+    setOrigin(getLastNonAuthRoute() ?? GUEST_HOME_ROUTE);
     setVisible(true);
   }, []);
 
@@ -29,11 +38,12 @@ export function GuestAuthModalProvider({ children }: { children: React.ReactNode
 
     const timeoutId = setTimeout(() => {
       setVisible(false);
-      router.push('/auth');
+      // Geri dönüş hedefini açıkça taşı: auth ekranı `from` parametresini önceliyor.
+      router.push(`/auth?from=${encodeURIComponent(origin || GUEST_HOME_ROUTE)}` as any);
     }, REDIRECT_DELAY_MS);
 
     return () => clearTimeout(timeoutId);
-  }, [visible, router]);
+  }, [visible, router, origin]);
 
   return (
     <GuestAuthModalContext.Provider value={{ showGuestAuthAlert }}>
