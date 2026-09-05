@@ -4,7 +4,7 @@ import { LogBox, Platform, View, AppState, Linking } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { useRouter, useRootNavigationState } from "expo-router";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { NotificationProvider } from '@/components/NotificationContext';
 import { LanguageProvider } from '@/contexts/LanguageContext';
 import { AuthProvider } from '@/contexts/AuthContext';
@@ -17,6 +17,8 @@ import { isAuthCallbackLocked, lockAuthCallbackFor } from "@/lib/authCallbackLoc
 import { supabase } from "@/services/supabase";
 import { registerPushToken, unregisterPushToken } from "@/services/pushNotifications";
 import * as Notifications from "expo-notifications";
+import LaunchLogoOverlay from "@/components/LaunchLogoOverlay";
+import UpdateAvailableModal from "@/components/modals/UpdateAvailableModal";
 
 // Sadece belirli logları ignore et, tüm logları değil
 LogBox.ignoreLogs([
@@ -26,7 +28,11 @@ LogBox.ignoreLogs([
   'expo-notifications',
 ]);
 
+// Açılış geçişi uygulama başına bir kez oynasın (Fast Refresh'te tekrarlamasın).
+let launchAnimationPlayed = false;
+
 function AppShell() {
+  const [showLaunchOverlay, setShowLaunchOverlay] = useState(!launchAnimationPlayed);
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useGlobalSearchParams();
@@ -304,6 +310,20 @@ function AppShell() {
               </Stack>
               </View>
             )}
+
+            {/* Açılış geçişi: logo ortadan header'daki yerine kayarken index arkada yüklenir. */}
+            {showLaunchOverlay && (
+              <LaunchLogoOverlay
+                onDone={() => {
+                  launchAnimationPlayed = true;
+                  setShowLaunchOverlay(false);
+                }}
+              />
+            )}
+
+            {/* Mağazada yeni sürüm varsa açılışta uyarı. Açılış animasyonu
+                bitmeden gösterilmiyor ki iki katman üst üste binmesin. */}
+            {!showLaunchOverlay && <UpdateAvailableModal />}
           </SafeAreaProvider>
         </GestureHandlerRootView>
       </NotificationProvider>

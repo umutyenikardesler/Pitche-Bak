@@ -20,6 +20,7 @@ import {
 import { useState, useEffect, useCallback } from "react";
 import { usePathname, useRouter } from "expo-router";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useAppTheme } from "@/contexts/ThemeContext";
 import "@/global.css";
 import ProfileStatus from "@/components/profile/ProfileStatus";
 import ProfileCondition from "@/components/profile/ProfileCondition";
@@ -44,6 +45,13 @@ interface ProfilePreviewProps {
   userId: string;
 }
 
+/**
+ * "Mesaj At" ve "Engelle" butonlarının ortak genişliği. Yazı uzunlukları farklı
+ * olduğu için içerik kadar bırakılırsa butonlar farklı genişlikte oluyor;
+ * eşit görünmeleri için genişlik açıkça sabitleniyor.
+ */
+const ACTION_BUTTON_WIDTH = 70;
+
 export default function ProfilePreview({
   isVisible,
   onClose,
@@ -52,6 +60,23 @@ export default function ProfilePreview({
   const router = useRouter();
   const pathname = usePathname();
   const { t } = useLanguage();
+  const { colors, isDark } = useAppTheme();
+
+  /**
+   * Modal içindeki kartların belirginleşmesi için 1px marka yeşili kenarlık ve
+   * dışa vuran yeşil ışıltı. Hap menü ve mesaj sekmeleriyle aynı değerler.
+   * Not: RN'de bir görünüm tek gölge taşıyabildiği için kartlardaki `shadow-lg`
+   * sınıfı kaldırıldı; yoksa ışıltı yerine gri gölge kazanıyordu.
+   */
+  const glowCardStyle = {
+    borderWidth: 1,
+    borderColor: colors.primary,
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.5,
+    shadowRadius: 4,
+    elevation: 4,
+  } as const;
   const [userData, setUserData] = useState<UserData | null>(null);
   const [loading, setLoading] = useState(true);
   const [isFollowing, setIsFollowing] = useState(false);
@@ -250,6 +275,21 @@ export default function ProfilePreview({
     setCurrentList([]);
     // Sonra modal'ı kapat
     onClose();
+  };
+
+  /**
+   * Bu kullanıcıyla olan sohbeti açar. Buton yalnızca takip ilişkisi kabul
+   * edilmişken gösteriliyor (aşağıdaki butonlara bkz.), o yüzden burada ayrıca
+   * takip kontrolü yapılmıyor.
+   * Modal açıkken gezinmemek için önce kapatılıyor (dosyadaki mevcut desen).
+   */
+  const handleMessage = () => {
+    const fullName = `${userData?.name ?? ""} ${userData?.surname ?? ""}`.trim();
+    handleClose();
+    router.push({
+      pathname: "/message/chat",
+      params: { to: userId, ...(fullName ? { name: fullName } : {}) },
+    });
   };
 
   const handleFollow = async () => {
@@ -511,7 +551,10 @@ export default function ProfilePreview({
                   activeOpacity={1}
                   onPress={(e) => e.stopPropagation()}
                 >
-                <View className="flex flex-row bg-white rounded-lg shadow-lg px-2 py-1 mb-2 mt-3">
+                <View
+                  className="flex flex-row rounded-lg px-2 py-1 mb-2 mt-3"
+                  style={{ backgroundColor: colors.surface, ...glowCardStyle }}
+                >
                   {/* Profil Resmi */}
                   <View className="w-1/5">
                     <TouchableOpacity
@@ -537,30 +580,32 @@ export default function ProfilePreview({
                       {userData?.surname || ""}
                     </Text>
 
+                    {/* Etiketler tema rengini kullanmalı: renk verilmediğinde
+                        varsayılan siyaha düşüyor ve koyu modda okunmuyordu. */}
                     <View className="flex-row flex-wrap justify-between mb-1">
-                      <Text className="text-wrap font-semibold" style={{ lineHeight: 20 }}>
+                      <Text className="text-wrap font-semibold" style={{ lineHeight: 20, color: colors.text }}>
                         {t("profile.age")}:
                       </Text>
                       <Text className="text-green-600 font-semibold" style={{ lineHeight: 20 }}>
                         {" "}
                         {userData?.age || "-"}{" "}
                       </Text>
-                      <Text className="font-semibold" style={{ lineHeight: 20 }}>
+                      <Text className="font-semibold" style={{ lineHeight: 20, color: colors.text }}>
                         {t("profile.height")}:
                       </Text>
                       <Text className="text-green-600 font-semibold" style={{ lineHeight: 20 }}>
                         {" "}
                         {userData?.height || "-"} {t("units.cm")} {" "}
                       </Text>
-                      <Text className="font-semibold" style={{ lineHeight: 20 }}>
+                      <Text className="font-semibold" style={{ lineHeight: 20, color: colors.text }}>
                         {t("profile.weight")}:
                       </Text>
                       <Text className="text-green-600 font-semibold" style={{ lineHeight: 20 }}>
                         {" "}
                         {userData?.weight || "-"} {t("units.kg")} {" "}
                       </Text>
-                      <Text className="text-wrap font-semibold mb-1" style={{ lineHeight: 20 }}>
-                        <Text className="font-semibold" style={{ lineHeight: 20 }}>
+                      <Text className="text-wrap font-semibold mb-1" style={{ lineHeight: 20, color: colors.text }}>
+                        <Text className="font-semibold" style={{ lineHeight: 20, color: colors.text }}>
                           {t("profile.position")}:
                         </Text>
                         <Text className="text-green-600 font-semibold mb-1" style={{ lineHeight: 20 }}>
@@ -573,16 +618,22 @@ export default function ProfilePreview({
 
                     {/* Takip Et / Takip İsteğini Geri Çek Butonu */}
                     {isFollowing && followStatus === "accepted" ? (
+                      // Takip ediliyorsa üç buton: [Takip ediyorsun] [Mesaj] [Engelle].
+                      // Yan butonlar `flex-1` ile eşit paylaşıyor; ortadaki sabit
+                      // genişlikte olduğu için tam ortada duruyor.
                       <View className="flex-row gap-2" style={{ alignItems: "center" }}>
                         <TouchableOpacity
                           className="flex-1 bg-green-700 px-1 py-2 rounded"
                           style={{ minWidth: 0 }}
                           onPress={handleUnfollow}
                         >
+                          {/* adjustsFontSizeToFit: dar ekranlarda yazı kesilmek
+                              yerine bir tık küçülüp tam sığsın. */}
                           <Text
                             className="text-center font-bold text-white"
                             numberOfLines={1}
-                            ellipsizeMode="tail"
+                            adjustsFontSizeToFit
+                            minimumFontScale={0.8}
                             style={{ flexShrink: 1, fontSize: 11.5 }}
                           >
                             {t("profilePreview.youAreFollowing")}
@@ -590,11 +641,35 @@ export default function ProfilePreview({
                         </TouchableOpacity>
                         {currentUserId && currentUserId !== userId && (
                           <TouchableOpacity
-                            className="px-2 py-2 rounded border border-red-500"
+                            className="bg-green-700 py-2 rounded"
+                            style={{ width: ACTION_BUTTON_WIDTH }}
+                            onPress={handleMessage}
+                          >
+                            <Text
+                              className="text-center font-bold text-white"
+                              numberOfLines={1}
+                              adjustsFontSizeToFit
+                              minimumFontScale={0.8}
+                              style={{ fontSize: 11.5 }}
+                            >
+                              {t("profilePreview.message")}
+                            </Text>
+                          </TouchableOpacity>
+                        )}
+                        {currentUserId && currentUserId !== userId && (
+                          <TouchableOpacity
+                            className="py-2 rounded border border-red-500"
+                            style={{ width: ACTION_BUTTON_WIDTH }}
                             onPress={handleBlockUser}
                           >
-                            <Text className="text-center font-bold text-red-600" numberOfLines={1} style={{ fontSize: 11.5 }}>
-                              {t("profile.blockUser")}
+                            <Text
+                              className="text-center font-bold text-red-600"
+                              numberOfLines={1}
+                              adjustsFontSizeToFit
+                              minimumFontScale={0.8}
+                              style={{ fontSize: 11.5 }}
+                            >
+                              {t("profilePreview.block")}
                             </Text>
                           </TouchableOpacity>
                         )}
@@ -612,7 +687,8 @@ export default function ProfilePreview({
                           <Text
                             className="font-bold text-white text-center"
                             numberOfLines={1}
-                            ellipsizeMode="tail"
+                            adjustsFontSizeToFit
+                            minimumFontScale={0.8}
                             style={{ flexShrink: 1, fontSize: 11.5 }}
                           >
                             {isFollowing
@@ -624,11 +700,18 @@ export default function ProfilePreview({
                         </TouchableOpacity>
                         {currentUserId && currentUserId !== userId && (
                           <TouchableOpacity
-                            className="px-2 py-2 rounded border border-red-500"
+                            className="py-2 rounded border border-red-500"
+                            style={{ width: ACTION_BUTTON_WIDTH }}
                             onPress={handleBlockUser}
                           >
-                            <Text className="text-center font-bold text-red-600" numberOfLines={1} style={{ fontSize: 11.5 }}>
-                              {t("profile.blockUser")}
+                            <Text
+                              className="text-center font-bold text-red-600"
+                              numberOfLines={1}
+                              adjustsFontSizeToFit
+                              minimumFontScale={0.8}
+                              style={{ fontSize: 11.5 }}
+                            >
+                              {t("profilePreview.block")}
                             </Text>
                           </TouchableOpacity>
                         )}
@@ -638,7 +721,7 @@ export default function ProfilePreview({
                 </View>
 
                 {isFollowing && followStatus === "accepted" && (
-                  <View className="bg-white rounded-lg shadow-lg p-4">
+                  <View className="rounded-lg p-4" style={{ backgroundColor: colors.surface, ...glowCardStyle }}>
                     {/* ProfileStatus bileşeni - gerçek verilerle */}
                     <ProfileStatus
                       matchCount={matchCount}
@@ -670,10 +753,20 @@ export default function ProfilePreview({
                     />
 
                     {/* Modal içeriği */}
-                    <View className="bg-white rounded-xl w-10/12 max-h-2/3 shadow-2xl border-2 border-green-700">
-                      {/* Header */}
-                      <View className="flex-row justify-between items-center p-4 border-b border-gray-200 bg-green-200 rounded-t-xl">
-                        <Text className="text-xl font-bold text-green-700">
+                    <View
+                      className="rounded-xl w-10/12 max-h-2/3 shadow-2xl border-2 border-green-700"
+                      style={{ backgroundColor: colors.surface }}
+                    >
+                      {/* Header. Açık yeşil şerit koyu modda yabancı duruyor;
+                          orada yüzey rengine düşülüyor. */}
+                      <View
+                        className="flex-row justify-between items-center p-4 border-b rounded-t-xl"
+                        style={{
+                          backgroundColor: isDark ? colors.surfaceAlt : "#bbf7d0",
+                          borderBottomColor: colors.border,
+                        }}
+                      >
+                        <Text className="text-xl font-bold" style={{ color: colors.primary }}>
                           {activeListType === "followers"
                             ? t("profile.followers")
                             : t("profile.following")}
@@ -697,7 +790,8 @@ export default function ProfilePreview({
                         {currentList.map((item) => (
                           <View
                             key={item.id}
-                            className="flex-row items-center p-4 border-b border-gray-100"
+                            className="flex-row items-center p-4 border-b"
+                            style={{ borderBottomColor: colors.border }}
                           >
                             <View className="relative">
                               <Image
@@ -718,7 +812,7 @@ export default function ProfilePreview({
                               <Text className="text-lg font-semibold text-green-700">
                                 {item.name} {item.surname}
                               </Text>
-                              <Text className="text-sm text-gray-500 mt-1">
+                              <Text className="text-sm mt-1" style={{ color: colors.textMuted }}>
                                 {activeListType === "followers"
                                   ? t("profile.followingYou")
                                   : t("profile.youFollowing")}
@@ -733,7 +827,11 @@ export default function ProfilePreview({
 
                 {/* Profil resmi önizleme - Ana modal içinde */}
                 {imageModalVisible && (
-                  <View className="absolute inset-0 bg-white/60 z-50">
+                  // Perde: koyu modda beyaz yarı saydam katman ters düşüyordu.
+                  <View
+                    className="absolute inset-0 z-50"
+                    style={{ backgroundColor: isDark ? colors.overlay : "rgba(255,255,255,0.6)" }}
+                  >
                     {/* Boş alana tıklayınca kapatma */}
                     <TouchableOpacity
                       className="absolute inset-0"

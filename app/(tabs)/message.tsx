@@ -578,6 +578,21 @@ export default function Messages() {
     });
   }, [router, screenWidth, translateX]);
 
+  // Ekran her odaklandığında yatay öteleme sıfırlanır.
+  //
+  // NEDEN: Yukarıdaki geri-kaydırma animasyonu sayfayı bir ekran genişliği
+  // kadar ötelüyor ve sıfırlamayı animasyonun bitiş callback'ine bırakıyor.
+  // Animasyon `useNativeDriver: true` ile çalıştığı için o `setValue(0)` native
+  // tarafa her zaman yansımıyor; yansımadığında sayfa ekran dışında kalıyor ve
+  // sekmeye tekrar girildiğinde SEKMELER DAHİL hiçbir şey görünmüyordu
+  // (tamamen beyaz ekran, ara sıra tekrarlayan). Odakta sıfırlamak, önceki
+  // çıkışta ne olduğundan bağımsız olarak sayfayı yerine oturtur.
+  useFocusEffect(
+    useCallback(() => {
+      translateX.stopAnimation(() => translateX.setValue(0));
+    }, [translateX])
+  );
+
   // Pull-to-refresh çalışabilsin diye sadece sol kenardan başlatılan yatay swipe'ı yakala
   const swipeGesture = Gesture.Pan()
     .hitSlop({ left: 0, width: 24 })

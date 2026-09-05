@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, TouchableOpacity, Text, Image, Platform, useWindowDimensions } from 'react-native';
+import { View, TouchableOpacity, Text, Image, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useNotification } from './NotificationContext';
@@ -8,6 +8,18 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { useAppTheme } from '@/contexts/ThemeContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useGuestAuthAlert } from '@/contexts/GuestAuthModalContext';
+import {
+  HEADER_CONTENT_HEIGHT,
+  HEADER_LOGO_HEIGHT,
+  HEADER_LOGO_WIDTH,
+} from '@/constants/header';
+
+/**
+ * Başlığın soldan, bildirim ikonunun sağdan iç boşluğu. Maç kartlarındaki
+ * `mx-4` (16px) ile aynı olsun diye bu değer kullanılıyor; header içeriği
+ * kartlarla aynı hizada duruyor.
+ */
+const SIDE_PADDING = 16;
 
 // Add type for props
 interface CustomHeaderProps {
@@ -24,8 +36,6 @@ const CustomHeader = ({ title, showNotificationIcon = true, onTitlePress }: Cust
   const { colors, isDark } = useAppTheme();
   const { isGuest } = useAuth();
   const { showGuestAuthAlert } = useGuestAuthAlert();
-  const { width: windowWidth } = useWindowDimensions();
-  
   const handleNotificationsPress = () => {
     // Eğer zaten notifications sayfasındaysak, hiçbir şey yapma
     if (pathname === '/(tabs)/notifications' || pathname === '/notifications') {
@@ -134,29 +144,70 @@ const CustomHeader = ({ title, showNotificationIcon = true, onTitlePress }: Cust
           })()}
         </View>
       ) : (
-        // Native: mevcut davranışı koru (logo ortada)
-        <View className="flex-row justify-between items-center w-full -mx-0">
-          {/* Sol: Başlık */}
-          <TouchableOpacity onPress={handleTitlePress} activeOpacity={0.7}>
-            <Text style={{ fontSize: 18, fontWeight: '700', color: colors.primaryDark }}>{title}</Text>
-          </TouchableOpacity>
-
-          {/* Orta: Logo (mutlak konumda ortalanmış) */}
+        // Native: başlık (sol) - logo (orta) - bildirim (sağ).
+        // Mutlak konumlandırma yerine gerçek kolonlar kullanılıyor.
+        // Orta kolon logo genişliğinde SABİT, yan kolonlar EŞİT esniyor; bu
+        // simetri logonun ekranda matematiksel olarak tam ortada durmasını
+        // garanti ediyor. (Sabit %25 verilseydi "Bildirimler" / "Maç Oluştur"
+        // gibi başlıklar kolona sığmayıp kırpılıyordu.)
+        // Kapsayıcının tam genişlik alması için bkz. app/(tabs)/_layout.tsx
+        // içindeki headerTitleContainerStyle.
+        <View className="flex-row items-center w-full">
+          {/* Sol: Başlık — sola dayalı, kartlarla aynı hizada */}
+          {/* minWidth: 0 -> uzun başlık kolonu genişletmesin, kendi içinde kırpılsın
+              (Yoga'da flex item varsayılan olarak içeriğinin altına inmez). */}
           <View
-            className="ml-1 mb-1"
             style={{
-              position: 'absolute',
-              left: windowWidth / 2 - 85, // yarı genişlik - yarı logo genişliği
+              flex: 1,
+              minWidth: 0,
+              alignItems: 'flex-start',
+              justifyContent: 'center',
+              paddingLeft: SIDE_PADDING,
+            }}
+          >
+            <TouchableOpacity onPress={handleTitlePress} activeOpacity={0.7}>
+              {/* Yazı tipi index'teki başlıklarla aynı: KONDİSYONUN ile aynı
+                  `font-bold` sınıfı (bkz. components/index/IndexCondition.tsx). */}
+              <Text
+                className="font-bold"
+                numberOfLines={1}
+                style={{ fontSize: 16, color: colors.primaryDark }}
+              >
+                {title}
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Orta: Logo — tam ortalı.
+              Kolon yüksekliği header içerik yüksekliğine eşit ve logo bunun
+              içinde ortalı; böylece logonun dikey konumu hesaplanabilir oluyor
+              ve açılış animasyonu aynı formülü kullanabiliyor
+              (bkz. constants/header.ts). Eskiden `mb-1` ile ortalama
+              kaydırılıyordu, o yüzden konum tahmin edilemiyordu. */}
+          <View
+            style={{
+              width: HEADER_LOGO_WIDTH,
+              height: HEADER_CONTENT_HEIGHT,
+              alignItems: 'center',
+              justifyContent: 'center',
             }}
           >
             <Image
               source={require("@/assets/images/logo.png")}
-              style={{ width: 130, height: 40, resizeMode: 'contain' }}
+              style={{ width: HEADER_LOGO_WIDTH, height: HEADER_LOGO_HEIGHT, resizeMode: 'contain' }}
             />
           </View>
 
-          {/* Sağ: Bildirim ikonu */}
-          <View style={{ alignItems: 'flex-end' }}>
+          {/* Sağ: Bildirim ikonu — sağa dayalı, kartlarla aynı hizada */}
+          <View
+            style={{
+              flex: 1,
+              minWidth: 0,
+              alignItems: 'flex-end',
+              justifyContent: 'center',
+              paddingRight: SIDE_PADDING,
+            }}
+          >
             {showNotificationIcon && (
               <TouchableOpacity
                 onPress={handleNotificationsPress}

@@ -19,6 +19,8 @@ import { useRouter } from "expo-router";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useAppTheme } from "@/contexts/ThemeContext";
 import { supabase } from "@/services/supabase";
+import { getPushEnabled, setPushEnabled } from "@/services/pushNotifications";
+import { checkForAppUpdate } from "@/services/appUpdate";
 import PolicyModal from "./PolicyModal";
 import { POLICY_KEYS, PolicyKey } from "@/constants/policies";
 import { getPasswordChecks, getPasswordViolations } from "@/lib/passwordPolicy";
@@ -37,6 +39,9 @@ export default function SettingsModal({
   const { colors, isDark, toggleTheme } = useAppTheme();
   const [userRole, setUserRole] = useState<string | null>(null);
   const [languageOptionsVisible, setLanguageOptionsVisible] = useState(false);
+  const [notificationOptionsVisible, setNotificationOptionsVisible] = useState(false);
+  const [pushEnabled, setPushEnabledState] = useState(true);
+  const [savingPush, setSavingPush] = useState(false);
   const [agreementsVisible, setAgreementsVisible] = useState(false);
   const [policyModalKey, setPolicyModalKey] = useState<PolicyKey | null>(null);
   const [accountInfoVisible, setAccountInfoVisible] = useState(false);
@@ -79,26 +84,8 @@ export default function SettingsModal({
   const deviceModel = Device.modelName ?? Device.modelId ?? "-";
   const osName = Device.osName ?? Platform.OS;
   const osVersion = Device.osVersion ?? String(Platform.Version ?? "-");
-  const iosBundleId =
-    Constants.expoConfig?.ios?.bundleIdentifier ??
-    (Constants as any)?.manifest?.ios?.bundleIdentifier ??
-    null;
-
-  const normalizeVersion = (v: string) => (v || "").trim().replace(/^v/i, "");
-  const compareVersions = (aRaw: string, bRaw: string) => {
-    const a = normalizeVersion(aRaw);
-    const b = normalizeVersion(bRaw);
-    const aParts = a.split(".").map((x) => parseInt(x.replace(/\D/g, "") || "0", 10));
-    const bParts = b.split(".").map((x) => parseInt(x.replace(/\D/g, "") || "0", 10));
-    const len = Math.max(aParts.length, bParts.length);
-    for (let i = 0; i < len; i++) {
-      const av = aParts[i] ?? 0;
-      const bv = bParts[i] ?? 0;
-      if (av > bv) return 1;
-      if (av < bv) return -1;
-    }
-    return 0;
-  };
+  // Sürüm karşılaştırma ve mağaza sorgusu services/appUpdate.ts'e taşındı;
+  // açılıştaki güncelleme uyarısı da aynı kontrolü kullanıyor.
 
   useEffect(() => {
     const fetchAccountInfo = async () => {
@@ -155,6 +142,7 @@ export default function SettingsModal({
     setAgreementsVisible(false);
     setPolicyModalKey(null);
     setDeviceInfoVisible(false);
+    setNotificationOptionsVisible(false);
     setSavingEmail(false);
     setSavingPassword(false);
     setShowNewPassword(false);
@@ -176,55 +164,66 @@ export default function SettingsModal({
     setNewEmail(accountEmail ?? "");
   }, [accountEmail, visible]);
 
+  // Kayıtlı bildirim tercihini modal her açıldığında oku.
   useEffect(() => {
-    const checkUpdate = async () => {
-      if (!visible || !deviceInfoVisible) return;
-
-      // Şimdilik App Store kontrolünü sadece iOS'ta yapıyoruz.
-      if (Platform.OS !== "ios") {
-        setUpdateAvailable(null);
-        setUpdateCheckError(null);
-        return;
-      }
-
-      if (!iosBundleId) {
-        setUpdateAvailable(null);
-        setUpdateCheckError("bundleId_not_found");
-        return;
-      }
-
-      setUpdateCheckLoading(true);
-      setUpdateCheckError(null);
-      try {
-        const url = `https://itunes.apple.com/lookup?bundleId=${encodeURIComponent(iosBundleId)}`;
-        const res = await fetch(url);
-        if (!res.ok) throw new Error(`http_${res.status}`);
-        const json: any = await res.json();
-        const item = json?.results?.[0];
-        const storeVer = item?.version ? String(item.version) : null;
-        const trackUrl = item?.trackViewUrl ? String(item.trackViewUrl) : null;
-
-        setLatestStoreVersion(storeVer);
-        setStoreUrl(trackUrl);
-
-        const current = normalizeVersion(String(appVersion));
-        if (!storeVer || !current || current === "-") {
-          setUpdateAvailable(null);
-          return;
-        }
-
-        setUpdateAvailable(compareVersions(storeVer, current) === 1);
-      } catch (e: any) {
-        setUpdateAvailable(null);
-        setUpdateCheckError(e?.message || "unknown");
-      } finally {
-        setUpdateCheckLoading(false);
-      }
+    if (!visible) return;
+    let active = true;
+    getPushEnabled()
+      .then((enabled) => {
+        if (active) setPushEnabledState(enabled);
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
     };
+  }, [visible]);
 
-    checkUpdate();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [deviceInfoVisible, visible]);
+  const handleTogglePush = async (next: boolean) => {
+    if (savingPush) return;
+    // Anahtar hemen tepki versin; hata olursa geri alınıyor.
+    setPushEnabledState(next);
+    setSavingPush(true);
+    try {
+      if (!accountUserId) throw new Error("no_user");
+      await setPushEnabled(next, accountUserId);
+    } catch {
+      setPushEnabledState(!next);
+      Alert.alert(t("general.error"), t("settings.notifications.updateFailed"));
+    } finally {
+      setSavingPush(false);
+    }
+  };
+
+  // Kontrol, "Cihaz Bilgileri" AÇILDIĞINDA değil MODAL AÇILDIĞINDA başlıyor.
+  // Eskiden bölüm açılınca tetikleniyordu; kullanıcı bölümü açtığı anda istek
+  // yeni başladığı için sonuç geç geliyormuş gibi hissettiriyordu. Artık sonuç
+  // çoğu zaman bölüm açılmadan hazır oluyor.
+  useEffect(() => {
+    if (!visible) return;
+
+    let active = true;
+    setUpdateCheckLoading(true);
+    setUpdateCheckError(null);
+
+    checkForAppUpdate()
+      .then((info) => {
+        if (!active) return;
+        setLatestStoreVersion(info.latestVersion);
+        setStoreUrl(info.storeUrl);
+        setUpdateAvailable(info.updateAvailable);
+        setUpdateCheckError(info.error);
+      })
+      .catch(() => {
+        if (active) setUpdateCheckError("unknown");
+      })
+      .finally(() => {
+        if (active) setUpdateCheckLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [visible]);
 
   const handleUpdateEmail = async () => {
     const email = newEmail.trim();
@@ -833,6 +832,57 @@ export default function SettingsModal({
                       />
                     )}
                   </TouchableOpacity>
+                </View>
+              </View>
+            )}
+
+            {/* Bildirimler */}
+            <TouchableOpacity
+              className="flex-row items-center justify-between p-3 bg-green-600 rounded-lg mb-3"
+              activeOpacity={1}
+              onPress={() => setNotificationOptionsVisible(!notificationOptionsVisible)}
+            >
+              <View className="flex-row items-center">
+                <Ionicons name="notifications-outline" size={24} color="white" />
+                <Text className="text-white font-semibold text-lg ml-3">
+                  {t("settings.notifications.title")}
+                </Text>
+              </View>
+              <Ionicons
+                name={notificationOptionsVisible ? "chevron-up" : "chevron-down"}
+                size={24}
+                color="white"
+              />
+            </TouchableOpacity>
+
+            {notificationOptionsVisible && (
+              <View className="mb-3">
+                <View className="rounded-lg p-3" style={{ backgroundColor: colors.surfaceAlt }}>
+                  <View className="flex-row items-center justify-between">
+                    <View style={{ flex: 1, paddingRight: 12 }}>
+                      <Text className="font-semibold" style={{ color: colors.text }}>
+                        {t("settings.notifications.pushLabel")}
+                      </Text>
+                      <Text className="text-xs mt-1" style={{ color: colors.textMuted }}>
+                        {pushEnabled
+                          ? t("settings.notifications.pushOnNote")
+                          : t("settings.notifications.pushOffNote")}
+                      </Text>
+                    </View>
+                    <Switch
+                      value={pushEnabled}
+                      onValueChange={(next) => { void handleTogglePush(next); }}
+                      disabled={savingPush || !accountUserId}
+                      trackColor={{ false: colors.border, true: "#166534" }}
+                      thumbColor={pushEnabled ? "#16a34a" : "#f9fafb"}
+                      ios_backgroundColor={colors.border}
+                    />
+                  </View>
+
+                  {/* Uygulama içi bildirimler kapanmıyor; sadece cihaza gelenler. */}
+                  <Text className="text-xs mt-3" style={{ color: colors.textMuted }}>
+                    {t("settings.notifications.inAppNote")}
+                  </Text>
                 </View>
               </View>
             )}

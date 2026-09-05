@@ -127,6 +127,9 @@ export const en: Record<TranslationKey, string> = {
   'profilePreview.closeImage': 'Close Image',
   'profilePreview.following': 'Following',
   'profilePreview.youAreFollowing': 'You are following',
+  'profilePreview.message': 'Message',
+  // Short form for the narrow button; the confirm alert uses `profile.blockUser`.
+  'profilePreview.block': 'Block',
   'units.cm': 'cm',
   'units.kg': 'kg',
   
@@ -361,6 +364,18 @@ export const en: Record<TranslationKey, string> = {
   'settings.device.unknown': 'Unknown',
   'settings.device.goToStore': 'Go to App Store',
 
+  'update.title': 'A New Version Is Available',
+  'update.description': 'The new version brings a better experience, new features and performance improvements. Update to keep using the latest version.',
+  'update.descriptionWithVersion': 'This version ({version}) brings a better experience, new features and performance improvements. Update to keep using the latest version.',
+  'update.goToAppStore': 'Go to App Store',
+  'update.goToPlayStore': 'Go to Play Store',
+  'update.later': 'Later',
+  'settings.notifications.title': 'Notifications',
+  'settings.notifications.pushLabel': 'Send notifications to phone',
+  'settings.notifications.pushOnNote': 'You will get push notifications for new messages, follows and match requests.',
+  'settings.notifications.pushOffNote': 'You will not get push notifications.',
+  'settings.notifications.inAppNote': 'This only turns off push notifications; in-app notifications keep working.',
+  'settings.notifications.updateFailed': 'Could not update notification setting',
   'settings.agreements.title': 'My Agreements',
   'settings.reports.title': 'Reports',
   'admin.reports.title': 'Content Reports',

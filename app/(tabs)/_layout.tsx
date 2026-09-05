@@ -16,6 +16,7 @@ import {
   FLOATING_TAB_BAR_SIDE_MARGIN,
   floatingTabBarBottomOffset,
 } from '@/constants/tabBar';
+import { headerTotalHeight } from '@/constants/header';
 
 /**
  * `expo-glass-effect` native bir modüldür ve yalnızca onu içeren bir build'de bulunur.
@@ -233,6 +234,20 @@ export default function TabsLayout() {
         }
       : {
           headerTitle: () => <CustomHeader title={title} onTitlePress={handleTitlePress} />,
+          // React Navigation'ın başlık kapsayıcısı varsayılan olarak İÇERİK
+          // KADAR genişleyip sol/sağ boş kapsayıcılar arasında ortalanır
+          // (marginHorizontal: 16 + maxWidth). Bu yüzden CustomHeader ekran
+          // genişliğini göremiyor, logo da kapsayıcının sol kenarına göre
+          // konumlanınca sağa kayıyordu. Kapsayıcıyı tam genişliğe zorluyoruz
+          // ki %25-%50-%25 düzeni gerçek ekran genişliğine göre çalışsın.
+          headerTitleContainerStyle: {
+            flexGrow: 1,
+            flexBasis: 0,
+            maxWidth: '100%' as const,
+            marginHorizontal: 0,
+          },
+          headerLeftContainerStyle: { flexGrow: 0, flexBasis: 0, width: 0 },
+          headerRightContainerStyle: { flexGrow: 0, flexBasis: 0, width: 0 },
         };
 
   const renderTabIcon = (icon: IconSpec, { focused, color }: { focused: boolean; color: string }) => {
@@ -330,6 +345,10 @@ export default function TabsLayout() {
           backgroundColor: colors.surface,
           borderBottomWidth: 1,
           borderBottomColor: colors.primary,
+          // Yükseklik açıkça veriliyor: varsayılan hesap Dynamic Island'lı
+          // cihazlarda içerik alanını ~5px daraltıyor ve logonun konumunu
+          // hesaplanamaz kılıyordu (bkz. constants/header.ts).
+          ...(isWeb ? {} : { height: headerTotalHeight(insets.top) }),
         },
         headerShadowVisible: false,
         ...(isWeb

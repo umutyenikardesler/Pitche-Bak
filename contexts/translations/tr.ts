@@ -125,6 +125,9 @@ export const tr = {
   'profilePreview.closeImage': 'Resmi Kapat',
   'profilePreview.following': 'Takip',
   'profilePreview.youAreFollowing': 'Takip ediyorsun',
+  'profilePreview.message': 'Mesaj At',
+  // Buton dar olduğu için kısa hâli; onay uyarısında `profile.blockUser` (uzun) kullanılıyor.
+  'profilePreview.block': 'Engelle',
   'units.cm': 'cm',
   'units.kg': 'kg',
   
@@ -359,6 +362,18 @@ export const tr = {
   'settings.device.unknown': 'Bilinmiyor',
   'settings.device.goToStore': 'App Store’a Git',
 
+  'update.title': 'Uygulamanın Yeni Sürümü Mevcut',
+  'update.description': 'Yeni sürüm size daha iyi bir deneyim, yeni özellikler ve performans iyileştirmeleri sunar. Güncelleyerek en güncel haliyle kullanmaya devam edebilirsiniz.',
+  'update.descriptionWithVersion': 'Bu sürüm ({version}) size daha iyi bir deneyim, yeni özellikler ve performans iyileştirmeleri sunar. Güncelleyerek en güncel haliyle kullanmaya devam edebilirsiniz.',
+  'update.goToAppStore': 'App Store\'a Git',
+  'update.goToPlayStore': 'Play Store\'a Git',
+  'update.later': 'Daha sonra',
+  'settings.notifications.title': 'Bildirimler',
+  'settings.notifications.pushLabel': 'Telefona bildirim gönder',
+  'settings.notifications.pushOnNote': 'Yeni mesaj, takip ve maç isteklerinde telefonuna bildirim gelir.',
+  'settings.notifications.pushOffNote': 'Telefonuna bildirim gelmez.',
+  'settings.notifications.inAppNote': 'Bu ayar yalnızca telefona gelen bildirimleri kapatır; uygulama içindeki bildirimler görünmeye devam eder.',
+  'settings.notifications.updateFailed': 'Bildirim ayarı güncellenemedi',
   'settings.agreements.title': 'Sözleşmelerim',
   'settings.reports.title': 'Raporlarım',
   'admin.reports.title': 'Raporlarım',

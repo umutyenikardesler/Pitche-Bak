@@ -1,8 +1,12 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
 import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
 import { Platform } from 'react-native';
 import { supabase } from './supabase';
+
+/** Kullanıcının "telefona bildirim gelsin mi" tercihi (Ayarlar > Bildirimler). */
+const PUSH_ENABLED_KEY = 'pushNotificationsEnabled';
 
 const EAS_PROJECT_ID =
   Constants.expoConfig?.extra?.eas?.projectId ??
@@ -19,8 +23,46 @@ Notifications.setNotificationHandler({
   }),
 });
 
+/**
+ * Bildirim tercihi. Varsayılan AÇIK: daha önce hiç ayar yapılmamış kullanıcılar
+ * mevcut davranışı görmeye devam etsin.
+ */
+export async function getPushEnabled(): Promise<boolean> {
+  try {
+    const stored = await AsyncStorage.getItem(PUSH_ENABLED_KEY);
+    return stored === null ? true : stored === '1';
+  } catch {
+    return true;
+  }
+}
+
+/**
+ * Tercihi kaydeder ve token'ı buna göre ekler/siler.
+ * Kapatıldığında token silindiği için sunucu bu cihaza push göndermez.
+ */
+export async function setPushEnabled(enabled: boolean, userId: string): Promise<void> {
+  try {
+    await AsyncStorage.setItem(PUSH_ENABLED_KEY, enabled ? '1' : '0');
+  } catch {
+    // Kalıcı yazma başarısız olsa bile aşağıdaki işlem yapılsın.
+  }
+
+  if (enabled) {
+    await registerPushToken(userId);
+  } else {
+    await unregisterPushToken(userId);
+  }
+}
+
 export async function registerPushToken(userId: string): Promise<string | null> {
   if (!Device.isDevice) {
+    return null;
+  }
+
+  // ÖNEMLİ: Uygulama açılışta ve her öne gelişte bu fonksiyonu çağırıyor
+  // (bkz. app/_layout.tsx). Tercih kontrol edilmezse kullanıcının kapattığı
+  // bildirimler bir sonraki açılışta sessizce geri açılırdı.
+  if (!(await getPushEnabled())) {
     return null;
   }
 

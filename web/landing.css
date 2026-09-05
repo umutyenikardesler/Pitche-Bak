@@ -809,3 +809,182 @@ code {
   }
 }
 
+
+/* ============================================================
+   Modern eklentiler (v2 tasarım): özellik ikonları, yenilikler
+   bölümü, scroll ile beliren öğeler ve hero mağaza butonları.
+   ============================================================ */
+
+/* --- Scroll ile beliren öğeler --- */
+.reveal {
+  opacity: 0;
+  transform: translateY(18px);
+  transition: opacity 0.6s cubic-bezier(0.22, 1, 0.36, 1),
+              transform 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: opacity, transform;
+}
+.reveal.is-visible {
+  opacity: 1;
+  transform: none;
+}
+/* Hareket azaltma tercihi olan kullanıcılarda animasyon yok. */
+@media (prefers-reduced-motion: reduce) {
+  .reveal { opacity: 1; transform: none; transition: none; }
+}
+
+/* --- Hero: sürüm rozeti ve mağaza butonları --- */
+.verBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: 10px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  color: #14532d;
+  background: rgba(34, 197, 94, 0.18);
+  border: 1px solid rgba(22, 163, 74, 0.42);
+  /* Bağlantı olduğu için varsayılan alt çizgiyi alıyordu; rozet gibi dursun. */
+  text-decoration: none;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+.verBadge:hover {
+  background: rgba(34, 197, 94, 0.3);
+  border-color: rgba(22, 163, 74, 0.6);
+}
+.hero__cta {
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.hero__cta .storeBadge {
+  margin: 0;
+}
+
+/* --- Özellik kartlarında ikon --- */
+.feature {
+  transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+}
+.feature:hover {
+  transform: translateY(-3px);
+  border-color: rgba(22, 163, 74, 0.45);
+  box-shadow: 0 16px 40px rgba(21, 128, 61, 0.14);
+}
+.feature__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  margin-bottom: 12px;
+  border-radius: 12px;
+  color: var(--green);
+  background: rgba(34, 197, 94, 0.14);
+  border: 1px solid rgba(22, 163, 74, 0.28);
+}
+.feature__icon svg { width: 21px; height: 21px; }
+.feature--primary .feature__icon {
+  background: rgba(255, 255, 255, 0.22);
+  border-color: rgba(255, 255, 255, 0.38);
+  color: #ffffff;
+}
+
+/* --- Yenilikler (sürüm notları) --- */
+.releases {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+.release {
+  position: relative;
+  padding: 22px;
+  border-radius: 18px;
+  background: var(--card);
+  border: 1px solid var(--stroke);
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+.release--current {
+  border-color: rgba(22, 163, 74, 0.45);
+  box-shadow: 0 18px 60px rgba(21, 128, 61, 0.16);
+}
+.release__head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 4px;
+}
+.release__version {
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+.release__tag {
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 800;
+  border: 1px solid transparent;
+}
+.release__tag--live {
+  color: #14532d;
+  background: rgba(34, 197, 94, 0.2);
+  border-color: rgba(22, 163, 74, 0.42);
+}
+.release__tag--next {
+  color: #78350f;
+  background: rgba(251, 191, 36, 0.22);
+  border-color: rgba(245, 158, 11, 0.45);
+}
+.release__meta {
+  font-size: 13px;
+  color: var(--muted);
+  margin-bottom: 14px;
+}
+.release__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 11px;
+}
+.release__item {
+  display: grid;
+  grid-template-columns: 20px 1fr;
+  gap: 10px;
+  align-items: start;
+}
+.release__check {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  margin-top: 1px;
+  border-radius: 999px;
+  color: var(--green);
+  background: rgba(34, 197, 94, 0.16);
+}
+.release__check svg { width: 12px; height: 12px; }
+.release__itemTitle {
+  font-weight: 700;
+  font-size: 14.5px;
+  line-height: 1.35;
+}
+.release__itemDesc {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--muted);
+  margin-top: 2px;
+}
+
+@media (max-width: 920px) {
+  .releases { grid-template-columns: 1fr; }
+}
+@media (max-width: 520px) {
+  .release { padding: 18px; }
+  .verBadge { margin-left: 0; margin-top: 8px; }
+}

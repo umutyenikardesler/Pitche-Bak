@@ -1,0 +1,15 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "web-landing",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "C:\\Users\\HUAWEI\\AppData\\Local\\Temp\\claude\\C--Users-HUAWEI-Documents-GitHub-Pitche-Bak\\5290d7e0-5c69-4a7c-be81-f0dda73fae12\\scratchpad\\static-server.js",
+        "web",
+        "4321"
+      ],
+      "port": 4321
+    }
+  ]
+}
