@@ -11,6 +11,7 @@ import { Image, TouchableOpacity as RNTouchableOpacity } from 'react-native';
 import { useNotification } from '@/components/NotificationContext';
 import { containsBannedWord } from '@/constants/bannedWords';
 import { getBlockedUserIds, blockUser } from '@/services/blocks';
+import { getChatHiddenAt } from '@/lib/hiddenChats';
 import { reportContent, hasUserReportedContent } from '@/services/contentReports';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, { Extrapolation, interpolate, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
@@ -343,12 +344,18 @@ export default function ChatScreen() {
       return;
     }
 
+    // Sohbet daha önce silindiyse, silme anından ÖNCEKİ mesajlar hiç
+    // yüklenmez: kullanıcı sohbeti temizleyip yeniden yazışmaya başladığında
+    // eski yazışmayı görmemeli. Silme yereldir; karşı taraf geçmişini görür.
+    const hiddenAt = await getChatHiddenAt(user.id, recip, activeMatchId);
+
     let query = supabase
       .from('messages')
       .select('id, sender_id, recipient_id, content, created_at, edited_at, match_id')
       .or(`and(sender_id.eq.${user.id},recipient_id.eq.${recip}),and(sender_id.eq.${recip},recipient_id.eq.${user.id})`);
 
     query = activeMatchId ? query.eq('match_id', activeMatchId) : query.is('match_id', null);
+    if (hiddenAt) query = query.gt('created_at', hiddenAt);
 
     const { data, error } = await query.order('created_at', { ascending: true });
 

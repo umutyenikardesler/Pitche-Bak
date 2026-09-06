@@ -1,9 +1,13 @@
 import { useEffect, useState, useCallback, useRef, useMemo } from "react";
-import { View, Text, FlatList, TouchableOpacity, Image, ActivityIndicator, RefreshControl, Animated, Dimensions, Modal, Pressable, Alert, TextInput, ScrollView } from "react-native";
+import { View, Text, FlatList, TouchableOpacity, Image, ActivityIndicator, RefreshControl, Animated, Dimensions, Modal, Pressable, Alert, TextInput, ScrollView, KeyboardAvoidingView, Platform } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { hideChat, parseHiddenChats } from "@/lib/hiddenChats";
+import { fetchFollowList, type FollowUser } from "@/services/follows";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter, useFocusEffect } from "expo-router";
 import { GestureDetector, Gesture } from "react-native-gesture-handler";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { HEADER_CONTENT_HEIGHT } from "@/constants/header";
 import { runOnJS } from "react-native-reanimated";
 import { supabase } from "@/services/supabase";
 import { getBlockedUserIds, blockUser } from "@/services/blocks";
@@ -30,6 +34,24 @@ const UPCOMING_MAX_HEIGHT_RATIO = 0.6;
 
 /** Mesajlar sayfasındaki sekmeler. Grup mesajları henüz uygulanmadı. */
 type ChatTab = 'direct' | 'match' | 'group';
+
+/**
+ * Arama karşılaştırması için metni sadeleştirir. Türkçe'de "I/İ" dönüşümü
+ * İngilizce kurallarıyla yanlış sonuç verdiği için locale'li küçültme şart:
+ * "İSMAİL".toLowerCase() → "i̇smail" olur ve "ismail" ile eşleşmez.
+ */
+function normalizeForSearch(value: string | null | undefined): string {
+  return (value || '').toLocaleLowerCase('tr').trim();
+}
+
+/** Sohbet, arama metniyle eşleşiyor mu? Kişi adı veya maç adı üzerinden. */
+function chatMatchesQuery(it: ChatSummary, q: string): boolean {
+  if (!q) return true;
+  const person = normalizeForSearch(`${it.owner_name} ${it.owner_surname}`);
+  if (person.includes(q)) return true;
+  if (it.kind === 'match') return normalizeForSearch(it.title).includes(q);
+  return false;
+}
 
 /**
  * Maçın başlangıç zamanını ms cinsinden döndürür. Veri birkaç farklı biçimde
@@ -105,6 +127,7 @@ export default function Messages() {
   const { t } = useLanguage();
   const { colors, isDark } = useAppTheme();
   const tabBarInset = useTabBarBottomInset();
+  const insets = useSafeAreaInsets();
   const { isGuest } = useAuth();
   const { showGuestAuthAlert } = useGuestAuthAlert();
 
@@ -129,6 +152,12 @@ export default function Messages() {
   // İlk yükleme tamamlandı mı? Tamamlandıysa sonraki odaklanmalarda sessiz tazeleme yapılır.
   const hasLoadedOnceRef = useRef(false);
   const [activeTab, setActiveTab] = useState<ChatTab>('direct');
+  // Sekmelerin üstündeki arama kutusu: kişi adı veya maç adına göre filtreler.
+  const [searchQuery, setSearchQuery] = useState('');
+  // Yeni mesaj (+) modalı
+  const [composeVisible, setComposeVisible] = useState(false);
+  const [composeQuery, setComposeQuery] = useState('');
+  const [followingUsers, setFollowingUsers] = useState<FollowUser[]>([]);
   // "Yapılacak Maçlar" bölümünde ilk kartın ölçülen yüksekliği ve iki bölümün
   // paylaştığı toplam alan; 3 kartlık sınır ve %60 üst sınırı bunlardan hesaplanıyor.
   const [upcomingRowHeight, setUpcomingRowHeight] = useState(0);
@@ -152,15 +181,20 @@ export default function Messages() {
       upcomingItems: [] as ChatSummary[],
       pastItems: [] as ChatSummary[],
     };
+    // Arama tüm sekmelere uygulanır; filtre burada bir kez yapılıp aşağıdaki
+    // ayrıştırmalar filtrelenmiş liste üzerinden çalışır.
+    const q = normalizeForSearch(searchQuery);
+    const searched = q ? items.filter((it) => chatMatchesQuery(it, q)) : items;
+
     if (activeTab === 'group') return empty;
     if (activeTab === 'direct') {
-      return { ...empty, tabItems: items.filter((it) => it.kind === 'direct') as ChatSummary[] };
+      return { ...empty, tabItems: searched.filter((it) => it.kind === 'direct') as ChatSummary[] };
     }
 
     // Maç sohbetleri: yaklaşan maçlar tarih-saat sırasıyla üstte, oynanmışlar altta
     // (en yakın geçmiş önce). Sabitlenenler kendi içlerinde aynı kurala uyar.
     const now = Date.now();
-    const withTs = items
+    const withTs = searched
       .filter((it): it is MatchChatSummary => it.kind === 'match')
       .map((m) => ({ m, ts: parseMatchStartTs(m.date, m.time) }));
 
@@ -180,7 +214,96 @@ export default function Messages() {
       upcomingItems: upcoming.map((x) => x.m) as ChatSummary[],
       pastItems: past.map((x) => x.m) as ChatSummary[],
     };
-  }, [items, activeTab, pinnedChatKeys, getChatKey]);
+  }, [items, activeTab, pinnedChatKeys, getChatKey, searchQuery]);
+
+  /**
+   * Sekme rozetleri: okunmamışlar, mesajın geldiği sekmeye göre ayrılır.
+   *
+   * SAYIM BİRİMİ: mesaj değil, OKUNMAMIŞ SOHBET sayısı. Hap menüdeki mesaj
+   * rozeti de böyle sayıyor (aynı kişiden gelen birden fazla mesaj tek sohbet).
+   * Mesaj adedi sayılsaydı sekmelerin toplamı hap menüdekiyle tutmaz, kullanıcı
+   * menüde 1 sekmede 3 görürdü. Sohbet satırlarındaki rozet ise o sohbetteki
+   * mesaj adedini göstermeye devam ediyor.
+   *
+   * Hesap `items`in TAMAMINDAN yapılır; yukarıdaki `tabItems` yalnızca aktif
+   * sekmeyi doldurduğu için ondan türetilseydi diğer sekmelerin rozeti hep 0
+   * görünürdü. Grup sohbetleri henüz yok, o yüzden sayısı da 0.
+   */
+  const tabUnreadCounts = useMemo(() => {
+    let direct = 0;
+    let match = 0;
+    for (const it of items) {
+      if ((it.unreadCount ?? 0) <= 0) continue;
+      if (it.kind === 'direct') direct += 1;
+      else if (it.kind === 'match') match += 1;
+    }
+    return { direct, match, group: 0 } as Record<ChatTab, number>;
+  }, [items]);
+
+  /**
+   * "+" modalındaki öneriler. İki kaynaktan gelir ve kişi bazında tekilleştirilir:
+   *  1. Mevcut sohbet partnerleri — maç adı yazıldığında da eşleşsin diye maç
+   *     başlığı üzerinden de aranır.
+   *  2. Takip ettiğin kişiler — henüz sohbet başlatmadığın kişilere de yazabil.
+   *
+   * Takip edilenlerle sınırlı tutuluyor: uygulamada mesajlaşma zaten takip
+   * ilişkisine bağlı (bkz. ProfilePreview'daki "Mesaj At" butonu).
+   */
+  const composeSuggestions = useMemo(() => {
+    const q = normalizeForSearch(composeQuery);
+    const byId = new Map<string, FollowUser>();
+
+    for (const it of items) {
+      if (!chatMatchesQuery(it, q)) continue;
+      if (byId.has(it.owner_id)) continue;
+      byId.set(it.owner_id, {
+        id: it.owner_id,
+        name: it.owner_name,
+        surname: it.owner_surname,
+        profile_image: it.owner_profile_image ?? undefined,
+      });
+    }
+
+    for (const u of followingUsers) {
+      if (byId.has(u.id)) continue;
+      if (q && !normalizeForSearch(`${u.name} ${u.surname}`).includes(q)) continue;
+      byId.set(u.id, u);
+    }
+
+    return Array.from(byId.values()).slice(0, 30);
+  }, [items, followingUsers, composeQuery]);
+
+  // Modal açıldığında takip listesini çek (kapalıyken gereksiz sorgu yapılmasın).
+  useEffect(() => {
+    if (!composeVisible) return;
+    let active = true;
+    (async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!active || !user) return;
+        const list = await fetchFollowList(user.id, 'following');
+        if (active) setFollowingUsers(list);
+      } catch {
+        // Öneriler eksik kalır; sohbet partnerleri yine listelenir.
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, [composeVisible]);
+
+  const openChatWith = useCallback(
+    (u: FollowUser) => {
+      setComposeVisible(false);
+      setComposeQuery('');
+      const fullName = `${u.name ?? ''} ${u.surname ?? ''}`.trim();
+      router.push({
+        pathname: '/message/chat',
+        params: { to: u.id, ...(fullName ? { name: fullName } : {}) },
+      });
+    },
+    [router]
+  );
 
   // Sayfalama/soluklaştırma maç sekmesinde YALNIZCA geçmiş maçlara uygulanır;
   // yapılacak maçlar kendi kısa listesinde tam olarak gösterilir.
@@ -368,7 +491,6 @@ export default function Messages() {
         };
       });
 
-      const hiddenSet = new Set<string>((hiddenRaw ? JSON.parse(hiddenRaw) : []) || []);
       const pinnedSet = new Set<string>((pinnedRaw ? JSON.parse(pinnedRaw) : []) || []);
 
       const getKey = (it: ChatSummary) =>
@@ -379,14 +501,27 @@ export default function Messages() {
         return { ...m, lastAt: lastAtByMatchChatKey.get(k) ?? null };
       });
 
-      const allChats: ChatSummary[] = [...dmSummaries, ...matchWithLastAt];
-      const filtered = allChats.filter((it) => !hiddenSet.has(getKey(it)));
-
       const toTs = (s: string | null | undefined) => {
         if (!s) return 0;
         const t = new Date(s).getTime();
         return Number.isFinite(t) ? t : 0;
       };
+
+      // Silinen (gizlenen) sohbetler: anahtar + SİLİNME ZAMANI tutuluyor
+      // (bkz. lib/hiddenChats.ts). Silmeden SONRA gelen mesaj sohbeti geri getirir.
+      const { map: hiddenMap, migrated } = parseHiddenChats(hiddenRaw);
+      if (migrated) {
+        // Eski biçim tek seferde yeni biçime yazılır. Yazılmazsa her açılışta
+        // "şimdi" damgalanır ve hiçbir mesaj asla daha yeni olamazdı.
+        await AsyncStorage.setItem(`hidden_chats_${user.id}`, JSON.stringify(hiddenMap));
+      }
+
+      const allChats: ChatSummary[] = [...dmSummaries, ...matchWithLastAt];
+      const filtered = allChats.filter((it) => {
+        const hiddenAt = hiddenMap[getKey(it)];
+        if (!hiddenAt) return true;
+        return toTs(it.lastAt) > toTs(hiddenAt);
+      });
 
       const getSortTs = (it: ChatSummary): number => {
         if (it.kind === "direct") return toTs(it.lastAt);
@@ -491,11 +626,10 @@ export default function Messages() {
           text: t('messages.deleteChat'),
           style: 'destructive',
           onPress: async () => {
+            // Silinme ANI kaydediliyor: liste kartı ve sohbet ekranındaki geçmiş
+            // bu ana göre filtreleniyor (bkz. lib/hiddenChats.ts).
             const key = getChatKey(item);
-            const raw = await AsyncStorage.getItem(`hidden_chats_${user.id}`);
-            const arr: string[] = raw ? JSON.parse(raw) : [];
-            if (!arr.includes(key)) arr.push(key);
-            await AsyncStorage.setItem(`hidden_chats_${user.id}`, JSON.stringify(arr));
+            await hideChat(user.id, key);
             setItems((prev) => prev.filter((i) => getChatKey(i) !== key));
             Alert.alert('', t('messages.chatDeleted'));
           },
@@ -1033,8 +1167,12 @@ export default function Messages() {
         ListEmptyComponent={
           <View className="flex-1 justify-center items-center" style={{ minHeight: 200 }}>
             {/* Maç sekmesi yukarıda kendi bölümleriyle ele alınıyor; burada kalanlar. */}
-            <Text style={{ color: colors.textMuted }}>
-              {activeTab === 'group' ? t('messages.groupComingSoon') : t('messages.noDirectChats')}
+            <Text style={{ color: colors.textMuted, textAlign: 'center' }}>
+              {activeTab === 'group'
+                ? t('messages.groupComingSoon')
+                : searchQuery.trim()
+                  ? t('messages.searchNoResults')
+                  : t('messages.noDirectChats')}
             </Text>
           </View>
         }
@@ -1089,6 +1227,40 @@ export default function Messages() {
           </Modal>
         )}
 
+        {/* Arama: satırı tamamen kaplar, kişi adı veya maç adına göre filtreler. */}
+        <View style={{ paddingHorizontal: 12, paddingTop: 10, backgroundColor: colors.background }}>
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 8,
+              paddingHorizontal: 12,
+              height: 42,
+              borderRadius: 12,
+              backgroundColor: colors.surface,
+              borderWidth: 1,
+              borderColor: colors.primary,
+            }}
+          >
+            <Ionicons name="search" size={18} color={colors.primary} />
+            <TextInput
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              placeholder={t('messages.searchPlaceholder')}
+              placeholderTextColor={colors.textMuted}
+              style={{ flex: 1, color: colors.text, fontSize: 13, padding: 0 }}
+              autoCapitalize="none"
+              autoCorrect={false}
+              returnKeyType="search"
+            />
+            {searchQuery.length > 0 && (
+              <TouchableOpacity onPress={() => setSearchQuery('')} hitSlop={8}>
+                <Ionicons name="close-circle" size={18} color={colors.textMuted} />
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
+
         {/* Sekmeler: Sohbetler / Maç Sohbetleri / Grup Mesajları */}
         <View
           style={{
@@ -1110,6 +1282,7 @@ export default function Messages() {
                 : tab === 'match'
                   ? t('messages.tabs.match')
                   : t('messages.tabs.group');
+            const unread = tabUnreadCounts[tab] ?? 0;
 
             return (
               <TouchableOpacity
@@ -1146,12 +1319,220 @@ export default function Messages() {
                 >
                   {label}
                 </Text>
+
+                {/* Okunmamış sayısı: sekmenin sağ üst köşesinde.
+                    Kenarlık, rozetin yeşil çerçeveden ayrışmasını sağlıyor. */}
+                {unread > 0 && (
+                  <View
+                    style={{
+                      position: 'absolute',
+                      top: -7,
+                      right: -6,
+                      minWidth: 20,
+                      height: 20,
+                      paddingHorizontal: 5,
+                      borderRadius: 10,
+                      backgroundColor: 'red',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      borderWidth: 1.5,
+                      borderColor: colors.background,
+                      zIndex: 1,
+                    }}
+                    accessibilityLabel={`${label}: ${unread} ${t('general.notifications')}`}
+                  >
+                    <Text style={{ color: '#ffffff', fontSize: 10.5, fontWeight: '800' }}>
+                      {unread > 99 ? '99+' : String(unread)}
+                    </Text>
+                  </View>
+                )}
               </TouchableOpacity>
             );
           })}
         </View>
 
         {content}
+
+        {/* Yeni mesaj butonu: hap menünün hemen üstünde, sağ altta.
+            `tabBarInset` yüzen menünün yüksekliğini içeriyor; Android'de 0
+            döndüğü için alt sınır veriliyor. */}
+        <TouchableOpacity
+          onPress={() => setComposeVisible(true)}
+          activeOpacity={0.85}
+          accessibilityLabel={t('messages.newMessage')}
+          style={{
+            position: 'absolute',
+            right: 18,
+            bottom: Math.max(tabBarInset, 24) + 12,
+            width: 54,
+            height: 54,
+            borderRadius: 27,
+            alignItems: 'center',
+            justifyContent: 'center',
+            backgroundColor: colors.surface,
+            borderWidth: 1,
+            borderColor: colors.primary,
+            shadowColor: colors.primary,
+            shadowOffset: { width: 0, height: 0 },
+            shadowOpacity: 0.5,
+            shadowRadius: 6,
+            elevation: 6,
+          }}
+        >
+          <Ionicons name="add" size={30} color={colors.primary} />
+        </TouchableOpacity>
+
+        {/* Yeni mesaj modalı: "Kime:" ile kişi/maç ara, öneriden seç. */}
+        <Modal
+          visible={composeVisible}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setComposeVisible(false)}
+        >
+          {/* Arama kutusu autoFocus olduğu için modal açılır açılmaz klavye
+              geliyordu ve kartın alt kısmı klavyenin altında kalıyordu.
+              KeyboardAvoidingView kapsayıcıyı klavye kadar kısaltıyor, kart da
+              kalan alanda ortalanıp ona göre sınırlanıyor. */}
+          <KeyboardAvoidingView
+            style={{ flex: 1 }}
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          >
+          <Pressable
+            style={{
+              flex: 1,
+              backgroundColor: colors.overlay,
+              // Ortalamak yerine klavyenin hemen üstüne yaslanıyor: ortalandığında
+              // kalan boşluk alta ve üste eşit dağılıyor, kart ekranın tepesine
+              // (Dynamic Island hizasına) çıkıp klavyeyle arasında büyük boşluk
+              // bırakıyordu. Alta yaslayınca klavyeyle arası sabit kalıyor.
+              justifyContent: 'flex-end',
+              paddingHorizontal: 20,
+              paddingBottom: 12,
+              // Uzun listelerde kart tepeye dayanmasın. Sabit sayı yerine güvenli
+              // alan + pay: Dynamic Island'lı cihazlarda üst inset ~59px, sabit
+              // 48 verildiğinde kart adanın hemen altına giriyordu.
+              // Pay, arkadaki header (başlık - logo - bildirim ikonu) görünür
+              // kalacak kadar: güvenli alan + header içerik yüksekliği.
+              paddingTop: insets.top + HEADER_CONTENT_HEIGHT,
+            }}
+            onPress={() => setComposeVisible(false)}
+          >
+            <Pressable
+              onPress={(e) => e.stopPropagation()}
+              style={{
+                backgroundColor: colors.surface,
+                borderRadius: 16,
+                padding: 16,
+                maxHeight: '100%',
+                borderWidth: 1,
+                borderColor: colors.primary,
+                shadowColor: colors.primary,
+                shadowOffset: { width: 0, height: 0 },
+                shadowOpacity: 0.45,
+                shadowRadius: 8,
+                elevation: 8,
+              }}
+            >
+              {/* Kime: + arama kutusu */}
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <Text style={{ fontSize: 14, fontWeight: '700', color: colors.primaryDark }}>
+                  {t('messages.composeTo')}
+                </Text>
+                <View
+                  style={{
+                    flex: 1,
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 8,
+                    paddingHorizontal: 12,
+                    height: 40,
+                    borderRadius: 10,
+                    backgroundColor: colors.inputBackground,
+                    borderWidth: 1,
+                    borderColor: colors.primary,
+                  }}
+                >
+                  <TextInput
+                    value={composeQuery}
+                    onChangeText={setComposeQuery}
+                    placeholder={t('messages.searchPlaceholder')}
+                    placeholderTextColor={colors.textMuted}
+                    style={{ flex: 1, color: colors.text, fontSize: 13, padding: 0 }}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    autoFocus
+                  />
+                  {composeQuery.length > 0 && (
+                    <TouchableOpacity onPress={() => setComposeQuery('')} hitSlop={8}>
+                      <Ionicons name="close-circle" size={18} color={colors.textMuted} />
+                    </TouchableOpacity>
+                  )}
+                </View>
+              </View>
+
+              <Text
+                style={{
+                  marginTop: 14,
+                  marginBottom: 6,
+                  fontSize: 13,
+                  fontWeight: '700',
+                  color: colors.primary,
+                }}
+              >
+                {t('messages.suggested')}
+              </Text>
+
+              {composeSuggestions.length === 0 ? (
+                <View style={{ paddingVertical: 24, alignItems: 'center' }}>
+                  <Text style={{ color: colors.textMuted, fontSize: 13, textAlign: 'center' }}>
+                    {t('messages.noSuggestions')}
+                  </Text>
+                </View>
+              ) : (
+                // flexGrow: 0 -> az öneri varsa kart içeriği kadar kalsın
+                // (RN'de ScrollView varsayılanı flexGrow: 1, aksi halde kartı
+                // maxHeight'e kadar gereksiz yere uzatıyor).
+                // flexShrink: 1 -> çok öneri varsa kart sınıra dayanır, liste kendi içinde kayar.
+                <ScrollView
+                  keyboardShouldPersistTaps="handled"
+                  style={{ flexGrow: 0, flexShrink: 1, marginHorizontal: -4 }}
+                >
+                  {composeSuggestions.map((u) => (
+                    <TouchableOpacity
+                      key={u.id}
+                      onPress={() => openChatWith(u)}
+                      activeOpacity={0.7}
+                      style={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        gap: 12,
+                        paddingVertical: 9,
+                        paddingHorizontal: 4,
+                      }}
+                    >
+                      <Image
+                        source={
+                          u.profile_image
+                            ? { uri: u.profile_image }
+                            : require('@/assets/images/ball.png')
+                        }
+                        style={{ width: 42, height: 42, borderRadius: 21, resizeMode: 'cover' }}
+                      />
+                      <Text
+                        numberOfLines={1}
+                        style={{ flex: 1, fontSize: 15, fontWeight: '600', color: colors.text }}
+                      >
+                        {`${u.name ?? ''} ${u.surname ?? ''}`.trim() || '-'}
+                      </Text>
+                      <Ionicons name="chevron-forward" size={18} color={colors.primary} />
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              )}
+            </Pressable>
+          </Pressable>
+          </KeyboardAvoidingView>
+        </Modal>
 
         {/* Sohbet seçenekleri modalı (... menüsü) */}
         <Modal visible={!!chatOptionsItem} transparent animationType="fade">
