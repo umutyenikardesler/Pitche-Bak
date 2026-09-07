@@ -389,7 +389,7 @@ export default function LandingScreen() {
 
           <TouchableOpacity
             activeOpacity={0.9}
-            onPress={() => router.push("/(tabs)/guest-landing" as any)}
+            onPress={() => router.push("/guest-landing" as any)}
             style={{
               backgroundColor: "#ffffff",
               borderWidth: 2,

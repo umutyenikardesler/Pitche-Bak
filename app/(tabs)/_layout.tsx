@@ -1,5 +1,5 @@
-import { Tabs } from "expo-router";
-import { type ComponentProps, type ReactNode } from "react";
+import { Tabs, usePathname } from "expo-router";
+import { useEffect, useRef, type ComponentProps, type ReactNode } from "react";
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import CustomHeader from "@/components/CustomHeader";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -7,7 +7,12 @@ import { useNotification } from "@/components/NotificationContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useGuestAuthAlert } from "@/contexts/GuestAuthModalContext";
 import { useAppTheme } from "@/contexts/ThemeContext";
-import { DeviceEventEmitter, Platform, StyleSheet, Text, View } from 'react-native';
+import { Animated, DeviceEventEmitter, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import type { BottomTabBarButtonProps } from '@react-navigation/bottom-tabs';
+import type { MaterialTopTabBarProps } from '@react-navigation/material-top-tabs';
+import { MaterialTopTabs } from '@/components/navigation/MaterialTopTabs';
+import AppHeader from '@/components/AppHeader';
+import { FloatingTabBarContext } from '@/contexts/FloatingTabBarContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BlurView } from 'expo-blur';
 import {
@@ -213,12 +218,290 @@ export default function TabsLayout() {
 
   const tabBarStyle = isIos ? [tabBarStyles.tabBar, tabBarStyles.tabBarIosGlass] : tabBarStyles.tabBar;
 
+  /**
+   * Sekme butonu: seçili sekmenin İKON + ETİKETİNİN arkasına açık yeşil bir
+   * zemin çizer. Varsayılan buton bunu desteklemediği için değiştiriliyor.
+   *
+   * Gelen props (onPress, accessibilityState, testID vb.) olduğu gibi
+   * aktarılıyor; aksi halde misafir kontrolü (tabPress listener) ve
+   * erişilebilirlik davranışı bozulurdu.
+   */
+  const renderTabBarButton = (props: BottomTabBarButtonProps) => {
+    const { children, style, accessibilityState, ...rest } = props;
+    const focused = accessibilityState?.selected ?? false;
+
+    return (
+      <Pressable
+        {...(rest as any)}
+        accessibilityState={accessibilityState}
+        style={[{ flex: 1, alignItems: 'center', justifyContent: 'center' }, style as any]}
+      >
+        <View
+          style={[
+            {
+              paddingHorizontal: 10,
+              paddingVertical: 3,
+              borderRadius: 14,
+              alignItems: 'center',
+              justifyContent: 'center',
+            },
+            focused
+              ? {
+                  // Koyu modda açık yeşil fazla parlak kalıyor; saydam yeşil
+                  // cam yüzeye daha iyi oturuyor.
+                  backgroundColor: isDark ? 'rgba(22,163,74,0.30)' : '#dcfce7',
+                }
+              : null,
+          ]}
+        >
+          {children}
+        </View>
+      </Pressable>
+    );
+  };
+
+  /**
+   * Kaydırmalı navigatördeki sekmeler. Sıra hem pager'daki hem çubuktaki sırayı
+   * belirler. `guard` verilen sekmeler misafire kapalı.
+   */
+  const SWIPE_TABS: {
+    name: string;
+    label: string;
+    title: string;
+    icon: IconSpec;
+    guard?: string;
+    onPress?: () => void;
+  }[] = [
+    {
+      name: 'index',
+      // Tab etiketi ile header başlığı bu ekranda kasıtlı olarak farklı
+      label: t('home.findMatch'),
+      title: t('home.title'),
+      icon: { family: 'ionicons', name: 'search-outline' },
+      onPress: () => DeviceEventEmitter.emit('closeModals'),
+    },
+    {
+      name: 'pitches',
+      label: t('pitches.title'),
+      title: t('pitches.title'),
+      icon: { family: 'ionicons', name: 'navigate-circle-outline' },
+      onPress: () => DeviceEventEmitter.emit('closePitchDetail'),
+    },
+    {
+      name: 'create',
+      label: t('create.title'),
+      title: t('create.title'),
+      icon: { family: 'material', name: 'add-circle-outline' },
+      guard: 'auth.guestCreateMatch',
+    },
+    {
+      name: 'message',
+      label: t('messages.title'),
+      title: t('messages.title'),
+      icon: { render: ({ focused, color }) => <MessagesTabIcon focused={focused} color={color} /> },
+      guard: 'auth.guestMessage',
+    },
+    {
+      name: 'profile',
+      label: t('profile.title'),
+      title: t('profile.title'),
+      icon: { family: 'ionicons', name: 'person-circle-outline' },
+      guard: 'auth.guestProfile',
+    },
+  ];
+
+  /**
+   * Header: material-top-tabs header çizmediği için elle render ediliyor.
+   * Ölçüler constants/header.ts'ten geliyor; böylece açılış animasyonundaki
+   * logo hedefiyle aynı hesabı paylaşıyor.
+   */
+  const SwipeTabsHeader = () => {
+    const pathname = usePathname();
+    const active =
+      SWIPE_TABS.find((tab) =>
+        tab.name === 'index' ? pathname === '/' : pathname.startsWith(`/${tab.name}`)
+      ) ?? SWIPE_TABS[0];
+
+    return <AppHeader title={active.title} />;
+  };
+
+  /**
+   * Yüzen cam menü. Seçili sekmenin arkasındaki açık yeşil zemin `position`
+   * ile sürülüyor: kaydırdıkça zemin de parmakla birlikte komşu sekmeye kayar.
+   */
+  const SwipeTabBar = ({ state, position, layout, jumpTo }: MaterialTopTabBarProps) => {
+    // Genişlik `onLayout` ile ölçülmüyor: kütüphane zaten pager genişliğini
+    // (`layout`) veriyor ve çubuk ondan yalnızca yan boşluk kadar dar. Ölçüme
+    // dayanmak ilk render'da genişliği 0 bırakıyor, dolayısıyla zeminin
+    // interpolasyonu da sıfır çıkıyordu.
+    // Sekme butonlarının paylaştığı alan, çubuğun İÇ genişliği: ekran genişliği
+    // eksi yan boşluklar EKSİ 1px'lik kenarlıklar. Kenarlık hesaba katılmazsa
+    // `itemWidth` bir tık büyük çıkıyor ve zemin her sekmede biraz daha sağa
+    // kayarak son sekmede (profil) gözle görülür şekilde şaşıyor.
+    const barBorder = isIos ? 2 : 0;
+    const barWidth = isIos
+      ? Math.max(layout.width - FLOATING_TAB_BAR_SIDE_MARGIN * 2 - barBorder, 0)
+      : layout.width;
+    const count = state.routes.length;
+    const itemWidth = count > 0 ? barWidth / count : 0;
+    // Zeminin ikon + etiket bloğuna her yönden yakın durması için: yatayda
+    // daraltılıyor, dikeyde ise çubuğun dolgu kutusunun tamamına yayılıyor.
+    // Etiket genişlikleri sekmeden sekmeye değiştiği için birebir sarma
+    // mümkün değil; bu iki sayı ile denge kuruluyor.
+    // Dört kenar ayrı ayarlanıyor: üst oturmuş durumda, sağ 3px, sol ve alt ise
+    // 4px genişletildi. Küçük değer = zemin o yönde daha geniş; negatif değer,
+    // zeminin çubuğun dolgusuna doğru taştığı anlamına gelir.
+    /** "Maç Oluştur" sekmesinde zeminin her yandan fazladan genişliği. */
+    const PILL_EXTRA_X_CREATE = 3;
+    const PILL_INSET_LEFT = 9;
+    const PILL_INSET_RIGHT = 10;
+    const PILL_INSET_TOP = 1;
+    const PILL_INSET_BOTTOM = -3;
+    const pillWidth = Math.max(itemWidth - PILL_INSET_LEFT - PILL_INSET_RIGHT, 0);
+
+    /**
+     * Zeminin konumu (sekme indexi cinsinden). İKİ kaynaktan besleniyor:
+     *
+     *  1. `position` dinleyicisi — kaydırma sırasında parmağı birebir takip
+     *     etmek için. Bu kaynak kaydırmada doğru çalışıyor.
+     *  2. `state.index` — DOKUNARAK geçişte `position` yeni index'e gitmiyor
+     *     (bir önceki değerde kalıyor) ve zemin bir sekme geride kalıyordu.
+     *     Bu yüzden index her değiştiğinde zemin doğru sekmeye ayrıca sürülüyor.
+     *
+     * İki kaynak da aynı hedefe koştuğu için çakışmıyorlar: kaydırma bittiğinde
+     * index de zaten aynı değere geliyor.
+     */
+    const pillIndex = useRef(new Animated.Value(state.index)).current;
+
+    useEffect(() => {
+      const id = position.addListener(({ value }) => pillIndex.setValue(value));
+      return () => position.removeListener(id);
+    }, [position, pillIndex]);
+
+    useEffect(() => {
+      Animated.timing(pillIndex, {
+        toValue: state.index,
+        duration: 220,
+        useNativeDriver: true,
+      }).start();
+    }, [state.index, pillIndex]);
+
+    return (
+      <View
+        style={[
+          {
+            flexDirection: 'row',
+            height: isIos ? FLOATING_TAB_BAR_HEIGHT : tabBarHeight,
+            backgroundColor: isIos ? 'transparent' : colors.surface,
+            paddingBottom: isIos ? 9 : tabBarBottomInset + tabBarExtraBottom,
+            paddingTop: isIos ? 3 : 8,
+          },
+          // `tabBarIosGlass` position:absolute veriyor ama yatay sınır vermiyor:
+          // bottom-tabs kullanırken bunu kütüphanenin taban stili (start/end: 0)
+          // sağlıyordu. Kendi çubuğumuzda o taban stil olmadığı için sınırı
+          // burada veriyoruz; yoksa çubuk sıfır genişlikte bir çizgiye düşüyor.
+          isIos ? [tabBarStyles.tabBarIosGlass, { left: 0, right: 0 }] : null,
+        ]}
+      >
+        {isIos ? renderTabBarBackground() : null}
+
+        {/* Kaydırmayı takip eden yeşil zemin. */}
+        {itemWidth > 0 && (
+          <Animated.View
+            pointerEvents="none"
+            style={{
+              position: 'absolute',
+              top: (isIos ? 3 : 8) + PILL_INSET_TOP,
+              bottom: (isIos ? 9 : tabBarBottomInset + tabBarExtraBottom) + PILL_INSET_BOTTOM,
+              // Sol ve sağ payı farklı olabildiği için ortalama yerine doğrudan
+              // sol pay veriliyor.
+              left: PILL_INSET_LEFT,
+              width: pillWidth,
+              borderRadius: 14,
+              // Saydam siyah zemin. Koyu modda siyah, koyu yüzeyde kaybolacağı
+              // için orada aynı yoğunlukta beyaza dönülüyor.
+              // Açık yeşil zemin. Koyu modda düz açık yeşil cam yüzeyde fazla
+              // parlak kaldığı için saydam marka yeşili kullanılıyor.
+              backgroundColor: isDark ? 'rgba(22,163,74,0.30)' : '#dcfce7',
+              // Kütüphanenin kendi göstergesiyle aynı yöntem (bkz.
+              // react-native-tab-view/TabBarIndicator): `position` doğrudan
+              // interpolate ediliyor. `Animated.multiply` ile sürülünce zemin
+              // kaydırma boyunca hareket etmiyordu.
+              transform: [
+                {
+                  translateX: pillIndex.interpolate({
+                    inputRange: state.routes.map((_, i) => i),
+                    outputRange: state.routes.map((_, i) => i * itemWidth),
+                    extrapolate: 'clamp',
+                  }),
+                },
+                {
+                  // Bazı sekmelerde zemin biraz daha geniş olsun (ör. "Maç
+                  // Oluştur"). Genişliği doğrudan animasyonla değiştiremiyoruz:
+                  // `position` native sürücüyle çalışıyor ve native sürücü
+                  // yalnızca transform/opacity destekliyor. Kütüphanenin kendi
+                  // göstergesi de aynı nedenle scaleX kullanıyor.
+                  // scaleX merkezden büyüttüğü için fazlalık iki yana eşit dağılır.
+                  scaleX: pillIndex.interpolate({
+                    inputRange: state.routes.map((_, i) => i),
+                    outputRange: state.routes.map((_, i) =>
+                      pillWidth > 0
+                        ? (pillWidth + (state.routes[i].name === 'create' ? PILL_EXTRA_X_CREATE * 2 : 0)) /
+                          pillWidth
+                        : 1
+                    ),
+                    extrapolate: 'clamp',
+                  }),
+                },
+              ],
+            }}
+          />
+        )}
+
+        {state.routes.map((route, index) => {
+          const tab = SWIPE_TABS.find((it) => it.name === route.name) ?? SWIPE_TABS[index];
+          if (!tab) return null;
+          const focused = state.index === index;
+          const color = focused ? '#059669' : isDark ? '#d1d5db' : '#374151';
+
+          return (
+            <Pressable
+              key={route.key}
+              accessibilityRole="button"
+              accessibilityState={{ selected: focused }}
+              accessibilityLabel={tab.label}
+              onPress={() => {
+                if (tab.guard && isGuest) {
+                  showGuestAuthAlert(t(tab.guard));
+                  return;
+                }
+                tab.onPress?.();
+                // `navigation.navigate` yerine `jumpTo`: navigate yalnızca
+                // navigasyon durumunu değiştiriyor, pager'ın `position` değerini
+                // sürmüyordu; bu yüzden dokunarak geçişte zemin bir sekme geride
+                // kalıyordu. Kütüphanenin kendi çubuğu da jumpTo kullanıyor.
+                if (!focused) jumpTo(route.key);
+              }}
+              style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}
+            >
+              {renderTabIcon(tab.icon, { focused, color })}
+              <Text style={[tabBarStyles.tabBarLabelIos, { color, marginTop: 1 }]} numberOfLines={1}>
+                {tab.label}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </View>
+    );
+  };
+
   const sharedTabBarOptions = {
     tabBarActiveTintColor: "#059669",
     tabBarInactiveTintColor: isDark ? "#d1d5db" : "#374151",
     tabBarStyle,
     tabBarItemStyle: isIos ? tabBarStyles.tabBarItemIos : tabBarStyles.tabBarItem,
     tabBarBackground: renderTabBarBackground,
+    tabBarButton: renderTabBarButton,
     ...(isIos ? { tabBarLabelStyle: tabBarStyles.tabBarLabelIos } : {}),
   };
 
@@ -253,7 +536,8 @@ export default function TabsLayout() {
   const renderTabIcon = (icon: IconSpec, { focused, color }: { focused: boolean; color: string }) => {
     if ('render' in icon) return icon.render({ focused, color });
     const size = focused ? 28 : 22;
-    const style = { marginTop: 2 };
+    // 3px: ikonlar yeşil zeminin içinde bir tık aşağıda dursun.
+    const style = { marginTop: 3 };
     return icon.family === 'ionicons' ? (
       <Ionicons name={icon.name} color={color} size={size} style={style} />
     ) : (
@@ -304,7 +588,8 @@ export default function TabsLayout() {
           name="paper-plane-outline"
           color={color}
           size={focused ? 28 : 22}
-          style={{ marginTop: 2 }}
+          // Diğer sekme ikonlarıyla aynı hizada kalmalı (bkz. renderTabIcon).
+          style={{ marginTop: 3 }}
         />
         {messageCount > 0 && (
           <View
@@ -331,6 +616,7 @@ export default function TabsLayout() {
   };
 
   return (
+    isWeb ? (
     <Tabs
       // Web'de per-screen `tabBarShowLabel` bazı durumlarda uygulanmıyor.
       // Mobil davranışını bozmamak için bunu SADECE web'de navigator seviyesinde zorluyoruz.
@@ -417,26 +703,36 @@ export default function TabsLayout() {
           icon: { family: 'ionicons', name: 'person-circle-outline' },
         })}
       />
-      <Tabs.Screen
-        name="notifications"
-        listeners={guestBlockedListeners('auth.guestNotifications')}
-        options={makeTabOptions({
-          label: t('notifications.title'),
-          icon: { family: 'ionicons', name: 'notifications-outline' },
-          hidden: true,
-        })}
-      />
-
-      {/* Tab bar'da görünmesin (Landing -> Misafir akışı için) */}
-      <Tabs.Screen
-        name="guest-landing"
-        options={{
-          href: null,
-          headerShown: false,
-          tabBarStyle,
-          tabBarBackground: renderTabBarBackground,
-        }}
-      />
     </Tabs>
+    ) : (
+      /**
+       * Native: sekmeler kaydırarak geçilebilir (bkz.
+       * components/navigation/MaterialTopTabs.tsx). Header bu navigatörde
+       * bulunmadığı için üstte elle çiziliyor; alttaki yüzen cam menü de
+       * `tabBar` ile bizim bileşenimiz.
+       *
+       * Web bu daldan geçmiyor: `react-native-pager-view` web'i desteklemiyor,
+       * o yüzden web tarafı yukarıdaki bottom-tabs ile kalıyor.
+       */
+      // Ekranların alt boşluğu (menünün altında kalmamaları için) bu context'ten
+      // besleniyor; bkz. hooks/useTabBarBottomInset.ts.
+      <FloatingTabBarContext.Provider value>
+      <View style={{ flex: 1, backgroundColor: colors.background }}>
+        <SwipeTabsHeader />
+        <MaterialTopTabs
+          tabBarPosition="bottom"
+          tabBar={(props) => <SwipeTabBar {...props} />}
+          screenOptions={{
+            swipeEnabled: true,
+            sceneStyle: { backgroundColor: colors.background },
+          }}
+        >
+          {SWIPE_TABS.map((tab) => (
+            <MaterialTopTabs.Screen key={tab.name} name={tab.name} />
+          ))}
+        </MaterialTopTabs>
+      </View>
+      </FloatingTabBarContext.Provider>
+    )
   );
 }

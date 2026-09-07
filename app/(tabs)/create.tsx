@@ -352,8 +352,17 @@ export default function CreateMatch() {
 
       <ScrollView 
         className="rounded-lg my-3 mx-4 p-4 shadow-md"
-        style={{ backgroundColor: colors.surface }}
-        contentContainerStyle={{ flexGrow: 1, justifyContent: 'space-between', paddingBottom: tabBarInset }}
+        // Menüyü aşmak için gereken boşluk kartın İÇİNDE değil DIŞINDA:
+        // içeride verildiğinde butonun altında fazladan beyaz bir şerit
+        // kalıyordu. Dışarı alınca kart tam butonda bitiyor.
+        // (+12: className'deki `my-3` alt boşluğunun karşılığı; inline stil onu ezer.)
+        style={{
+          backgroundColor: colors.surface,
+          marginBottom: tabBarInset + 12,
+          borderWidth: 1,
+          borderColor: colors.primary,
+        }}
+        contentContainerStyle={{ flexGrow: 1, justifyContent: 'space-between' }}
       >
       <View>
         <View className="mb-4">

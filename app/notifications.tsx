@@ -10,6 +10,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useGuestAuthAlert } from '@/contexts/GuestAuthModalContext';
 import { useAppTheme } from '@/contexts/ThemeContext';
+import AppHeader from '@/components/AppHeader';
 
 export default function Notifications() {
     const router = useRouter();
@@ -77,6 +78,10 @@ export default function Notifications() {
 
     return (
         <View className="flex-1" style={{ backgroundColor: colors.background }}>
+            {/* Bu ekran sekme grubunun DIŞINDA (kaydırmalı sekmelere karışmasın
+                diye), o yüzden header'ı navigatörden almıyor; kendisi çiziyor. */}
+            <AppHeader title={t('notifications.title')} showNotificationIcon={false} />
+
             <NotificationList
                 groupedNotifications={groupedNotifications}
                 onFollowRequest={handleFollowRequest}

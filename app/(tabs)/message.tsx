@@ -1,14 +1,12 @@
 import { useEffect, useState, useCallback, useRef, useMemo } from "react";
-import { View, Text, FlatList, TouchableOpacity, Image, ActivityIndicator, RefreshControl, Animated, Dimensions, Modal, Pressable, Alert, TextInput, ScrollView, KeyboardAvoidingView, Platform } from "react-native";
+import { View, Text, FlatList, TouchableOpacity, Image, ActivityIndicator, RefreshControl, Modal, Pressable, Alert, TextInput, ScrollView, KeyboardAvoidingView, Platform } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { hideChat, parseHiddenChats } from "@/lib/hiddenChats";
 import { fetchFollowList, type FollowUser } from "@/services/follows";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter, useFocusEffect } from "expo-router";
-import { GestureDetector, Gesture } from "react-native-gesture-handler";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { HEADER_CONTENT_HEIGHT } from "@/constants/header";
-import { runOnJS } from "react-native-reanimated";
 import { supabase } from "@/services/supabase";
 import { getBlockedUserIds, blockUser } from "@/services/blocks";
 import { reportContent, hasUserReportedContent } from "@/services/contentReports";
@@ -141,8 +139,6 @@ export default function Messages() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [items, setItems] = useState<ChatSummary[]>([]);
-  const screenWidth = Dimensions.get('window').width;
-  const [translateX] = useState(new Animated.Value(0));
   const [chatOptionsItem, setChatOptionsItem] = useState<ChatSummary | null>(null);
   const [reportModalVisible, setReportModalVisible] = useState(false);
   const [reportNotes, setReportNotes] = useState('');
@@ -699,44 +695,10 @@ export default function Messages() {
     }, [fetchChats])
   );
 
-  // Soldan sağa kaydırarak index sayfasına dön (animasyonlu)
-  const handleSwipeBack = useCallback(() => {
-    Animated.timing(translateX, {
-      toValue: screenWidth,
-      duration: 350, // daha yavaş ve belirgin
-      useNativeDriver: true,
-    }).start(() => {
-      router.push("/");
-      // Sonraki giriş için pozisyonu sıfırla
-      translateX.setValue(0);
-    });
-  }, [router, screenWidth, translateX]);
-
-  // Ekran her odaklandığında yatay öteleme sıfırlanır.
-  //
-  // NEDEN: Yukarıdaki geri-kaydırma animasyonu sayfayı bir ekran genişliği
-  // kadar ötelüyor ve sıfırlamayı animasyonun bitiş callback'ine bırakıyor.
-  // Animasyon `useNativeDriver: true` ile çalıştığı için o `setValue(0)` native
-  // tarafa her zaman yansımıyor; yansımadığında sayfa ekran dışında kalıyor ve
-  // sekmeye tekrar girildiğinde SEKMELER DAHİL hiçbir şey görünmüyordu
-  // (tamamen beyaz ekran, ara sıra tekrarlayan). Odakta sıfırlamak, önceki
-  // çıkışta ne olduğundan bağımsız olarak sayfayı yerine oturtur.
-  useFocusEffect(
-    useCallback(() => {
-      translateX.stopAnimation(() => translateX.setValue(0));
-    }, [translateX])
-  );
-
-  // Pull-to-refresh çalışabilsin diye sadece sol kenardan başlatılan yatay swipe'ı yakala
-  const swipeGesture = Gesture.Pan()
-    .hitSlop({ left: 0, width: 24 })
-    .activeOffsetX(20)
-    .failOffsetY([-10, 10])
-    .onEnd((event) => {
-      if (event.translationX > 80) {
-        runOnJS(handleSwipeBack)();
-      }
-    });
+  // NOT: Buradaki "sol kenardan kaydırınca ana sayfaya dön" jesti KALDIRILDI.
+  // Sekmeler arası kaydırmalı geçiş geldiği için (bkz. app/(tabs)/_layout.tsx)
+  // aynı alanda iki yatay jest çakışıyordu; sola kaydırmak artık önceki sekmeye
+  // götürüyor.
 
   // Realtime: C kullanıcısı Messages ekranındayken A'dan gelen yeni mesajlarda sohbet listesini anlık güncelle
   useEffect(() => {
@@ -1209,8 +1171,7 @@ export default function Messages() {
   }
 
   return (
-    <GestureDetector gesture={swipeGesture}>
-      <Animated.View style={{ flex: 1, transform: [{ translateX }] }}>
+    <View style={{ flex: 1 }}>
         {/* EULA/Topluluk İlkeleri - Apple UGC: kullanıcı içeriğe girmeden önce kabul */}
         {!isGuest && ugcAgreed === false && (
           <Modal visible={true} animationType="fade">
@@ -1603,7 +1564,6 @@ export default function Messages() {
             </Pressable>
           </Pressable>
         </Modal>
-      </Animated.View>
-    </GestureDetector>
+    </View>
   );
 }
