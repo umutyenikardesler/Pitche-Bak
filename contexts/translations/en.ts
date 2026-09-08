@@ -229,6 +229,8 @@ export const en: Record<TranslationKey, string> = {
   'messages.searchNoResults': 'No chats match your search.',
   'messages.newMessage': 'New message',
   'messages.composeTo': 'To:',
+  // Shorter than the list search box; the modal field is narrower.
+  'messages.composePlaceholder': 'Search by person or match name',
   'messages.suggested': 'Suggested',
   'messages.noSuggestions': 'No matching people found.',
   'messages.noMatchChats': 'You have no match chats yet.',

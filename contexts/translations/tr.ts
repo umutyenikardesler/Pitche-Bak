@@ -227,6 +227,8 @@ export const tr = {
   'messages.searchNoResults': 'Aramanla eşleşen sohbet bulunamadı.',
   'messages.newMessage': 'Yeni mesaj',
   'messages.composeTo': 'Kime:',
+  // Modaldaki alan dar olduğu için listedeki arama kutusundan daha kısa bir metin.
+  'messages.composePlaceholder': 'Kişi adını ya da maç adını yazarak ara',
   'messages.suggested': 'Önerilen',
   'messages.noSuggestions': 'Eşleşen kişi bulunamadı.',
   'messages.noMatchChats': 'Henüz maç sohbetiniz yok.',

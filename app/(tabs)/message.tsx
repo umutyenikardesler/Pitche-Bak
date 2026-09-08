@@ -1,5 +1,5 @@
-import { useEffect, useState, useCallback, useRef, useMemo } from "react";
-import { View, Text, FlatList, TouchableOpacity, Image, ActivityIndicator, RefreshControl, Modal, Pressable, Alert, TextInput, ScrollView, KeyboardAvoidingView, Platform } from "react-native";
+import { createElement, useEffect, useState, useCallback, useRef, useMemo, type ReactNode } from "react";
+import { View, Text, FlatList, TouchableOpacity, Image, ActivityIndicator, RefreshControl, Modal, Pressable, Alert, TextInput, ScrollView, KeyboardAvoidingView, Keyboard, StyleSheet, Dimensions, Platform } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { hideChat, parseHiddenChats } from "@/lib/hiddenChats";
 import { fetchFollowList, type FollowUser } from "@/services/follows";
@@ -31,7 +31,35 @@ const UPCOMING_VISIBLE_ROWS = 3;
 const UPCOMING_MAX_HEIGHT_RATIO = 0.6;
 
 /** Mesajlar sayfasındaki sekmeler. Grup mesajları henüz uygulanmadı. */
+/**
+ * Android: kartı klavyeye yaklaştıran/uzaklaştıran tek ayar noktası.
+ *
+ * Hesap (klavye yüksekliği eksi gezinme çubuğu) teoride kartı klavyeye bitişik
+ * yapıyor, ama cihazda hâlâ boşluk kaldığı gözlendi ve sebebi analizle
+ * bulunamadı. NEGATİF değer kartı aşağı indirir (boşluğu kapatır), pozitif
+ * değer yukarı çeker. Tek yerde tutuluyor ki denemesi kolay olsun.
+ */
+const ANDROID_KEYBOARD_NUDGE = -22;
+
+/** Yeni mesaj kartının iç alt dolgusu. */
+const COMPOSE_CARD_PADDING_BOTTOM = 8;
+
 type ChatTab = 'direct' | 'match' | 'group';
+
+/**
+ * Android'de ekran ile uygulama penceresi arasındaki yükseklik farkı, yani
+ * gezinme çubuğunun kapladığı alan. Klavye yüksekliği EKRANA göre ölçülüyor
+ * ama içerik pencerede bittiği için bu fark düşülmeli.
+ *
+ * `useSafeAreaInsets().bottom` bu iş için güvenilir değil: jest navigasyonunda
+ * 0 dönüyor (ölçümle doğrulandı) ve telafi 27px fazla kalıyordu.
+ */
+function androidBottomBarHeight(): number {
+  if (Platform.OS !== 'android') return 0;
+  const screen = Dimensions.get('screen');
+  const win = Dimensions.get('window');
+  return Math.max(screen.height - win.height, 0);
+}
 
 /**
  * Arama karşılaştırması için metni sadeleştirir. Türkçe'de "I/İ" dönüşümü
@@ -153,6 +181,29 @@ export default function Messages() {
   // Yeni mesaj (+) modalı
   const [composeVisible, setComposeVisible] = useState(false);
   const [composeQuery, setComposeQuery] = useState('');
+  const composeInputRef = useRef<TextInput>(null);
+  // Yeni mesaj modalının alt payı klavye durumuna göre değişiyor: klavye
+  // kapalıyken üst payla simetrik, açıkken kart klavyenin hemen üstünde dursun
+  // diye küçük. Simetrik pay klavye açıkken kartı gereksiz yere kısaltıyordu.
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
+  // Android'de klavye yüksekliği gerekiyor: Expo SDK 54 edge-to-edge modda
+  // çalıştığı için pencere klavye açılınca KÜÇÜLMÜYOR (`adjustResize` beklenen
+  // etkiyi yapmıyor). Katmanın altına bu kadar pay verip kartı klavyenin
+  // üstünde tutuyoruz. iOS'ta bu iş KeyboardAvoidingView'da.
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+  useEffect(() => {
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+    const showSub = Keyboard.addListener(showEvent, (e) => {
+      setKeyboardVisible(true);
+      setKeyboardHeight(e?.endCoordinates?.height ?? 0);
+    });
+    const hideSub = Keyboard.addListener(hideEvent, () => setKeyboardVisible(false));
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
   const [followingUsers, setFollowingUsers] = useState<FollowUser[]>([]);
   // "Yapılacak Maçlar" bölümünde ilk kartın ölçülen yüksekliği ve iki bölümün
   // paylaştığı toplam alan; 3 kartlık sınır ve %60 üst sınırı bunlardan hesaplanıyor.
@@ -287,6 +338,43 @@ export default function Messages() {
       active = false;
     };
   }, [composeVisible]);
+
+  /**
+   * Yeni mesaj katmanının kabuğu. Platforma göre FARKLI:
+   *
+   *  - iOS: `Modal` sorunsuz çalışıyor (klavye açılıyor, ölçüler doğru).
+   *  - Android: `Modal` KENDİ PENCERESİNİ açıyor. Ölçüm bunun iki sonucunu
+   *    gösterdi: (1) o pencere activity'nin `adjustResize` ayarını devralmıyor,
+   *    (2) otomatik odak IME'yi açmıyor. Bu yüzden Android'de ayrı pencere
+   *    kullanmıyoruz; katman sayfanın içinde mutlak konumlu çiziliyor. Böylece
+   *    giriş alanı sıradan bir ekrandaki gibi davranıyor: `autoFocus` klavyeyi
+   *    açıyor ve pencere klavyeyle birlikte küçülüyor.
+   *
+   * Not: Bileşen olarak değil FONKSİYON olarak yazıldı; bileşen olsaydı her
+   * render'da yeni tip üretilip içerik yeniden mount edilir, yazarken odak
+   * kaybolurdu.
+   */
+  const renderComposeShell = (children: ReactNode) => {
+    if (Platform.OS === 'ios') {
+      return (
+        <Modal
+          visible={composeVisible}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setComposeVisible(false)}
+          statusBarTranslucent
+          navigationBarTranslucent
+        >
+          <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
+            {children}
+          </KeyboardAvoidingView>
+        </Modal>
+      );
+    }
+
+    if (!composeVisible) return null;
+    return <View style={[StyleSheet.absoluteFill, { zIndex: 50 }]}>{children}</View>;
+  };
 
   const openChatWith = useCallback(
     (u: FollowUser) => {
@@ -1343,40 +1431,63 @@ export default function Messages() {
           <Ionicons name="add" size={30} color={colors.primary} />
         </TouchableOpacity>
 
-        {/* Yeni mesaj modalı: "Kime:" ile kişi/maç ara, öneriden seç. */}
-        <Modal
-          visible={composeVisible}
-          transparent
-          animationType="fade"
-          onRequestClose={() => setComposeVisible(false)}
-        >
-          {/* Arama kutusu autoFocus olduğu için modal açılır açılmaz klavye
-              geliyordu ve kartın alt kısmı klavyenin altında kalıyordu.
-              KeyboardAvoidingView kapsayıcıyı klavye kadar kısaltıyor, kart da
-              kalan alanda ortalanıp ona göre sınırlanıyor. */}
-          <KeyboardAvoidingView
-            style={{ flex: 1 }}
-            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          >
+        {/* Yeni mesaj katmanı: "Kime:" ile kişi/maç ara, öneriden seç.
+            Kabuk platforma göre değişiyor (bkz. renderComposeShell). */}
+        {renderComposeShell(
+          <>
           <Pressable
             style={{
               flex: 1,
               backgroundColor: colors.overlay,
-              // Ortalamak yerine klavyenin hemen üstüne yaslanıyor: ortalandığında
-              // kalan boşluk alta ve üste eşit dağılıyor, kart ekranın tepesine
-              // (Dynamic Island hizasına) çıkıp klavyeyle arasında büyük boşluk
-              // bırakıyordu. Alta yaslayınca klavyeyle arası sabit kalıyor.
-              justifyContent: 'flex-end',
+              // Klavye kapalıyken kart ekranın ortasında; açıkken klavyenin
+              // hemen üstüne yaslanır. Açıkken de ortalasaydık, kart kısa
+              // olduğunda artan boşluk ikiye bölünüp klavyeyle arasında boşluk
+              // bırakıyordu.
+              justifyContent: keyboardVisible ? 'flex-end' : 'center',
               paddingHorizontal: 20,
-              paddingBottom: 12,
+              // Klavye kapalıyken alt pay üst payla aynı (kart ekranın altına
+              // kadar uzamasın). Klavye açıkken:
+              //  - iOS: KeyboardAvoidingView kapsayıcıyı zaten kısaltıyor.
+              //  - Android: edge-to-edge modda pencere küçülmediği için pay
+              //    klavye yüksekliği kadar veriliyor; yoksa kart klavyenin
+              //    altına uzuyor.
+              // Android'de klavye yüksekliği EKRANA göre ölçülüyor, oysa katman
+              // PENCERENİN altında bitiyor. Klavyenin gezinme çubuğu kadarlık
+              // kısmı katmanı zaten örtmüyor; düşülmezse kart o kadar fazla
+              // yukarı çıkıyor. Ölçüm bunu doğruladı: fark 27px'ti.
+              // NOT: `insets.bottom` KULLANILAMAZ — jest navigasyonunda 0
+              // dönüyor. Gerçek fark ekran ile pencere yüksekliği arasında.
+              paddingBottom: keyboardVisible
+                ? Platform.OS === 'android'
+                  ? Math.max(
+                      keyboardHeight - androidBottomBarHeight() + ANDROID_KEYBOARD_NUDGE,
+                      0
+                    )
+                  : 8
+                : insets.top + HEADER_CONTENT_HEIGHT,
               // Uzun listelerde kart tepeye dayanmasın. Sabit sayı yerine güvenli
               // alan + pay: Dynamic Island'lı cihazlarda üst inset ~59px, sabit
               // 48 verildiğinde kart adanın hemen altına giriyordu.
-              // Pay, arkadaki header (başlık - logo - bildirim ikonu) görünür
-              // kalacak kadar: güvenli alan + header içerik yüksekliği.
-              paddingTop: insets.top + HEADER_CONTENT_HEIGHT,
+              // iOS'ta katman tüm ekranı kaplayan bir Modal olduğu için header
+              // payı burada veriliyor (başlık - logo - bildirim ikonu görünür
+              // kalsın diye). Android'de katman sayfanın İÇİNDE, yani zaten
+              // header'ın altından başlıyor; klavye açıkken o payı tekrar
+              // vermek kartı gereksiz kısaltıyordu.
+              paddingTop:
+                Platform.OS === 'android' && keyboardVisible
+                  ? 20
+                  : insets.top + HEADER_CONTENT_HEIGHT,
             }}
-            onPress={() => setComposeVisible(false)}
+            // Klavye açıkken boşluğa dokunmak önce KLAVYEYİ kapatır, modalı
+            // değil. Aksi halde klavyeyi indirmenin hiçbir yolu yoktu: tek
+            // dokunulabilir alan modalı da kapatıyordu.
+            onPress={() => {
+              if (keyboardVisible) {
+                Keyboard.dismiss();
+                return;
+              }
+              setComposeVisible(false);
+            }}
           >
             <Pressable
               onPress={(e) => e.stopPropagation()}
@@ -1384,6 +1495,7 @@ export default function Messages() {
                 backgroundColor: colors.surface,
                 borderRadius: 16,
                 padding: 16,
+                paddingBottom: COMPOSE_CARD_PADDING_BOTTOM,
                 maxHeight: '100%',
                 borderWidth: 1,
                 borderColor: colors.primary,
@@ -1413,16 +1525,23 @@ export default function Messages() {
                     borderColor: colors.primary,
                   }}
                 >
-                  <TextInput
-                    value={composeQuery}
-                    onChangeText={setComposeQuery}
-                    placeholder={t('messages.searchPlaceholder')}
-                    placeholderTextColor={colors.textMuted}
-                    style={{ flex: 1, color: colors.text, fontSize: 13, padding: 0 }}
-                    autoCapitalize="none"
-                    autoCorrect={false}
-                    autoFocus
-                  />
+                  {/* JSX yerine `createElement`: bu projede jsxImportSource
+                      NativeWind (react-native-css-interop) ve o sarmalayıcı
+                      ref'i alttaki bileşene aktarmıyor — ölçümde `ref=NULL`
+                      çıkmasının sebebi buydu, dolayısıyla focus() çağrıları
+                      hiç çalışmıyordu. `createElement` JSX dönüşümünü atlayıp
+                      doğrudan React'e gittiği için ref bağlanıyor. */}
+                  {createElement(TextInput, {
+                    ref: composeInputRef,
+                    value: composeQuery,
+                    onChangeText: setComposeQuery,
+                    placeholder: t('messages.composePlaceholder'),
+                    placeholderTextColor: colors.textMuted,
+                    style: { flex: 1, color: colors.text, fontSize: 13, padding: 0 },
+                    autoCapitalize: 'none',
+                    autoCorrect: false,
+                    autoFocus: true,
+                  })}
                   {composeQuery.length > 0 && (
                     <TouchableOpacity onPress={() => setComposeQuery('')} hitSlop={8}>
                       <Ionicons name="close-circle" size={18} color={colors.textMuted} />
@@ -1456,6 +1575,9 @@ export default function Messages() {
                 // flexShrink: 1 -> çok öneri varsa kart sınıra dayanır, liste kendi içinde kayar.
                 <ScrollView
                   keyboardShouldPersistTaps="handled"
+                  // `keyboardDismissMode="on-drag"` KALDIRILDI: önerileri
+                  // kaydırırken klavyeyi kapatıyordu. Klavyeyi indirmek için
+                  // boşluğa dokunmak yeterli (bkz. dıştaki Pressable).
                   style={{ flexGrow: 0, flexShrink: 1, marginHorizontal: -4 }}
                 >
                   {composeSuggestions.map((u) => (
@@ -1492,8 +1614,8 @@ export default function Messages() {
               )}
             </Pressable>
           </Pressable>
-          </KeyboardAvoidingView>
-        </Modal>
+          </>
+        )}
 
         {/* Sohbet seçenekleri modalı (... menüsü) */}
         <Modal visible={!!chatOptionsItem} transparent animationType="fade">

@@ -50,9 +50,12 @@ export default function LandingScreen() {
 
   const dotsWidth = INTRO_SLIDES.length * DOT_SIZE + (INTRO_SLIDES.length - 1) * DOT_GAP;
   const introImageHeight = Platform.OS === "android" ? "83%" : "88%";
+  // Android'de `insets.bottom` JEST NAVİGASYONUNDA 0 dönüyor; eski hesap bu
+  // durumda payı doğrudan 0 yapıyordu ve butonlar ekranın en dibine yapışıyordu.
+  // Alt sınır veriliyor: gezinme çubuğu bildirilmese de nefes payı kalsın.
   const ctaBottomPadding =
     Platform.OS === "android"
-      ? (insets.bottom > 0 ? insets.bottom + 8 : 0)
+      ? Math.max(insets.bottom + 8, 16)
       : Math.max(insets.bottom, 8);
 
   const rand = (min: number, max: number) => {

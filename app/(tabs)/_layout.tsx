@@ -395,6 +395,10 @@ export default function TabsLayout() {
             backgroundColor: isIos ? 'transparent' : colors.surface,
             paddingBottom: isIos ? 9 : tabBarBottomInset + tabBarExtraBottom,
             paddingTop: isIos ? 3 : 8,
+            // Android'de menü yüzmüyor, ekranın altına sabit oturuyor; içerikten
+            // ayrılsın diye üst kenarına marka rengi çizgi. (iOS'ta bu iş
+            // hap çubuğun kendi çepeçevre kenarlığıyla zaten yapılıyor.)
+            ...(isIos ? null : { borderTopWidth: 2, borderTopColor: '#16a34a' }),
           },
           // `tabBarIosGlass` position:absolute veriyor ama yatay sınır vermiyor:
           // bottom-tabs kullanırken bunu kütüphanenin taban stili (start/end: 0)
@@ -724,6 +728,17 @@ export default function TabsLayout() {
           tabBar={(props) => <SwipeTabBar {...props} />}
           screenOptions={{
             swipeEnabled: true,
+            // Ekranlar ilk kez odaklanınca mount edilsin. Varsayılanda pager
+            // BEŞ ekranı birden açılışta render ediyor; bu hem başlangıcı
+            // yavaşlatıyor hem de ekranların mount anındaki yan etkilerini
+            // (ör. Maç Oluştur'daki uyarı modalı) siz o sekmeye girmeden
+            // tetikliyordu.
+            lazy: true,
+            // Komşu ekran önceden hazırlansın: yalnızca `lazy` ile kaydırma
+            // sırasında henüz mount olmamış ekran bir an boş görünüyordu.
+            // Önceden render edilen ekranın mount yan etkileri sorun çıkarmaz,
+            // çünkü ilgili modallar `isFocused` ile korunuyor.
+            lazyPreloadDistance: 1,
             sceneStyle: { backgroundColor: colors.background },
           }}
         >

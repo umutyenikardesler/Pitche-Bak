@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "610436653990",
+    "project_id": "sahayabak",
+    "storage_bucket": "sahayabak.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:610436653990:android:5762e76b758baa86446567",
+        "android_client_info": {
+          "package_name": "com.tumurelsedrakiney.pitchebak"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAsAN7DmLrnFz-Ku4yHQfzGJl5sV4A2eSU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:610436653990:android:311c4039e8e0f4ae446567",
+        "android_client_info": {
+          "package_name": "com.tumurelsedrakiney.pitchebak.dev"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAsAN7DmLrnFz-Ku4yHQfzGJl5sV4A2eSU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

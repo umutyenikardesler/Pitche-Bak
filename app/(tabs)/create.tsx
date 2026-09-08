@@ -13,7 +13,7 @@ import { useGuestAuthAlert } from '@/contexts/GuestAuthModalContext';
 import { useAppTheme } from '@/contexts/ThemeContext';
 import '@/global.css';
 
-import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
+import { useNavigation, useRoute, useFocusEffect, useIsFocused } from '@react-navigation/native';
 import AsyncStorage from "@react-native-async-storage/async-storage"; // Kullanıcı ID'sini almak için eklendi
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useTabBarBottomInset } from '@/hooks/useTabBarBottomInset';
@@ -38,6 +38,7 @@ export default function CreateMatch() {
   const router = useRouter();
   const { isGuest } = useAuth();
   const { showGuestAuthAlert } = useGuestAuthAlert();
+  const isFocused = useIsFocused();
 
   useFocusEffect(
     useCallback(() => {
@@ -273,8 +274,12 @@ export default function CreateMatch() {
 
   return (
     <>
+      {/* `isFocused` şart: sekmeler kaydırmalı pager'a taşındığından bu ekran
+          odakta olmadan da render edilebiliyor. RN'de Modal, bulunduğu ekran
+          görünür olmasa bile TÜM uygulamanın üstünde açılır; bu yüzden uyarı
+          daha ana sayfadayken karşımıza çıkıyordu. */}
       <ReservationWarningModal
-        visible={reservationModalVisible}
+        visible={reservationModalVisible && isFocused}
         onClose={() => setReservationModalVisible(false)}
       />
 

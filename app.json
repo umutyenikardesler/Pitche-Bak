@@ -44,7 +44,8 @@
         "foregroundImage": "./assets/images/app.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.tumurelsedrakiney.pitchebak"
+      "package": "com.tumurelsedrakiney.pitchebak",
+      "googleServicesFile": "./android/app/google-services.json"
     },
     "web": {
       "bundler": "metro",
