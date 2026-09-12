@@ -19,8 +19,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const { data, error } = await supabase.auth.getUser();
       if (error) {
-        // Eğer refresh token hatası alırsak (geçersiz veya silinmişse), oturumu yerelde temizle
-        if (error.message.includes("Refresh Token") || error.status === 400 || error.status === 401) {
+        /**
+         * "Oturum yok" bir HATA DEĞİL, misafirin normal durumudur. Eskiden her
+         * 400/401 için signOut() çağrılıyordu; oturumsuz açılışta getUser()
+         * zaten AuthSessionMissingError (400) döndüğü için uygulama her soğuk
+         * başlangıçta kendi kendine sahte bir SIGNED_OUT olayı üretiyordu. Bu
+         * olay isGuest'i tetikleyip korumalı ekranlarda gereksiz yönlendirmelere
+         * yol açıyordu. Artık yalnızca gerçekten bozuk bir refresh token varsa
+         * yerel oturum temizleniyor.
+         */
+        const isMissingSession =
+          (error as any)?.code === 'session_missing' ||
+          error.name === 'AuthSessionMissingError' ||
+          error.message.includes('Auth session missing');
+        const isBadRefreshToken =
+          error.message.includes('Refresh Token') || error.message.includes('refresh_token');
+
+        if (!isMissingSession && (isBadRefreshToken || error.status === 401)) {
           console.log("Geçersiz refresh token, oturum temizleniyor...");
           await supabase.auth.signOut();
         }
@@ -43,7 +58,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (!mounted) return;
-      
+
       // TOKEN_REFRESH_FAILED gibi durumlarda setUser(null) yap
       if (event === 'SIGNED_OUT' || (event as any) === 'TOKEN_REFRESH_FAILED') {
         setUser(null);
@@ -63,7 +78,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       value={{
         user,
         isLoading,
-        isGuest: !user,
+        /**
+         * "Misafir" = kullanıcı OLMADIĞINI BİLİYORUZ demektir; "henüz
+         * bilmiyoruz" demek değil.
+         *
+         * Eskiden `!user` idi ve `user` başlangıçta null olduğu için oturum
+         * bilgisi yüklenirken herkes misafir sayılıyordu. Bu sırada odaklanan
+         * korumalı ekranlar (bildirimler, profil, mesajlar...) "giriş sayfasına
+         * yönlendiriliyorsunuz" uyarısını gösterip kullanıcıyı giriş ekranına
+         * atıyordu — özellikle deep link ile soğuk açılışta, yani Google
+         * girişinden hemen sonra.
+         *
+         * Hiçbir tüketici `isLoading`'i kontrol etmiyordu; kuralı tek yerde
+         * düzeltmek hepsini birden kapsıyor.
+         */
+        isGuest: !isLoading && !user,
         refresh,
       }}
     >

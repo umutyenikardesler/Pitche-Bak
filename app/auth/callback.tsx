@@ -15,7 +15,8 @@ import {
 } from "@/lib/authVerification";
 import { getEmailFromAccessToken } from "@/lib/jwtPayload";
 import { getLastNonAuthRoute } from "@/lib/lastNonAuthRoute";
-import { lockAuthCallbackFor } from "@/lib/authCallbackLock";
+import { lockAuthCallbackFor, isAuthCallbackLocked } from "@/lib/authCallbackLock";
+import { completeLoginAndGetRoute } from "@/lib/postLogin";
 
 function parseHashParams(url: string): Record<string, string> {
   try {
@@ -195,6 +196,51 @@ export default function AuthCallbackScreen() {
         return;
       }
 
+      // OAUTH (Google/Apple): Supabase e-posta doğrulama bağlantılarında
+      // `type` gönderir (signup, email, email_change, invite, magiclink,
+      // recovery); OAuth dönüşünde ise `type` YOKTUR. Aşağıdaki doğrulama dalı
+      // koddan sonra bilerek `signOut()` çağırdığı için, `type`sız OAuth
+      // dönüşleri de oraya düşünce Google ile giriş yapan kullanıcı
+      // "E-postanız onaylandı, şifrenizle giriş yapın" ekranına atılıyordu.
+      //
+      // NOT: Bu ekran OAuth akışında da çalışıyor, çünkü expo-router deep
+      // link'i doğrudan bu rotaya yönlendiriyor (app/_layout.tsx'teki kilit
+      // yalnızca oradaki manuel dinleyiciyi durdurur).
+      if (!type) {
+        let session = null;
+        if (code) {
+          const { data: exchanged, error: exchangeError } =
+            await supabase.auth.exchangeCodeForSession(code);
+          // Kodu giriş ekranındaki akış önce tüketmiş olabilir; oturum varsa sorun yok.
+          if (exchangeError) {
+            const { data: existing } = await supabase.auth.getSession();
+            if (!existing?.session) throw exchangeError;
+            session = existing.session;
+          } else {
+            session = exchanged?.session ?? null;
+          }
+        } else if (access_token && refresh_token) {
+          const { data, error } = await supabase.auth.setSession({ access_token, refresh_token });
+          if (error) throw error;
+          session = data?.session ?? null;
+        } else {
+          const { data: existing } = await supabase.auth.getSession();
+          session = existing?.session ?? null;
+        }
+
+        if (session?.user?.id) {
+          const route = await completeLoginAndGetRoute(session.user.id, session.user.email);
+          lockAuthCallbackFor(8000);
+          router.replace(route as any);
+          return;
+        }
+        // Oturum kurulamadıysa doğrulama akışına düşmek yerine hata göster.
+        setStatus("error");
+        setErrorMessage(t("auth.userInfoMissing"));
+        setErrorHint(t("auth.userInfoMissingHint"));
+        return;
+      }
+
       // E-posta doğrulama (signup/email): kullanıcıyı oturum açmış saymayalım.
       // Code varsa e-posta almak için exchange edip ardından signOut ile session'ı temizliyoruz.
       if (code) {
@@ -251,6 +297,32 @@ export default function AuthCallbackScreen() {
         window.location.href = redirectAppUrl;
         return;
       }
+    }
+
+    // OAuth akışını GİRİŞ EKRANI başlattıysa dönüşü de o işleyecek (kilit onda).
+    //
+    // expo-router, gelen deep link'in yolu "auth/callback" olduğu için bu rotayı
+    // da açıyor; bu, kilidin zaten koruduğu kök Linking dinleyicisinden AYRI bir
+    // yol. İki taraf aynı tek kullanımlık PKCE kodunu tüketmeye çalıştığında
+    // kaybeden oturumsuz kalıp "Kullanıcı bilgisi alınamadı" hatasını basıyordu —
+    // kullanıcı hatayı görüp bir saniye sonra yine giriş yapmış oluyordu.
+    //
+    // Bu durumda ekran yalnızca bekler; başlatan akış başarıda yönlendirir.
+    // Başlatan akış bir sebeple yönlendiremezse aşağıdaki emniyet zamanlayıcısı
+    // devreye girer, kullanıcı spinner'da kalmaz.
+    if (Platform.OS !== "web" && isAuthCallbackLocked()) {
+      const bailoutId = setTimeout(async () => {
+        const { data } = await supabase.auth.getSession();
+        const user = data?.session?.user;
+        if (user?.id) {
+          const route = await completeLoginAndGetRoute(user.id, user.email);
+          router.replace(route as any);
+        } else {
+          const from = getLastNonAuthRoute() || "/landing";
+          router.replace(`/auth?from=${encodeURIComponent(from)}` as any);
+        }
+      }, 6000);
+      return () => clearTimeout(bailoutId);
     }
 
     const handleUrl = (url: string | null) => {

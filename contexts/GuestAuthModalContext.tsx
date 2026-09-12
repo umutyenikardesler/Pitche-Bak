@@ -4,6 +4,8 @@ import { useRouter } from 'expo-router';
 import { useLanguage } from './LanguageContext';
 import { useAppTheme } from './ThemeContext';
 import { getLastNonAuthRoute } from '@/lib/lastNonAuthRoute';
+import { useAuth } from './AuthContext';
+import { isAuthCallbackLocked } from '@/lib/authCallbackLock';
 
 const REDIRECT_DELAY_MS = 2500;
 /** Misafirin "Başla"dan sonra geldiği ana sayfa; geri dönüş için varsayılan hedef. */
@@ -18,6 +20,7 @@ const GuestAuthModalContext = createContext<GuestAuthModalContextType | undefine
 
 export function GuestAuthModalProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
+  const { user } = useAuth();
   const { t } = useLanguage();
   const { colors } = useAppTheme();
   const [visible, setVisible] = useState(false);
@@ -25,6 +28,12 @@ export function GuestAuthModalProvider({ children }: { children: React.ReactNode
   const [origin, setOrigin] = useState<string>(GUEST_HOME_ROUTE);
 
   const showGuestAuthAlert = useCallback((msg: string) => {
+    // OAuth akışı sürerken uyarı GÖSTERİLMEZ. Google girişinden dönerken oturum
+    // birkaç yüz ms içinde kuruluyor; o aralıkta odaklanan korumalı bir ekran
+    // (ör. bildirim dokunuşuyla açılan bildirimler sayfası) kullanıcıyı henüz
+    // misafir sanıp uyarıyı basıyor ve ardından giriş ekranına atıyordu.
+    if (isAuthCallbackLocked()) return;
+
     setMessage(msg);
     // Kökeni UYARI ANINDA sabitliyoruz. `lastNonAuthRoute` global bir değer ve
     // yönlendirmeye kadar geçen sürede başka bir gezinti onu ezebilir; sabitlemezsek
@@ -36,6 +45,16 @@ export function GuestAuthModalProvider({ children }: { children: React.ReactNode
   useEffect(() => {
     if (!visible) return;
 
+    // Uyarı GECİKMELİ yönlendirme yapıyor. Bu arada kullanıcı giriş yapmış
+    // olabilir: özellikle Google akışında uyarı, oturum kurulmadan hemen önce
+    // tetikleniyor ve 2.5 sn sonraki yönlendirme başarılı girişi ezip kullanıcıyı
+    // giriş ekranına geri atıyordu. Artık giriş yapılmışsa uyarı sessizce
+    // kapanıyor, yönlendirme hiç olmuyor.
+    if (user) {
+      setVisible(false);
+      return;
+    }
+
     const timeoutId = setTimeout(() => {
       setVisible(false);
       // Geri dönüş hedefini açıkça taşı: auth ekranı `from` parametresini önceliyor.
@@ -43,7 +62,7 @@ export function GuestAuthModalProvider({ children }: { children: React.ReactNode
     }, REDIRECT_DELAY_MS);
 
     return () => clearTimeout(timeoutId);
-  }, [visible, router, origin]);
+  }, [visible, user, router, origin]);
 
   return (
     <GuestAuthModalContext.Provider value={{ showGuestAuthAlert }}>

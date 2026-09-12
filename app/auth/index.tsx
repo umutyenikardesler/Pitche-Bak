@@ -27,6 +27,8 @@ import {
   getOAuthSupabaseRedirectUrl,
   createSessionFromRedirectUrl,
 } from "@/lib/oauthRedirect";
+import { lockAuthCallbackFor, releaseAuthCallbackLock } from "@/lib/authCallbackLock";
+import { completeLoginAndGetRoute } from "@/lib/postLogin";
 import type { PolicyKey } from "@/constants/policies";
 import { getLastNonAuthRoute } from "@/lib/lastNonAuthRoute";
 
@@ -153,60 +155,17 @@ export default function AuthScreen() {
   const handlePostLogin = async (userId: string, userEmail?: string | null) => {
     await AsyncStorage.removeItem(PENDING_VERIFICATION_EMAIL_KEY);
     setShowAfterVerifyHint(false);
-    // Kullanıcı ID'sini AsyncStorage içine kaydet
-    await AsyncStorage.setItem("userId", userId);
-    // Giriş sayfasında zaten sözleşme onayı alındı; Mesajlar sayfasında tekrar modal gösterme
-    await AsyncStorage.setItem(`ugc_messaging_agreed_${userId}`, "1");
-
-    // Kullanıcının bilgilerini çek
-    const { data: userInfo, error: userError } = await supabase
-      .from("users")
-      .select("name, surname, age, height, weight, description")
-      .eq("id", userId)
-      .single();
-
-    // Eğer kullanıcı kaydı yoksa oluştur
-    if (userError && (userError as any).code === "PGRST116") {
-      console.log("Kullanıcı kaydı bulunamadı, oluşturuluyor...");
-      const { error: insertError } = await supabase.from("users").insert([
-        {
-          id: userId,
-          email: userEmail ?? null,
-          name: "Yeni Kullanıcı",
-          surname: "",
-          age: null,
-          height: null,
-          weight: null,
-          description: "",
-          created_at: new Date(),
-        },
-      ]);
-
-      if (insertError) {
-        console.error("Kullanıcı bilgileri eklenirken hata oluştu:", insertError.message);
-        Alert.alert(t("general.error"), t("auth.userCreateFailed"));
-        setIsLoading(false);
-        setIsOAuthLoading(null);
-        return;
-      }
-
-      navigateTo("/(tabs)/profile?firstLogin=true");
-      return;
-    }
-
-    if (userError) {
-      console.error("Kullanıcı bilgileri alınırken hata oluştu:", userError.message);
-      navigateTo("/(tabs)/profile?firstLogin=true");
-      return;
-    }
-
-    const hasMissingFields = !userInfo?.name || !userInfo?.surname || !userInfo?.age ||
-      !userInfo?.height || !userInfo?.weight || !userInfo?.description;
-
-    if (hasMissingFields) {
-      navigateTo("/(tabs)/profile?firstLogin=true");
-    } else {
-      navigateTo("/(tabs)/profile");
+    // Ortak giriş-sonrası adımlar (yerel kayıt + `users` satırı garantisi +
+    // hedef rota). OAuth dönüşünü işleyen callback ekranı da aynı modülü
+    // kullanıyor; ayrı kopyalar tutulsaydı iki yol zamanla ayrışırdı.
+    try {
+      const route = await completeLoginAndGetRoute(userId, userEmail);
+      navigateTo(route);
+    } catch (e: any) {
+      console.error("Kullanıcı bilgileri eklenirken hata oluştu:", e?.message);
+      Alert.alert(t("general.error"), t("auth.userCreateFailed"));
+      setIsLoading(false);
+      setIsOAuthLoading(null);
     }
   };
 
@@ -286,39 +245,67 @@ export default function AuthScreen() {
   );
 
   const signInWithOAuth = async (provider: "google" | "apple") => {
-    const redirectUri = getOAuthRedirectUri();
-    const supabaseRedirectTo = getOAuthSupabaseRedirectUrl();
+    const isNative = Platform.OS !== "web";
 
-    const { data, error } = await supabase.auth.signInWithOAuth({
-      provider,
-      options: {
-        redirectTo: supabaseRedirectTo,
-        skipBrowserRedirect: true,
-      },
-    });
+    // Kilit akışın EN BAŞINDA alınıyor.
+    //
+    // 1. Dönüş deep link'ini BU akış işleyecek; kök Linking dinleyicisi
+    //    (app/_layout.tsx) araya girmesin. Girerse /auth/callback ekranı açılıp
+    //    aynı tek kullanımlık PKCE kodunu tüketmeye çalışıyor ve kaybeden taraf
+    //    oturumsuz kalıyordu ("Auth session missing!").
+    // 2. Kilit misafir uyarılarını da bastırıyor (bkz.
+    //    contexts/GuestAuthModalContext.tsx). Bu yüzden aşağıdaki ağ
+    //    çağrısından ÖNCE alınması gerekiyor: o pencerede odaklanan korumalı bir
+    //    ekran kullanıcıyı henüz misafir sanıp giriş sayfasına geri atıyordu.
+    if (isNative) lockAuthCallbackFor(5 * 60 * 1000);
 
-    if (error) throw error;
+    try {
+      const redirectUri = getOAuthRedirectUri();
+      const supabaseRedirectTo = getOAuthSupabaseRedirectUrl();
 
-    // Native: auth session ile URL'i açıp geri dön
-    if (Platform.OS !== "web") {
-      const result = await WebBrowser.openAuthSessionAsync(data.url, redirectUri);
-      if (result.type !== "success" || !result.url) {
-        throw new Error(t("auth.signInCancelled"));
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider,
+        options: {
+          redirectTo: supabaseRedirectTo,
+          skipBrowserRedirect: true,
+        },
+      });
+
+      if (error) throw error;
+
+      // Native: auth session ile URL'i açıp geri dön
+      if (isNative) {
+        const result = await WebBrowser.openAuthSessionAsync(data.url, redirectUri);
+        if (result.type !== "success" || !result.url) {
+          throw new Error(t("auth.signInCancelled"));
+        }
+
+        // Kullanıcıyı DÖNEN OTURUMDAN okuyoruz. Eskiden burada ayrıca
+        // supabase.auth.getUser() çağrılıyordu; bu fazladan bir ağ isteği ve
+        // fazladan bir hata yolu demekti (istek takılırsa oturum kurulmuş olsa
+        // bile "Kullanıcı bilgisi alınamadı" hatası basılıyordu). Oturum
+        // nesnesi kullanıcıyı zaten taşıyor.
+        const session = await createSessionFromRedirectUrl(result.url);
+
+        let userId = session?.user?.id;
+        let userEmail = session?.user?.email;
+        if (!userId) {
+          // Ağ değil, yereldeki oturumu oku.
+          const { data: sessionData } = await supabase.auth.getSession();
+          userId = sessionData?.session?.user?.id;
+          userEmail = sessionData?.session?.user?.email;
+        }
+        if (!userId) throw new Error(t("auth.userInfoMissing"));
+
+        await handlePostLogin(userId, userEmail);
+        return;
       }
 
-      await createSessionFromRedirectUrl(result.url);
-
-      const { data: userData, error: userErr } = await supabase.auth.getUser();
-      if (userErr) throw userErr;
-      const userId = userData?.user?.id;
-      const userEmail = userData?.user?.email;
-      if (!userId) throw new Error(t("auth.userInfoMissing"));
-
-      await handlePostLogin(userId, userEmail);
-      return;
+      // Web: supabase redirect yapacağı için burada genelde devam etmeyiz
+    } finally {
+      // Sonraki meşru deep link'ler (ör. e-postadan şifre sıfırlama) yutulmasın.
+      if (isNative) releaseAuthCallbackLock();
     }
-
-    // Web: supabase redirect yapacağı için burada genelde devam etmeyiz
   };
 
   const handleGoogleSignIn = async () => {

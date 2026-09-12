@@ -17,6 +17,7 @@ import { isAuthCallbackLocked, lockAuthCallbackFor } from "@/lib/authCallbackLoc
 import { supabase } from "@/services/supabase";
 import { registerPushToken, unregisterPushToken } from "@/services/pushNotifications";
 import * as Notifications from "expo-notifications";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import LaunchLogoOverlay from "@/components/LaunchLogoOverlay";
 import UpdateAvailableModal from "@/components/modals/UpdateAvailableModal";
 
@@ -104,11 +105,24 @@ function AppShell() {
 
         const last = await Notifications.getLastNotificationResponseAsync();
         const id = last?.notification?.request?.identifier ?? null;
+        if (!last || !id) return;
+
         // Aynı yanıt listener tarafından zaten işlendiyse tekrar yönlendirme.
-        if (last && id !== handledResponseIdRef.current) {
-          handledResponseIdRef.current = id;
-          openForResponse(last);
-        }
+        if (id === handledResponseIdRef.current) return;
+
+        // ÖNEMLİ: `getLastNotificationResponseAsync`, uygulama bildirimle
+        // AÇILMASA BİLE en son bildirim yanıtını döndürüyor. Yalnızca bellekte
+        // takip etmek yetmiyor: her soğuk açılışta aynı eski bildirim yeniden
+        // işlenip kullanıcı bildirimler/sohbet ekranına atılıyordu. Bu,
+        // özellikle deep link ile açılan Google girişinde akışı bozuyordu.
+        // Bu yüzden işlenen kimlik KALICI olarak saklanıyor.
+        const HANDLED_KEY = 'handled_notification_response_id';
+        const alreadyHandled = await AsyncStorage.getItem(HANDLED_KEY);
+        if (alreadyHandled === id) return;
+
+        handledResponseIdRef.current = id;
+        await AsyncStorage.setItem(HANDLED_KEY, id);
+        openForResponse(last);
       } catch (_) {}
     })();
 
