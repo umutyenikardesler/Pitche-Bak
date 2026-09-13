@@ -11,6 +11,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { supabase } from "@/services/supabase";
 import { blockUser } from "@/services/blocks";
+import { useBlockedUserGuard } from "@/hooks/useBlockedUserGuard";
 import { createNotification } from "@/services/triggerPushNotification";
 import {
   fetchFollowList,
@@ -58,6 +59,7 @@ export default function ProfilePreview({
   userId,
 }: ProfilePreviewProps) {
   const router = useRouter();
+  const guardBlockedUser = useBlockedUserGuard();
   const pathname = usePathname();
   const { t } = useLanguage();
   const { colors, isDark } = useAppTheme();
@@ -283,7 +285,12 @@ export default function ProfilePreview({
    * takip kontrolü yapılmıyor.
    * Modal açıkken gezinmemek için önce kapatılıyor (dosyadaki mevcut desen).
    */
-  const handleMessage = () => {
+  const handleMessage = async () => {
+      // Engellediğim kişiye sohbet açmıyoruz: mesajları zaten gizlendiği için
+      // yazışma tek taraflı bir çıkmaza dönüşüyordu. Uyarı, engeli kaldırma
+      // sayfasına da yönlendiriyor.
+    if (await guardBlockedUser(userId)) return;
+
     const fullName = `${userData?.name ?? ""} ${userData?.surname ?? ""}`.trim();
     handleClose();
     router.push({

@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { supabase } from '@/services/supabase';
+import { getBlockedUserIds } from '@/services/blocks';
 
 const NotificationContext = createContext({
   // Toplam okunmamış bildirim sayısı (DB'den gelen - direct_message HARİÇ)
@@ -58,9 +59,15 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
       return;
     }
 
+    // Engellediğim kişilerin mesajları rozete sayılmaz. Mesajları zaten
+    // gizleniyor; rozet sayısı artarsa kullanıcı açıp temizleyemeyeceği bir
+    // sayaçla karşılaşıyordu.
+    const blockedIds = await getBlockedUserIds(user.id);
+
     const convoKeys = new Set<string>();
     dmRows.forEach((row: any) => {
       if (!row.sender_id) return;
+      if (blockedIds.has(row.sender_id)) return;
       const key = `${row.sender_id}-${row.match_id || 'null'}`;
       convoKeys.add(key);
     });

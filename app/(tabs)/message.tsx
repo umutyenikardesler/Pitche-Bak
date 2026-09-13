@@ -1,14 +1,15 @@
 import { createElement, useEffect, useState, useCallback, useRef, useMemo, type ReactNode } from "react";
 import { View, Text, FlatList, TouchableOpacity, Image, ActivityIndicator, RefreshControl, Modal, Pressable, Alert, TextInput, ScrollView, KeyboardAvoidingView, Keyboard, StyleSheet, Dimensions, Platform } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { hideChat, parseHiddenChats } from "@/lib/hiddenChats";
+import { hideChat, parseHiddenChats, toTurkeyStamp } from "@/lib/hiddenChats";
+import { useBlockedUserGuard } from "@/hooks/useBlockedUserGuard";
 import { fetchFollowList, type FollowUser } from "@/services/follows";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter, useFocusEffect } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { HEADER_CONTENT_HEIGHT } from "@/constants/header";
 import { supabase } from "@/services/supabase";
-import { getBlockedUserIds, blockUser } from "@/services/blocks";
+import { getBlockedUserTimes, blockUser } from "@/services/blocks";
 import { reportContent, hasUserReportedContent } from "@/services/contentReports";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useAuth } from "@/contexts/AuthContext";
@@ -125,6 +126,14 @@ interface BaseChatSummary {
   owner_surname: string;
   owner_profile_image?: string | null;
   unreadCount?: number;
+  /**
+   * Bu kişiyi ben engelledim mi?
+   *
+   * Engellenen sohbet listeden SİLİNMİYOR; soluk gösteriliyor. Eskiden komple
+   * eleniyordu ve kullanıcı engellediği kişiyi bir daha göremediği için engeli
+   * kaldıracak yolu da bulamıyordu.
+   */
+  isBlocked?: boolean;
 }
 
 interface MatchChatSummary extends BaseChatSummary {
@@ -376,8 +385,15 @@ export default function Messages() {
     return <View style={[StyleSheet.absoluteFill, { zIndex: 50 }]}>{children}</View>;
   };
 
+  const guardBlockedUser = useBlockedUserGuard();
+
   const openChatWith = useCallback(
-    (u: FollowUser) => {
+    async (u: FollowUser) => {
+      // Engellediğim kişiye sohbet açmıyoruz: mesajları zaten gizlendiği için
+      // yazışma tek taraflı bir çıkmaza dönüşüyordu. Uyarı, engeli kaldırma
+      // sayfasına da yönlendiriyor.
+      if (await guardBlockedUser(u.id)) return;
+
       setComposeVisible(false);
       setComposeQuery('');
       const fullName = `${u.name ?? ''} ${u.surname ?? ''}`.trim();
@@ -386,7 +402,7 @@ export default function Messages() {
         params: { to: u.id, ...(fullName ? { name: fullName } : {}) },
       });
     },
-    [router]
+    [router, guardBlockedUser]
   );
 
   // Sayfalama/soluklaştırma maç sekmesinde YALNIZCA geçmiş maçlara uygulanır;
@@ -429,14 +445,14 @@ export default function Messages() {
       // Birbirine bağlı olmayan okumalar paralel çalışıyor; eskiden hepsi sırayla
       // bekleniyordu ve her biri ayrı bir gidiş-dönüş gecikmesi ekliyordu.
       const [
-        blockedIds,
+        blockedStamps,
         joinRequestsRes,
         unreadRes,
         recentMsgsRes,
         hiddenRaw,
         pinnedRaw,
       ] = await Promise.all([
-        getBlockedUserIds(user.id),
+        getBlockedUserTimes(user.id),
         // Katılım kabul edilmiş join_request bildirimlerinden sohbetleri topla.
         // Partner her zaman sender_id'deki kullanıcıdır.
         supabase
@@ -469,6 +485,10 @@ export default function Messages() {
         AsyncStorage.getItem(`hidden_chats_${user.id}`),
         AsyncStorage.getItem(`pinned_chats_${user.id}`),
       ]);
+
+      // Yalnızca "engelli mi" sorusunu soran yerler için kimlik kümesi.
+      // Zamanı gereken tek yer sohbet kartını donduran filtre (aşağıda).
+      const blockedIds = new Set(blockedStamps.keys());
 
       const { data: allData, error } = joinRequestsRes;
       if (error) throw error;
@@ -520,8 +540,21 @@ export default function Messages() {
       const lastAtByMatchChatKey = new Map<string, string>(); // `${otherId}-m-${matchId}` => lastAt
       (recentMsgs || []).forEach((m: any) => {
         const otherId = m.sender_id === user.id ? m.recipient_id : m.sender_id;
-        if (!otherId || otherId === user.id || blockedIds.has(otherId)) return;
+        if (!otherId || otherId === user.id) return;
         const at = typeof m.created_at === "string" ? m.created_at : null;
+
+        // Engellenen sohbetin kartı ENGELLEME ANINA DONDURULUYOR: sonrasında
+        // gelen mesaj ne önizlemeyi ne de tarihi değiştirir. Aksi halde kart,
+        // engellenmiş kişinin yeni mesajını metniyle birlikte sızdırıyordu —
+        // push'u kesmenin bir anlamı kalmıyordu. Engel kalkınca mesajlar
+        // kendiliğinden geri gelir, çünkü filtre yalnızca engel varken işler.
+        const blockedAtRaw = blockedStamps.get(otherId);
+        if (blockedAtRaw && at) {
+          // user_blocks.created_at UTC (TIMESTAMPTZ), messages.created_at saat
+          // dilimsiz Türkiye saati. Aynı çerçeveye çevirmeden karşılaştırılamaz.
+          const blockedAt = toTurkeyStamp(blockedAtRaw);
+          if (blockedAt && new Date(at).getTime() > new Date(blockedAt).getTime()) return;
+        }
 
         // Match sohbetleri için son mesaj zamanını match_id bazında tut
         if (m.match_id && at) {
@@ -561,14 +594,17 @@ export default function Messages() {
         const meta = dmMetaByUser.get(otherId)!;
         const u = dmUsersById.get(otherId);
         const unreadKey = `${otherId}-${meta.match_id || 'null'}`;
+        const isBlocked = blockedIds.has(otherId);
         return {
           kind: "direct",
+          isBlocked,
           id: "dm",
           owner_id: otherId,
           owner_name: u?.name || '',
           owner_surname: u?.surname || '',
           owner_profile_image: u?.profile_image ?? null,
-          unreadCount: unreadMap.get(unreadKey) || 0,
+          // Engellenen sohbet rozet üretmez: mesajları zaten gizli.
+          unreadCount: isBlocked ? 0 : (unreadMap.get(unreadKey) || 0),
           lastMessage: meta.lastMessage,
           lastAt: meta.lastAt,
           match_id: meta.match_id,
@@ -582,7 +618,13 @@ export default function Messages() {
 
       const matchWithLastAt: MatchChatSummary[] = uniqueMatchSummaries.map((m) => {
         const k = `${m.owner_id}-m-${m.id}`;
-        return { ...m, lastAt: lastAtByMatchChatKey.get(k) ?? null };
+        const isBlocked = blockedIds.has(m.owner_id);
+        return {
+          ...m,
+          lastAt: lastAtByMatchChatKey.get(k) ?? null,
+          isBlocked,
+          unreadCount: isBlocked ? 0 : m.unreadCount,
+        };
       });
 
       const toTs = (s: string | null | undefined) => {
@@ -681,7 +723,13 @@ export default function Messages() {
           onPress: async () => {
             const { error } = await blockUser(user.id, item.owner_id);
             if (!error) {
-              setItems((prev) => prev.filter((i) => i.owner_id !== item.owner_id));
+              // Kart listede kalır, yalnızca soluklaşır; kullanıcı engeli
+              // buradan veya sohbet ekranından geri alabilsin.
+              setItems((prev) =>
+                prev.map((i) =>
+                  i.owner_id === item.owner_id ? { ...i, isBlocked: true, unreadCount: 0 } : i
+                )
+              );
               Alert.alert('', t('chat.blocked'));
             }
           },
@@ -848,7 +896,7 @@ export default function Messages() {
       return (
         <View
           className="rounded-lg mx-4 my-1 px-1 py-0.5 shadow-lg"
-          style={{ backgroundColor: colors.surface, ...(isPinned ? { borderWidth: 2, borderColor: colors.primary } : undefined) }}
+          style={{ backgroundColor: colors.surface, ...(isPinned ? { borderWidth: 2, borderColor: colors.primary } : undefined), ...(item.isBlocked ? { opacity: 0.45 } : undefined) }}
         >
           <TouchableOpacity activeOpacity={0.8} onPress={() => router.push({ pathname: '/message/chat', params })} className="flex-row items-center">
             {/* Profil Resmi */}
@@ -863,13 +911,18 @@ export default function Messages() {
             {/* Orta bilgi alanı - flex-1 ile kalan alanı doldurur */}
             <View className="flex-1 flex justify-center -mt-2 ml-2 min-w-0">
               <View className="flex-row items-center justify-between">
-                <Text
-                  className="text-lg font-semibold"
-                  style={{ color: isDark ? colors.primaryDark : (hasUnread ? colors.primaryDark : colors.textSecondary) }}
-                  numberOfLines={1}
-                >
-                  {item.owner_name} {item.owner_surname}
-                </Text>
+                <View className="flex-row items-center flex-1 min-w-0">
+                  <Text
+                    className="text-lg font-semibold"
+                    style={{ color: isDark ? colors.primaryDark : (hasUnread ? colors.primaryDark : colors.textSecondary) }}
+                    numberOfLines={1}
+                  >
+                    {item.owner_name} {item.owner_surname}
+                  </Text>
+                  {item.isBlocked && (
+                    <Ionicons name="ban" size={16} color={colors.danger} style={{ marginLeft: 6 }} />
+                  )}
+                </View>
               </View>
 
               <View className="text-md flex-row items-center">
@@ -967,7 +1020,7 @@ export default function Messages() {
     return (
       <View
         className="rounded-lg mx-4 my-1 px-2 py-1 shadow-lg"
-        style={{ backgroundColor: colors.surface, ...(isPinned ? { borderWidth: 2, borderColor: colors.primary } : undefined) }}
+        style={{ backgroundColor: colors.surface, ...(isPinned ? { borderWidth: 2, borderColor: colors.primary } : undefined), ...(item.isBlocked ? { opacity: 0.45 } : undefined) }}
       >
         <TouchableOpacity
           activeOpacity={0.8}

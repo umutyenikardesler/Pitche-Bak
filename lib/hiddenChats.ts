@@ -25,7 +25,20 @@ const storageKey = (userId: string) => `hidden_chats_${userId}`;
  * UTC damgası kullanılsaydı karşılaştırma 3 saat kayardı.
  */
 export function turkeyNowStamp(): string {
-  return new Date(Date.now() + 3 * 60 * 60 * 1000).toISOString().replace('Z', '');
+  return toTurkeyStamp(Date.now());
+}
+
+/**
+ * Herhangi bir MUTLAK anı `messages.created_at` ile aynı çerçeveye çevirir.
+ *
+ * Bazı tablolar (ör. `user_blocks.created_at`) TIMESTAMPTZ, yani UTC tutuyor;
+ * `messages.created_at` ise saat dilimsiz Türkiye saati. İkisini doğrudan
+ * karşılaştırmak 3 saat kaydırır. Dönüşüm burada tek yerde duruyor.
+ */
+export function toTurkeyStamp(input: string | number | Date): string {
+  const ms = input instanceof Date ? input.getTime() : new Date(input).getTime();
+  if (!Number.isFinite(ms)) return '';
+  return new Date(ms + 3 * 60 * 60 * 1000).toISOString().replace('Z', '');
 }
 
 /**

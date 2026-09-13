@@ -926,6 +926,24 @@ export default function SettingsModal({
               </View>
             )}
 
+            {/* Engellediklerim - herkes kendi engellediklerini görür */}
+            <TouchableOpacity
+              className="flex-row items-center justify-between p-3 bg-green-600 rounded-lg mb-3"
+              activeOpacity={1}
+              onPress={() => {
+                onClose();
+                router.push("/blocked-users" as any);
+              }}
+            >
+              <View className="flex-row items-center">
+                <Ionicons name="ban-outline" size={24} color="white" />
+                <Text className="text-white font-semibold text-lg ml-3">
+                  {t("blocked.title")}
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={24} color="white" />
+            </TouchableOpacity>
+
             {/* Raporlarım - sadece admin için */}
             {userRole === "admin" && (
               <TouchableOpacity

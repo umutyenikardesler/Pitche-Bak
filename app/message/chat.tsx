@@ -10,7 +10,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Image, TouchableOpacity as RNTouchableOpacity } from 'react-native';
 import { useNotification } from '@/components/NotificationContext';
 import { containsBannedWord } from '@/constants/bannedWords';
-import { getBlockedUserIds, blockUser } from '@/services/blocks';
+import { getBlockedUserIds, blockUser, unblockUser } from '@/services/blocks';
 import { getChatHiddenAt } from '@/lib/hiddenChats';
 import { reportContent, hasUserReportedContent } from '@/services/contentReports';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
@@ -250,6 +250,17 @@ export default function ChatScreen() {
 
   const { refresh: refreshNotifications, clearMessageBadge } = useNotification();
   const activeMatchId = normParam(matchId);
+  /**
+   * Bu sohbetteki kişiyi BEN engelledim mi?
+   *
+   * Engelleme tek yönlü bir filtre: engellediğim kişinin mesajları hem bu
+   * ekranda (aşağıdaki sender_id elemesi) hem de mesajlar listesinde
+   * gizleniyor. Mesaj yazabilmek sessiz bir çıkmaz üretiyordu — mesaj gidiyor,
+   * gelen cevap hiç görünmüyordu. Engelliyse yazma alanı yerine açıklama ve
+   * engeli kaldırma yolu gösteriliyor.
+   */
+  const recipientIdParam = normParam(to);
+  const isRecipientBlocked = !!recipientIdParam && blockedIds.has(recipientIdParam);
   const threadKey = `${normParam(to) ?? ''}|${activeMatchId ?? ''}`;
 
   const isSameThread = useCallback(
@@ -454,6 +465,16 @@ export default function ChatScreen() {
   const sendMessage = useCallback(async () => {
     if (!input.trim() || isSending) return;
 
+    // Engellediğim kişiye mesaj gitmesin. Arayüz zaten yazma alanını
+    // gizliyor; bu, başka bir yoldan buraya düşülürse diye son savunma.
+    if (isRecipientBlocked) {
+      Alert.alert(t('blocked.guardTitle'), t('blocked.guardMessage'), [
+        { text: t('general.cancel'), style: 'cancel' },
+        { text: t('blocked.goToList'), onPress: () => router.push('/blocked-users' as any) },
+      ]);
+      return;
+    }
+
     // Yasaklı kelime kontrolü
     if (containsBannedWord(input)) {
       Alert.alert(t('chat.profanityTitle'), t('chat.profanityWarning'));
@@ -533,7 +554,7 @@ export default function ChatScreen() {
     } finally {
       setIsSending(false);
     }
-  }, [input, isSending, matchId, activeMatchId, resolveRecipientId, scrollToBottom, t]);
+  }, [input, isSending, matchId, activeMatchId, resolveRecipientId, scrollToBottom, t, isRecipientBlocked, router]);
 
   const openReportUserModal = useCallback(() => {
     setHeaderMenuVisible(false);
@@ -591,11 +612,47 @@ export default function ChatScreen() {
     }
   }, [reportItem, reportNotes, closeReportModal, t]);
 
-  const handleBlockUser = useCallback(async () => {
+  /**
+   * Başlıktaki engelle butonu artık bir ANAHTAR: engelliysen engeli kaldırır,
+   * değilsen engeller. İkisi de onay ister.
+   *
+   * Engelledikten sonra ekrandan çıkılmıyor; sohbet açık kalıp engel durumunu
+   * gösteriyor ki kullanıcı aynı yerden geri alabilsin.
+   */
+  const handleToggleBlock = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
     const recip = normParam(to);
     if (!recip) return;
+
+    if (blockedIds.has(recip)) {
+      Alert.alert(
+        t('blocked.removeTitle'),
+        t('blocked.removeConfirm').replace('{name}', String(name || t('blocked.unknownUser'))),
+        [
+          { text: t('general.cancel'), style: 'cancel' },
+          {
+            text: t('blocked.remove'),
+            onPress: async () => {
+              const { error } = await unblockUser(user.id, recip);
+              if (error) {
+                Alert.alert(t('general.error'), t('blocked.removeFailed'));
+                return;
+              }
+              setBlockedIds((prev) => {
+                const next = new Set(prev);
+                next.delete(recip);
+                return next;
+              });
+              // Engellenirken gizlenen mesajlar geri gelsin.
+              await fetchMessages();
+            },
+          },
+        ]
+      );
+      return;
+    }
+
     Alert.alert(
       t('chat.blockUser'),
       t('chat.blockConfirm'),
@@ -610,13 +667,12 @@ export default function ChatScreen() {
               setBlockedIds((prev) => new Set([...prev, recip]));
               setMessages((prev) => prev.filter((m) => m.sender_id !== recip));
               Alert.alert('', t('chat.blocked'));
-              router.back();
             }
           },
         },
       ]
     );
-  }, [to, t, router]);
+  }, [to, t, name, blockedIds, fetchMessages]);
 
   const handleDeleteMessage = useCallback(async () => {
     if (!myOptionsItem) return;
@@ -739,8 +795,23 @@ export default function ChatScreen() {
             ),
             headerRight: () => (
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                <TouchableOpacity onPress={handleBlockUser} style={{ padding: 6 }} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                  <Ionicons name="ban-outline" size={22} color={colors.danger} />
+                <TouchableOpacity
+                  onPress={handleToggleBlock}
+                  style={{
+                    padding: 6,
+                    borderRadius: 999,
+                    // Engelliyken dolu ikon + kırmızı zemin: soluk bir çerçeve
+                    // ikon durumu anlatmıyordu.
+                    backgroundColor: isRecipientBlocked ? colors.danger : 'transparent',
+                  }}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  accessibilityLabel={isRecipientBlocked ? t('blocked.removeTitle') : t('chat.blockUser')}
+                >
+                  <Ionicons
+                    name={isRecipientBlocked ? 'ban' : 'ban-outline'}
+                    size={22}
+                    color={isRecipientBlocked ? '#ffffff' : colors.danger}
+                  />
                 </TouchableOpacity>
                 <TouchableOpacity onPress={() => router.push('/notifications')} style={{ padding: 6 }} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
                   <Ionicons name="heart-outline" size={22} color={colors.primary} />
@@ -795,11 +866,13 @@ export default function ChatScreen() {
                   </TouchableOpacity>
                   <TouchableOpacity
                     activeOpacity={0.7}
-                    onPress={() => { setMessageOptionsItem(null); handleBlockUser(); }}
+                    onPress={() => { setMessageOptionsItem(null); handleToggleBlock(); }}
                     style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 12, paddingHorizontal: 14, backgroundColor: '#fef2f2', borderRadius: 10 }}
                   >
-                    <Text style={{ color: '#dc2626', fontWeight: '600', fontSize: 15 }}>{t('chat.blockUser')}</Text>
-                    <Ionicons name="ban-outline" size={22} color="#dc2626" />
+                    <Text style={{ color: '#dc2626', fontWeight: '600', fontSize: 15 }}>
+                      {isRecipientBlocked ? t('blocked.removeTitle') : t('chat.blockUser')}
+                    </Text>
+                    <Ionicons name={isRecipientBlocked ? 'ban' : 'ban-outline'} size={22} color="#dc2626" />
                   </TouchableOpacity>
                 </View>
                 <TouchableOpacity activeOpacity={0.8} onPress={() => setMessageOptionsItem(null)} style={{ marginTop: 16, paddingVertical: 12, borderRadius: 10, backgroundColor: '#6b7280', alignItems: 'center' }}>
@@ -901,11 +974,13 @@ export default function ChatScreen() {
                   </TouchableOpacity>
                   <TouchableOpacity
                     activeOpacity={0.7}
-                    onPress={() => { setHeaderMenuVisible(false); handleBlockUser(); }}
+                    onPress={() => { setHeaderMenuVisible(false); handleToggleBlock(); }}
                     style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 12, paddingHorizontal: 14, backgroundColor: '#fef2f2', borderRadius: 10 }}
                   >
-                    <Text style={{ color: '#dc2626', fontWeight: '600', fontSize: 15 }}>{t('chat.blockUser')}</Text>
-                    <Ionicons name="ban-outline" size={22} color="#dc2626" />
+                    <Text style={{ color: '#dc2626', fontWeight: '600', fontSize: 15 }}>
+                      {isRecipientBlocked ? t('blocked.removeTitle') : t('chat.blockUser')}
+                    </Text>
+                    <Ionicons name={isRecipientBlocked ? 'ban' : 'ban-outline'} size={22} color="#dc2626" />
                   </TouchableOpacity>
                 </View>
                 <TouchableOpacity activeOpacity={0.8} onPress={() => setHeaderMenuVisible(false)} style={{ marginTop: 16, paddingVertical: 12, borderRadius: 10, backgroundColor: '#6b7280', alignItems: 'center' }}>
@@ -950,31 +1025,51 @@ export default function ChatScreen() {
           </Modal>
 
           <View style={{ borderTopWidth: 1, borderColor: colors.border, backgroundColor: colors.surface }}>
-            <Text style={{ fontSize: 11, color: colors.danger, fontWeight: '600', paddingHorizontal: 12, paddingTop: 4 }}>{t('chat.contentFilteredNote')}</Text>
-            <View
-              style={{
-                flexDirection: 'row',
-                paddingTop: 6,
-                paddingHorizontal: 8,
-                paddingBottom: Math.max(40, insets.bottom),
-              }}
-            >
-              <TextInput
-                placeholder="Mesaj yaz"
-                value={input}
-                onChangeText={setInput}
-                onFocus={() => scrollToBottom(true)}
-                placeholderTextColor={colors.textMuted}
-                style={{ flex: 1, borderWidth: 1, borderColor: colors.inputBorder, backgroundColor: colors.inputBackground, color: colors.text, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 8, marginRight: 8 }}
-              />
-              <TouchableOpacity
-                onPress={sendMessage}
-                disabled={isSending}
-                style={{ backgroundColor: isSending ? '#86efac' : '#16a34a', borderRadius: 8, paddingHorizontal: 16, justifyContent: 'center' }}
+            {isRecipientBlocked ? (
+              <View style={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: Math.max(40, insets.bottom) }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10 }}>
+                  <Ionicons name="ban-outline" size={18} color={colors.danger} />
+                  <Text style={{ flex: 1, marginLeft: 8, fontSize: 13, color: colors.textSecondary }}>
+                    {t('blocked.chatNotice')}
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  onPress={() => router.push('/blocked-users' as any)}
+                  activeOpacity={0.8}
+                  style={{ backgroundColor: '#16a34a', borderRadius: 8, paddingVertical: 10, alignItems: 'center' }}
+                >
+                  <Text style={{ color: 'white', fontWeight: '700' }}>{t('blocked.goToList')}</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <>
+              <Text style={{ fontSize: 11, color: colors.danger, fontWeight: '600', paddingHorizontal: 12, paddingTop: 4 }}>{t('chat.contentFilteredNote')}</Text>
+              <View
+                style={{
+                  flexDirection: 'row',
+                  paddingTop: 6,
+                  paddingHorizontal: 8,
+                  paddingBottom: Math.max(40, insets.bottom),
+                }}
               >
-                <Text style={{ color: 'white', fontWeight: '700' }}>Gönder</Text>
-              </TouchableOpacity>
-            </View>
+                <TextInput
+                  placeholder="Mesaj yaz"
+                  value={input}
+                  onChangeText={setInput}
+                  onFocus={() => scrollToBottom(true)}
+                  placeholderTextColor={colors.textMuted}
+                  style={{ flex: 1, borderWidth: 1, borderColor: colors.inputBorder, backgroundColor: colors.inputBackground, color: colors.text, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 8, marginRight: 8 }}
+                />
+                <TouchableOpacity
+                  onPress={sendMessage}
+                  disabled={isSending}
+                  style={{ backgroundColor: isSending ? '#86efac' : '#16a34a', borderRadius: 8, paddingHorizontal: 16, justifyContent: 'center' }}
+                >
+                  <Text style={{ color: 'white', fontWeight: '700' }}>Gönder</Text>
+                </TouchableOpacity>
+              </View>
+              </>
+            )}
           </View>
         </View>
       </>

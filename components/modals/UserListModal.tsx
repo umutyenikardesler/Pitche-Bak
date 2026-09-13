@@ -10,6 +10,7 @@ import {
   Platform,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { useBlockedUserGuard } from "@/hooks/useBlockedUserGuard";
 import { useRouter } from "expo-router";
 import { supabase } from "@/services/supabase";
 import { createNotification } from "@/services/triggerPushNotification";
@@ -36,6 +37,7 @@ export default function UserListModal({
   onUnfollow,
 }: UserListModalProps) {
   const router = useRouter();
+  const guardBlockedUser = useBlockedUserGuard();
   const { t } = useLanguage();
   const { colors, isDark } = useAppTheme();
   // Gündüz modunda açık yeşil, gece modunda koyu lacivert.
@@ -93,7 +95,12 @@ export default function UserListModal({
     setSelectedUserId(null);
   };
 
-  const handleMessagePress = (userId: string, userName: string, userSurname: string) => {
+  const handleMessagePress = async (userId: string, userName: string, userSurname: string) => {
+      // Engellediğim kişiye sohbet açmıyoruz: mesajları zaten gizlendiği için
+      // yazışma tek taraflı bir çıkmaza dönüşüyordu. Uyarı, engeli kaldırma
+      // sayfasına da yönlendiriyor.
+    if (await guardBlockedUser(userId)) return;
+
     onClose();
     setTimeout(() => {
       router.push({

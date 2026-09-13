@@ -66,6 +66,33 @@ Deno.serve(async (req: Request) => {
     return new Response('Notification mismatch', { status: 400 });
   }
 
+  // Alıcı, göndereni ENGELLEDİYSE push gönderilmez.
+  //
+  // Bu kontrol zorunlu olarak SUNUCUDA: bildirimi gönderenin cihazı oluşturuyor
+  // (bkz. services/triggerPushNotification.ts) ve gönderen, karşı tarafın
+  // kendisini engellediğini RLS yüzünden okuyamıyor (user_blocks SELECT
+  // politikası auth.uid() = blocker_id). Burada service role ile çalıştığımız
+  // için görebiliyoruz.
+  //
+  // Engellenen kişinin mesajları uygulama içinde zaten gizleniyor; push'un
+  // devam etmesi mesaj metnini kilit ekranına düşürüyordu, yani engelleme
+  // içeriği gizlemek yerine daha görünür hale getiriyordu.
+  if (stored.sender_id) {
+    const { data: block } = await supabase
+      .from('user_blocks')
+      .select('id')
+      .eq('blocker_id', stored.user_id)
+      .eq('blocked_id', stored.sender_id)
+      .maybeSingle();
+
+    if (block) {
+      return new Response(
+        JSON.stringify({ ok: true, sent: 0, reason: 'recipient_blocked_sender' }),
+        { headers: { 'Content-Type': 'application/json' }, status: 200 }
+      );
+    }
+  }
+
   const { data: tokens, error: tokenError } = await supabase
     .from('push_tokens')
     .select('token')
