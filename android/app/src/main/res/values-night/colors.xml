@@ -1,1 +1,5 @@
-<resources/>
+<resources>
+  <!-- Karanlık modda splash zemini, LaunchLogoOverlay'in zemini (#000000) ile
+       aynı olmalı; yoksa açılışta beyaz bir flaş görünüyor. -->
+  <color name="splashscreen_background">#000000</color>
+</resources>

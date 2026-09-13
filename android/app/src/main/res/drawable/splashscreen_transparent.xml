@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Android 12+ sistem splash ekranı için GÖRÜNMEZ ikon.
+
+  Sistem, `windowSplashScreenAnimatedIcon` tanımlanmadığında uygulama ikonunu
+  kullanıyor ve onu daire maskesiyle ortada çiziyordu; açılışta beyaz zemin
+  üzerinde top görseli görünmesinin sebebi buydu. Android 12+'da sistem splash
+  ekranı tamamen kapatılamıyor, ama ikon şeffaf yapılınca yalnızca zemin rengi
+  kalıyor. Böylece açılış, LaunchLogoOverlay'in ortadan başlayan logo
+  animasyonuna pürüzsüz bağlanıyor.
+-->
+<color xmlns:android="http://schemas.android.com/apk/res/android"
+  android:color="@android:color/transparent" />
