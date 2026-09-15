@@ -11,7 +11,7 @@ import { Image, TouchableOpacity as RNTouchableOpacity } from 'react-native';
 import { useNotification } from '@/components/NotificationContext';
 import { containsBannedWord } from '@/constants/bannedWords';
 import { getBlockedUserIds, blockUser, unblockUser } from '@/services/blocks';
-import { getChatHiddenAt } from '@/lib/hiddenChats';
+import { getChatHiddenAt, hideAllChatsWithUser } from '@/lib/hiddenChats';
 import { reportContent, hasUserReportedContent } from '@/services/contentReports';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, { Extrapolation, interpolate, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
@@ -358,6 +358,16 @@ export default function ChatScreen() {
     // Sohbet daha önce silindiyse, silme anından ÖNCEKİ mesajlar hiç
     // yüklenmez: kullanıcı sohbeti temizleyip yeniden yazışmaya başladığında
     // eski yazışmayı görmemeli. Silme yereldir; karşı taraf geçmişini görür.
+    // Bu kişiyi engellediysem sohbetin HİÇBİR mesajı gösterilmez — kendi
+    // gönderdiklerim de. Eskiden yalnızca karşı tarafın mesajları eleniyordu
+    // ve ekranda tek taraflı, anlamsız bir yazışma kalıyordu.
+    const blocked = await getBlockedUserIds(user.id);
+    setBlockedIds(blocked);
+    if (blocked.has(recip)) {
+      setMessages([]);
+      return;
+    }
+
     const hiddenAt = await getChatHiddenAt(user.id, recip, activeMatchId);
 
     let query = supabase
@@ -371,11 +381,9 @@ export default function ChatScreen() {
     const { data, error } = await query.order('created_at', { ascending: true });
 
     if (!error) {
-      const rows = (data as MsgItem[]) || [];
-      const blocked = await getBlockedUserIds(user.id);
-      const filtered = blocked.size > 0 ? rows.filter((m) => !blocked.has(m.sender_id)) : rows;
-      setMessages(filtered);
-      setBlockedIds(blocked);
+      // Sorgu yalnızca bu iki kişinin mesajlarını getiriyor ve karşı tarafın
+      // engelli olmadığı yukarıda doğrulandı; ayrıca göndereni elemeye gerek yok.
+      setMessages((data as MsgItem[]) || []);
       pendingInitialScroll.current = true;
       scrollToBottom(false);
     }
@@ -639,12 +647,15 @@ export default function ChatScreen() {
                 Alert.alert(t('general.error'), t('blocked.removeFailed'));
                 return;
               }
+              // Engel kalkınca önceki geçmiş GERİ GELMEZ: bu kişiyle olan
+              // bütün sohbetler bu ana kadar gizlenir, sonraki mesajlar normal
+              // gelir. Damga fetchMessages'tan ÖNCE yazılmalı.
+              await hideAllChatsWithUser(user.id, recip);
               setBlockedIds((prev) => {
                 const next = new Set(prev);
                 next.delete(recip);
                 return next;
               });
-              // Engellenirken gizlenen mesajlar geri gelsin.
               await fetchMessages();
             },
           },
@@ -665,7 +676,8 @@ export default function ChatScreen() {
             const { error } = await blockUser(user.id, recip);
             if (!error) {
               setBlockedIds((prev) => new Set([...prev, recip]));
-              setMessages((prev) => prev.filter((m) => m.sender_id !== recip));
+              // Engellenince ekranda hiçbir mesaj kalmaz (kendi mesajlarım da).
+              setMessages([]);
               Alert.alert('', t('chat.blocked'));
             }
           },

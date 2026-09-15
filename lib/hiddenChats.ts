@@ -50,6 +50,16 @@ export function chatKey(otherUserId: string, matchId?: string | null): string {
 }
 
 /**
+ * Bir kişiyle olan BÜTÜN sohbetleri (direkt + maç sohbetleri) kapsayan anahtar.
+ *
+ * Engel kaldırılınca kullanılıyor: engel kişi bazında olduğu için geçmişin de
+ * kişi bazında gizlenmesi gerekiyor, tek bir sohbet anahtarı yetmiyor.
+ */
+export function userWideKey(otherUserId: string): string {
+  return `${otherUserId}-u`;
+}
+
+/**
  * Depodaki kaydı okur.
  *
  * Eski biçim yalnızca anahtar dizisiydi (`string[]`) ve zaman bilgisi
@@ -97,7 +107,13 @@ export async function getChatHiddenAt(
 ): Promise<string | null> {
   try {
     const map = await getHiddenChats(userId);
-    return map[chatKey(otherUserId, matchId)] ?? null;
+    // Sohbete özel silme ile kişi geneli gizlemeden (engel kaldırma) hangisi
+    // daha YENİYSE o geçerli: ikisinden önceki mesajlar gösterilmez.
+    const chatStamp = map[chatKey(otherUserId, matchId)] ?? null;
+    const userStamp = map[userWideKey(otherUserId)] ?? null;
+    if (!chatStamp) return userStamp;
+    if (!userStamp) return chatStamp;
+    return new Date(chatStamp).getTime() >= new Date(userStamp).getTime() ? chatStamp : userStamp;
   } catch {
     return null;
   }
@@ -107,5 +123,19 @@ export async function getChatHiddenAt(
 export async function hideChat(userId: string, key: string): Promise<void> {
   const map = await getHiddenChats(userId);
   map[key] = turkeyNowStamp();
+  await AsyncStorage.setItem(storageKey(userId), JSON.stringify(map));
+}
+
+/**
+ * Bir kişiyle olan bütün sohbet geçmişini BU ANA KADAR gizler.
+ *
+ * Engel kaldırıldığında çağrılıyor: önceki yazışma (engel süresince gelenler
+ * dahil) geri gelmez, engelden SONRA atılan mesajlar sohbeti normal şekilde
+ * yeniden başlatır. Mesajlar veritabanından silinmiyor — `messages` tablosu
+ * iki tarafın ortak kaydı, silmek karşı tarafın geçmişini de yok ederdi.
+ */
+export async function hideAllChatsWithUser(userId: string, otherUserId: string): Promise<void> {
+  const map = await getHiddenChats(userId);
+  map[userWideKey(otherUserId)] = turkeyNowStamp();
   await AsyncStorage.setItem(storageKey(userId), JSON.stringify(map));
 }

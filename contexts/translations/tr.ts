@@ -294,7 +294,7 @@ export const tr = {
   'chat.reportAdditionalNotes': 'Ek açıklama (isteğe bağlı)',
   'chat.reportSubmit': 'Şikayeti Gönder',
   'chat.blockUser': 'Kullanıcıyı engelle',
-  'chat.blockConfirm': 'Bu kullanıcıyı engellemek istediğinize emin misiniz? Engellediğinizde mesajları gizlenecektir.',
+  'chat.blockConfirm': 'Bu kullanıcıyı engellemek istediğinize emin misiniz? Bu kişiyle olan sohbet geçmişi gizlenir ve engeli kaldırsanız bile geri gelmez.',
   'chat.blocked': 'Engellendi',
   'chat.reportSent': 'Şikayetiniz alındı. 24 saat içinde incelenecektir.',
   'chat.reportUser': 'Bu kullanıcıyı şikayet et',
@@ -310,7 +310,7 @@ export const tr = {
   'ugc.agreeMessage': 'Mesajlaşma özelliğini kullanarak SahayaBak Topluluk İlkelerini ve Kullanıcı Sözleşmesini kabul etmiş olursunuz. Uygunsuz içerik otomatik olarak filtrelenir. Şikayet ve engelleme özellikleri ile zararlı davranışları bildirebilirsiniz.',
   'ugc.agreeButton': 'Kabul Ediyorum',
   'profile.blockUser': 'Kullanıcıyı engelle',
-  'profile.blockConfirm': 'Bu kullanıcıyı engellemek istediğinize emin misiniz?',
+  'profile.blockConfirm': 'Bu kullanıcıyı engellemek istediğinize emin misiniz? Bu kişiyle olan sohbet geçmişi gizlenir ve engeli kaldırsanız bile geri gelmez.',
   'profile.blockError': 'Engelleme işlemi başarısız.',
 
   // Dil Ayarları
@@ -385,12 +385,12 @@ export const tr = {
   'settings.agreements.title': 'Sözleşmelerim',
   // Engellediklerim
   'blocked.title': 'Engellediklerim',
-  'blocked.description': 'Engellediğin kişilerin mesajları sana görünmez ve onlara mesaj gönderemezsin. Engeli buradan kaldırabilirsin.',
+  'blocked.description': 'Engellediğin kişilerin mesajları sana görünmez ve onlara mesaj gönderemezsin. Engeli buradan kaldırabilirsin; önceki sohbet geçmişi geri gelmez.',
   'blocked.empty': 'Engellediğin kimse yok.',
   'blocked.unknownUser': 'Kullanıcı',
   'blocked.remove': 'Kaldır',
   'blocked.removeTitle': 'Engeli kaldır',
-  'blocked.removeConfirm': '{name} kişisinin engelini kaldırmak istiyor musun? Mesajları yeniden görünür olacak.',
+  'blocked.removeConfirm': '{name} kişisinin engelini kaldırmak istiyor musun? Önceki sohbet geçmişiniz geri gelmez; bundan sonraki mesajlar normal şekilde görünür.',
   'blocked.removeFailed': 'Engel kaldırılamadı. Lütfen tekrar dene.',
   'blocked.guardTitle': 'Bu kişiyi engellediniz',
   'blocked.guardMessage': 'Bu kişiyi daha önce engellediniz. Mesaj gönderemezsiniz ve gönderdiği mesajlar size görünmez. Engeli kaldırmak isterseniz Engellediklerim sayfasına gidin.',

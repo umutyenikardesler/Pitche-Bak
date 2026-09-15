@@ -13,6 +13,7 @@ import { Stack, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { supabase } from "@/services/supabase";
 import { getBlockedUsers, unblockUser, BlockedUser } from "@/services/blocks";
+import { hideAllChatsWithUser } from "@/lib/hiddenChats";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useAppTheme } from "@/contexts/ThemeContext";
 
@@ -86,6 +87,9 @@ export default function BlockedUsersScreen() {
                 Alert.alert(t("general.error"), t("blocked.removeFailed"));
                 return;
               }
+              // Engel kalkınca önceki sohbet geçmişi geri gelmez; yalnızca
+              // bundan sonraki mesajlar görünür (bkz. lib/hiddenChats.ts).
+              await hideAllChatsWithUser(user.id, target.id);
               setUsers((prev) => prev.filter((u) => u.id !== target.id));
             },
           },

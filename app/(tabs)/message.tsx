@@ -1,7 +1,7 @@
 import { createElement, useEffect, useState, useCallback, useRef, useMemo, type ReactNode } from "react";
 import { View, Text, FlatList, TouchableOpacity, Image, ActivityIndicator, RefreshControl, Modal, Pressable, Alert, TextInput, ScrollView, KeyboardAvoidingView, Keyboard, StyleSheet, Dimensions, Platform } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { hideChat, parseHiddenChats, toTurkeyStamp } from "@/lib/hiddenChats";
+import { hideChat, parseHiddenChats, toTurkeyStamp, userWideKey } from "@/lib/hiddenChats";
 import { useBlockedUserGuard } from "@/hooks/useBlockedUserGuard";
 import { fetchFollowList, type FollowUser } from "@/services/follows";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
@@ -644,9 +644,17 @@ export default function Messages() {
 
       const allChats: ChatSummary[] = [...dmSummaries, ...matchWithLastAt];
       const filtered = allChats.filter((it) => {
+        // Sohbete özel silme: son mesaj silme anından eskiyse kart görünmez.
         const hiddenAt = hiddenMap[getKey(it)];
-        if (!hiddenAt) return true;
-        return toTs(it.lastAt) > toTs(hiddenAt);
+        if (hiddenAt && !(toTs(it.lastAt) > toTs(hiddenAt))) return false;
+
+        // Kişi geneli gizleme (engel kaldırma): o kişiyle olan bütün kartlar
+        // aynı kurala tabi. Hiç mesajı olmayan maç sohbeti kartının saklanacak
+        // bir geçmişi yok; onu gizlemek yalnızca maça yazma yolunu kapatırdı.
+        const userHiddenAt = hiddenMap[userWideKey(it.owner_id)];
+        if (userHiddenAt && it.lastAt && !(toTs(it.lastAt) > toTs(userHiddenAt))) return false;
+
+        return true;
       });
 
       const getSortTs = (it: ChatSummary): number => {

@@ -296,7 +296,7 @@ export const en: Record<TranslationKey, string> = {
   'chat.reportAdditionalNotes': 'Additional notes (optional)',
   'chat.reportSubmit': 'Submit Report',
   'chat.blockUser': 'Block user',
-  'chat.blockConfirm': 'Are you sure you want to block this user? Their messages will be hidden.',
+  'chat.blockConfirm': 'Are you sure you want to block this user? Your chat history with them will be hidden and will not come back even if you unblock them.',
   'chat.blocked': 'Blocked',
   'chat.reportSent': 'Your report has been received. It will be reviewed within 24 hours.',
   'chat.reportUser': 'Report this user',
@@ -312,7 +312,7 @@ export const en: Record<TranslationKey, string> = {
   'ugc.agreeMessage': 'By using messaging, you agree to SahayaBak Community Guidelines and User Agreement. Objectionable content is automatically filtered. You can report and block abusive users.',
   'ugc.agreeButton': 'I Agree',
   'profile.blockUser': 'Block user',
-  'profile.blockConfirm': 'Are you sure you want to block this user?',
+  'profile.blockConfirm': 'Are you sure you want to block this user? Your chat history with them will be hidden and will not come back even if you unblock them.',
   'profile.blockError': 'Block operation failed.',
 
   // Language Settings
@@ -387,12 +387,12 @@ export const en: Record<TranslationKey, string> = {
   'settings.agreements.title': 'My Agreements',
   // Blocked users
   'blocked.title': 'Blocked Users',
-  'blocked.description': 'Messages from people you block are hidden from you, and you cannot message them. You can remove a block here.',
+  'blocked.description': 'Messages from people you block are hidden from you, and you cannot message them. You can remove a block here; previous chat history will not come back.',
   'blocked.empty': "You haven't blocked anyone.",
   'blocked.unknownUser': 'User',
   'blocked.remove': 'Remove',
   'blocked.removeTitle': 'Remove block',
-  'blocked.removeConfirm': 'Remove the block on {name}? Their messages will become visible again.',
+  'blocked.removeConfirm': 'Remove the block on {name}? Your previous chat history will not come back; new messages will appear as usual.',
   'blocked.removeFailed': 'Could not remove the block. Please try again.',
   'blocked.guardTitle': 'You blocked this person',
   'blocked.guardMessage': 'You blocked this person earlier. You cannot send them messages, and their messages are hidden from you. Go to Blocked Users if you want to remove the block.',
