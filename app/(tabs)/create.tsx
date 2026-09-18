@@ -13,7 +13,7 @@ import { useGuestAuthAlert } from '@/contexts/GuestAuthModalContext';
 import { useAppTheme } from '@/contexts/ThemeContext';
 import '@/global.css';
 
-import { useNavigation, useRoute, useFocusEffect, useIsFocused } from '@react-navigation/native';
+import { useNavigation, useRoute, useFocusEffect, useIsFocused, TabActions } from '@react-navigation/native';
 import AsyncStorage from "@react-native-async-storage/async-storage"; // Kullanıcı ID'sini almak için eklendi
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useTabBarBottomInset } from '@/hooks/useTabBarBottomInset';
@@ -69,6 +69,22 @@ export default function CreateMatch() {
   const [errorModalVisible, setErrorModalVisible] = useState(false);
   const [errorModalMessage, setErrorModalMessage] = useState("Maç oluşturulurken bir hata oluştu. Lütfen tekrar deneyin.");
   const navigation = useNavigation();
+
+  /**
+   * Maç oluşturulduktan sonra ana sayfa sekmesine geç.
+   *
+   * Eskiden `router.replace("/(tabs)")` kullanılıyordu. Bu href belirli bir
+   * sekmeyi değil sekme GRUBUNU gösteriyor; sekmeler kaydırmalı pager
+   * gezginine taşındıktan sonra (bkz. app/(tabs)/_layout.tsx) bu çağrı sekmeyi
+   * değiştirmiyor ve kullanıcı Maç Oluştur ekranında kalıyordu.
+   *
+   * Artık sekme çubuğunun kullandığı eylemin aynısıyla doğrudan `index`
+   * sekmesine geçiliyor. Ana sayfa odaklanınca maç listesini yenilediği için
+   * (bkz. app/(tabs)/index.tsx) yeni maç orada görünür.
+   */
+  const goToHome = useCallback(() => {
+    navigation.dispatch(TabActions.jumpTo('index'));
+  }, [navigation]);
 
   // const [matchTitle, setMatchTitle] = useState('');
   // const [selectedDistrict, setSelectedDistrict] = useState('');
@@ -221,7 +237,7 @@ export default function CreateMatch() {
                   forvet: { selected: false, count: 1 },
                 });
 
-                router.replace("/(tabs)");
+                goToHome();
               }
             }
           ]
@@ -317,8 +333,7 @@ export default function CreateMatch() {
                   ortaSaha: { selected: false, count: 1 },
                   forvet: { selected: false, count: 1 },
                 });
-                // Web'de router ile geri dön
-                router.replace("/(tabs)");
+                goToHome();
               }}
               style={{ backgroundColor: colors.primary, paddingVertical: 10, borderRadius: 10 }}
               activeOpacity={0.9}
