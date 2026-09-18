@@ -5,6 +5,17 @@ import { supabase } from '@/services/supabase';
 import { useNotification } from '@/components/NotificationContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { Notification, NotificationGroup } from './notificationTypes';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { isAwaitingResponse } from './notificationStatus';
+
+/** "Tümünü Temizle" damgası: kullanıcı başına, bu cihazda saklanır. */
+const clearedAtKey = (userId: string) => `notifications_cleared_at_${userId}`;
+
+const toMs = (s: string | null | undefined): number => {
+    if (!s) return 0;
+    const ms = new Date(s).getTime();
+    return Number.isFinite(ms) ? ms : 0;
+};
 
 export const useNotifications = () => {
     const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -68,8 +79,20 @@ export const useNotifications = () => {
                     };
                 }) as Notification[];
 
+            // "Tümünü Temizle": temizleme anındaki en yeni bildirimden eski olanlar
+            // gizlenir. Satırlar veritabanından SİLİNMİYOR — mesajlar sayfası maç
+            // sohbetlerini, maç detayı katılım durumunu aynı satırlardan okuyor.
+            // Cevap bekleyen istekler her zaman görünür kalır.
+            const clearedAt = await AsyncStorage.getItem(clearedAtKey(user.id)).catch(() => null);
+            const clearedMs = toMs(clearedAt);
+            const visibleNotifications = clearedMs
+                ? formattedNotifications.filter(
+                      (n) => isAwaitingResponse(n) || toMs(n.created_at) > clearedMs
+                  )
+                : formattedNotifications;
+
             // Sunucudan gelen anlık listeyi direkt state'e yaz (DB'de silinen bildirimler de UI'dan kalksın)
-            setNotifications(formattedNotifications);
+            setNotifications(visibleNotifications);
 
             // Feedback bildirimlerini (kabul/red vb.) sayfaya girince otomatik okundu yap.
             // Actionable olanlar: follow_request "… takip isteği gönderdi", join_request "... katılım isteği"
@@ -260,6 +283,76 @@ export const useNotifications = () => {
         []
     );
 
+    /**
+     * Okunmamış bildirimlerin hepsini okundu yapar.
+     *
+     * Kabul/Reddet butonları `is_read`'e değil bildirim metnine bağlı olduğu
+     * için bekleyen istekler cevaplanabilir kalıyor; yalnızca rozet sıfırlanıyor.
+     * Mesaj bildirimleri (direct_message) hariç: onların okunmuşluğu mesajlar
+     * sekmesinin sayaçlarını besliyor ve bu sayfada zaten listelenmiyor.
+     */
+    const markAllAsRead = useCallback(async (): Promise<boolean> => {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return false;
+
+        const { error } = await supabase
+            .from('notifications')
+            .update({ is_read: true })
+            .eq('user_id', user.id)
+            .eq('is_read', false)
+            .neq('type', 'direct_message');
+
+        if (error) {
+            console.error('[Notifications] markAllAsRead error:', error);
+            return false;
+        }
+
+        setNotifications(prev => prev.map(n => (n.is_read ? n : { ...n, is_read: true })));
+        refresh();
+        return true;
+    }, [refresh]);
+
+    /**
+     * Sayfadaki bildirimleri temizler (gizler). Cevap bekleyen istekler kalır.
+     *
+     * Damga, en yeni bildirimin SUNUCU zamanı; karşılaştırma da sunucudan gelen
+     * değerlerle yapıldığı için saat dilimi dönüşümü gerekmiyor. Damga yalnızca
+     * İLERİ gider: sadece bekleyen isteklerin kaldığı bir listede tekrar
+     * temizlenirse geriye kayıp önceden gizlenenleri geri getirmesin.
+     */
+    const clearAll = useCallback(async (): Promise<boolean> => {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return false;
+
+        try {
+            const key = clearedAtKey(user.id);
+            let newest = await AsyncStorage.getItem(key);
+            for (const n of notifications) {
+                if (toMs(n.created_at) > toMs(newest)) newest = n.created_at;
+            }
+            if (newest) await AsyncStorage.setItem(key, newest);
+        } catch (e) {
+            console.error('[Notifications] clearAll storage error:', e);
+            return false;
+        }
+
+        // Gizlenen okunmamışlar görünmediği halde rozete sayılmaya devam etmesin.
+        const hiddenUnreadIds = notifications
+            .filter(n => !n.is_read && !isAwaitingResponse(n))
+            .map(n => n.id);
+        if (hiddenUnreadIds.length > 0) {
+            const { error } = await supabase
+                .from('notifications')
+                .update({ is_read: true })
+                .in('id', hiddenUnreadIds);
+            if (error) console.error('[Notifications] clearAll mark read error:', error);
+        }
+
+        setNotifications(prev => prev.filter(isAwaitingResponse));
+        refresh();
+        return true;
+    }, [notifications, refresh]);
+
     const handleRefresh = useCallback(() => {
         setRefreshing(true);
         fetchNotifications();
@@ -274,6 +367,8 @@ export const useNotifications = () => {
         fetchNotifications,
         groupNotificationsByDate,
         handleRefresh,
+        markAllAsRead,
+        clearAll,
     };
 };
 

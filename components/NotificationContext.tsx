@@ -81,7 +81,7 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  // Kalp ikonundaki badge'i, bildirim sayfasına girildiği anda sıfırla.
+  // Bildirim (zil) ikonundaki badge'i, bildirim sayfasına girildiği anda sıfırla.
   // Tüm okunmamış bildirimleri (direct_message hariç) DB'de okundu olarak işaretle.
   const clearBadge = async () => {
     const { data: { user } } = await supabase.auth.getUser();

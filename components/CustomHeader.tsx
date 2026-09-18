@@ -123,7 +123,7 @@ const CustomHeader = ({ title, showNotificationIcon = true, onTitlePress }: Cust
                 accessibilityLabel={t('general.notifications')}
                 accessibilityHint={t('general.notificationCount')}
               >
-                <Ionicons name="heart-outline" size={24} color={colors.primary} />
+                <Ionicons name="notifications-outline" size={24} color={colors.primary} />
                 {badgeCount > 0 && (
                   <View
                     style={badgeStyle}
@@ -217,7 +217,7 @@ const CustomHeader = ({ title, showNotificationIcon = true, onTitlePress }: Cust
                 accessibilityLabel={t('general.notifications')}
                 accessibilityHint={t('general.notificationCount')}
               >
-                <Ionicons name="heart-outline" size={24} color={colors.primary} />
+                <Ionicons name="notifications-outline" size={24} color={colors.primary} />
                 {badgeCount > 0 && (
                   <View
                     style={badgeStyle}

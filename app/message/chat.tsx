@@ -826,7 +826,7 @@ export default function ChatScreen() {
                   />
                 </TouchableOpacity>
                 <TouchableOpacity onPress={() => router.push('/notifications')} style={{ padding: 6 }} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                  <Ionicons name="heart-outline" size={22} color={colors.primary} />
+                  <Ionicons name="notifications-outline" size={22} color={colors.primary} />
                 </TouchableOpacity>
               </View>
             ),
