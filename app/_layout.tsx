@@ -19,6 +19,7 @@ import { registerPushToken, unregisterPushToken } from "@/services/pushNotificat
 import * as Notifications from "expo-notifications";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import LaunchLogoOverlay from "@/components/LaunchLogoOverlay";
+import { FlyingEmojiProvider } from "@/components/FlyingEmojiLayer";
 import UpdateAvailableModal from "@/components/modals/UpdateAvailableModal";
 
 // Sadece belirli logları ignore et, tüm logları değil
@@ -282,6 +283,10 @@ function AppShell() {
         <NotificationProvider>
         <GestureHandlerRootView style={{ flex: 1 }}>
           <SafeAreaProvider>
+            {/* Tepki animasyonunun uçan emojisi ekranların (Stack) ÜSTÜNDE ve
+                kökün (0,0) noktasında çiziliyor; dokunma koordinatları
+                dönüşümsüz kullanılabiliyor (bkz. components/FlyingEmojiLayer.tsx). */}
+            <FlyingEmojiProvider>
             <AnalyticsProvider />
             {Platform.OS === 'web' ? (
               <View style={{ flex: 1, backgroundColor: colors.background, alignItems: 'center' }}>
@@ -338,6 +343,7 @@ function AppShell() {
             {/* Mağazada yeni sürüm varsa açılışta uyarı. Açılış animasyonu
                 bitmeden gösterilmiyor ki iki katman üst üste binmesin. */}
             {!showLaunchOverlay && <UpdateAvailableModal />}
+            </FlyingEmojiProvider>
           </SafeAreaProvider>
         </GestureHandlerRootView>
       </NotificationProvider>

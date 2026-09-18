@@ -1,5 +1,5 @@
 import { memo, useEffect, useState, useCallback, useRef, useMemo } from 'react';
-import { View, Text, FlatList, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, Alert, Pressable, Modal, Keyboard } from 'react-native';
+import { View, Text, FlatList, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, Alert, Pressable, Modal, Keyboard, BackHandler, type GestureResponderEvent } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
 import { supabase } from '@/services/supabase';
 import { createNotification } from '@/services/triggerPushNotification';
@@ -12,9 +12,11 @@ import { useNotification } from '@/components/NotificationContext';
 import { containsBannedWord } from '@/constants/bannedWords';
 import { getBlockedUserIds, blockUser, unblockUser } from '@/services/blocks';
 import { getChatHiddenAt, hideAllChatsWithUser } from '@/lib/hiddenChats';
+import { fetchReactions, setMessageReaction, removeMessageReaction, ReactionMap } from '@/services/messageReactions';
+import { useFlyingEmoji, type Point } from '@/components/FlyingEmojiLayer';
 import { reportContent, hasUserReportedContent } from '@/services/contentReports';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
-import Animated, { Extrapolation, interpolate, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
+import Animated, { Easing, Extrapolation, interpolate, useAnimatedStyle, useSharedValue, withSequence, withTiming } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
 
 interface MsgItem {
@@ -50,6 +52,19 @@ function clamp(n: number, min: number, max: number) {
 
 const MESSAGE_EDIT_WINDOW_MS = 15 * 60 * 1000;
 
+/** Tepki seçenekleri: 6 sütunlu ızgarada 4 satır. */
+const REACTION_EMOJIS = [
+  '❤️', '😂', '😮', '😢', '😡', '👍',
+  '👎', '🙏', '🔥', '👏', '😍', '🤣',
+  '😊', '😎', '🤔', '😅', '🥳', '💪',
+  '⚽', '🏆', '🥅', '👌', '🙌', '💯',
+];
+
+// Tepki seçicinin açılıp kapanma süresi ve rozetin iniş "zıplaması". Uçuşun
+// kendisi kök katmanda çiziliyor: bkz. components/FlyingEmojiLayer.tsx.
+const REACTION_SHEET_MS = 200;
+const REACTION_POP_MS = 320;
+
 function canEditMessage(message: Pick<MsgItem, 'created_at'>): boolean {
   const createdAt = new Date(message.created_at).getTime();
   if (!Number.isFinite(createdAt)) return false;
@@ -72,6 +87,11 @@ const MessageRow = memo(function MessageRow({
   isEdited,
   editedLabel,
   colors,
+  reaction,
+  reactionHidden,
+  reactionPop,
+  onOpenReactions,
+  addReactionLabel,
 }: {
   item: MsgItem;
   mine: boolean;
@@ -83,9 +103,66 @@ const MessageRow = memo(function MessageRow({
   isEdited?: boolean;
   editedLabel: string;
   colors: any;
+  /** Bu mesaja bırakılan tepki (bire bir sohbette yalnızca alıcı tepki verir). */
+  reaction?: string | null;
+  /** Uçan emoji rozete inene kadar rozetteki emoji gizli. */
+  reactionHidden?: boolean;
+  /** Uçan emoji indi: rozet kısa bir "zıplama" yapar. */
+  reactionPop?: boolean;
+  /** Rozete basıldı; rozetin merkezi SAYFA koordinatında. */
+  onOpenReactions?: (item: MsgItem, badgeCenter: Point) => void;
+  addReactionLabel?: string;
 }) {
   const ts = formatDateTimeTr(item.created_at);
   const MAX_REVEAL = 120;
+  // Karşı tarafın mesajında rozet her zaman var (tepki vermek için); kendi
+  // mesajımda yalnızca karşı taraf tepki bıraktıysa görünür.
+  const showReactionBadge = !isDeleted && (!mine || !!reaction);
+  const reactionBadgeBase = {
+    position: 'absolute' as const,
+    bottom: 0,
+    minWidth: 24,
+    height: 24,
+    borderRadius: 12,
+    alignItems: 'center' as const,
+    justifyContent: 'center' as const,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: '#16a34a',
+  };
+
+  // Rozetin merkezi (SAYFA koordinatı): uçan emojinin ineceği yer. Dokunuşun
+  // sayfa konumundan (pageX/Y), rozet içindeki konumundan (locationX/Y) ve
+  // rozetin onLayout ile alınan boyutundan hesaplanıyor. ref + measure
+  // kullanılmıyor: bu ekranda NativeWind'in JSX sarmalayıcısı yüzünden ref'ler
+  // bağlanmadı (bkz. components/FlyingEmojiLayer.tsx).
+  const badgeSizeRef = useRef({ width: 0, height: 0 });
+  const handleBadgePress = useCallback((e: GestureResponderEvent) => {
+    const { pageX, pageY, locationX, locationY } = e.nativeEvent;
+    const { width, height } = badgeSizeRef.current;
+    let center: Point = { x: pageX, y: pageY };
+    if (width > 0 && height > 0 && Number.isFinite(locationX) && Number.isFinite(locationY)) {
+      const candidate = { x: pageX - locationX + width / 2, y: pageY - locationY + height / 2 };
+      // Tutarlılık kontrolü: merkez, dokunuşa rozetin yarısı + dokunma payından
+      // (8) uzaksa locationX/Y başka bir görünüme göre gelmiş demektir; o zaman
+      // dokunulan noktaya güveniliyor.
+      const limit = Math.max(width, height) / 2 + 8;
+      if (Math.abs(candidate.x - pageX) <= limit && Math.abs(candidate.y - pageY) <= limit) {
+        center = candidate;
+      }
+    }
+    onOpenReactions?.(item, center);
+  }, [item, onOpenReactions]);
+
+  const badgeScale = useSharedValue(1);
+  useEffect(() => {
+    if (!reactionPop) return;
+    badgeScale.value = withSequence(
+      withTiming(1.45, { duration: 120, easing: Easing.out(Easing.quad) }),
+      withTiming(1, { duration: 180, easing: Easing.out(Easing.back(2)) })
+    );
+  }, [reactionPop, badgeScale]);
+  const badgeScaleStyle = useAnimatedStyle(() => ({ transform: [{ scale: badgeScale.value }] }));
 
   const tsStyle = useAnimatedStyle(() => {
     const x = clamp(revealX.value, 0, MAX_REVEAL);
@@ -168,23 +245,72 @@ const MessageRow = memo(function MessageRow({
           )}
 
           <View style={{ alignSelf: mine ? 'flex-end' : 'flex-start' }}>
-            <Pressable onLongPress={() => (!mine ? onReport(item) : undefined)}>
-              <View
-                style={{
-                  backgroundColor: isDeleted ? colors.border : (mine ? colors.primary : colors.surfaceAlt),
-                  borderRadius: 12,
-                  paddingHorizontal: 12,
-                  paddingVertical: 8,
-                  ...(!mine && !isDeleted && { borderWidth: 2, borderColor: '#16a34a' }),
-                }}
-              >
-                {isDeleted ? (
-                  <Text style={{ color: colors.textMuted, fontStyle: 'italic', fontSize: 14 }}>{item.content}</Text>
-                ) : (
-                  <Text style={{ color: mine ? colors.whiteText : colors.text }}>{item.content}</Text>
-                )}
-              </View>
-            </Pressable>
+            {/* Tepki rozeti balonun alt kenarına biniyor. Alt boşluk rozete yer
+                açıyor: Android, kapsayıcının dışına taşan çocukları kırpıyor. */}
+            <View
+              style={{
+                position: 'relative',
+                paddingBottom: showReactionBadge ? 12 : 0,
+                // Rozet balonun köşesinden DIŞARI taşıyor; taşan kısım kapsayıcının
+                // içinde kalsın diye yan boşluk. Android sınır dışını hem kırpıyor
+                // hem de dokunuşa kapatıyor.
+                paddingRight: showReactionBadge && !mine ? 8 : 0,
+                paddingLeft: showReactionBadge && mine ? 8 : 0,
+              }}
+            >
+              <Pressable onLongPress={() => (!mine ? onReport(item) : undefined)}>
+                <View
+                  style={{
+                    backgroundColor: isDeleted ? colors.border : (mine ? colors.primary : colors.surfaceAlt),
+                    borderRadius: 12,
+                    paddingHorizontal: 12,
+                    paddingVertical: 8,
+                    ...(!mine && !isDeleted && { borderWidth: 2, borderColor: '#16a34a' }),
+                  }}
+                >
+                  {isDeleted ? (
+                    <Text style={{ color: colors.textMuted, fontStyle: 'italic', fontSize: 14 }}>{item.content}</Text>
+                  ) : (
+                    <Text style={{ color: mine ? colors.whiteText : colors.text }}>{item.content}</Text>
+                  )}
+                </View>
+              </Pressable>
+
+              {showReactionBadge && !mine && (
+                // Karşı tarafın mesajı: sağ alt köşe. Tepki yoksa gülen yüz, varsa seçilen emoji.
+                <View style={[reactionBadgeBase, { right: 0 }]}>
+                  <Animated.View style={badgeScaleStyle}>
+                    <TouchableOpacity
+                      onPress={handleBadgePress}
+                      onLayout={(e) => {
+                        badgeSizeRef.current = { width: e.nativeEvent.layout.width, height: e.nativeEvent.layout.height };
+                      }}
+                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                      accessibilityLabel={addReactionLabel}
+                      style={{ minWidth: 22, height: 22, paddingHorizontal: 3, alignItems: 'center', justifyContent: 'center' }}
+                    >
+                      {/* İçerik dokunmaya kapalı: dokunuşu TouchableOpacity'nin kendisi
+                          alsın ki locationX/Y onun çerçevesine göre gelsin. */}
+                      <View pointerEvents="none">
+                        {reaction ? (
+                          <Text style={{ fontSize: 14, opacity: reactionHidden ? 0 : 1 }}>{reaction}</Text>
+                        ) : (
+                          <Ionicons name="happy-outline" size={15} color={colors.primary} style={{ opacity: reactionHidden ? 0 : 1 }} />
+                        )}
+                      </View>
+                    </TouchableOpacity>
+                  </Animated.View>
+                </View>
+              )}
+
+              {showReactionBadge && mine && (
+                // Kendi mesajım: karşı tarafın tepkisi. Balon ekranın sağ kenarına
+                // dayalı olduğu için sol altta; yalnızca gösterim.
+                <View pointerEvents="none" style={[reactionBadgeBase, { left: 0, paddingHorizontal: 3 }]}>
+                  <Text style={{ fontSize: 14 }}>{reaction}</Text>
+                </View>
+              )}
+            </View>
             {!isDeleted && isEdited ? (
               <Text
                 style={{
@@ -235,6 +361,10 @@ export default function ChatScreen() {
   const [editInput, setEditInput] = useState('');
   const [deletedIds, setDeletedIds] = useState<Set<string>>(new Set());
   const [isSending, setIsSending] = useState(false);
+  // Mesaj kimliği -> tepki. Mesajlardan ayrı tutuluyor; ayrı sorgu ve realtime ile besleniyor.
+  const [reactions, setReactions] = useState<ReactionMap>({});
+  // Tepki seçicinin açık olduğu mesaj (yalnızca karşı tarafın mesajları).
+  const [reactionTarget, setReactionTarget] = useState<MsgItem | null>(null);
   const listRef = useRef<FlatList<MsgItem>>(null);
   const messagesRef = useRef<MsgItem[]>([]);
   const pendingInitialScroll = useRef(true);
@@ -383,7 +513,11 @@ export default function ChatScreen() {
     if (!error) {
       // Sorgu yalnızca bu iki kişinin mesajlarını getiriyor ve karşı tarafın
       // engelli olmadığı yukarıda doğrulandı; ayrıca göndereni elemeye gerek yok.
-      setMessages((data as MsgItem[]) || []);
+      const rows = (data as MsgItem[]) || [];
+      setMessages(rows);
+      // Tepkiler AYRI sorguyla geliyor: mesaj sorgusuna gömülseydi, migration
+      // uygulanmadan yayınlanan bir sürümde sorgu hata verip sohbet boş kalırdı.
+      fetchReactions(rows.map((m) => m.id)).then(setReactions);
       pendingInitialScroll.current = true;
       scrollToBottom(false);
     }
@@ -745,8 +879,160 @@ export default function ChatScreen() {
     }
   }, [editModalItem, editInput, t]);
 
+  // Realtime: karşı taraf mesajıma tepki bıraktığında/değiştirdiğinde/kaldırdığında
+  // sohbet açıkken anında yansısın. Tablo sohbete göre süzülemiyor; olay bu
+  // sohbetteki bir mesaja ait değilse yok sayılıyor. DELETE olayında yalnızca
+  // birincil anahtar (message_id, user_id) geliyor, bu yüzden eski kayıttan okunuyor.
+  useEffect(() => {
+    let mounted = true;
+    let channel: any = null;
+    (async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!mounted || !user) return;
+      const recip = await resolveRecipientId(user.id);
+      if (!mounted || !recip) return;
+      channel = supabase
+        .channel(`reactions-${user.id}-${recip}-${activeMatchId ?? 'dm'}`)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'message_reactions' }, (payload: any) => {
+          const isDelete = payload.eventType === 'DELETE';
+          const row = (isDelete ? payload.old : payload.new) as { message_id?: string; emoji?: string } | undefined;
+          const messageId = row?.message_id;
+          if (!messageId) return;
+          if (!messagesRef.current.some((m) => m.id === messageId)) return;
+          setReactions((prev) => {
+            const next = { ...prev };
+            if (isDelete) delete next[messageId];
+            else if (row?.emoji) next[messageId] = row.emoji;
+            return next;
+          });
+        })
+        .subscribe();
+    })();
+    return () => {
+      mounted = false;
+      if (channel) supabase.removeChannel(channel);
+    };
+  }, [activeMatchId, resolveRecipientId]);
+
+  /**
+   * Tepki ekler, değiştirir ya da kaldırır (`emoji` null ise ya da mevcut
+   * tepkiyle aynıysa kaldırır). Arayüz hemen güncellenir; kayıt başarısız olursa
+   * eski hâline döner.
+   */
+  const applyReaction = useCallback(async (item: MsgItem, emoji: string | null) => {
+    if (!me) return;
+
+    const previous = reactions[item.id] ?? null;
+    const next = emoji === null || previous === emoji ? null : emoji;
+    if (next === previous) return;
+
+    const restore = (value: string | null) =>
+      setReactions((prev) => {
+        const copy = { ...prev };
+        if (value) copy[item.id] = value;
+        else delete copy[item.id];
+        return copy;
+      });
+
+    restore(next);
+    Haptics.selectionAsync().catch(() => {});
+
+    const { error } = next
+      ? await setMessageReaction(item.id, me, next)
+      : await removeMessageReaction(item.id, me);
+
+    if (error) {
+      console.error('[Reactions] save error:', error.message);
+      restore(previous);
+      Alert.alert(t('general.error'), t('chat.reactionFailed'));
+    }
+  }, [me, reactions, t]);
+
+  // ---- Tepki seçici ----------------------------------------------------------
+  //
+  // Seçici sohbet ekranının İÇİNDE bir katman (RN Modal değil). Uçan emoji ise
+  // kök katmanda, bütün ekranların üstünde çiziliyor (bkz.
+  // components/FlyingEmojiLayer.tsx). Konumlar yalnızca dokunma
+  // koordinatlarından geliyor; ref ya da ölçüm yok.
+  const flyEmoji = useFlyingEmoji();
+  // Rozetin merkezi (sayfa koordinatı): emojinin ineceği yer.
+  const badgeCenterRef = useRef<Point | null>(null);
+  // Seçici kapanırken ikinci bir seçim yeni bir uçuş başlatmasın.
+  const pickerClosingRef = useRef(false);
+  // Uçuş sürerken hedef rozetteki emoji gizli; inince rozet zıplıyor.
+  const [reactionAnim, setReactionAnim] = useState<{ id: string; phase: 'flying' | 'landed' } | null>(null);
+  const sheetProgress = useSharedValue(0);
+
+  // Zamanlayıcılar ekrandan çıkılınca temizlensin; yoksa unmount sonrası state yazılır.
+  const reactionTimersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
+  useEffect(() => () => { reactionTimersRef.current.forEach(clearTimeout); }, []);
+  const later = useCallback((fn: () => void, ms: number) => {
+    reactionTimersRef.current.push(setTimeout(fn, ms));
+  }, []);
+
+  const openReactionPicker = useCallback((item: MsgItem, badgeCenter: Point) => {
+    Keyboard.dismiss();
+    badgeCenterRef.current = badgeCenter;
+    pickerClosingRef.current = false;
+    setReactionTarget(item);
+    sheetProgress.value = 0;
+    sheetProgress.value = withTiming(1, { duration: 220, easing: Easing.out(Easing.cubic) });
+  }, [sheetProgress]);
+
+  const closeReactionPicker = useCallback(() => {
+    pickerClosingRef.current = true;
+    sheetProgress.value = withTiming(0, { duration: REACTION_SHEET_MS });
+    later(() => setReactionTarget(null), REACTION_SHEET_MS);
+  }, [sheetProgress, later]);
+
+  // Android geri tuşu seçiciyi kapatsın (Modal'daki onRequestClose'un karşılığı).
+  useEffect(() => {
+    if (!reactionTarget) return;
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      closeReactionPicker();
+      return true;
+    });
+    return () => sub.remove();
+  }, [reactionTarget, closeReactionPicker]);
+
+  const selectReaction = useCallback((emoji: string, pageX: number, pageY: number) => {
+    const item = reactionTarget;
+    if (!item || pickerClosingRef.current) return;
+    closeReactionPicker();
+
+    // Aynı emojiye tekrar basmak tepkiyi kaldırır: uçuş yok.
+    if (reactions[item.id] === emoji) {
+      applyReaction(item, null);
+      return;
+    }
+
+    // Kayıt hemen gidiyor; animasyon yalnızca görsel.
+    applyReaction(item, emoji);
+
+    const to = badgeCenterRef.current;
+    if (!to || !Number.isFinite(pageX) || !Number.isFinite(pageY)) return;
+
+    setReactionAnim({ id: item.id, phase: 'flying' });
+    flyEmoji({
+      emoji,
+      from: { x: pageX, y: pageY },
+      to,
+      onLanded: () => {
+        setReactionAnim({ id: item.id, phase: 'landed' });
+        later(() => setReactionAnim((cur) => (cur && cur.id === item.id ? null : cur)), REACTION_POP_MS);
+      },
+    });
+  }, [reactionTarget, reactions, applyReaction, closeReactionPicker, flyEmoji, later]);
+
+  const reactionBackdropStyle = useAnimatedStyle(() => ({ opacity: sheetProgress.value }));
+  const reactionSheetStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: (1 - sheetProgress.value) * 360 }],
+  }));
+
   // `inverted` liste en yeni mesajı başa alır; kaynak dizi kronolojik kaldığı için burada çeviriyoruz.
   const invertedMessages = useMemo(() => [...messages].reverse(), [messages]);
+  // Tepkiler ve animasyon durumu mesajlardan ayrı state'te; değişince satırlar yeniden çizilsin.
+  const listExtraData = useMemo(() => ({ reactions, reactionAnim }), [reactions, reactionAnim]);
 
   const renderItem = ({ item }: { item: MsgItem }) => {
     const mine = item.sender_id === me;
@@ -761,6 +1047,11 @@ export default function ChatScreen() {
         isEdited={edited}
         editedLabel={t('chat.messageEdited')}
         colors={colors}
+        reaction={reactions[item.id] ?? null}
+        reactionHidden={reactionAnim?.id === item.id && reactionAnim.phase === 'flying'}
+        reactionPop={reactionAnim?.id === item.id && reactionAnim.phase === 'landed'}
+        onOpenReactions={openReactionPicker}
+        addReactionLabel={t('chat.addReaction')}
         onReport={(it) => {
           Alert.alert(
             t('chat.reportMessage'),
@@ -858,6 +1149,7 @@ export default function ChatScreen() {
                 data={invertedMessages}
                 keyExtractor={(m) => m.id}
                 renderItem={renderItem}
+                extraData={listExtraData}
                 contentContainerStyle={{ paddingVertical: 8 }}
               />
             </View>
@@ -1083,6 +1375,81 @@ export default function ChatScreen() {
               </>
             )}
           </View>
+
+          {/* Tepki seçici: ekran içi katman, en üstte (bkz. openReactionPicker).
+              Uçan emoji burada değil, kök katmanda çiziliyor. */}
+          {!!reactionTarget && (
+            <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 50, elevation: 50 }}>
+              <Animated.View
+                style={[{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: colors.overlay }, reactionBackdropStyle]}
+              >
+                <Pressable style={{ flex: 1 }} onPress={closeReactionPicker} />
+              </Animated.View>
+
+              <Animated.View
+                style={[
+                  {
+                    position: 'absolute',
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    backgroundColor: colors.surface,
+                    borderTopLeftRadius: 20,
+                    borderTopRightRadius: 20,
+                    paddingTop: 16,
+                    paddingHorizontal: 16,
+                    paddingBottom: Math.max(24, insets.bottom + 12),
+                  },
+                  reactionSheetStyle,
+                ]}
+              >
+                <Text style={{ fontSize: 16, fontWeight: '700', color: colors.primaryDark, textAlign: 'center', marginBottom: 8 }}>
+                  {t('chat.reactionTitle')}
+                </Text>
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
+                  {REACTION_EMOJIS.map((emoji) => {
+                    const selected = reactions[reactionTarget.id] === emoji;
+                    return (
+                      <TouchableOpacity
+                        key={emoji}
+                        onPress={(e) => selectReaction(emoji, e.nativeEvent.pageX, e.nativeEvent.pageY)}
+                        style={{ width: '16.66%', alignItems: 'center', paddingVertical: 6 }}
+                        accessibilityLabel={emoji}
+                      >
+                        <View
+                          style={{
+                            width: 46,
+                            height: 46,
+                            borderRadius: 23,
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            backgroundColor: selected ? 'rgba(22,163,74,0.18)' : 'transparent',
+                            borderWidth: selected ? 1.5 : 0,
+                            borderColor: '#16a34a',
+                          }}
+                        >
+                          <Text style={{ fontSize: 26 }}>{emoji}</Text>
+                        </View>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+                {!!reactions[reactionTarget.id] && (
+                  <TouchableOpacity
+                    onPress={() => {
+                      const it = reactionTarget;
+                      closeReactionPicker();
+                      applyReaction(it, null);
+                    }}
+                    activeOpacity={0.8}
+                    style={{ marginTop: 12, paddingVertical: 12, borderRadius: 10, borderWidth: 1, borderColor: colors.danger, alignItems: 'center' }}
+                  >
+                    <Text style={{ color: colors.danger, fontWeight: '700' }}>{t('chat.reactionRemove')}</Text>
+                  </TouchableOpacity>
+                )}
+              </Animated.View>
+            </View>
+          )}
         </View>
       </>
     </KeyboardAvoidingView>
