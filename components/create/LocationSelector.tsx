@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, TouchableOpacity, FlatList, Dimensions, Modal } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, Text, TextInput, TouchableOpacity, FlatList, Dimensions, Modal, ActivityIndicator } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '@/services/supabase';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAppTheme } from '@/contexts/ThemeContext';
@@ -38,9 +39,17 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
   setDistrictName // Props olarak alın
 }) => {
   const { t } = useLanguage();
-  const { colors } = useAppTheme();
+  const { colors, isDark } = useAppTheme();
   const [districts, setDistricts] = useState<District[]>([]);
   const [pitches, setPitches] = useState<Pitch[]>([]);
+  // Sahalar ilçe seçilince ağdan çekiliyor. Boş liste tek başına "bu ilçede
+  // saha yok" demek değil: henüz yükleniyor ya da sorgu hata vermiş olabilir.
+  // Uyarı yalnızca yükleme BAŞARIYLA bitip liste boş geldiğinde gösterilir.
+  const [pitchesLoading, setPitchesLoading] = useState(false);
+  const [pitchesError, setPitchesError] = useState(false);
+  // Son istenen ilçe. İlçe hızlıca değiştirilirse eski sorgunun yanıtı
+  // yenisinin üstüne yazmasın.
+  const latestDistrictRef = useRef<string | null>(null);
   const [showDistrictModal, setShowDistrictModal] = useState(false);
   const [showPitchModal, setShowPitchModal] = useState(false);
 
@@ -97,7 +106,10 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
 
   useEffect(() => {
     if (!selectedDistrict) {
+      latestDistrictRef.current = null;
       setPitches([]);
+      setPitchesLoading(false);
+      setPitchesError(false);
       return;
     }
     fetchPitches(selectedDistrict);
@@ -112,16 +124,27 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
   };
 
   const fetchPitches = async (districtId: string) => {
+    latestDistrictRef.current = districtId;
+    setPitchesLoading(true);
+    setPitchesError(false);
+
     const { data, error } = await supabase
       .from('pitches')
       .select('*')
       .eq('district_id', districtId);
 
+    // Bu arada başka bir ilçe seçildiyse bu yanıt artık geçersiz.
+    if (latestDistrictRef.current !== districtId) return;
+
     if (error) {
       console.error('Veri çekme hatası:', error);
+      // Önceki ilçenin sahaları listede kalmasın.
+      setPitches([]);
+      setPitchesError(true);
     } else {
       setPitches(data as Pitch[]);
     }
+    setPitchesLoading(false);
   };
 
   const screenHeight = Dimensions.get('window').height;
@@ -224,6 +247,33 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
                   <Text style={{ color: colors.text }}>{item.name}</Text>
                 </TouchableOpacity>
               )}
+              ListEmptyComponent={
+                pitchesLoading ? (
+                  <View style={{ paddingVertical: 24, alignItems: 'center' }}>
+                    <ActivityIndicator color="#16a34a" />
+                  </View>
+                ) : (
+                  <View
+                    style={{
+                      alignItems: 'center',
+                      paddingVertical: 16,
+                      paddingHorizontal: 12,
+                      borderRadius: 10,
+                      borderWidth: 1,
+                      borderColor: isDark ? 'rgba(245,158,11,0.35)' : '#fde68a',
+                      backgroundColor: isDark ? 'rgba(245,158,11,0.12)' : '#fffbeb',
+                    }}
+                  >
+                    <Ionicons name="alert-circle-outline" size={32} color="#f59e0b" />
+                    <Text style={{ marginTop: 8, fontWeight: '700', color: colors.text, textAlign: 'center' }}>
+                      {pitchesError ? t('general.error') : t('create.noPitchesTitle')}
+                    </Text>
+                    <Text style={{ marginTop: 4, fontSize: 13, color: colors.textSecondary, textAlign: 'center' }}>
+                      {pitchesError ? t('create.pitchesLoadFailed') : t('create.noPitchesMessage')}
+                    </Text>
+                  </View>
+                )
+              }
               style={{ flexGrow: 1 }}
             />
             <TouchableOpacity
