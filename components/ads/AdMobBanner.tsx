@@ -40,14 +40,24 @@ export default function AdMobBanner({ className }: Props) {
 
   if (!BannerAd || !BannerAdSize || !unitId) return null;
 
+  // Sabit 320x50 (MMA) yerine cihaz genişliğine göre en uygun slot: tablette
+  // 320x50 envanteri telefona göre çok daha zayıf, "no fill" olasılığı yüksek.
+  const size = BannerAdSize.ANCHORED_ADAPTIVE_BANNER ?? BannerAdSize.BANNER;
+
   return (
     <View className={className} style={{ alignItems: "center" }}>
       <BannerAd
         unitId={__DEV__ ? TestIds?.BANNER ?? unitId : unitId}
-        size={BannerAdSize.BANNER}
+        size={size}
         requestOptions={{
           // ATT/consent akışını zorlamamak için NPA (ileride istersen açarız)
           requestNonPersonalizedAdsOnly: true,
+        }}
+        // Reklam gelmediğinde sessizce boş kalıyordu; sebebi (no fill, yanlış
+        // birim kimliği, ağ) ayırt edilemiyordu. __DEV__ dışında da yazılıyor:
+        // test kimliği hep dolduğu için sorun yalnızca gerçek birimde görülüyor.
+        onAdFailedToLoad={(error: any) => {
+          console.log("[Reklam] yüklenemedi:", error?.code ?? "", error?.message ?? String(error));
         }}
       />
     </View>

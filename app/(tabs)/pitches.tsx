@@ -140,7 +140,11 @@ export default function Pitches() {
       setLocationPermissionStatus("granted");
       await AsyncStorage.setItem("locationPermissionStatus", "granted");
       
-      const { coords } = await Location.getCurrentPositionAsync({});
+      // Önce işletim sisteminin önbellekteki konumu: anında döner. Taze GPS
+      // kilidi beklemek GPS'i olmayan Wi-Fi iPad'lerde on saniyeleri buluyor.
+      const coords =
+        (await Location.getLastKnownPositionAsync())?.coords ??
+        (await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced })).coords;
       const { latitude, longitude } = coords;
       setLocation({ latitude, longitude });
 
@@ -297,7 +301,7 @@ export default function Pitches() {
           const webAddress = await reverseGeocodeWeb(latitude, longitude);
           if (webAddress) {
             setLocationText(webAddress);
-            fetchPitches(latitude, longitude);
+            fetchPitches(latitude, longitude, { showLoading: false });
             return;
           }
         }
@@ -402,7 +406,10 @@ export default function Pitches() {
         setLocationText(t('pitches.addressCouldNotBeRetrieved'));
       }
 
-      fetchPitches(latitude, longitude);
+      // showLoading: false -> sayfa tam ekran spinner'a DÜŞMESİN. Düşünce tüm
+      // ağaç (reklam bandı dahil) sökülüp yeniden takılıyor; yüklenmekte olan
+      // reklam isteği iptal oluyordu.
+      fetchPitches(latitude, longitude, { showLoading: false });
     } catch (err) {
       console.error(t('pitches.locationError'), err);
       setLocationText(t('pitches.locationCouldNotBeRetrieved'));
