@@ -444,6 +444,13 @@ export const tr = {
   'auth.slide5.subtitle': 'Kendini tanıt, daha iyi eşleşmeler yakala.',
   'auth.slide6.title': 'Bildirimleri Takip Et',
   'auth.slide6.subtitle': 'Anlık gelen istekleri ve olan biteni kaçırma.',
+  // Karşılama ekranı (app/landing.tsx)
+  'landing.headlineTop': 'Kadronu kur,',
+  'landing.headlineAccent': 'sahaya çık.',
+  'landing.subtitle': 'Yakınındaki maçları bul, eksik oyuncuyu tamamla, maçını dakikalar içinde kur.',
+  'landing.featuresTitle': 'Neler yapabilirsin?',
+  'landing.guestStart': 'Misafir olarak başla',
+  'landing.guestHint': 'Misafir olarak maçlara göz atabilirsin; katılmak için giriş yapman gerekir.',
 
   'auth.welcomeTitle': 'Hoş Geldin',
   'auth.joinTitle': 'Aramıza Katıl!',

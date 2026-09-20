@@ -1,413 +1,403 @@
-import { View, Text, TouchableOpacity, Image, Dimensions, Platform } from "react-native";
+import { useEffect } from "react";
+import { View, Text, TouchableOpacity, Platform, ScrollView, Image } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
+import { LinearGradient } from "expo-linear-gradient";
+import { StatusBar } from "expo-status-bar";
 import Animated, {
-  useAnimatedRef,
-  useAnimatedScrollHandler,
+  Easing,
+  FadeIn,
+  FadeInDown,
+  FadeInUp,
   useAnimatedStyle,
-  useFrameCallback,
   useSharedValue,
-  scrollTo,
-  runOnUI,
+  withRepeat,
   withTiming,
 } from "react-native-reanimated";
-import { useState } from "react";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
+import { useIsFocused } from "@react-navigation/native";
 import { useLanguage } from "@/contexts/LanguageContext";
 
-const INTRO_SLIDES = [
-  { key: "s1", image: require("@/assets/images/screenShot/slide1.png"), titleKey: "auth.slide1.title", subtitleKey: "auth.slide1.subtitle" },
-  { key: "s2", image: require("@/assets/images/screenShot/slide2.png"), titleKey: "auth.slide2.title", subtitleKey: "auth.slide2.subtitle" },
-  { key: "s3", image: require("@/assets/images/screenShot/slide3.png"), titleKey: "auth.slide3.title", subtitleKey: "auth.slide3.subtitle" },
-  { key: "s4", image: require("@/assets/images/screenShot/slide4.png"), titleKey: "auth.slide4.title", subtitleKey: "auth.slide4.subtitle" },
-  { key: "s5", image: require("@/assets/images/screenShot/slide5.png"), titleKey: "auth.slide5.title", subtitleKey: "auth.slide5.subtitle" },
-  { key: "s6", image: require("@/assets/images/screenShot/slide6.png"), titleKey: "auth.slide6.title", subtitleKey: "auth.slide6.subtitle" },
+/**
+ * Karşılama ekranı.
+ *
+ * Eskiden 6 tam ekran görüntüsünden oluşan, sayfa sayfa kaydırılan bir slider
+ * vardı; görüntüler küçük ekranda okunmuyordu ve kullanıcılar ilk slaytı
+ * geçip gidiyordu. Artık TEK ekran: uygulamanın ne yaptığı, altı özelliğin
+ * hepsi aynı anda ve okunur büyüklükte görünüyor. Hızlı geçen kullanıcı da
+ * ilk iki saniyede değeri görüyor. Özellik metinleri eski slayt metinleri.
+ *
+ * Görünüm temadan bağımsız: marka ekranı olduğu için açık ve koyu modda aynı
+ * koyu yeşil. Yeni native paket kullanılmıyor (expo-linear-gradient zaten var).
+ */
+
+const FEATURES = [
+  { key: "find", icon: "search", titleKey: "auth.slide1.title", subtitleKey: "auth.slide1.subtitle" },
+  { key: "create", icon: "add-circle", titleKey: "auth.slide2.title", subtitleKey: "auth.slide2.subtitle" },
+  { key: "squad", icon: "people", titleKey: "auth.slide3.title", subtitleKey: "auth.slide3.subtitle" },
+  { key: "chat", icon: "chatbubbles", titleKey: "auth.slide4.title", subtitleKey: "auth.slide4.subtitle" },
+  { key: "profile", icon: "person-circle", titleKey: "auth.slide5.title", subtitleKey: "auth.slide5.subtitle" },
+  { key: "alerts", icon: "notifications", titleKey: "auth.slide6.title", subtitleKey: "auth.slide6.subtitle" },
 ] as const;
 
-const DOT_SIZE = 8;
-const DOT_GAP = 8;
-const FIELD_HEIGHT = 90;
-const BALL_SIZE = 12;
-const BALL_PADDING = 6;
+// Koyu zümrüt: beyaz metin bu zeminde rahat okunuyor (açık yeşil #16a34a
+// üzerinde küçük beyaz metnin kontrastı yetersiz kalıyordu).
+const GRADIENT = ["#022c22", "#064e3b", "#065f46"] as const;
+const SHEET_BACKDROP = GRADIENT[GRADIENT.length - 1];
+const ACCENT = "#4ade80";
+const BRAND_GREEN = "#16a34a";
+
+/** Arkadaki silik halı saha çizgileri (SVG yok; düz View'lar). */
+function PitchLines() {
+  const line = "rgba(255,255,255,0.09)";
+  return (
+    <View pointerEvents="none" style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }}>
+      {/* Ceza sahası (üst) */}
+      <View
+        style={{
+          position: "absolute",
+          top: -2,
+          left: "18%",
+          right: "18%",
+          height: 110,
+          borderWidth: 2,
+          borderTopWidth: 0,
+          borderColor: line,
+          borderBottomLeftRadius: 6,
+          borderBottomRightRadius: 6,
+        }}
+      />
+      {/* Orta saha çizgisi ve orta yuvarlak */}
+      <View style={{ position: "absolute", top: "58%", left: 0, right: 0, height: 2, backgroundColor: line }} />
+      <View
+        style={{
+          position: "absolute",
+          top: "58%",
+          left: "50%",
+          width: 200,
+          height: 200,
+          borderRadius: 100,
+          borderWidth: 2,
+          borderColor: line,
+          transform: [{ translateX: -100 }, { translateY: -100 }],
+        }}
+      />
+      <View
+        style={{
+          position: "absolute",
+          top: "58%",
+          left: "50%",
+          width: 8,
+          height: 8,
+          borderRadius: 4,
+          backgroundColor: line,
+          transform: [{ translateX: -4 }, { translateY: -3 }],
+        }}
+      />
+    </View>
+  );
+}
+
+const BALL_SIZE = 26;
+const BOUNCE_HEIGHT = 9;
+const BOUNCE_MS = 1100;
+
+/**
+ * Marka satırındaki top: yumuşak, doğal bir sektirme.
+ *
+ * Eskiden yukarı ve aşağı iki ayrı, kısa (360 ms) zamanlama zincirleniyordu;
+ * hareket kesik kesik görünüyordu. Artık TEK bir ilerleme değeri (0→1) bütün
+ * hareketi sürüyor:
+ *  - yükseklik, yerçekimindeki gibi bir parabol: tepede yumuşakça yavaşlıyor,
+ *  - yere değerken hafif "ezilme" (basıklaşıp toparlanma),
+ *  - topun altında, yükseldikçe küçülüp silikleşen bir gölge.
+ * Hepsi aynı değerden türediği için birbirinden kopmuyor.
+ */
+function DribblingBall() {
+  const progress = useSharedValue(0);
+  const rot = useSharedValue(0);
+
+  useEffect(() => {
+    progress.value = withRepeat(withTiming(1, { duration: BOUNCE_MS, easing: Easing.linear }), -1);
+    rot.value = withRepeat(withTiming(360, { duration: 3200, easing: Easing.linear }), -1);
+  }, [progress, rot]);
+
+  const ballStyle = useAnimatedStyle(() => {
+    const t = progress.value;
+    const h = 4 * t * (1 - t); // 0 → 1 → 0: yerçekimi parabolü
+    // Yere yakınken ezilme; yükseldikçe sıfırlanıyor.
+    const squash = Math.max(0, 1 - h / 0.25);
+    const scaleY = 1 - 0.1 * squash;
+    const scaleX = 1 + 0.07 * squash;
+    // Ezilirken alt kenar yerde kalsın (ölçek merkeze göre uygulanıyor).
+    const sink = ((1 - scaleY) * BALL_SIZE) / 2;
+    return {
+      // Sıra önemli: top önce kendi etrafında dönüyor, ezilme ise ekran
+      // eksenlerinde kalıyor (dönen topla birlikte yan yatmıyor).
+      transform: [
+        { translateY: -BOUNCE_HEIGHT * h + sink },
+        { scaleX },
+        { scaleY },
+        { rotate: `${rot.value}deg` },
+      ],
+    };
+  });
+
+  const shadowStyle = useAnimatedStyle(() => {
+    const t = progress.value;
+    const h = 4 * t * (1 - t);
+    return {
+      opacity: 0.35 - 0.22 * h,
+      transform: [{ scaleX: 1 - 0.45 * h }],
+    };
+  });
+
+  return (
+    <View style={{ width: BALL_SIZE, height: BALL_SIZE + 6, alignItems: "center", justifyContent: "flex-end" }}>
+      <Animated.View
+        style={[
+          { position: "absolute", bottom: 0, width: BALL_SIZE * 0.8, height: 4, borderRadius: 2, backgroundColor: "#000000" },
+          shadowStyle,
+        ]}
+      />
+      <Animated.Image
+        source={require("../assets/images/ball.png")}
+        style={[{ width: BALL_SIZE, height: BALL_SIZE, marginBottom: 3 }, ballStyle]}
+        resizeMode="contain"
+      />
+    </View>
+  );
+}
 
 export default function LandingScreen() {
   const router = useRouter();
   const { currentLanguage, changeLanguage, t } = useLanguage();
   const insets = useSafeAreaInsets();
-  const [introWidth, setIntroWidth] = useState(Dimensions.get("window").width);
-  const [languageMenuOpen, setLanguageMenuOpen] = useState(false);
+  const isFocused = useIsFocused();
 
-  const introListRef = useAnimatedRef<Animated.FlatList<any>>();
-  const introScrollX = useSharedValue(0);
-  const activeDotX = useSharedValue(0);
-  const headerWidthSV = useSharedValue(0);
-  const ballX = useSharedValue(0);
-  const ballY = useSharedValue(0);
-  const ballVX = useSharedValue(0);
-  const ballVY = useSharedValue(0);
-  const ballRot = useSharedValue(0);
-  const [introIndex, setIntroIndex] = useState(0);
+  // Android'de `insets.bottom` JEST NAVİGASYONUNDA 0 dönüyor; alt sınır
+  // verilmezse butonlar ekranın en dibine yapışıyordu.
+  const sheetBottomPadding =
+    Platform.OS === "android" ? Math.max(insets.bottom + 12, 20) : Math.max(insets.bottom + 4, 16);
 
-  const dotsWidth = INTRO_SLIDES.length * DOT_SIZE + (INTRO_SLIDES.length - 1) * DOT_GAP;
-  const introImageHeight = Platform.OS === "android" ? "83%" : "88%";
-  // Android'de `insets.bottom` JEST NAVİGASYONUNDA 0 dönüyor; eski hesap bu
-  // durumda payı doğrudan 0 yapıyordu ve butonlar ekranın en dibine yapışıyordu.
-  // Alt sınır veriliyor: gezinme çubuğu bildirilmese de nefes payı kalsın.
-  const ctaBottomPadding =
-    Platform.OS === "android"
-      ? Math.max(insets.bottom + 8, 16)
-      : Math.max(insets.bottom, 8);
-
-  const rand = (min: number, max: number) => {
-    "worklet";
-    return min + Math.random() * (max - min);
-  };
-
-  const ensureBallInit = () => {
-    "worklet";
-    const w = headerWidthSV.value || 0;
-    if (w <= 0) return;
-    if (ballVX.value !== 0 || ballVY.value !== 0) return;
-    const minX = BALL_PADDING;
-    const maxX = Math.max(minX, w - BALL_SIZE - BALL_PADDING);
-    const minY = BALL_PADDING;
-    const maxY = Math.max(minY, FIELD_HEIGHT - BALL_SIZE - BALL_PADDING);
-    ballX.value = (minX + maxX) / 2;
-    ballY.value = (minY + maxY) / 2;
-    const speed = rand(0.05, 0.095);
-    const angle = rand(0, Math.PI * 2);
-    ballVX.value = Math.cos(angle) * speed;
-    ballVY.value = Math.sin(angle) * speed;
-  };
-
-  useFrameCallback((frame) => {
-    "worklet";
-    ensureBallInit();
-    const w = headerWidthSV.value || 0;
-    if (w <= 0) return;
-    const dt = frame.timeSincePreviousFrame ?? 16;
-    const minX = BALL_PADDING;
-    const maxX = Math.max(minX, w - BALL_SIZE - BALL_PADDING);
-    const minY = BALL_PADDING;
-    const maxY = Math.max(minY, FIELD_HEIGHT - BALL_SIZE - BALL_PADDING);
-    let x = ballX.value + ballVX.value * dt;
-    let y = ballY.value + ballVY.value * dt;
-    let vx = ballVX.value;
-    let vy = ballVY.value;
-    const bounceJitter = () => {
-      "worklet";
-      vx *= rand(0.92, 1.08);
-      vy *= rand(0.92, 1.08);
-      vy += rand(-0.02, 0.02);
-      vx += rand(-0.02, 0.02);
-      const maxSpeed = 0.12;
-      const minSpeed = 0.035;
-      const sp = Math.sqrt(vx * vx + vy * vy) || 0.0001;
-      const clamped = Math.min(maxSpeed, Math.max(minSpeed, sp));
-      vx = (vx / sp) * clamped;
-      vy = (vy / sp) * clamped;
-    };
-    if (x <= minX) { x = minX; vx = Math.abs(vx); bounceJitter(); } else if (x >= maxX) { x = maxX; vx = -Math.abs(vx); bounceJitter(); }
-    if (y <= minY) { y = minY; vy = Math.abs(vy); bounceJitter(); } else if (y >= maxY) { y = maxY; vy = -Math.abs(vy); bounceJitter(); }
-    ballX.value = x;
-    ballY.value = y;
-    ballVX.value = vx;
-    ballVY.value = vy;
-    ballRot.value = ballRot.value + (vx * dt) / 6;
-  });
-
-  const ballAnimatedStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: ballX.value }, { translateY: ballY.value }, { rotate: `${ballRot.value}rad` }],
-    opacity: headerWidthSV.value > 0 ? 1 : 0,
-  }));
-
-  const activeDotStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: activeDotX.value }],
-  }));
-
-  const introScrollHandler = useAnimatedScrollHandler({
-    onScroll: (event) => {
-      introScrollX.value = event.contentOffset.x;
-    },
-  });
+  const nextLanguage = currentLanguage === "tr" ? "en" : "tr";
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#ffffff" }} edges={["top"]}>
-      {/* Header - halı saha */}
-      <View
-        style={{ height: FIELD_HEIGHT, position: "relative", overflow: "hidden", backgroundColor: "#15803d", paddingHorizontal: 8 }}
-        onLayout={(e) => {
-          const w = e.nativeEvent.layout.width;
-          if (w && w > 0) headerWidthSV.value = w;
-        }}
-      >
-        <View style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, opacity: 0.8 }}>
-          <View style={{ position: "absolute", top: 1, left: 1, right: 1, height: 2, backgroundColor: "white" }} />
-          <View style={{ position: "absolute", bottom: 1, left: 1, right: 1, height: 2, backgroundColor: "white" }} />
-          <View style={{ position: "absolute", top: 1, bottom: 1, left: 1, width: 2, backgroundColor: "white" }} />
-          <View style={{ position: "absolute", top: 1, bottom: 1, right: 1, width: 2, backgroundColor: "white" }} />
-          <View style={{ position: "absolute", left: "50%", top: 1, bottom: 1, width: 2, backgroundColor: "white", transform: [{ translateX: -1 }] }} />
-          <View style={{ position: "absolute", top: "50%", left: "50%", width: 60, height: 60, borderWidth: 2, borderColor: "white", borderRadius: 30, transform: [{ translateX: -30 }, { translateY: -30 }] }} />
-          <View style={{ position: "absolute", left: 1, top: "25%", bottom: "25%", width: 25, borderWidth: 2, borderColor: "white", borderRightWidth: 0, backgroundColor: "rgba(255, 255, 255, 0.15)" }} />
-          <View style={{ position: "absolute", left: 3, top: "15%", width: 40, height: 2, backgroundColor: "white" }} />
-          <View style={{ position: "absolute", left: 3, bottom: "15%", width: 40, height: 2, backgroundColor: "white" }} />
-          <View style={{ position: "absolute", left: 42, top: "15%", bottom: "15%", width: 2, backgroundColor: "white" }} />
-          <View style={{ position: "absolute", left: 32, top: "50%", width: 4, height: 4, borderRadius: 2, backgroundColor: "white", transform: [{ translateX: -2 }, { translateY: -2 }] }} />
-          <View style={{ position: "absolute", right: 1, top: "25%", bottom: "25%", width: 25, borderWidth: 2, borderColor: "white", borderLeftWidth: 0, backgroundColor: "rgba(255, 255, 255, 0.15)" }} />
-          <View style={{ position: "absolute", right: 3, top: "15%", width: 40, height: 2, backgroundColor: "white" }} />
-          <View style={{ position: "absolute", right: 3, bottom: "15%", width: 40, height: 2, backgroundColor: "white" }} />
-          <View style={{ position: "absolute", right: 42, top: "15%", bottom: "15%", width: 2, backgroundColor: "white" }} />
-          <View style={{ position: "absolute", right: 32, top: "50%", width: 4, height: 4, borderRadius: 2, backgroundColor: "white", transform: [{ translateX: 2 }, { translateY: -2 }] }} />
-        </View>
+    <View style={{ flex: 1, backgroundColor: SHEET_BACKDROP }}>
+      {/* Koyu yeşil zeminde beyaz ikonlar; YALNIZCA bu ekran öndeyken. Ekran
+          yığında altta açık kalabiliyor (ör. "Misafir olarak başla" ile ileri
+          gidilince); koşulsuz olsaydı beyaz ikonlar sonraki ekranlara sızıp
+          gündüz modunda beyaz header'da kayboluyordu. */}
+      {isFocused && <StatusBar style="light" />}
 
-        <View style={{ width: "100%", height: "100%", zIndex: 1, position: "relative" }}>
-          <Animated.Image
-            source={require("../assets/images/ball.png")}
-            style={[{ position: "absolute", width: BALL_SIZE, height: BALL_SIZE, zIndex: 2 }, ballAnimatedStyle]}
-            resizeMode="contain"
-          />
-          <View style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, alignItems: "center", justifyContent: "center", zIndex: 3 }} pointerEvents="none">
-            <Text
-              style={{
-                color: "white",
-                fontWeight: "900",
-                letterSpacing: 3,
-                fontSize: 20,
-                paddingHorizontal: 12,
-                paddingVertical: 6,
-                borderRadius: 999,
-                backgroundColor: "rgba(0,0,0,0.22)",
-                borderWidth: 1,
-                borderColor: "rgba(255,255,255,0.55)",
-              }}
-            >
-              {t("auth.brand")}
-            </Text>
-          </View>
-        </View>
-      </View>
+      <LinearGradient colors={GRADIENT} style={{ flex: 1 }}>
+        <SafeAreaView edges={["top"]} style={{ flex: 1 }}>
+          <PitchLines />
 
-      {/* Slider */}
-      <View
-        style={{ flex: 1, backgroundColor: "#ffffff", paddingTop: Platform.OS === "ios" ? 6 : 6 }}
-        onLayout={(e) => {
-          const w = e.nativeEvent.layout.width;
-          if (w && Math.abs(w - introWidth) > 1) setIntroWidth(w);
-        }}
-      >
-        <Animated.FlatList
-          ref={introListRef}
-          data={INTRO_SLIDES as any}
-          horizontal
-          pagingEnabled
-          showsHorizontalScrollIndicator={false}
-          keyExtractor={(it: any) => it.key}
-          onScroll={introScrollHandler}
-          scrollEventThrottle={16}
-          style={{ flex: 1 }}
-          onMomentumScrollEnd={(e) => {
-            const x = e.nativeEvent.contentOffset.x;
-            const idx = introWidth > 0 ? Math.round(x / introWidth) : 0;
-            const clamped = Math.max(0, Math.min(idx, INTRO_SLIDES.length - 1));
-            setIntroIndex(clamped);
-            activeDotX.value = withTiming(clamped * (DOT_SIZE + DOT_GAP), { duration: 180 });
-          }}
-          renderItem={({ item, index }: any) => (
-            <View style={{ width: introWidth, flex: 1 }}>
+          {/* Küçük ekranlarda (ör. iPhone SE) içerik sığmazsa kaydırılabilsin. */}
+          <ScrollView
+            contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 20, paddingTop: 8, paddingBottom: 24 }}
+            showsVerticalScrollIndicator={false}
+            bounces={false}
+          >
+            {/* Üst satır: top (sol) — logo (orta) — dil (sağ).
+                Yan kolonlar EŞİT esniyor, logo kolonu sabit genişlikte; bu simetri
+                logoyu yan öğelerin genişliğinden bağımsız olarak ekranın tam
+                ortasında tutuyor (header'daki yöntemin aynısı: bkz.
+                components/CustomHeader.tsx). */}
+            <Animated.View entering={FadeIn.duration(400)} style={{ flexDirection: "row", alignItems: "center" }}>
+              <View style={{ flex: 1, minWidth: 0, alignItems: "flex-start" }}>
+                <DribblingBall />
+              </View>
+
+              {/* Uygulamanın kendi logosu (header'dakiyle aynı). Beyaz harfleri ve
+                  koyu dış çizgisi sayesinde koyu yeşil zeminde net okunuyor.
+                  Görsel 480x120 (4:1), saydam. */}
               <Image
-                source={item.image}
-                style={{ width: "89%", height: introImageHeight, alignSelf: "center", marginTop: 4 }}
+                source={require("../assets/images/logo.png")}
+                style={{ width: 136, height: 34 }}
                 resizeMode="contain"
+                accessibilityLabel="SahayaBak"
               />
 
-              {/* İlk slide: sol boşlukta dil bayrakları (Auth ekranındaki gibi) */}
-              {index === 0 && (
-                <View style={{ position: "absolute", left: 15, top: 8, zIndex: 6, alignItems: "center" }}>
-                  <TouchableOpacity
-                    onPress={() => setLanguageMenuOpen((v) => !v)}
-                    activeOpacity={0.85}
-                    accessibilityRole="button"
-                    accessibilityLabel={currentLanguage === "tr" ? "Türkçe" : "English"}
+              <View style={{ flex: 1, minWidth: 0, alignItems: "flex-end" }}>
+                <TouchableOpacity
+                  onPress={() => void changeLanguage(nextLanguage)}
+                  activeOpacity={0.8}
+                  accessibilityRole="button"
+                  accessibilityLabel={nextLanguage === "en" ? "Switch to English" : "Türkçe'ye geç"}
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    height: 32,
+                    paddingHorizontal: 10,
+                    borderRadius: 16,
+                    backgroundColor: "rgba(255,255,255,0.12)",
+                    borderWidth: 1,
+                    borderColor: "rgba(255,255,255,0.25)",
+                  }}
+                >
+                  <Text style={{ fontSize: 15 }}>{currentLanguage === "tr" ? "🇹🇷" : "🇬🇧"}</Text>
+                  <Text style={{ color: "#ffffff", fontWeight: "700", fontSize: 12, marginLeft: 6 }}>
+                    {currentLanguage.toUpperCase()}
+                  </Text>
+                  <Ionicons name="swap-horizontal" size={14} color="rgba(255,255,255,0.8)" style={{ marginLeft: 4 }} />
+                </TouchableOpacity>
+              </View>
+            </Animated.View>
+
+            {/* Başlık */}
+            <Animated.View entering={FadeInDown.delay(80).duration(450)} style={{ marginTop: 34 }}>
+              <Text style={{ color: "#ffffff", fontSize: 34, lineHeight: 40, fontWeight: "900", letterSpacing: -0.5 }}>
+                {t("landing.headlineTop")}
+                {"\n"}
+                <Text style={{ color: ACCENT }}>{t("landing.headlineAccent")}</Text>
+              </Text>
+            </Animated.View>
+            <Animated.View entering={FadeInDown.delay(150).duration(450)}>
+              <Text style={{ color: "rgba(236,253,245,0.82)", fontSize: 15, lineHeight: 22, marginTop: 12 }}>
+                {t("landing.subtitle")}
+              </Text>
+            </Animated.View>
+
+            {/* Özellikler: altısı birden, okunur büyüklükte */}
+            <Animated.Text
+              entering={FadeIn.delay(220).duration(400)}
+              style={{
+                color: ACCENT,
+                fontSize: 12,
+                fontWeight: "800",
+                letterSpacing: 1.2,
+                textTransform: "uppercase",
+                marginTop: 28,
+                marginBottom: 10,
+              }}
+            >
+              {t("landing.featuresTitle")}
+            </Animated.Text>
+            <View style={{ flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between", rowGap: 10 }}>
+              {FEATURES.map((f, i) => (
+                <Animated.View
+                  key={f.key}
+                  entering={FadeInDown.delay(260 + i * 70).duration(420)}
+                  style={{ width: "48.5%" }}
+                >
+                  <View
+                    style={{
+                      minHeight: 104,
+                      padding: 12,
+                      borderRadius: 18,
+                      backgroundColor: "rgba(255,255,255,0.08)",
+                      borderWidth: 1,
+                      borderColor: "rgba(255,255,255,0.16)",
+                    }}
                   >
                     <View
                       style={{
                         width: 34,
-                        height: 28,
-                        borderRadius: 9,
+                        height: 34,
+                        borderRadius: 17,
                         alignItems: "center",
                         justifyContent: "center",
-                        backgroundColor: "rgba(22,163,74,0.16)",
-                        borderWidth: 1,
-                        borderColor: "#16a34a",
-                        shadowColor: "#000",
-                        shadowOffset: { width: 0, height: 2 },
-                        shadowOpacity: 0.25,
-                        shadowRadius: 6,
-                        elevation: 4,
+                        backgroundColor: "#d1fae5",
                       }}
                     >
-                      <Text style={{ fontSize: 19, opacity: 1 }}>
-                        {currentLanguage === "tr" ? "🇹🇷" : "🇬🇧"}
-                      </Text>
+                      <Ionicons name={f.icon} size={18} color="#065f46" />
                     </View>
-                  </TouchableOpacity>
-
-                  {languageMenuOpen && (
-                    <View style={{ marginTop: 2 }}>
-                      <TouchableOpacity
-                        onPress={() => {
-                          const next = currentLanguage === "tr" ? "en" : "tr";
-                          setLanguageMenuOpen(false);
-                          void changeLanguage(next);
-                        }}
-                        activeOpacity={0.85}
-                        accessibilityRole="button"
-                        accessibilityLabel={currentLanguage === "tr" ? "English" : "Türkçe"}
-                      >
-                        <View
-                          style={{
-                            width: 34,
-                            height: 26,
-                            borderRadius: 9,
-                            alignItems: "center",
-                            justifyContent: "center",
-                            backgroundColor: "rgba(0,0,0,0.06)",
-                            borderWidth: 1,
-                            borderColor: "rgba(17,24,39,0.15)",
-                          }}
-                        >
-                          <Text style={{ fontSize: 17, opacity: 0.9 }}>
-                            {currentLanguage === "tr" ? "🇬🇧" : "🇹🇷"}
-                          </Text>
-                        </View>
-                      </TouchableOpacity>
-                    </View>
-                  )}
-                </View>
-              )}
-
-              {index > 0 && (
-                <TouchableOpacity
-                  activeOpacity={0.7}
-                  onPress={() => {
-                    runOnUI((x: number) => {
-                      "worklet";
-                      scrollTo(introListRef, x, 0, true);
-                    })((index - 1) * introWidth);
-                  }}
-                  style={{
-                    position: "absolute",
-                    left: 16,
-                    top: 6,
-                    width: 32,
-                    height: 32,
-                    borderRadius: 16,
-                    backgroundColor: "rgba(22, 163, 74, 0.25)",
-                    justifyContent: "center",
-                    alignItems: "center",
-                    zIndex: 5,
-                  }}
-                >
-                  <Ionicons name="chevron-back" size={20} color="#16a34a" />
-                </TouchableOpacity>
-              )}
-
-              {index < INTRO_SLIDES.length - 1 && (
-                <TouchableOpacity
-                  activeOpacity={0.7}
-                  onPress={() => {
-                    runOnUI((x: number) => {
-                      "worklet";
-                      scrollTo(introListRef, x, 0, true);
-                    })((index + 1) * introWidth);
-                  }}
-                  style={{
-                    position: "absolute",
-                    right: 15,
-                    top: 6,
-                    width: 32,
-                    height: 32,
-                    borderRadius: 16,
-                    backgroundColor: "rgba(22, 163, 74, 0.25)",
-                    justifyContent: "center",
-                    alignItems: "center",
-                    zIndex: 5,
-                  }}
-                >
-                  <Ionicons name="chevron-forward" size={20} color="#16a34a" />
-                </TouchableOpacity>
-              )}
-
-              <View style={{ position: "absolute", left: 0, right: 0, bottom: Platform.OS === "android" ? 0 : 6, paddingHorizontal: 10, paddingTop: 4, paddingBottom: Platform.OS === "android" ? 2 : 8, zIndex: 2, alignItems: "center", pointerEvents: "none" }}>
-                <Text style={{ fontSize: 18, fontWeight: "800", color: "#065f46", textAlign: "center" }} numberOfLines={1}>
-                  {t(item.titleKey)}
-                </Text>
-                <Text style={{ color: "#374151", marginTop: 2, textAlign: "center" }} numberOfLines={2}>
-                  {t(item.subtitleKey)}
-                </Text>
-              </View>
+                    <Text
+                      numberOfLines={1}
+                      style={{ color: "#ffffff", fontSize: 14.5, fontWeight: "800", marginTop: 10 }}
+                    >
+                      {t(f.titleKey)}
+                    </Text>
+                    <Text
+                      numberOfLines={2}
+                      style={{ color: "rgba(236,253,245,0.78)", fontSize: 12, lineHeight: 16, marginTop: 3 }}
+                    >
+                      {t(f.subtitleKey)}
+                    </Text>
+                  </View>
+                </Animated.View>
+              ))}
             </View>
-          )}
-        />
+          </ScrollView>
+        </SafeAreaView>
+      </LinearGradient>
 
-        {/* Dots */}
-        <View style={{ paddingTop: 2, paddingBottom: Platform.OS === "ios" ? 6 : 6, paddingHorizontal: 6, alignItems: "center" }}>
-          <View
-            style={{
-              backgroundColor: "rgba(255,255,255,0.95)",
-              borderRadius: 999,
-              paddingHorizontal: 10,
-              paddingVertical: 6,
-              borderWidth: 2,
-              borderColor: "#16a34a",
-              ...(Platform.OS === "android" ? { elevation: 6 } : { shadowColor: "#000", shadowOpacity: 0.18, shadowRadius: 8, shadowOffset: { width: 0, height: 3 } }),
-            }}
-          >
-            <View style={{ width: dotsWidth, height: DOT_SIZE, position: "relative" }}>
-              <View style={{ flexDirection: "row" }}>
-                {INTRO_SLIDES.map((s, idx) => (
-                  <View key={s.key} style={{ width: DOT_SIZE, height: DOT_SIZE, borderRadius: DOT_SIZE / 2, backgroundColor: "rgba(0,0,0,0.22)", marginRight: idx === INTRO_SLIDES.length - 1 ? 0 : DOT_GAP }} />
-                ))}
-              </View>
-              <Animated.View style={[{ position: "absolute", left: 0, top: 0, width: DOT_SIZE, height: DOT_SIZE, borderRadius: DOT_SIZE / 2, backgroundColor: "#16a34a" }, activeDotStyle]} />
-            </View>
-          </View>
-        </View>
-
-        {/* Bottom CTAs */}
-        <View style={{ paddingHorizontal: 16, paddingTop: Platform.OS === "ios" ? 6 : 2, paddingBottom: ctaBottomPadding, flexDirection: "row", gap: 10 }}>
+      {/* Alt panel: butonlar başparmakla kolay erişilen yerde, alt alta. */}
+      <Animated.View
+        entering={FadeInUp.delay(200).duration(450)}
+        style={{
+          backgroundColor: "#ffffff",
+          borderTopLeftRadius: 28,
+          borderTopRightRadius: 28,
+          paddingHorizontal: 20,
+          paddingTop: 20,
+          paddingBottom: sheetBottomPadding,
+        }}
+      >
+        {/* İki buton tek satırda yan yana, eşit genişlikte. */}
+        <View style={{ flexDirection: "row", gap: 10 }}>
           <TouchableOpacity
             activeOpacity={0.9}
+            accessibilityRole="button"
             onPress={() => router.replace("/auth?from=%2Flanding" as any)}
             style={{
-              backgroundColor: "#16a34a",
-              borderRadius: 14,
-              paddingVertical: 14,
-              alignItems: "center",
               flex: 1,
+              height: 54,
+              borderRadius: 16,
+              paddingHorizontal: 10,
+              backgroundColor: BRAND_GREEN,
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "center",
             }}
           >
-            <Text style={{ color: "white", fontWeight: "800", fontSize: 16 }}>{t("auth.signInButton")}</Text>
+            <Text numberOfLines={1} style={{ color: "#ffffff", fontWeight: "800", fontSize: 16 }}>
+              {t("auth.signInButton")}
+            </Text>
+            <Ionicons name="arrow-forward" size={18} color="#ffffff" style={{ marginLeft: 6 }} />
           </TouchableOpacity>
 
           <TouchableOpacity
             activeOpacity={0.9}
+            accessibilityRole="button"
             onPress={() => router.push("/guest-landing" as any)}
             style={{
-              backgroundColor: "#ffffff",
-              borderWidth: 2,
-              borderColor: "#16a34a",
-              borderRadius: 14,
-              paddingVertical: 14,
-              alignItems: "center",
               flex: 1,
+              height: 54,
+              borderRadius: 16,
+              paddingHorizontal: 10,
+              backgroundColor: "#f0fdf4",
+              borderWidth: 1.5,
+              borderColor: BRAND_GREEN,
+              alignItems: "center",
+              justifyContent: "center",
             }}
           >
-            <Text style={{ color: "#166534", fontWeight: "800", fontSize: 16 }}>Misafir olarak başla</Text>
+            {/* Yarım genişlikte "Misafir olarak başla" 16 puntoda sığmayabiliyor;
+                tek satırda kalsın diye gerekirse %80'e kadar küçülüyor. */}
+            <Text
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={0.8}
+              style={{ color: "#166534", fontWeight: "800", fontSize: 16 }}
+            >
+              {t("landing.guestStart")}
+            </Text>
           </TouchableOpacity>
         </View>
-      </View>
-    </SafeAreaView>
+
+        {/* Tek satır: dar ekranlarda sığmazsa yazı kendiliğinden küçülüyor. */}
+        <Text
+          numberOfLines={1}
+          adjustsFontSizeToFit
+          minimumFontScale={0.7}
+          style={{ color: "#6b7280", fontSize: 11, textAlign: "center", marginTop: 10 }}
+        >
+          {t("landing.guestHint")}
+        </Text>
+      </Animated.View>
+    </View>
   );
 }
-

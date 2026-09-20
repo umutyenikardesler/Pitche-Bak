@@ -20,6 +20,7 @@ import * as Notifications from "expo-notifications";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import LaunchLogoOverlay from "@/components/LaunchLogoOverlay";
 import { FlyingEmojiProvider } from "@/components/FlyingEmojiLayer";
+import { StatusBar } from "expo-status-bar";
 import UpdateAvailableModal from "@/components/modals/UpdateAvailableModal";
 
 // Sadece belirli logları ignore et, tüm logları değil
@@ -38,7 +39,7 @@ function AppShell() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useGlobalSearchParams();
-  const { colors } = useAppTheme();
+  const { colors, isDark } = useAppTheme();
 
   // Kök navigasyon ağacı hazır olana kadar `key` tanımsızdır; yönlendirme öncesi beklenir.
   const rootNavigationState = useRootNavigationState();
@@ -288,6 +289,12 @@ function AppShell() {
                 dönüşümsüz kullanılabiliyor (bkz. components/FlyingEmojiLayer.tsx). */}
             <FlyingEmojiProvider>
             <AnalyticsProvider />
+            {/* Durum çubuğu (saat, pil) UYGULAMANIN temasına bağlı. Eskiden hiç
+                ayarlanmıyordu ve sistem temasını izliyordu: telefon koyu moddayken
+                uygulama gündüz moduna alınınca beyaz ikonlar beyaz header'da
+                kayboluyordu. Tek tek ekranlar (ör. karşılama) bunun üstüne kendi
+                stilini koyabilir; o ekran kapanınca bu değer geri gelir. */}
+            <StatusBar style={isDark ? "light" : "dark"} />
             {Platform.OS === 'web' ? (
               <View style={{ flex: 1, backgroundColor: colors.background, alignItems: 'center' }}>
                 <View

@@ -446,6 +446,13 @@ export const en: Record<TranslationKey, string> = {
   'auth.slide5.subtitle': 'Introduce yourself and get better matches.',
   'auth.slide6.title': 'Track Notifications',
   'auth.slide6.subtitle': "Don't miss instant requests and what's going on.",
+  // Landing screen (app/landing.tsx)
+  'landing.headlineTop': 'Build your squad,',
+  'landing.headlineAccent': 'hit the pitch.',
+  'landing.subtitle': 'Find nearby matches, fill missing spots and set up your game in minutes.',
+  'landing.featuresTitle': 'What can you do?',
+  'landing.guestStart': 'Continue as guest',
+  'landing.guestHint': 'Browse matches as a guest; sign in to join.',
 
   'auth.welcomeTitle': 'Welcome',
   'auth.joinTitle': 'Join Us!',
