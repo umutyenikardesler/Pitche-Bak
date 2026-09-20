@@ -1,0 +1,66 @@
+{
+  "_aciklama": "Mağaza görselleri için ekran listesi ve metinler. Her ekranın güncel ekran görüntüsü assets/images/Store/<sürüm>/kaynak/<iphone|ipad|android>/<id>.png olarak konur. 'placeholder', güncel görüntü yokken taslakta kullanılan eski ekran görüntüsüdür (assets/images/screenShot). Başlıkta '\\n' ikinci satırı açık yeşil yapar.",
+  "screens": [
+    {
+      "id": "01-ana-sayfa",
+      "hero": true,
+      "placeholder": "IMG_4990.PNG",
+      "shot": "Ana sayfa (Maç Bul): Kondisyonun, Seni bekleyen maçlar ve Kadrosu eksik maçlar görünsün.",
+      "tr": { "kicker": "SAHAYABAK", "headline": "Kadronu kur,\nsahaya çık.", "sub": "Seni bekleyen maçlar ve kadrosu eksik maçlar tek ekranda." },
+      "en": { "kicker": "SAHAYABAK", "headline": "Build your squad,\nhit the pitch.", "sub": "Matches waiting for you and teams short of players, on one screen." }
+    },
+    {
+      "id": "02-mac-detayi",
+      "placeholder": null,
+      "shot": "Kadrosu eksik bir maçın detay ekranı: eksik mevkiler ve Katıl butonu görünsün.",
+      "tr": { "kicker": "EKSİK OYUNCU", "headline": "Eksik oyuncuyu\nbul, maça katıl.", "sub": "Mevkini seç, katılma isteğini tek dokunuşla gönder." },
+      "en": { "kicker": "MISSING PLAYER", "headline": "Find a spot,\njoin the match.", "sub": "Pick your position and send a join request in one tap." }
+    },
+    {
+      "id": "03-mac-olustur",
+      "placeholder": "IMG_5004.PNG",
+      "shot": "Maç Oluştur formu dolu hâlde: saha, tarih/saat, 6-6 formatı ve eksik mevkiler seçili.",
+      "tr": { "kicker": "MAÇ OLUŞTUR", "headline": "Maçını dakikalar\niçinde kur.", "sub": "Sahanı seç, saati belirle, eksik mevkileri işaretle." },
+      "en": { "kicker": "CREATE MATCH", "headline": "Set up a match\nin minutes.", "sub": "Pick a pitch, set the time, mark the missing positions." }
+    },
+    {
+      "id": "04-sahalar",
+      "placeholder": "IMG_5006.PNG",
+      "shot": "Sahalar: konuma göre sıralanmış halı saha listesi ve mesafeler.",
+      "tr": { "kicker": "HALI SAHALAR", "headline": "Sana en yakın\nhalı sahalar.", "sub": "Konumuna göre sırala, mesafeyi anında gör." },
+      "en": { "kicker": "PITCHES", "headline": "Pitches\nclosest to you.", "sub": "Sort by your location and see the distance instantly." }
+    },
+    {
+      "id": "05-saha-detayi",
+      "placeholder": "IMG_5007.PNG",
+      "shot": "Bir halı sahanın özet ekranı: harita, adres, telefon, ücret ve özellikler.",
+      "tr": { "kicker": "SAHA BİLGİSİ", "headline": "Saha bilgileri\ntek dokunuşta.", "sub": "Adres, telefon, ücret ve sahanın olanakları." },
+      "en": { "kicker": "PITCH INFO", "headline": "Pitch details\nin one tap.", "sub": "Address, phone, price and amenities." }
+    },
+    {
+      "id": "06-mesajlar",
+      "placeholder": "IMG_5113.PNG",
+      "shot": "Mesajlar: arama kutusu, sekmeler ve sohbet listesi; mümkünse bir sohbette emoji tepkisi.",
+      "tr": { "kicker": "MESAJLAR", "headline": "Takımınla anında\nmesajlaş.", "sub": "Maç sohbetleri, arama ve emoji tepkileri." },
+      "en": { "kicker": "MESSAGES", "headline": "Chat with your\nteam instantly.", "sub": "Match chats, search and emoji reactions." }
+    },
+    {
+      "id": "07-profil",
+      "placeholder": "IMG_4992.PNG",
+      "shot": "Profil: fotoğraf, yaş/boy/kilo/mevki, takipçiler, kondisyon ve maçlarım.",
+      "tr": { "kicker": "PROFİL", "headline": "Profilini oluştur,\nöne çık.", "sub": "Mevkini, kondisyonunu ve maçlarını paylaş." },
+      "en": { "kicker": "PROFILE", "headline": "Build your profile,\nstand out.", "sub": "Share your position, condition and matches." }
+    },
+    {
+      "id": "08-bildirimler",
+      "placeholder": "IMG_5115.PNG",
+      "shot": "Bildirimler: Tümünü Okundu Yap / Tümünü Temizle butonları ve istek bildirimleri.",
+      "tr": { "kicker": "BİLDİRİMLER", "headline": "Hiçbir isteği\nkaçırma.", "sub": "Takip ve katılım isteklerini anında yönet." },
+      "en": { "kicker": "NOTIFICATIONS", "headline": "Never miss\na request.", "sub": "Manage follow and join requests instantly." }
+    }
+  ],
+  "feature": {
+    "tr": { "headline": "Kadronu kur,\nsahaya çık.", "sub": "Maç bul, eksik oyuncuyu tamamla, maçını kur." },
+    "en": { "headline": "Build your squad,\nhit the pitch.", "sub": "Find matches, fill missing spots, set up your game." }
+  }
+}

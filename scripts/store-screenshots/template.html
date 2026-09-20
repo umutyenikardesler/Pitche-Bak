@@ -1,0 +1,147 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<!--
+  Mağaza görseli şablonu. render.js bunu headless Chrome ile tam piksel
+  ölçüsünde açıp ekran görüntüsünü alıyor. Ayarlar URL'nin # kısmında JSON.
+  Boyutlar vw/vh ile verildiği için her tuval ölçüsünde orantılı ölçekleniyor.
+-->
+<style>
+  html, body { margin: 0; width: 100vw; height: 100vh; overflow: hidden; }
+  body { font-family: "Segoe UI", system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+  #c {
+    position: relative; width: 100%; height: 100%; overflow: hidden;
+    background: linear-gradient(168deg, #022c22 0%, #064e3b 55%, #065f46 100%);
+  }
+  .glow {
+    position: absolute; left: 50%; top: var(--glow-top); width: 150vw; height: 150vw;
+    transform: translate(-50%, -50%);
+    background: radial-gradient(circle, rgba(74,222,128,.24) 0%, rgba(74,222,128,0) 55%);
+  }
+  .pitch-line { position: absolute; left: 0; right: 0; height: .35vw; background: rgba(255,255,255,.06); }
+  .pitch-circle {
+    position: absolute; left: 50%; border: .35vw solid rgba(255,255,255,.06); border-radius: 50%;
+    transform: translate(-50%, -50%);
+  }
+  .text { position: absolute; left: var(--pad); right: var(--pad); top: var(--text-top); text-align: center; color: #fff; }
+  .logo { display: block; margin: 0 auto .4em; width: var(--logo-w); }
+  .kicker { font-weight: 800; letter-spacing: .32em; color: #4ade80; font-size: var(--kicker); }
+  .headline { font-weight: 900; font-size: var(--head); line-height: 1.04; letter-spacing: -.012em; margin-top: .3em; }
+  .headline .l2 { color: #4ade80; }
+  .sub {
+    margin: .75em auto 0; max-width: 90%; color: rgba(236,253,245,.86);
+    font-weight: 500; font-size: var(--sub); line-height: 1.3;
+  }
+  .device {
+    position: absolute; left: 50%; top: var(--dev-top); transform: translateX(-50%);
+    box-sizing: border-box; height: var(--dev-h); width: auto;
+    background: #0b0f0e; padding: calc(var(--dev-h) * var(--bezel));
+    border-radius: calc(var(--dev-h) * var(--radius));
+    box-shadow: 0 3vw 8vw rgba(0,0,0,.45), inset 0 0 0 .3vw rgba(255,255,255,.10);
+  }
+  .screen {
+    position: relative; overflow: hidden; background: #f3f4f6; height: 100%;
+    border-radius: calc(var(--dev-h) * (var(--radius) - var(--bezel)));
+  }
+  .screen img { display: block; height: 100%; width: auto; }
+  .island, .punch { position: absolute; left: 50%; transform: translateX(-50%); background: #000; border-radius: 999px; }
+  .ph {
+    height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;
+    color: #6b7280; font-weight: 700; font-size: var(--sub); line-height: 1.35; padding: 0 8%;
+  }
+  /* Taslak işareti: başlığı kapatmasın diye altta, zaten tuvalden taşan
+     cihazın üzerinde tam genişlikte bant. */
+  .ribbon {
+    position: absolute; left: 0; right: 0; bottom: 0; z-index: 10; text-align: center;
+    background: #dc2626; color: #fff; font-weight: 900; font-size: var(--ribbon);
+    padding: .9em 0; letter-spacing: .06em; box-shadow: 0 -1vw 2vw rgba(0,0,0,.35);
+  }
+
+  /* Google Play öne çıkan görsel (1024x500) */
+  .feature .ftext { position: absolute; left: 64px; top: 50%; transform: translateY(-50%); width: 560px; color: #fff; }
+  .feature .flogo { width: 300px; display: block; margin-bottom: 22px; }
+  .feature .fhead { font-weight: 900; font-size: 54px; line-height: 1.04; letter-spacing: -.01em; }
+  .feature .fhead .l2 { color: #4ade80; }
+  .feature .fsub { margin-top: 16px; font-size: 21px; font-weight: 500; color: rgba(236,253,245,.86); }
+  .feature .fball {
+    position: absolute; right: 90px; top: 50%; width: 250px; transform: translateY(-50%) rotate(-18deg);
+    filter: drop-shadow(0 22px 26px rgba(0,0,0,.45));
+  }
+  .feature .fshadow {
+    position: absolute; right: 120px; top: 78%; width: 190px; height: 26px; border-radius: 50%;
+    background: radial-gradient(ellipse, rgba(0,0,0,.45), rgba(0,0,0,0) 70%);
+  }
+</style>
+</head>
+<body>
+<div id="c"></div>
+<script>
+  const cfg = JSON.parse(decodeURIComponent(location.hash.slice(1)));
+  const c = document.getElementById('c');
+
+  // Cihaz türüne göre ölçüler (tuval genişliği/yüksekliğine göre).
+  const LAYOUT = {
+    iphone:  { pad: '7vw', textTop: '6.5vh', devTop: '26vh', heroDevTop: '30vh', gap: '3vh', bezel: .014, radius: .068, camTop: '1.3%',  kicker: '2.6vw', head: '8.4vw', sub: '3.7vw', logoW: '46vw', glowTop: '66vh', ribbon: '3vw',   phRatio: 1179 / 2556 },
+    android: { pad: '6vw', textTop: '5.5vh', devTop: '28vh', heroDevTop: '32vh', gap: '3vh', bezel: .012, radius: .042, camTop: '1.35%', kicker: '2.6vw', head: '8.4vw', sub: '3.8vw', logoW: '46vw', glowTop: '68vh', ribbon: '3vw',   phRatio: 1080 / 2400 },
+    ipad:    { pad: '8vw', textTop: '5.5vh', devTop: '26vh', heroDevTop: '30vh', gap: '3vh', bezel: .022, radius: .037, camTop: '1%',    kicker: '1.8vw', head: '6vw',   sub: '2.7vw', logoW: '32vw', glowTop: '64vh', ribbon: '2.2vw', phRatio: 3 / 4 },
+  };
+
+  const esc = (s) => String(s).replace(/[&<>"]/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
+  const headlineHtml = (h) => {
+    const [l1, l2] = String(h).split('\n');
+    return esc(l1) + (l2 ? '<br><span class="l2">' + esc(l2) + '</span>' : '');
+  };
+
+  function background(glowTop) {
+    c.insertAdjacentHTML('beforeend',
+      `<div class="glow" style="--glow-top:${glowTop}"></div>` +
+      `<div class="pitch-line" style="top:${glowTop}"></div>` +
+      `<div class="pitch-circle" style="top:${glowTop};width:62vw;height:62vw"></div>`);
+  }
+
+  if (cfg.mode === 'feature') {
+    c.className = 'feature';
+    background('50vh');
+    c.insertAdjacentHTML('beforeend',
+      `<div class="ftext"><img class="flogo" src="${cfg.logo}"><div class="fhead">${headlineHtml(cfg.headline)}</div>` +
+      `<div class="fsub">${esc(cfg.sub)}</div></div>` +
+      `<div class="fshadow"></div><img class="fball" src="${cfg.ball}">`);
+  } else {
+    const L = LAYOUT[cfg.kind];
+    const devTop = cfg.hero ? L.heroDevTop : L.devTop;
+    const vars = {
+      '--pad': L.pad, '--text-top': L.textTop, '--dev-top': devTop,
+      // Cihaz, başlıktan sonra kalan boşluğa TAM sığsın; altta `gap` kadar pay kalsın.
+      '--dev-h': `calc(100vh - ${devTop} - ${L.gap})`,
+      '--bezel': L.bezel, '--radius': L.radius, '--kicker': L.kicker, '--head': L.head, '--sub': L.sub,
+      '--logo-w': L.logoW, '--ribbon': L.ribbon,
+    };
+    for (const k in vars) c.style.setProperty(k, vars[k]);
+    background(L.glowTop);
+
+    const top = cfg.hero
+      ? `<img class="logo" src="${cfg.logo}">`
+      : `<div class="kicker">${esc(cfg.kicker)}</div>`;
+    c.insertAdjacentHTML('beforeend',
+      `<div class="text">${top}<div class="headline">${headlineHtml(cfg.headline)}</div><div class="sub">${esc(cfg.sub)}</div></div>`);
+
+    // Ekran: gerçek görüntü ya da (yoksa) yer tutucu kutu.
+    const screen = cfg.img
+      ? `<img src="${cfg.img}">`
+      : `<div class="ph" style="aspect-ratio:${L.phRatio}"><div>${esc(cfg.placeholderText || '')}</div></div>`;
+
+    // Kamera: iPhone'da Dynamic Island, Android'de delik kamera. iPad'de çerçevede.
+    let cam = '';
+    // camTop, ekran YÜKSEKLİĞİNİN yüzdesi (CSS'te top:% yüksekliğe göre).
+    // Gerçek cihazda ada/kamera genişliğe göre konumlanır; ekran oranı sabit
+    // olduğu için yüksekliğe çevrilmiş hâli kullanılıyor.
+    if (cfg.kind === 'iphone') cam = `<div class="island" style="top:${L.camTop};width:32%;aspect-ratio:3.4"></div>`;
+    if (cfg.kind === 'android') cam = `<div class="punch" style="top:${L.camTop};width:3.2%;aspect-ratio:1"></div>`;
+
+    c.insertAdjacentHTML('beforeend', `<div class="device"><div class="screen">${screen}${cam}</div></div>`);
+    if (cfg.draft) c.insertAdjacentHTML('beforeend', `<div class="ribbon">${esc(cfg.draft)}</div>`);
+  }
+</script>
+</body>
+</html>

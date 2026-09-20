@@ -49,3 +49,9 @@ tmp/
 *.tsbuildinfo
 
 app-example
+
+# Magaza gorselleri (scripts/store-screenshots)
+# Ciktilar tek komutla yeniden uretilebiliyor (~26 MB/surum), kaynak ekran
+# goruntulerinde ise gercek kullanicilarin adi, fotografi ve mesaj
+# onizlemeleri var. Ikisi de depoya girmiyor.
+assets/images/Store/[0-9]*/
