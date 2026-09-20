@@ -20,6 +20,36 @@ import { Match } from '@/components/index/types';
 // Önbellekli/paralel uygulama servistedir; önbellek profil ekranıyla ortaktır.
 import { fetchLatestProfileImage } from '@/services/profileImages';
 
+/** Konum çözümlemesi için üst sınır. Aşılırsa liste konumsuz yüklenir. */
+const LOCATION_TIMEOUT_MS = 3000;
+
+/**
+ * Kullanıcının konumunu EN FAZLA `LOCATION_TIMEOUT_MS` bekleyerek döndürür;
+ * izin yoksa, hata olursa ya da süre aşılırsa null.
+ *
+ * Konum yalnızca "diğer maçları" mesafeye göre sıralamak için kullanılıyor, ama
+ * eskiden maç sorgularından ÖNCE ve zaman aşımı olmadan bekleniyordu. GPS'i
+ * olmayan Wi-Fi iPad'lerde `getCurrentPositionAsync` çok uzun sürebiliyor ya da
+ * hiç dönmüyor; bu sırada sorgular hiç başlamadığı için ana sayfada maçlar boş
+ * kalıyordu.
+ */
+async function resolveUserCoords(): Promise<{ latitude: number; longitude: number } | null> {
+  const attempt = (async () => {
+    const { status } = await Location.requestForegroundPermissionsAsync();
+    if (status !== 'granted') return null;
+    // Önce işletim sisteminin önbellekteki konumu (anında döner).
+    const cached = (await Location.getLastKnownPositionAsync())?.coords ?? null;
+    if (cached) return cached;
+    return (await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced })).coords;
+  })().catch((e) => {
+    console.log('Konum alınamadı veya izin verilmedi:', e);
+    return null;
+  });
+
+  const timeout = new Promise<null>((resolve) => setTimeout(() => resolve(null), LOCATION_TIMEOUT_MS));
+  return Promise.race([attempt, timeout]);
+}
+
 export default function Index() {
   const { isGuest } = useAuth();
   const { showGuestAuthAlert } = useGuestAuthAlert();
@@ -191,26 +221,11 @@ export default function Index() {
     console.log('Şu anki saat:', currentHours + ':' + currentMinutes);
     console.log('Şu anki zaman (dakika):', currentHours * 60 + currentMinutes);
 
-    // Kullanıcının konumunu al (varsa) - en yakın maçları hesaplamak için
+    // Konum, maç sorgularını BEKLETMİYOR: yalnızca aşağıdaki mesafe sıralaması
+    // için gerekiyor, sonucu orada bekleniyor (bkz. resolveUserCoords).
     let userLat: number | null = null;
     let userLon: number | null = null;
-    try {
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status === 'granted') {
-        // Önce işletim sisteminin önbellekteki konumu (anında döner). Taze GPS kilidi
-        // beklemek tüm sorguları önünde bloklayıp saniyeler ekliyordu.
-        let coords = (await Location.getLastKnownPositionAsync())?.coords ?? null;
-        if (!coords) {
-          coords = (await Location.getCurrentPositionAsync({
-            accuracy: Location.Accuracy.Balanced,
-          })).coords;
-        }
-        userLat = coords.latitude;
-        userLon = coords.longitude;
-      }
-    } catch (e) {
-      console.log('Konum alınamadı veya izin verilmedi:', e);
-    }
+    const coordsPromise = resolveUserCoords();
 
     const { data: authData } = await supabase.auth.getUser();
     const loggedUserId = authData?.user?.id ?? null;
@@ -404,6 +419,12 @@ export default function Index() {
         // Maçın başlangıç saati şu anki saatten SONRA olmalı
         return matchStartTimeInMinutes > currentTimeInMinutes;
       });
+
+      // Konum ANCAK burada gerekiyor. Zaman aşımına uğradıysa null gelir ve
+      // mesafe hesaplanmaz; maçlar yine de listelenir.
+      const userCoords = await coordsPromise;
+      userLat = userCoords?.latitude ?? null;
+      userLon = userCoords?.longitude ?? null;
 
       // Diğer maçlar için de profil resimlerini güncelle + mesafeyi hesapla
       // Misafir kullanıcılar Storage'a erişemez (401 -> JSON parse hatası), DB'deki resmi kullan
