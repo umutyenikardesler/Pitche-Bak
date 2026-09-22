@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { ScrollView, Text, View, RefreshControl, Dimensions, Platform } from "react-native";
+import { ScrollView, Text, View, RefreshControl } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { supabase } from "@/services/supabase";
 import { useFocusEffect } from "@react-navigation/native";
@@ -27,6 +27,12 @@ type Props = {
   // Profile ekranında eski davranış (sabit yükseklik + kendi scroll'u).
   // Modal içinde nested scroll sorun çıkardığı için modal modunda iç scroll kullanılmaz.
   mode?: "profile" | "modal";
+  /**
+   * Profil ekranında listeye ayrılan toplam yükseklik (başlık satırı dahil).
+   * Sayfa ölçerek veriyor: butonların üstünde kalan boşluk kadar. Sığmayan
+   * maçlar listenin KENDİ içinde kayar, sayfayı aşağı uzatmaz.
+   */
+  listHeight?: number;
 };
 
 export default function ProfileMatches({
@@ -34,6 +40,7 @@ export default function ProfileMatches({
   refreshing = false,
   onRefresh,
   mode = "profile",
+  listHeight,
 }: Props) {
   const { t } = useLanguage();
   const { colors } = useAppTheme();
@@ -102,7 +109,10 @@ export default function ProfileMatches({
       className="flex mb-2"
       style={
         mode === "profile"
-          ? { height: Dimensions.get("window").height * (Platform.OS === "ios" ? 0.380 : 0.378) }
+          ? // Kesin yükseklik: sayfa ölçüp veriyor. `flex: 1` burada işe
+            // yaramıyor, çünkü sayfa bir kaydırma kabı ve orada flex sınır
+            // koymuyor; maç sayısı arttıkça liste sayfayı aşağı uzatıyordu.
+            { height: listHeight }
           : undefined
       }
     >

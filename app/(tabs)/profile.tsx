@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback, useRef } from "react";
-import { Text, View, ScrollView, Alert, TouchableOpacity, DeviceEventEmitter, Modal } from "react-native";
+import { Text, View, ScrollView, Alert, TouchableOpacity, DeviceEventEmitter, Modal, useWindowDimensions } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { supabase } from "@/services/supabase";
@@ -28,9 +28,32 @@ import {
 import { fetchFollowList, fetchFollowCounts as fetchFollowCountsFromDb, type FollowUser } from "@/services/follows";
 
 
+/** Maç listesinin inebileceği en küçük yükseklik (çok küçük ekranlar için). */
+const MIN_MATCH_LIST_HEIGHT = 220;
+/** Kartın kendi boşlukları: m-3 (12x2) + p-1 (4x2). */
+const CARD_CHROME = 32;
+
 export default function Profile() {
   const searchParams = useLocalSearchParams();
   const tabBarInset = useTabBarBottomInset();
+  const { height: windowHeight } = useWindowDimensions();
+
+  // Maç listesine kalan boşluğu ÖLÇEREK buluyoruz. Sayfa bir kaydırma kabı
+  // olduğu için orada `flex: 1` sınır koymuyor: liste maç sayısıyla birlikte
+  // uzayıp butonları hap menünün altına itiyordu. Sabit bir oran (ekranın
+  // %38'i) da olmuyor, çünkü telefona göre seçilen oran iPad'de tutmuyor.
+  const [viewportHeight, setViewportHeight] = useState(0);
+  const [headerHeight, setHeaderHeight] = useState(0);
+  const [buttonsHeight, setButtonsHeight] = useState(0);
+
+  const measured = viewportHeight > 0 && headerHeight > 0 && buttonsHeight > 0;
+  const matchListHeight = Math.max(
+    measured
+      ? viewportHeight - tabBarInset - headerHeight - buttonsHeight - CARD_CHROME
+      : // Ölçüm gelene kadarki ilk kare: telefonlardaki eski değer.
+        windowHeight * 0.38,
+    MIN_MATCH_LIST_HEIGHT
+  );
   const router = useRouter();
   const { t } = useLanguage();
   const { isGuest } = useAuth();
@@ -727,55 +750,61 @@ export default function Profile() {
   return (
     <ScrollView
       style={{ flex: 1, backgroundColor: colors.background }}
-      contentContainerStyle={{ paddingBottom: tabBarInset }}
+      // flexGrow: içerik ekrandan kısa kaldığında (iPad) kart ekranı doldursun
+      // ve maç listesi kalan boşluğu alsın.
+      contentContainerStyle={{ flexGrow: 1, paddingBottom: tabBarInset }}
+      onLayout={(e) => setViewportHeight(e.nativeEvent.layout.height)}
     >
       <View className="rounded-lg m-3 p-1 shadow-lg flex-1" style={{ backgroundColor: colors.surface }}>
         <View className="flex-1">
-          <ProfileInfo
-            userData={userData}
-            setModalVisible={(visible: boolean) => {
-              if (visible) {
-                // ProfileImageModal açılırken diğer modal'ları kapat
-                setEditModalVisible(false);
-                setSettingsModalVisible(false);
-                setListModalVisible(false);
+          <View onLayout={(e) => setHeaderHeight(e.nativeEvent.layout.height)}>
+            <ProfileInfo
+              userData={userData}
+              setModalVisible={(visible: boolean) => {
+                if (visible) {
+                  // ProfileImageModal açılırken diğer modal'ları kapat
+                  setEditModalVisible(false);
+                  setSettingsModalVisible(false);
+                  setListModalVisible(false);
                 
-                // State'lerin temizlenmesi için gecikme
-                setTimeout(() => {
+                  // State'lerin temizlenmesi için gecikme
+                  setTimeout(() => {
+                    setModalVisible(visible);
+                  }, 100);
+                } else {
                   setModalVisible(visible);
-                }, 100);
-              } else {
-                setModalVisible(visible);
-              }
-            }}
-            setEditModalVisible={openEditModal}
-            pickImage={pickImage}
-            onImagePicked={() => {
-              console.log("ProfileInfo'dan resim yüklendi, modal açılmayacak");
-              // Modal açılmasın, sadece resim güncellensin
-              // Maç listesi yenilenmesin, sadece profil resmi güncellensin
-            }}
-          />
-          <ProfileStatus
-            matchCount={matches.length}
-            followerCount={followerCount}
-            followingCount={followingCount}
-            onPressFollowers={() => openUserListModal("followers")}
-            onPressFollowing={() => openUserListModal("following")}
-          />
+                }
+              }}
+              setEditModalVisible={openEditModal}
+              pickImage={pickImage}
+              onImagePicked={() => {
+                console.log("ProfileInfo'dan resim yüklendi, modal açılmayacak");
+                // Modal açılmasın, sadece resim güncellensin
+                // Maç listesi yenilenmesin, sadece profil resmi güncellensin
+              }}
+            />
+            <ProfileStatus
+              matchCount={matches.length}
+              followerCount={followerCount}
+              followingCount={followingCount}
+              onPressFollowers={() => openUserListModal("followers")}
+              onPressFollowing={() => openUserListModal("following")}
+            />
 
-          <ProfileCondition matchCount={matches.length} />
+            <ProfileCondition matchCount={matches.length} />
+          </View>
 
           <ProfileMatches
             userData={userData}
             refreshing={false}
+            listHeight={matchListHeight}
             onRefresh={() => {
               // Maç listesi yenilenmesin
               console.log("Maç listesi yenilenmesi engellendi");
             }}
           />
         </View>
-        <View className="flex pb-4">
+        <View className="flex pb-4" onLayout={(e) => setButtonsHeight(e.nativeEvent.layout.height)}>
           <View className="flex-row mx-4">
             <TouchableOpacity
               onPress={() => {
