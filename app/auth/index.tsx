@@ -532,7 +532,8 @@ export default function AuthScreen() {
         await supabase.auth.signOut();
       }
 
-      console.log("Auth başarılı, isLogin:", isLogin, "data:", data);
+      // Tüm `data` basılıyordu; içinde access_token ve refresh_token var.
+      console.log("Auth başarılı, isLogin:", isLogin, "oturum:", !!data?.session);
       
       if (isLogin && data?.user) {
         console.log("Login başarılı, user:", data.user.id);
