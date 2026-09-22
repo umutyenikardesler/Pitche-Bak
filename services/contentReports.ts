@@ -1,4 +1,5 @@
 import { supabase } from '@/services/supabase';
+import { turkeyTimestamp } from '@/lib/turkeyDate';
 
 export type ContentType = 'message' | 'profile' | 'user_block';
 
@@ -73,12 +74,13 @@ export type AdminReportRow = {
 
 /**
  * Türkiye saati (UTC+3) - PostgreSQL timestamp formatında (YYYY-MM-DD HH:mm:ss)
+ *
+ * Eskiden sv-SE yerel biçimine güveniyordu. Bu biçim cihazın Intl verisine
+ * bağlı: yerel çözülemeyip ABD biçimine düşen cihazlarda "9/21/2026, 12:08:54 AM"
+ * gibi bir metin üretip veritabanına yazıyordu.
  */
 function getTurkeyTimeString(): string {
-  const now = new Date();
-  // sv-SE locale: 24 saat formatında "2026-03-18 23:33:21"
-  const s = now.toLocaleString('sv-SE', { timeZone: 'Europe/Istanbul' });
-  return s;
+  return turkeyTimestamp();
 }
 
 /**

@@ -6,6 +6,7 @@ import { Match } from "./types";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useAppTheme } from "@/contexts/ThemeContext";
 import MatchShareModal from "@/components/share/MatchShareModal";
+import { turkeyNow, turkeyToday } from "@/lib/turkeyDate";
 
 interface MyMatchesProps {
   matches: Match[];
@@ -48,14 +49,10 @@ export default function MyMatches({ matches, refreshing, onRefresh, onSelectMatc
 
   // Maçın şu anda oynanıp oynanmadığını kontrol eden fonksiyon
   const isMatchCurrentlyPlaying = (match: Match) => {
-    const now = new Date();
-    const turkeyOffset = 3; // UTC+3 için offset
-    const utcNow = new Date(now.getTime() + (now.getTimezoneOffset() * 60000));
-    const turkeyNow = new Date(utcNow.getTime() + (turkeyOffset * 3600000));
-    
-    const today = turkeyNow.toLocaleDateString('en-CA'); // YYYY-MM-DD formatında
-    const currentHours = turkeyNow.getHours();
-    const currentMinutes = turkeyNow.getMinutes();
+    const nowInTurkey = turkeyNow();
+    const today = turkeyToday(nowInTurkey);
+    const currentHours = nowInTurkey.getHours();
+    const currentMinutes = nowInTurkey.getMinutes();
     
     // Eğer maç bugünkü değilse false
     if (match.date !== today) {

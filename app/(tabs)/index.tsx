@@ -17,6 +17,7 @@ import OtherMatches from '@/components/index/OtherMatches';
 import MatchDetails from '@/components/index/MatchDetails';
 import ProfilePreview from '@/components/index/ProfilePreview';
 import { Match } from '@/components/index/types';
+import { turkeyNow, turkeyToday } from '@/lib/turkeyDate';
 // Önbellekli/paralel uygulama servistedir; önbellek profil ekranıyla ortaktır.
 import { fetchLatestProfileImage } from '@/services/profileImages';
 
@@ -204,22 +205,14 @@ export default function Index() {
   const fetchMatches = useCallback(async (options?: { background?: boolean }) => {
     const background = options?.background === true;
     if (!background) setRefreshing(true);
-    // Türkiye saati için düzeltme (UTC+3)
-    const now = new Date();
-    const turkeyOffset = 3; // UTC+3 için offset
-    const utcNow = new Date(now.getTime() + (now.getTimezoneOffset() * 60000));
-    const turkeyNow = new Date(utcNow.getTime() + (turkeyOffset * 3600000));
-    
-    // Bugünün tarihini al (Türkiye saati) - toISOString yerine toLocaleDateString kullan
-    const today = turkeyNow.toLocaleDateString('en-CA'); // YYYY-MM-DD formatında
-    const currentHours = turkeyNow.getHours();
-    const currentMinutes = turkeyNow.getMinutes();
-    
-    console.log('Türkiye saati (UTC):', turkeyNow.toISOString());
-    console.log('Türkiye saati (yerel):', turkeyNow.toString());
-    console.log('Bugünün tarihi:', today);
-    console.log('Şu anki saat:', currentHours + ':' + currentMinutes);
-    console.log('Şu anki zaman (dakika):', currentHours * 60 + currentMinutes);
+    // Türkiye saati, cihazın saat diliminden bağımsız (bkz. lib/turkeyDate).
+    const nowInTurkey = turkeyNow();
+    const today = turkeyToday(nowInTurkey);
+    const currentHours = nowInTurkey.getHours();
+    const currentMinutes = nowInTurkey.getMinutes();
+
+    console.log('[Index] Türkiye saati:', nowInTurkey.toString());
+    console.log('[Index] Bugün:', today, '- şu an:', currentHours + ':' + currentMinutes);
 
     // Konum, maç sorgularını BEKLETMİYOR: yalnızca aşağıdaki mesafe sıralaması
     // için gerekiyor, sonucu orada bekleniyor (bkz. resolveUserCoords).
@@ -320,6 +313,10 @@ export default function Index() {
         }
       }
 
+      // Sorgu hatası eskiden sessizce yutuluyordu: liste boş kalıyor, sebebi
+      // hiçbir yere yazılmıyordu.
+      if (matchError) console.error('[Index] kendi maçları sorgusu hatası:', matchError);
+
       if ((!matchError && matchData) || acceptedMatchData.length > 0) {
         const merged = [
           ...(matchData || []),
@@ -394,6 +391,8 @@ export default function Index() {
     // Sorgu yukarıda başlatıldı; burada yalnızca sonucunu bekliyoruz.
     const { data: otherMatchData, error: otherMatchError } = await otherMatchesPromise;
 
+    if (otherMatchError) console.error('[Index] diğer maçlar sorgusu hatası:', otherMatchError);
+
     if (!otherMatchError) {
       const filteredOtherMatches = otherMatchData?.filter((item) => {
         // Eğer bu kullanıcı bu maça zaten kabul aldıysa "Kadrosu Eksik Maçlar" altında görünmesin
@@ -419,6 +418,8 @@ export default function Index() {
         // Maçın başlangıç saati şu anki saatten SONRA olmalı
         return matchStartTimeInMinutes > currentTimeInMinutes;
       });
+
+      console.log('[Index] diğer maçlar:', otherMatchData?.length ?? 0, '-> süzüldükten sonra:', filteredOtherMatches?.length ?? 0);
 
       // Konum ANCAK burada gerekiyor. Zaman aşımına uğradıysa null gelir ve
       // mesafe hesaplanmaz; maçlar yine de listelenir.

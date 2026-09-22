@@ -5,6 +5,7 @@ import { supabase } from "@/services/supabase";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { Match } from "@/components/index/types";
 import { useAppTheme } from "@/contexts/ThemeContext";
+import { turkeyNow, turkeyToday } from "@/lib/turkeyDate";
 
 interface EditPositionsModalProps {
   visible: boolean;
@@ -100,14 +101,10 @@ export default function EditPositionsModal({
   useEffect(() => {
     if (visible) {
       const checkEditPermission = () => {
-        const now = new Date();
-        const turkeyOffset = 3; // UTC+3
-        const utcNow = new Date(now.getTime() + (now.getTimezoneOffset() * 60000));
-        const turkeyNow = new Date(utcNow.getTime() + (turkeyOffset * 3600000));
-        
-        const today = turkeyNow.toLocaleDateString('en-CA');
-        const currentHours = turkeyNow.getHours();
-        const currentMinutes = turkeyNow.getMinutes();
+        const nowInTurkey = turkeyNow();
+        const today = turkeyToday(nowInTurkey);
+        const currentHours = nowInTurkey.getHours();
+        const currentMinutes = nowInTurkey.getMinutes();
         const currentTime = currentHours * 60 + currentMinutes;
         
         // Maç bugünkü mü kontrol et
