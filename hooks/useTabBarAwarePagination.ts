@@ -50,6 +50,7 @@ export function useTabBarAwarePagination<T>(items: T[], options: Options = {}) {
   } = options;
 
   const tabBarInset = useTabBarBottomInset();
+  const itemCount = items.length;
 
   const [visibleCount, setVisibleCount] = useState(Math.max(initialVisible, minVisible));
   const [listHeight, setListHeight] = useState(0);
@@ -80,20 +81,40 @@ export function useTabBarAwarePagination<T>(items: T[], options: Options = {}) {
     if (usable <= 0) return;
 
     const heights = rowHeightsRef.current;
+    // Ölçülebilen satırlar yalnızca render edilenlerdir; hesabın üst sınırı bu.
+    const renderedCount = Math.min(itemCount, visibleCount + 1);
+
     let used = 0;
     let fit = 0;
-    for (let i = 0; i < heights.length; i++) {
+    let outOfMeasurements = false;
+    for (let i = 0; i < itemCount; i++) {
       const h = heights[i];
-      if (h === undefined) break; // bu satır henüz ölçülmedi
+      if (h === undefined) {
+        outOfMeasurements = true; // bu satır henüz ölçülmedi
+        break;
+      }
       if (used + h > usable) break; // bu satır hap menü hizasına taşıyor
       used += h + rowGap;
       fit++;
     }
 
+    if (outOfMeasurements) {
+      // Render edilen her satır ekrana sığdıysa hesap eksik kalmış demektir:
+      // "sığan satır sayısı" değil, "render edilen satır sayısı" bulunmuştur.
+      // Büyük ekranlarda (iPad) ilk tahmin ekranı doldurmadığı için liste
+      // ekranın ortasında kesiliyordu. Bir tur daha satır render edip
+      // ölçtürüyoruz; hesap ekran dolana kadar kendini tekrarlıyor.
+      if (fit >= renderedCount && renderedCount < itemCount) {
+        setVisibleCount(renderedCount + pageSize);
+      }
+      // Ölçüm tamamlanmadan sığan satır sayısına karar verilmez.
+      return;
+    }
+
     // minVisible, bir bölümün fit hesabıyla ortadan kesilmesini engeller.
     const next = Math.max(fit, minVisible);
     if (next > 0) setVisibleCount(next);
-  }, [listHeight, tabBarInset, listPaddingTop, rowGap, minVisible]);
+  }, [listHeight, tabBarInset, listPaddingTop, rowGap, minVisible, itemCount, visibleCount, pageSize]);
 
   useEffect(() => {
     recomputeVisibleFit();
