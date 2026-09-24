@@ -129,7 +129,15 @@ export default function PitchForm({
   const [locating, setLocating] = useState(false);
   // Ücret alanı yazının genişliği kadar daralıyor ki ₺ rakamın hemen sağında dursun.
   const priceInputRef = useRef<TextInput | null>(null);
-  const [priceTextWidth, setPriceTextWidth] = useState(0);
+  // Kutunun genişliği ANLIK yazılan rakama göre değil, EN GENİŞ olası değere
+  // (4 hane) göre bir kez ölçülüyor. Anlık ölçüm her tuş vuruşunda kutuyu
+  // büyütüyordu; Android'de yerleşim hesabı bir kare geriden geldiği için
+  // kutu henüz eski (dar) genişlikteyken yeni karakter çiziliyor ve ilk
+  // karakter kırpılıyordu. Sabit genişlik yazarken hiç büyümediği için bu
+  // yarışı tamamen ortadan kaldırıyor.
+  const [priceMaxWidth, setPriceMaxWidth] = useState(0);
+  // Kullanıcı adresi elle yazdıysa bir daha otomatik doldurulmuyor/değiştirilmiyor.
+  const addressEditedRef = useRef(false);
 
   const isAdmin = variant === 'admin';
 
@@ -157,6 +165,34 @@ export default function PitchForm({
     return districts.filter((d) => d.name.toLocaleLowerCase('tr-TR').includes(q));
   }, [districts, districtQuery]);
 
+  /**
+   * Konum için adresi çözüp uygular. Kullanıcı adresi elle yazdıysa dokunmaz:
+   * aksi halde iğneyi sürükleyince kullanıcının kendi yazdığı adres sessizce
+   * ezilirdi.
+   */
+  const applyAddressForCoords = async (coords: { latitude: number; longitude: number }) => {
+    if (addressEditedRef.current) return;
+    try {
+      const [place] = await Location.reverseGeocodeAsync(coords);
+      const line = [place?.street, place?.streetNumber, place?.district, place?.subregion]
+        .filter(Boolean)
+        .join(' ');
+      if (line && !addressEditedRef.current) set('address', line);
+    } catch {
+      // Adres bulunamadıysa sorun değil; alan elle doldurulabilir.
+    }
+  };
+
+  /**
+   * Haritada iğne sürüklenince/tıklanınca çağrılır. Konum (enlem/boylam) ile
+   * adres metni AYRI alanlar; iğne taşınıp adres güncellenmezse ikisi
+   * birbirinden kopuyor ve kaydedilen konum, gösterilen adresle uyuşmuyordu.
+   */
+  const handleLocationChange = (coords: { latitude: number; longitude: number }) => {
+    setValues((prev) => ({ ...prev, latitude: coords.latitude, longitude: coords.longitude }));
+    applyAddressForCoords(coords);
+  };
+
   const useMyLocation = async () => {
     setLocating(true);
     try {
@@ -176,20 +212,11 @@ export default function PitchForm({
         // İlçe: konumu alan kişi zaten o ilçede duruyor, elle seçtirmeyelim.
         // subregion Türkiye'de ilçeye denk geliyor; city bazı cihazlarda aynısını veriyor.
         const district = matchDistrict(districts, [place?.subregion, place?.city, place?.district]);
-
-        setValues((prev) => ({
-          ...prev,
-          districtId: district ? district.id : prev.districtId,
-          // Adres yalnızca boşsa dolduruluyor; kullanıcının yazdığı ezilmesin.
-          address:
-            prev.address.trim() ||
-            [place?.street, place?.streetNumber, place?.district, place?.subregion]
-              .filter(Boolean)
-              .join(' '),
-        }));
+        if (district) set('districtId', district.id);
       } catch {
-        // Adres/ilçe bulunamadıysa sorun değil; alanlar elle doldurulabilir.
+        // İlçe bulunamadıysa sorun değil; elle seçilebilir.
       }
+      await applyAddressForCoords(coords);
     } catch (e) {
       console.log('[Saha formu] konum alınamadı:', e);
       Alert.alert(t('pitchForm.locationTitle'), t('pitchForm.locationFailed'));
@@ -215,9 +242,29 @@ export default function PitchForm({
       Alert.alert(t('pitchForm.missingTitle'), t('pitchForm.missingDistrict'));
       return;
     }
-    if (isAdmin && (values.latitude == null || values.longitude == null)) {
+    if (values.latitude == null || values.longitude == null) {
       Alert.alert(t('pitchForm.missingTitle'), t('pitchForm.missingLocation'));
       return;
+    }
+    // Adres/telefon/ücret yalnızca öneri formunda zorunlu: admin sahadayken
+    // hızlı ekleme için bunları boş bırakabiliyor.
+    if (!isAdmin) {
+      if (!values.address.trim()) {
+        Alert.alert(t('pitchForm.missingTitle'), t('pitchForm.missingAddress'));
+        return;
+      }
+      if (values.phone.replace(/\D/g, '').length < PHONE_MAX_DIGITS) {
+        Alert.alert(t('pitchForm.missingTitle'), t('pitchForm.missingPhone'));
+        return;
+      }
+      if (!values.price) {
+        Alert.alert(t('pitchForm.missingTitle'), t('pitchForm.missingPrice'));
+        return;
+      }
+      if (values.features.length === 0) {
+        Alert.alert(t('pitchForm.missingTitle'), t('pitchForm.missingFeatures'));
+        return;
+      }
     }
     onSubmit(values);
   };
@@ -275,7 +322,7 @@ export default function PitchForm({
 
       {/* Konum */}
       <View className="mb-3">
-        {label(t('pitchForm.location'), isAdmin)}
+        {label(t('pitchForm.location'), true)}
         <TouchableOpacity
           onPress={useMyLocation}
           disabled={locating}
@@ -295,9 +342,7 @@ export default function PitchForm({
             <PitchLocationPicker
               latitude={values.latitude as number}
               longitude={values.longitude as number}
-              onChange={({ latitude, longitude }) =>
-                setValues((prev) => ({ ...prev, latitude, longitude }))
-              }
+              onChange={handleLocationChange}
             />
             <Text className="text-xs mt-1" style={{ color: colors.textMuted }}>
               {t('pitchForm.locationHint')} ({(values.latitude as number).toFixed(6)},{' '}
@@ -313,10 +358,13 @@ export default function PitchForm({
 
       {/* Adres */}
       <View className="mb-3">
-        {label(t('pitchForm.address'))}
+        {label(t('pitchForm.address'), !isAdmin)}
         <TextInput
           value={values.address}
-          onChangeText={(v) => set('address', v)}
+          onChangeText={(v) => {
+            addressEditedRef.current = true;
+            set('address', v);
+          }}
           placeholder={t('pitchForm.addressPlaceholder')}
           placeholderTextColor={colors.textMuted}
           multiline
@@ -327,7 +375,7 @@ export default function PitchForm({
       {/* Telefon + ücret */}
       <View className="flex-row mb-3">
         <View className="flex-1 mr-2">
-          {label(t('pitchForm.phone'))}
+          {label(t('pitchForm.phone'), !isAdmin)}
           <TextInput
             value={values.phone}
             onChangeText={(v) => set('phone', formatPhone(v))}
@@ -344,7 +392,7 @@ export default function PitchForm({
           />
         </View>
         <View className="flex-1 ml-2">
-          {label(t('pitchForm.price'))}
+          {label(t('pitchForm.price'), !isAdmin)}
           {/* ₺ metnin parçası değil, ayrı bir Text: TextInput içindeki yazının
               bir kısmını farklı renklendirmek mümkün değil. Böylece geri tuşu da
               doğal çalışıyor, state'te yalnızca rakamlar duruyor.
@@ -364,7 +412,7 @@ export default function PitchForm({
               keyboardType="number-pad"
               maxLength={PRICE_MAX_DIGITS}
               style={{
-                width: values.price ? priceTextWidth : '100%',
+                width: values.price ? priceMaxWidth : '100%',
                 color: colors.text,
                 fontSize: PRICE_FONT_SIZE,
                 paddingVertical: 10,
@@ -382,13 +430,21 @@ export default function PitchForm({
                 ₺
               </Text>
             )}
-            {/* Yalnızca ölçüm için; yerleşimi etkilemiyor. */}
+            {/* Yalnızca ölçüm için; yerleşimi etkilemiyor. Sabit "0000" ile
+                ölçülüyor (PRICE_MAX_DIGITS haneli en geniş durum), anlık
+                değerle değil -- bkz. priceMaxWidth. Android'de biraz fazladan
+                pay bırakılıyor: EditText'in kendi iç dolgusu Text ile birebir
+                aynı ölçülmüyor. */}
             <Text
               pointerEvents="none"
               style={{ position: 'absolute', opacity: 0, fontSize: PRICE_FONT_SIZE }}
-              onLayout={(e) => setPriceTextWidth(e.nativeEvent.layout.width)}
+              onLayout={(e) =>
+                setPriceMaxWidth(
+                  e.nativeEvent.layout.width + (Platform.OS === 'android' ? 6 : 2)
+                )
+              }
             >
-              {values.price}
+              {'0'.repeat(PRICE_MAX_DIGITS)}
             </Text>
           </Pressable>
         </View>
@@ -396,7 +452,7 @@ export default function PitchForm({
 
       {/* Özellikler: seçmeli. Seçili olanlar sahaya aynen yazılıyor. */}
       <View className="mb-3">
-        {label(t('pitchForm.features'))}
+        {label(t('pitchForm.features'), !isAdmin)}
         <View className="flex-row flex-wrap">
           {FEATURE_PRESETS.map((feature) => {
             const active = values.features.includes(feature);
