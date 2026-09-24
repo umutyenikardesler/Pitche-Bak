@@ -91,11 +91,11 @@ android {
 
     namespace 'com.tumurelsedrakiney.pitchebak'
     defaultConfig {
-        applicationId 'com.tumurelsedrakiney.pitchebak'
+        applicationId 'com.tumurelsedrakiney.pitchebak.dev'
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 20
-        versionName "2.1.3"
+        versionName "2.1.4"
 
         buildConfigField "String", "REACT_NATIVE_RELEASE_LEVEL", "\"${findProperty('reactNativeReleaseLevel') ?: 'stable'}\""
     }
