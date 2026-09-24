@@ -5,6 +5,11 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { supabase } from '@/services/supabase';
 import { Ionicons } from '@expo/vector-icons';
 import { fetchAdminReports, updateReportStatus, AdminReportRow } from '@/services/contentReports';
+import { fetchPitchSuggestions } from '@/services/pitches';
+import AddPitchPanel from '@/components/admin/AddPitchPanel';
+import PitchSuggestionsPanel from '@/components/admin/PitchSuggestionsPanel';
+
+type AdminTab = 'reports' | 'add' | 'suggestions';
 
 function formatDateTime(iso: string): string {
   try {
@@ -36,6 +41,11 @@ export default function AdminReportsScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
   const [totalUsers, setTotalUsers] = useState<number | null>(null);
+  const [tab, setTab] = useState<AdminTab>('reports');
+  const [pendingSuggestions, setPendingSuggestions] = useState(0);
+  // Erken donusten SONRA duruyordu: isAdmin false olunca hook atlanip React
+  // "beklenenden az hook" hatasi veriyordu.
+  const [statusModalReport, setStatusModalReport] = useState<AdminReportRow | null>(null);
   const [activeUsers, setActiveUsers] = useState<number | null>(null);
 
   const loadReports = async () => {
@@ -57,6 +67,7 @@ export default function AdminReportsScreen() {
 
     if (!error && data) setReports(data);
     setTotalUsers(totalRes.count ?? 0);
+    setPendingSuggestions((await fetchPitchSuggestions('pending')).length);
   };
 
   useEffect(() => {
@@ -103,6 +114,12 @@ export default function AdminReportsScreen() {
     };
   }, []);
 
+  // Öneri onaylandığında/reddedildiğinde rozet sayısı güncellensin. Eskiden
+  // yalnızca ekran ilk yüklenirken hesaplanıyordu, sayı olduğu yerde kalıyordu.
+  const refreshPendingSuggestions = async () => {
+    setPendingSuggestions((await fetchPitchSuggestions('pending')).length);
+  };
+
   const onRefresh = async () => {
     setRefreshing(true);
     await loadReports();
@@ -116,8 +133,6 @@ export default function AdminReportsScreen() {
   }, [isAdmin, router]);
 
   if (isAdmin === false) return null;
-
-  const [statusModalReport, setStatusModalReport] = useState<AdminReportRow | null>(null);
 
   const getStatusDisplay = (status: string) => {
     if (status === 'resolved') return t('admin.reports.statusResolved');
@@ -160,7 +175,7 @@ export default function AdminReportsScreen() {
           ),
           headerTitle: () => (
             <Text style={{ fontWeight: '800', color: '#065f46', fontSize: 16 }} numberOfLines={1}>
-              {t('admin.reports.title')}
+              {t('admin.title')}
             </Text>
           ),
         }}
@@ -172,9 +187,60 @@ export default function AdminReportsScreen() {
       ) : (
         <ScrollView
           style={{ flex: 1 }}
-          contentContainerStyle={{ padding: 12, paddingBottom: 32 }}
+          contentContainerStyle={{ padding: 12, paddingBottom: 120 }}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#16a34a']} />}
         >
+          {/* Sekmeler */}
+          <View style={{ flexDirection: 'row', backgroundColor: '#e5e7eb', borderRadius: 10, padding: 3, marginBottom: 12 }}>
+            {([
+              { key: 'reports', label: t('admin.tabs.reports'), badge: 0 },
+              { key: 'add', label: t('admin.tabs.addPitch'), badge: 0 },
+              { key: 'suggestions', label: t('admin.tabs.suggestions'), badge: pendingSuggestions },
+            ] as { key: AdminTab; label: string; badge: number }[]).map((item) => (
+              <Pressable
+                key={item.key}
+                onPress={() => setTab(item.key)}
+                // TouchableOpacity DEĞİL: çocuklarını animasyonlanan bir
+                // Animated.View'a sarıyor ve seçili sekmenin rengi bir render
+                // geriden geliyordu (özellik çiplerinde de aynısı yaşandı).
+                style={{
+                  flex: 1,
+                  paddingVertical: 8,
+                  borderRadius: 8,
+                  backgroundColor: tab === item.key ? '#065f46' : 'transparent',
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <Text
+                  style={{
+                    color: tab === item.key ? 'white' : '#374151',
+                    fontWeight: '700',
+                    fontSize: 12,
+                  }}
+                  numberOfLines={1}
+                >
+                  {item.label}
+                </Text>
+                {item.badge > 0 && (
+                  <View style={{ marginLeft: 5, backgroundColor: '#dc2626', borderRadius: 9, minWidth: 18, paddingHorizontal: 5, paddingVertical: 1 }}>
+                    <Text style={{ color: 'white', fontSize: 10, fontWeight: '700', textAlign: 'center' }}>
+                      {item.badge}
+                    </Text>
+                  </View>
+                )}
+              </Pressable>
+            ))}
+          </View>
+
+          {tab === 'add' && <AddPitchPanel onAdded={loadReports} />}
+          {tab === 'suggestions' && <PitchSuggestionsPanel onChanged={refreshPendingSuggestions} />}
+
+          {tab === 'reports' && (
+          <>
           <ScrollView horizontal showsHorizontalScrollIndicator={true}>
           <View>
             {/* Header row */}
@@ -259,6 +325,8 @@ export default function AdminReportsScreen() {
               </Text>
             </View>
           </View>
+          </>
+          )}
         </ScrollView>
       )}
 
