@@ -64,6 +64,8 @@ export type AdminReportRow = {
   reporter_id: string;
   reported_user_id: string | null;
   content_type: string;
+  /** 'message' raporunda şikayet edilen mesajın id'si; onaylanınca bu silinir. */
+  content_id: string | null;
   content_preview: string | null;
   reason: string | null;
   status: string;
@@ -86,12 +88,24 @@ function getTurkeyTimeString(): string {
 /**
  * Admin şikayet durumunu günceller. resolved, reviewed veya rejected.
  * reviewed_at: Türkiye saati (UTC+3) olarak kaydedilir.
- * content_type='user_block' ise user_blocks tablosu da güncellenir.
+ *
+ * content_type='message' ve status='resolved' (Onayla) ise şikayet edilen
+ * mesaj GERÇEKTEN SİLİNİR: "Onayla" eskiden yalnızca bir etiket değiştiriyordu,
+ * şikayet edilen mesaj sohbette öylece duruyordu. Admin'in mesajı silebilmesi
+ * için ayrı bir RLS izni gerekiyor (bkz. 20260925000000 migration'ı);
+ * normalde yalnızca gönderen kendi mesajını silebiliyor.
+ *
+ * content_type='profile' için henüz bir yaptırım (hesap askıya alma vb.)
+ * yok; yalnızca durum işaretleniyor.
+ *
+ * content_type='user_block' bir "karar bekleyen şikayet" değil, engelleme
+ * yapıldığında otomatik düşen bir bildirim kaydı; buradaki durum bir işlem
+ * tetiklemiyor (engelleme zaten anında, admin onayından bağımsız uygulanıyor).
  */
 export async function updateReportStatus(
-  report: Pick<AdminReportRow, 'id' | 'content_type' | 'reporter_id' | 'reported_user_id'>,
+  report: Pick<AdminReportRow, 'id' | 'content_type' | 'content_id'>,
   status: 'resolved' | 'reviewed' | 'rejected' | 'checked'
-): Promise<{ error: Error | null }> {
+): Promise<{ error: Error | null; messageDeleted: boolean }> {
   const reviewedAt = getTurkeyTimeString();
 
   const { error: reportError } = await supabase
@@ -104,26 +118,26 @@ export async function updateReportStatus(
 
   if (reportError) {
     console.error('[contentReports] updateReportStatus error:', reportError);
-    return { error: reportError as unknown as Error };
+    return { error: reportError as unknown as Error, messageDeleted: false };
   }
 
-  // user_block raporu ise user_blocks tablosunu da güncelle
-  if (report.content_type === 'user_block' && report.reporter_id && report.reported_user_id) {
-    const { error: blockError } = await supabase
-      .from('user_blocks')
-      .update({
-        status,
-        reviewed_at: reviewedAt,
-      })
-      .eq('blocker_id', report.reporter_id)
-      .eq('blocked_id', report.reported_user_id);
+  let messageDeleted = false;
+  if (report.content_type === 'message' && status === 'resolved' && report.content_id) {
+    const { error: deleteError } = await supabase
+      .from('messages')
+      .delete()
+      .eq('id', report.content_id);
 
-    if (blockError) {
-      console.error('[contentReports] updateReportStatus user_blocks error:', blockError);
+    if (deleteError) {
+      // RLS reddi ya da mesaj zaten silinmiş olabilir (gönderen kendi silmiş);
+      // rapor durumu yine de güncellendi, admin'e ayrı bir uyarı gösteriliyor.
+      console.error('[contentReports] reported message could not be deleted:', deleteError);
+    } else {
+      messageDeleted = true;
     }
   }
 
-  return { error: null };
+  return { error: null, messageDeleted };
 }
 
 /**
@@ -141,6 +155,7 @@ export async function fetchAdminReports(): Promise<{
       reporter_id,
       reported_user_id,
       content_type,
+      content_id,
       content_preview,
       reason,
       status,

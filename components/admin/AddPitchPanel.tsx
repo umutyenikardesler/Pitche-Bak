@@ -1,6 +1,5 @@
 import { useState } from 'react';
-import { Alert, Text, View } from 'react-native';
-import { useAppTheme } from '@/contexts/ThemeContext';
+import { Alert, View } from 'react-native';
 import { useLanguage } from '@/contexts/LanguageContext';
 import PitchForm, { toPitchInput, type PitchFormValues } from '@/components/pitches/PitchForm';
 import { createPitch, findNearbyPitches } from '@/services/pitches';
@@ -11,7 +10,6 @@ type Props = {
 };
 
 export default function AddPitchPanel({ onAdded }: Props) {
-  const { colors } = useAppTheme();
   const { t } = useLanguage();
   const [submitting, setSubmitting] = useState(false);
   // Başarılı eklemeden sonra formu boşaltmak için: yeniden monte ediyoruz.
@@ -53,9 +51,6 @@ export default function AddPitchPanel({ onAdded }: Props) {
 
   return (
     <View>
-      <Text className="mb-3" style={{ color: colors.textMuted }}>
-        {t('admin.pitches.intro')}
-      </Text>
       <PitchForm
         key={formKey}
         variant="admin"

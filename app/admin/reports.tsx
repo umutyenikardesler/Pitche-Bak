@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, RefreshControl, Modal, Pressable } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, RefreshControl, Modal, Pressable, Alert } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { supabase } from '@/services/supabase';
@@ -43,6 +43,7 @@ export default function AdminReportsScreen() {
   const [totalUsers, setTotalUsers] = useState<number | null>(null);
   const [tab, setTab] = useState<AdminTab>('reports');
   const [pendingSuggestions, setPendingSuggestions] = useState(0);
+  const [reportsPage, setReportsPage] = useState(0);
   // Erken donusten SONRA duruyordu: isAdmin false olunca hook atlanip React
   // "beklenenden az hook" hatasi veriyordu.
   const [statusModalReport, setStatusModalReport] = useState<AdminReportRow | null>(null);
@@ -155,12 +156,34 @@ export default function AdminReportsScreen() {
 
   const handleStatusUpdate = async (status: 'resolved' | 'reviewed' | 'rejected' | 'checked') => {
     if (!statusModalReport) return;
-    const { error } = await updateReportStatus(statusModalReport, status);
+    const isMessageReport = statusModalReport.content_type === 'message';
+    const { error, messageDeleted } = await updateReportStatus(statusModalReport, status);
     setStatusModalReport(null);
-    if (!error) loadReports();
+    if (error) return;
+    loadReports();
+    // Onayla, mesaj şikayetinde mesajı GERÇEKTEN siliyor; admin'e sonucu bildir.
+    if (isMessageReport && status === 'resolved') {
+      Alert.alert(
+        '',
+        messageDeleted
+          ? t('admin.reports.messageDeleted')
+          : t('admin.reports.messageDeleteFailed')
+      );
+    }
   };
 
   const colWidths = { no: 40, reporter: 85, reported: 85, message: 110, notes: 60, status: 125, date: 72 };
+
+  // Sayfalama: liste 10'ar 10'ar gösteriliyor. reports.length küçülünce
+  // (örn. filtre/yenileme) sayfa numarası aralık dışında kalmasın diye
+  // sınırlanıyor; ayrı bir useEffect gerekmiyor, hesap her render'da tazeleniyor.
+  const REPORTS_PAGE_SIZE = 10;
+  const totalReportPages = Math.max(1, Math.ceil(reports.length / REPORTS_PAGE_SIZE));
+  const currentReportsPage = Math.min(reportsPage, totalReportPages - 1);
+  const pagedReports = reports.slice(
+    currentReportsPage * REPORTS_PAGE_SIZE,
+    (currentReportsPage + 1) * REPORTS_PAGE_SIZE
+  );
 
   return (
     <>
@@ -187,11 +210,49 @@ export default function AdminReportsScreen() {
       ) : (
         <ScrollView
           style={{ flex: 1 }}
-          contentContainerStyle={{ padding: 12, paddingBottom: 120 }}
+          contentContainerStyle={{ padding: 12, paddingBottom: 24 }}
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="on-drag"
+          // Sabit 120 boşluk, Saha Ekle formundaki alanlar klavyenin arkasında
+          // kalmasın diye eklenmişti; Raporlar sekmesinde tablo klavye
+          // görmediği için altta hep boş, gereksiz bir alan bırakıyordu. Klavye
+          // payı artık otomatik: yalnızca klavye açıkken ve gerektiği kadar.
+          automaticallyAdjustKeyboardInsets
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#16a34a']} />}
         >
+          {/* İstatistikler: her sekmede görünür, sayfanın en üstünde. */}
+          <View style={{ borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 10, overflow: 'hidden', marginBottom: 12 }}>
+            <View style={{ flexDirection: 'row', backgroundColor: '#065f46' }}>
+              <View style={{ flex: 1, paddingVertical: 10, paddingHorizontal: 12, borderRightWidth: 1, borderRightColor: 'rgba(255,255,255,0.25)' }}>
+                <Text style={{ color: 'white', fontWeight: '800', fontSize: 12, textAlign: 'center' }}>
+                  Toplam Kullanıcı Sayısı
+                </Text>
+              </View>
+              <View style={{ flex: 1, paddingVertical: 10, paddingHorizontal: 12 }}>
+                <Text style={{ color: 'white', fontWeight: '800', fontSize: 12, textAlign: 'center' }}>
+                  Aktif Kullanıcı Sayısı
+                </Text>
+              </View>
+            </View>
+            <View style={{ flexDirection: 'row', backgroundColor: '#ffffff' }}>
+              <View style={{ flex: 1, paddingVertical: 12, paddingHorizontal: 12, borderRightWidth: 1, borderRightColor: '#e5e7eb' }}>
+                <Text style={{ color: '#111827', fontWeight: '800', fontSize: 18, textAlign: 'center' }}>
+                  {typeof totalUsers === 'number' ? totalUsers : '-'}
+                </Text>
+              </View>
+              <View style={{ flex: 1, paddingVertical: 12, paddingHorizontal: 12 }}>
+                <Text style={{ color: '#111827', fontWeight: '800', fontSize: 18, textAlign: 'center' }}>
+                  {typeof activeUsers === 'number' ? activeUsers : '-'}
+                </Text>
+              </View>
+            </View>
+          </View>
+
+          {/* İstatistik kartını sekmelerden ayıran çizgi; sekme başlığı
+              içeriğin kendisinden (tablo/form) zaten belli olduğu için tekrar
+              yazılmıyor. */}
+          <View style={{ height: 2, backgroundColor: '#16a34a', marginBottom: 12, borderRadius: 1 }} />
+
           {/* Sekmeler */}
           <View style={{ flexDirection: 'row', backgroundColor: '#e5e7eb', borderRadius: 10, padding: 3, marginBottom: 12 }}>
             {([
@@ -236,8 +297,16 @@ export default function AdminReportsScreen() {
             ))}
           </View>
 
-          {tab === 'add' && <AddPitchPanel onAdded={loadReports} />}
-          {tab === 'suggestions' && <PitchSuggestionsPanel onChanged={refreshPendingSuggestions} />}
+          {tab === 'add' && (
+            <View style={{ backgroundColor: '#ffffff', borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 10, padding: 14 }}>
+              <AddPitchPanel onAdded={loadReports} />
+            </View>
+          )}
+          {tab === 'suggestions' && (
+            <View style={{ backgroundColor: '#ffffff', borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 10, padding: 14 }}>
+              <PitchSuggestionsPanel onChanged={refreshPendingSuggestions} />
+            </View>
+          )}
 
           {tab === 'reports' && (
           <>
@@ -258,7 +327,7 @@ export default function AdminReportsScreen() {
                 <Text style={{ color: '#6b7280', textAlign: 'center' }}>{t('admin.reports.empty')}</Text>
               </View>
             ) : (
-              reports.map((r, i) => (
+              pagedReports.map((r, i) => (
                 <View
                   key={r.id}
                   style={{
@@ -270,10 +339,10 @@ export default function AdminReportsScreen() {
                     borderRightWidth: 1,
                     borderBottomWidth: 1,
                     borderColor: '#e5e7eb',
-                    ...(i === reports.length - 1 ? { borderBottomLeftRadius: 8, borderBottomRightRadius: 8 } : {}),
+                    ...(i === pagedReports.length - 1 ? { borderBottomLeftRadius: 8, borderBottomRightRadius: 8 } : {}),
                   }}
                 >
-                  <Text style={{ width: colWidths.no, fontSize: 12, color: '#374151' }}>{i + 1}</Text>
+                  <Text style={{ width: colWidths.no, fontSize: 12, color: '#374151' }}>{currentReportsPage * REPORTS_PAGE_SIZE + i + 1}</Text>
                   <Text style={{ width: colWidths.reporter, fontSize: 12, color: '#374151' }} numberOfLines={2}>{fullName(r.reporter)}</Text>
                   <Text style={{ width: colWidths.reported, fontSize: 12, color: '#374151' }} numberOfLines={2}>{fullName(r.reported_user)}</Text>
                   <Text style={{ width: colWidths.message, fontSize: 12, color: '#374151' }} numberOfLines={2}>{r.content_preview || '-'}</Text>
@@ -293,38 +362,40 @@ export default function AdminReportsScreen() {
           </View>
           </ScrollView>
 
-          {/* İstatistikler: 1 satır, 2 sütun */}
-          <View style={{ marginTop: 14, borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 10, overflow: 'hidden' }}>
-            <View style={{ flexDirection: 'row', backgroundColor: '#065f46' }}>
-              <View style={{ flex: 1, paddingVertical: 10, paddingHorizontal: 12, borderRightWidth: 1, borderRightColor: 'rgba(255,255,255,0.25)' }}>
-                <Text style={{ color: 'white', fontWeight: '800', fontSize: 12, textAlign: 'center' }}>
-                  Toplam Kullanıcı Sayısı
-                </Text>
-              </View>
-              <View style={{ flex: 1, paddingVertical: 10, paddingHorizontal: 12 }}>
-                <Text style={{ color: 'white', fontWeight: '800', fontSize: 12, textAlign: 'center' }}>
-                  Aktif Kullanıcı Sayısı
-                </Text>
-              </View>
-            </View>
-            <View style={{ flexDirection: 'row', backgroundColor: '#ffffff' }}>
-              <View style={{ flex: 1, paddingVertical: 12, paddingHorizontal: 12, borderRightWidth: 1, borderRightColor: '#e5e7eb' }}>
-                <Text style={{ color: '#111827', fontWeight: '800', fontSize: 18, textAlign: 'center' }}>
-                  {typeof totalUsers === 'number' ? totalUsers : '-'}
-                </Text>
-              </View>
-              <View style={{ flex: 1, paddingVertical: 12, paddingHorizontal: 12 }}>
-                <Text style={{ color: '#111827', fontWeight: '800', fontSize: 18, textAlign: 'center' }}>
-                  {typeof activeUsers === 'number' ? activeUsers : '-'}
-                </Text>
-              </View>
-            </View>
-            <View style={{ paddingHorizontal: 12, paddingVertical: 10, backgroundColor: '#f9fafb', borderTopWidth: 1, borderTopColor: '#e5e7eb' }}>
-              <Text style={{ color: '#6b7280', fontSize: 11, textAlign: 'center', lineHeight: 16 }}>
-                Aktif kullanıcı sayısı, uygulamada anlık olarak çevrimiçi olan kullanıcıların sayısıdır.
+          {/* Sayfalama */}
+          {reports.length > REPORTS_PAGE_SIZE && (
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 10 }}>
+              <TouchableOpacity
+                onPress={() => setReportsPage((p) => Math.max(0, p - 1))}
+                disabled={currentReportsPage === 0}
+                style={{
+                  paddingHorizontal: 14,
+                  paddingVertical: 8,
+                  borderRadius: 8,
+                  backgroundColor: currentReportsPage === 0 ? '#e5e7eb' : '#065f46',
+                }}
+              >
+                <Ionicons name="chevron-back" size={16} color={currentReportsPage === 0 ? '#9ca3af' : 'white'} />
+              </TouchableOpacity>
+              <Text style={{ marginHorizontal: 14, fontSize: 13, fontWeight: '600', color: '#374151' }}>
+                {t('admin.reports.pageOf')
+                  .replace('{current}', String(currentReportsPage + 1))
+                  .replace('{total}', String(totalReportPages))}
               </Text>
+              <TouchableOpacity
+                onPress={() => setReportsPage((p) => Math.min(totalReportPages - 1, p + 1))}
+                disabled={currentReportsPage >= totalReportPages - 1}
+                style={{
+                  paddingHorizontal: 14,
+                  paddingVertical: 8,
+                  borderRadius: 8,
+                  backgroundColor: currentReportsPage >= totalReportPages - 1 ? '#e5e7eb' : '#065f46',
+                }}
+              >
+                <Ionicons name="chevron-forward" size={16} color={currentReportsPage >= totalReportPages - 1 ? '#9ca3af' : 'white'} />
+              </TouchableOpacity>
             </View>
-          </View>
+          )}
           </>
           )}
         </ScrollView>
@@ -340,11 +411,32 @@ export default function AdminReportsScreen() {
             style={{ backgroundColor: 'white', borderRadius: 12, padding: 24, width: '100%', maxWidth: 340 }}
             onPress={(e) => e.stopPropagation()}
           >
-            <Text style={{ fontSize: 18, fontWeight: '700', color: '#111827', marginBottom: 20, textAlign: 'center' }}>
+            <Text style={{ fontSize: 18, fontWeight: '700', color: '#111827', marginBottom: 8, textAlign: 'center' }}>
               {t('admin.reports.changeStatusTitle')}
             </Text>
+            {/* Mesaj şikayetinde ne silineceği modalda da görünsün; tabloya
+                geri dönmeden karar verilebilsin. */}
+            {statusModalReport?.content_type === 'message' && (
+              <Text style={{ fontSize: 13, color: '#6b7280', marginBottom: 16, textAlign: 'center', fontStyle: 'italic' }} numberOfLines={3}>
+                “{statusModalReport.content_preview || '-'}”
+              </Text>
+            )}
             <TouchableOpacity
-              onPress={() => handleStatusUpdate('resolved')}
+              onPress={() => {
+                // Onayla, mesaj şikayetinde mesajı GERÇEKTEN siliyor; geri alınamaz.
+                if (statusModalReport?.content_type === 'message') {
+                  Alert.alert(
+                    t('admin.reports.deleteMessageTitle'),
+                    t('admin.reports.deleteMessageConfirm'),
+                    [
+                      { text: t('general.cancel'), style: 'cancel' },
+                      { text: t('admin.reports.statusResolved'), style: 'destructive', onPress: () => handleStatusUpdate('resolved') },
+                    ]
+                  );
+                  return;
+                }
+                handleStatusUpdate('resolved');
+              }}
               style={{ backgroundColor: '#16a34a', borderRadius: 8, padding: 14, marginBottom: 10 }}
             >
               <Text style={{ color: 'white', fontWeight: '600', textAlign: 'center' }}>{t('admin.reports.statusResolved')}</Text>
