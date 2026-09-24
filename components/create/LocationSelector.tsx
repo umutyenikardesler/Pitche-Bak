@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '@/services/supabase';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAppTheme } from '@/contexts/ThemeContext';
+import SuggestPitchModal from '@/components/pitches/SuggestPitchModal';
 
 interface District {
   id: number;
@@ -52,6 +53,7 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
   const latestDistrictRef = useRef<string | null>(null);
   const [showDistrictModal, setShowDistrictModal] = useState(false);
   const [showPitchModal, setShowPitchModal] = useState(false);
+  const [suggestVisible, setSuggestVisible] = useState(false);
 
   useEffect(() => {
     fetchDistricts();
@@ -271,6 +273,22 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
                     <Text style={{ marginTop: 4, fontSize: 13, color: colors.textSecondary, textAlign: 'center' }}>
                       {pitchesError ? t('create.pitchesLoadFailed') : t('create.noPitchesMessage')}
                     </Text>
+                    {/* Eksigi en iyi burada duran kullanici biliyor: oneriyi tam bu anda istiyoruz. */}
+                    {!pitchesError && (
+                      <TouchableOpacity
+                        onPress={() => {
+                          setShowPitchModal(false);
+                          setSuggestVisible(true);
+                        }}
+                        className="flex-row items-center mt-3 px-3 py-2 rounded-lg"
+                        style={{ borderWidth: 1, borderColor: colors.primary }}
+                      >
+                        <Ionicons name="add-circle-outline" size={16} color={colors.primary} />
+                        <Text className="ml-1 font-semibold" style={{ color: colors.primary }}>
+                          {t('suggestPitch.title')}
+                        </Text>
+                      </TouchableOpacity>
+                    )}
                   </View>
                 )
               }
@@ -341,6 +359,12 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
           backgroundColor: colors.inputBackground,
           opacity: !selectedDistrict ? 0.7 : 1, // Opaklığı azalt (isteğe bağlı)
         }} // Fiyatı yeşil yap
+      />
+
+      <SuggestPitchModal
+        visible={suggestVisible}
+        onClose={() => setSuggestVisible(false)}
+        initialDistrictId={selectedDistrict ? Number(selectedDistrict) : null}
       />
     </View>
   );

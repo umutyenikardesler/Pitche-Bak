@@ -159,13 +159,32 @@ export default function PitchesList({ pitches, selectedPitch, setSelectedPitch, 
               overScrollMode="auto"
             >
               <View
-                className="rounded-lg mx-4 mt-2 p-4 shadow-md mb-4"
+                // Stiller tamamen satır içi: className ile dinamik style birlikte
+                // verildiğinde NativeWind belirli bir render'dan sonra stili
+                // kaybedebiliyor; bu kart üst boşluğunu (mt-2/p-4) kaybedince
+                // "HALI SAHA ÖZETİ" başlığı header'ın arkasında kalıyordu.
+                //
                 // `minHeight: '97%'` yerine flexGrow: kart, kaydırma kabında kalan alanı
                 // kaplar. Kap zaten hap menü kadar alt boşluk ayırdığı için beyaz alan
                 // menünün üstünde biter (Geri Dön butonu tam orada durur). İçerik uzunsa
                 // (ör. 8'den fazla özellik) kart doğal yüksekliğine büyür ve sayfa kayar;
                 // kaydırırken içerik camın altından geçer.
-                style={{ flexGrow: 1, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.primary }}
+                style={{
+                  flexGrow: 1,
+                  borderRadius: 8,
+                  marginHorizontal: 16,
+                  marginTop: 8,
+                  marginBottom: 16,
+                  padding: 16,
+                  backgroundColor: colors.surface,
+                  borderWidth: 1,
+                  borderColor: colors.primary,
+                  shadowColor: '#000',
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowOpacity: 0.1,
+                  shadowRadius: 4,
+                  elevation: 3,
+                }}
               >
                 <View className="flex flex-col items-center flex-1 justify-between">
                   <View className="w-full flex-1">

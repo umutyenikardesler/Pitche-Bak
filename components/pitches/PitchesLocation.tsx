@@ -13,24 +13,54 @@ function PitchesLocationInner({ locationText, setLocationText, getLocation }: Pi
   const { t } = useLanguage();
   const { colors } = useAppTheme();
   return (
-    <View className="p-4" style={{ backgroundColor: colors.surface }} collapsable={false}>
-      <Text className="text-lg font-bold mb-2 text-center" style={{ color: colors.primaryDark }}>{t('pitches.listPitchesByLocation')}</Text>
-      <View className="flex-row items-center space-x-2">
+    // Stiller tamamen satır içi: className ile dinamik style (colors.*) birlikte
+    // verildiğinde NativeWind bir render'dan sonra stili kaybedebiliyor. Bu
+    // bileşende bu, "Saha Öner" modalı açılıp kapandıktan sonra tüm bloğun
+    // (başlık + adres kutusu + buton) sıfır yüksekliğe inip kaybolmasına yol
+    // açıyordu — kayma değil, tam çökme. Bu oturumda özellik çiplerinde ve
+    // sekmelerde de aynı arızayla karşılaşıldı.
+    <View style={{ padding: 16, backgroundColor: colors.surface }} collapsable={false}>
+      <Text
+        style={{
+          fontSize: 18,
+          fontWeight: '700',
+          marginBottom: 8,
+          textAlign: 'center',
+          color: colors.primaryDark,
+        }}
+      >
+        {t('pitches.listPitchesByLocation')}
+      </Text>
+      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
         <TextInput
-          className="flex-1 p-2 rounded-md text-sm mr-2"
           placeholder={t('pitches.yourAddress')}
           placeholderTextColor={colors.textMuted}
           value={locationText}
           onChangeText={setLocationText}
           style={{
+            flex: 1,
+            marginRight: 8,
+            padding: 8,
+            borderRadius: 6,
+            fontSize: 13,
             borderWidth: 1,
             borderColor: colors.inputBorder,
             backgroundColor: colors.inputBackground,
             color: colors.text,
           }}
         />
-        <Pressable className="px-4 py-2 rounded-md" style={{ backgroundColor: colors.primary }} onPress={() => getLocation(true)}>
-          <Text className="font-bold" style={{ color: colors.whiteText }}>{t('pitches.findYourLocation')}</Text>
+        <Pressable
+          onPress={() => getLocation(true)}
+          style={{
+            paddingHorizontal: 16,
+            paddingVertical: 8,
+            borderRadius: 6,
+            backgroundColor: colors.primary,
+          }}
+        >
+          <Text style={{ fontWeight: '700', color: colors.whiteText }}>
+            {t('pitches.findYourLocation')}
+          </Text>
         </Pressable>
       </View>
     </View>

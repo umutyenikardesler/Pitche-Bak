@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
-import { ActivityIndicator, Alert, Platform, View, DeviceEventEmitter, Linking } from "react-native";
+import { ActivityIndicator, Alert, Platform, View, Text, TouchableOpacity, DeviceEventEmitter, Linking } from "react-native";
 import { GestureDetector, Gesture } from "react-native-gesture-handler";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { runOnJS } from "react-native-reanimated";
@@ -12,6 +12,10 @@ import { useAppTheme } from "@/contexts/ThemeContext";
 import PitchesLocation from "@/components/pitches/PitchesLocation";
 import PitchesList from "@/components/pitches/PitchesList";
 import AdMobBanner from "@/components/ads/AdMobBanner";
+import SuggestPitchModal from "@/components/pitches/SuggestPitchModal";
+import { Ionicons } from "@expo/vector-icons";
+import { useAuth } from "@/contexts/AuthContext";
+import { useGuestAuthAlert } from "@/contexts/GuestAuthModalContext";
 
 type PitchRow = {
   id: string;
@@ -32,6 +36,9 @@ export default function Pitches() {
   const [location, setLocation] = useState<{ latitude: number; longitude: number } | null>(null);
   const [locationText, setLocationText] = useState("Konum alınıyor...");
   const [locationPermissionStatus, setLocationPermissionStatus] = useState<string | null>(null);
+  const [suggestVisible, setSuggestVisible] = useState(false);
+  const { isGuest } = useAuth();
+  const { showGuestAuthAlert } = useGuestAuthAlert();
 
   useEffect(() => {
     fetchPitches();
@@ -484,6 +491,25 @@ export default function Pitches() {
               <AdMobBanner />
             </View>
           ) : null}
+          {/* Eksik sahayı en iyi o ilçede oynayan görüyor: öneri buradan alınıyor. */}
+          {!selectedPitch ? (
+            <TouchableOpacity
+              onPress={() => {
+                if (isGuest) {
+                  showGuestAuthAlert(t('suggestPitch.guest'));
+                  return;
+                }
+                setSuggestVisible(true);
+              }}
+              className="flex-row items-center justify-center mx-4 mt-2 mb-1 py-2 rounded-lg"
+              style={{ borderWidth: 1, borderColor: colors.primary }}
+            >
+              <Ionicons name="add-circle-outline" size={16} color={colors.primary} />
+              <Text className="ml-1 font-semibold" style={{ color: colors.primary }}>
+                {t('suggestPitch.cta')}
+              </Text>
+            </TouchableOpacity>
+          ) : null}
           <PitchesList
           pitches={pitches}
           selectedPitch={selectedPitch}
@@ -493,6 +519,10 @@ export default function Pitches() {
           onRefresh={onRefresh}
           onPriceUpdated={handlePriceUpdated}
         />
+          <SuggestPitchModal
+            visible={suggestVisible}
+            onClose={() => setSuggestVisible(false)}
+          />
         </View>
       </GestureDetector>
     </GestureHandlerRootView>
