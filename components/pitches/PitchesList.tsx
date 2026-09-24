@@ -417,7 +417,9 @@ export default function PitchesList({ pitches, selectedPitch, setSelectedPitch, 
                   <Text style={{ fontSize: 13, color: colors.text, lineHeight: 20, textAlign: 'center' }}>
                     {t('pitches.priceDisclaimer')}
                   </Text>
-                  <TouchableOpacity onPress={() => setPriceInfoVisible(false)} style={{ marginTop: 16, paddingVertical: 10, backgroundColor: colors.surfaceAlt, borderRadius: 8, alignItems: 'center' }}>
+                  {/* colors.surfaceAlt gündüz modunda açık gri; beyaz metinle
+                      birlikte kontrast düşük kalıp buton pasif görünüyordu. */}
+                  <TouchableOpacity onPress={() => setPriceInfoVisible(false)} style={{ marginTop: 16, paddingVertical: 10, backgroundColor: colors.primary, borderRadius: 8, alignItems: 'center' }}>
                     <Text style={{ color: 'white', fontWeight: '600' }}>{t('general.close')}</Text>
                   </TouchableOpacity>
                 </TouchableOpacity>
