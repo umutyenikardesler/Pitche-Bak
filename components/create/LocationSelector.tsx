@@ -228,7 +228,7 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
   const isCompact = screenWidth <= 430;
   // İl modalıyla aynı mantık: genişlik listedeki en uzun ilçe adına göre, ekranın %85'ini geçmez.
   const longestDistrict = visibleDistricts.reduce((m, d) => Math.max(m, d.name.length), 0);
-  const districtModalWidth = Math.min(screenWidth * 0.85, Math.max(visibleDistricts.length === 0 ? 220 : 140, longestDistrict * 7.5 + 56));
+  const districtModalWidth = Math.min(screenWidth * 0.85, Math.max(visibleDistricts.length === 0 ? 220 : 140, longestDistrict * 8 + 56));
   const pitchModalWidth = isCompact ? '50%' : '60%'; // büyük ekranda max %50
 
   const renderProvinceModal = () => {
@@ -242,7 +242,7 @@ export const LocationSelector: React.FC<LocationSelectorProps> = ({
     // Genişlik en uzun il adına göre: karakter başına ~8px + liste/satır dolguları
     // ve konum ikonu payı. Ekranın %85'ini geçmez.
     const longestName = provinces.reduce((m, p) => Math.max(m, p.name.length), 0);
-    const provinceModalWidth = Math.min(screenWidth * 0.85, Math.max(140, longestName * 7.5 + 48));
+    const provinceModalWidth = Math.min(screenWidth * 0.85, Math.max(140, longestName * 8 + 48));
 
     const selectProvince = (item: Province) => {
       if (item.id !== selectedProvince) {
