@@ -71,11 +71,20 @@ function formatPhone(raw: string): string {
 }
 
 /** Ters coğrafi kodlamadan gelen adı ilçe listesiyle eşleştirir. */
-function matchDistrict(districts: District[], candidates: (string | null | undefined)[]) {
+function matchDistrict(
+  districts: District[],
+  candidates: (string | null | undefined)[],
+  provinceName?: string | null
+) {
   const norm = (v: string) => v.trim().toLocaleLowerCase('tr-TR');
+  // Aynı ilçe adı birden çok ilde olabilir; il biliniyorsa yalnızca o ilde ara.
+  const inProvince = provinceName
+    ? districts.filter((d) => d.provinceName && norm(d.provinceName) === norm(provinceName))
+    : [];
+  const pool = inProvince.length > 0 ? inProvince : districts;
   for (const candidate of candidates) {
     if (!candidate) continue;
-    const hit = districts.find((d) => norm(d.name) === norm(candidate));
+    const hit = pool.find((d) => norm(d.name) === norm(candidate));
     if (hit) return hit;
   }
   return null;
@@ -155,14 +164,14 @@ export default function PitchForm({
     setValues((prev) => ({ ...prev, [key]: value }));
 
   const districtName = useMemo(
-    () => districts.find((d) => d.id === values.districtId)?.name ?? '',
+    () => districts.find((d) => d.id === values.districtId)?.label ?? '',
     [districts, values.districtId]
   );
 
   const filteredDistricts = useMemo(() => {
     const q = districtQuery.trim().toLocaleLowerCase('tr-TR');
     if (!q) return districts;
-    return districts.filter((d) => d.name.toLocaleLowerCase('tr-TR').includes(q));
+    return districts.filter((d) => (d.label ?? d.name).toLocaleLowerCase('tr-TR').includes(q));
   }, [districts, districtQuery]);
 
   /**
@@ -211,7 +220,7 @@ export default function PitchForm({
 
         // İlçe: konumu alan kişi zaten o ilçede duruyor, elle seçtirmeyelim.
         // subregion Türkiye'de ilçeye denk geliyor; city bazı cihazlarda aynısını veriyor.
-        const district = matchDistrict(districts, [place?.subregion, place?.city, place?.district]);
+        const district = matchDistrict(districts, [place?.subregion, place?.city, place?.district], place?.region);
         if (district) set('districtId', district.id);
       } catch {
         // İlçe bulunamadıysa sorun değil; elle seçilebilir.
@@ -544,7 +553,7 @@ export default function PitchForm({
                       values.districtId === d.id ? colors.surfaceAlt : 'transparent',
                   }}
                 >
-                  <Text style={{ color: colors.text }}>{d.name}</Text>
+                  <Text style={{ color: colors.text }}>{d.label ?? d.name}</Text>
                 </TouchableOpacity>
               ))}
               {filteredDistricts.length === 0 && (

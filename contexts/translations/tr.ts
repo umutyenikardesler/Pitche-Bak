@@ -149,6 +149,8 @@ export const tr = {
   'create.midfielder': 'Orta Saha',
   'create.forward': 'Forvet',
   'create.howManyMissing': 'Kaç {position} eksik?',
+  'create.selectProvincePlaceholder': 'İl Seçiniz',
+  'create.noDistrictsInProvince': 'Bu ilde henüz ilçe ve halı saha eklenmedi.',
   'create.selectDistrictPlaceholder': 'İlçe Seçiniz',
   'create.selectPitchPlaceholder': 'Halı Saha Seçiniz',
   'create.noPitchesTitle': 'Halı saha bulunamadı',

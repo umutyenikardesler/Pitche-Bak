@@ -191,8 +191,11 @@ export default function MyMatches({ matches, refreshing, onRefresh, onSelectMatc
     );
   };
 
+  // 1-2 maçta (native) üst kapsayıcı yüksekliği içeriğe göre; kök flex:1 olursa 0'a çöker.
+  const autoHeight = Platform.OS !== 'web' && matches.length >= 1 && matches.length <= 2;
+
   return (
-    <View className="flex-1">
+    <View style={autoHeight ? undefined : { flex: 1 }}>
       <View className="flex-row p-2 bg-green-700">
         <Ionicons name="alarm-outline" size={16} color="white" className="pl-2" />
         <Text className="font-bold text-white "> {t('home.waitingMatches')} </Text>
@@ -233,10 +236,15 @@ export default function MyMatches({ matches, refreshing, onRefresh, onSelectMatc
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
           // Web'de FlatList içerik kadar uzayabiliyor; parent (Index) fixed-height verdiği için
           // burada list'i kalan alana oturtup scroll'u aktif etmek gerekir.
-          style={{ flex: 1, paddingTop: 3, paddingBottom: Platform.OS === 'web' ? 0 : 5 }}
+          // 1-2 maçta (native) kapsayıcı yüksekliği içeriğe göre; flex:1 burada 0 yüksekliğe çökerdi.
+          style={
+            autoHeight
+              ? { paddingTop: 3 }
+              : { flex: 1, paddingTop: 3, paddingBottom: Platform.OS === 'web' ? 0 : 5 }
+          }
           contentContainerStyle={{
             // Web'de listenin sonunda fazladan boşluk oluşuyordu; web için daha küçük padding.
-            paddingBottom: Platform.OS === 'web' ? 10 : (matches.length > 2 ? 5 : 0),
+            paddingBottom: Platform.OS === 'web' ? 10 : 5,
           }} // 3+ maç varsa daha fazla padding
           scrollEnabled={matches.length > 2} // 3 veya daha fazla maç varsa scroll aktif
           showsVerticalScrollIndicator={matches.length > 2} // 3+ maç varsa scroll bar göster

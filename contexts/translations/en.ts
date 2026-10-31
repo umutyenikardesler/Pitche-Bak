@@ -151,6 +151,8 @@ export const en: Record<TranslationKey, string> = {
   'create.midfielder': 'Midfielder',
   'create.forward': 'Forward',
   'create.howManyMissing': 'How many {position} missing?',
+  'create.selectProvincePlaceholder': 'Select Province',
+  'create.noDistrictsInProvince': 'No districts or pitches have been added for this province yet.',
   'create.selectDistrictPlaceholder': 'Select District',
   'create.selectPitchPlaceholder': 'Select Pitch',
   'create.noPitchesTitle': 'No pitches found',

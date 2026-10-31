@@ -689,7 +689,12 @@ export default function Index() {
           {/* MyMatches - sadece giriş yapmış kullanıcı için */}
           <View 
             style={{
-              height: myMatchesHeight === 0 ? undefined : myMatchesHeight,
+              // 1-2 maçta (native) yükseklik içeriğe göre belirlenir: maç satırı cihaza göre
+              // (metin sarması) 80px'ten uzun olabiliyor ve sabit yükseklik alt boşluğu kesiyordu.
+              height:
+                Platform.OS !== 'web' && futureMatches.length >= 1 && futureMatches.length <= 2
+                  ? undefined
+                  : myMatchesHeight === 0 ? undefined : myMatchesHeight,
               overflow: Platform.OS === 'web' && futureMatches.length > 0 ? 'hidden' : undefined,
             }}>
             <MyMatches

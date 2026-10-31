@@ -10,7 +10,13 @@ import { turkeyTimestamp } from '@/lib/turkeyDate';
  * ve admin onaylayınca sahaya dönüşüyor.
  */
 
-export type District = { id: number; name: string };
+export type District = {
+  id: number;
+  name: string;
+  /** İlçe adı birden çok ilde varsa "Merkez (Ankara)" gibi; yoksa name ile aynı. */
+  label?: string;
+  provinceName?: string | null;
+};
 
 export type PitchInput = {
   name: string;
@@ -47,12 +53,26 @@ export type PitchSuggestionRow = {
 };
 
 export async function fetchDistricts(): Promise<District[]> {
-  const { data, error } = await supabase.from('districts').select('id, name').order('name');
+  const { data, error } = await supabase
+    .from('districts')
+    .select('id, name, provinces(name)')
+    .order('name');
   if (error) {
     console.error('[Saha] ilçeler alınamadı:', error);
     return [];
   }
-  return (data ?? []) as District[];
+  const rows = (data ?? []).map((r: any) => ({
+    id: r.id as number,
+    name: r.name as string,
+    provinceName: (Array.isArray(r.provinces) ? r.provinces[0]?.name : r.provinces?.name) ?? null,
+  }));
+  // Aynı ad birden çok ilde var ("Merkez" 51 ilde); listede il ile ayırt edilsin.
+  const counts = new Map<string, number>();
+  rows.forEach((r) => counts.set(r.name, (counts.get(r.name) ?? 0) + 1));
+  return rows.map((r) => ({
+    ...r,
+    label: (counts.get(r.name) ?? 0) > 1 && r.provinceName ? `${r.name} (${r.provinceName})` : r.name,
+  }));
 }
 
 /**
